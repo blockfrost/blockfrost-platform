@@ -3,6 +3,7 @@ mod config;
 mod db;
 mod errors;
 mod models;
+mod payload;
 mod schema;
 
 use api::{register, root};
