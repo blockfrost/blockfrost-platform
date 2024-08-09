@@ -1,0 +1,4 @@
+CREATE TABLE requests (
+  id SERIAL PRIMARY KEY,
+  status VARCHAR(255) NOT NULL
+)
