@@ -1,0 +1,17 @@
+use axum::Json;
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct Response {
+    pub url: String,
+    pub version: String,
+}
+
+pub async fn route() -> Json<Response> {
+    let response = Response {
+        url: "https://icebreakers.blockfrost.io".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+
+    Json(response)
+}
