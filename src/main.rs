@@ -1,4 +1,5 @@
 mod api;
+mod blockfrost;
 mod config;
 mod db;
 mod errors;
@@ -26,11 +27,13 @@ async fn main() {
         .init();
 
     let pool = db::init_db(config.database.connection_string).await;
+    let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
 
     let app = Router::new()
         .route("/", get(root::route))
         .route("/register", post(register::route))
-        .with_state(pool);
+        .with_state(pool)
+        .with_state(blockfrost_api);
 
     let listener = tokio::net::TcpListener::bind(config.server.address)
         .await

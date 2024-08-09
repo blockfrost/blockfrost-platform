@@ -4,3 +4,7 @@ log_level = 'info'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'
+
+[blockfrost]
+NFT_policty_id = 'your_policy_id'
+project_id = 'BLOCKFROST_PROJECT_ID'

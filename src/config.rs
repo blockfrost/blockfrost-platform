@@ -25,6 +25,11 @@ pub struct DbInput {
     pub connection_string: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlockfrostInput {
+    pub project_id: String,
+}
+
 fn deserialize_log_level<'de, D>(deserializer: D) -> Result<Level, D::Error>
 where
     D: Deserializer<'de>,
@@ -49,12 +54,19 @@ pub struct Db {
 pub struct ConfigInput {
     pub server: ServerInput,
     pub database: DbInput,
+    pub blockfrost: BlockfrostInput,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub server: Server,
     pub database: Db,
+    pub blockfrost: Blockfrost,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Blockfrost {
+    pub project_id: String,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
@@ -71,17 +83,16 @@ pub fn load_config(path: PathBuf) -> Config {
         _ => Level::INFO,
     };
 
-    let parsed_server = Server {
-        address: toml_config.server.address,
-        log_level,
-    };
-
-    let database = Db {
-        connection_string: toml_config.database.connection_string,
-    };
-
     Config {
-        server: parsed_server,
-        database,
+        server: Server {
+            address: toml_config.server.address,
+            log_level,
+        },
+        database: Db {
+            connection_string: toml_config.database.connection_string,
+        },
+        blockfrost: Blockfrost {
+            project_id: toml_config.blockfrost.project_id,
+        },
     }
 }

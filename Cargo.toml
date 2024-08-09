@@ -19,3 +19,5 @@ toml = "0.8.19"
 thiserror = "1.0.63"
 uuid = { version = "1.10.0", features = ["v4"] }
 chrono = "0.4.38"
+reqwest = "0.12.5"
+blockfrost = "1.0.1"
