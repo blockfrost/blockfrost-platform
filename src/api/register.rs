@@ -4,6 +4,7 @@ use deadpool_diesel::postgres::Pool;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::errors::APIError;
 use crate::{models::Request, schema};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -30,12 +31,8 @@ pub struct Payload {
 pub async fn route(
     State(pool): State<Pool>,
     JsonExt(payload): JsonExt<Payload>,
-) -> Result<Json<ResponseSuccess>, Json<ResponseError>> {
-    let db_pool = pool.get().await.map_err(|_| ResponseError {
-        reason: "Database connection error".to_string(),
-        status: "failed".to_string(),
-        details: "Failed to get database connection from pool".to_string(),
-    })?;
+) -> Result<Json<ResponseSuccess>, APIError> {
+    let db_pool = pool.get().await.map_err(APIError::DbConnectionError)?;
 
     println!("Creating a new request with data payload {:?}", payload);
 
@@ -52,16 +49,8 @@ pub async fn route(
                 .get_result(db_pool)
         })
         .await
-        .map_err(|_| ResponseError {
-            status: "failed".to_string(),
-            reason: "Database interaction error".to_string(),
-            details: "Failed to insert new request. Please contant our support".to_string(),
-        })?
-        .map_err(|_| ResponseError {
-            status: "failed".to_string(),
-            reason: "Database interaction error".to_string(),
-            details: "Failed to insert new request. Please contant our support".to_string(),
-        })?;
+        .map_err(|_| APIError::DbInteractionError("Failed to interact with db pool".to_string()))?
+        .map_err(|_| APIError::DbInteractionError("Failed to insert new request".to_string()))?;
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),

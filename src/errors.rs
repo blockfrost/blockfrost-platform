@@ -9,33 +9,40 @@ pub struct RegisterError {
     pub error: String,
     pub message: String,
 }
+use thiserror::Error;
 
-impl RegisterError {
-    pub fn db_error() -> Self {
-        Self {
-            error: "Not Found".to_string(),
-            message: "The requested component has not been found.".to_string(),
-            status_code: 404,
-        }
-    }
+#[derive(Error, Debug)]
+pub enum APIError {
+    #[error("Database connection error")]
+    DbConnectionError(#[from] deadpool_diesel::PoolError),
+
+    #[error("Database interaction error: {0}")]
+    DbInteractionError(String),
+
+    #[error("Unexpected error: {0}")]
+    UnexpectedError(String),
 }
 
-impl IntoResponse for RegisterError {
+impl IntoResponse for APIError {
     fn into_response(self) -> Response {
-        let status_code = match self.status_code {
-            400 => StatusCode::BAD_REQUEST,
-            404 => StatusCode::NOT_FOUND,
-            405 => StatusCode::METHOD_NOT_ALLOWED,
-            500 => StatusCode::INTERNAL_SERVER_ERROR,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        let error_response = match &self {
+            APIError::DbConnectionError(_) => RegisterError {
+                status_code: 500,
+                error: "Database Connection Error".to_string(),
+                message: self.to_string(),
+            },
+            APIError::DbInteractionError(_) => RegisterError {
+                status_code: 500,
+                error: "Database Interaction Error".to_string(),
+                message: self.to_string(),
+            },
+            APIError::UnexpectedError(_) => RegisterError {
+                status_code: 500,
+                error: "Internal Server Error".to_string(),
+                message: self.to_string(),
+            },
         };
 
-        let error_response = Self {
-            error: self.error,
-            message: self.message,
-            status_code: self.status_code,
-        };
-
-        (status_code, Json(error_response)).into_response()
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
     }
 }
