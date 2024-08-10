@@ -1,4 +1,5 @@
 use crate::blockfrost::BlockfrostAPI;
+use crate::config::Config;
 use crate::errors::APIError;
 use crate::payload::Payload;
 use crate::{
@@ -22,24 +23,32 @@ pub struct ResponseSuccess {
 
 pub async fn route(
     State(pool): State<Pool>,
+    State(config): State<Config>,
     State(blockfrost): State<BlockfrostAPI>,
     ConnectInfo(ip_address): ConnectInfo<SocketAddr>,
     JsonExt(payload): JsonExt<Payload>,
 ) -> Result<Json<ResponseSuccess>, APIError> {
+    // validate POST payload
     Payload::validate(&payload)?;
 
-    // check if backend is online
-    let url = format!("https://{}:{}/blockfrost/health", ip_address, payload.port);
+    // check if the server is accessible
+    let url = config
+        .blockfrost
+        .api_url_pattern
+        .replace("{IP}", &ip_address.to_string())
+        .replace("{PORT}", &payload.port.to_string());
+
     reqwest::get(url)
         .await
         .map_err(|_| APIError::NotAccessible())?;
 
     // check if NFT is at the address
     blockfrost
-        .nft_exists(&payload.reward_address, "aaa")
+        .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
         .await
         .map_err(|_| APIError::LicenseError(payload.reward_address.clone()))?;
 
+    // success -> save the request to the database
     let db_pool = pool.get().await.map_err(APIError::DbConnectionError)?;
 
     let new_item_request = RequestNewItem {

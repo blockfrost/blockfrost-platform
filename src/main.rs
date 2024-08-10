@@ -33,6 +33,7 @@ async fn main() {
         .route("/", get(root::route))
         .route("/register", post(register::route))
         .with_state(pool)
+        .with_state(config)
         .with_state(blockfrost_api);
 
     let listener = tokio::net::TcpListener::bind(config.server.address)

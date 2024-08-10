@@ -28,6 +28,8 @@ pub struct DbInput {
 #[derive(Debug, Deserialize, Clone)]
 pub struct BlockfrostInput {
     pub project_id: String,
+    pub nft_asset: String,
+    pub api_url_pattern: String,
 }
 
 fn deserialize_log_level<'de, D>(deserializer: D) -> Result<Level, D::Error>
@@ -67,6 +69,8 @@ pub struct Config {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Blockfrost {
     pub project_id: String,
+    pub nft_asset: String,
+    pub api_url_pattern: String,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
@@ -93,6 +97,8 @@ pub fn load_config(path: PathBuf) -> Config {
         },
         blockfrost: Blockfrost {
             project_id: toml_config.blockfrost.project_id,
+            nft_asset: toml_config.blockfrost.nft_asset,
+            api_url_pattern: toml_config.blockfrost.api_url_pattern,
         },
     }
 }
