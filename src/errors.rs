@@ -33,32 +33,43 @@ impl From<deadpool_diesel::PoolError> for APIError {
         APIError::UnexpectedError()
     }
 }
-
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
-        let error_response = match &self {
-            APIError::UnexpectedError() => ApiError {
-                status: "failed".to_string(),
-                reason: "Internal Server Error".to_string(),
-                details: "Please contact our support at https://blockfrost.io".to_string(),
-            },
-            APIError::ValidationError(_) => ApiError {
-                status: "failed".to_string(),
-                reason: "Provided fields are not valid".to_string(),
-                details: self.to_string(),
-            },
-            APIError::LicenseError(address) => ApiError {
-                status: "failed".to_string(),
-                reason: "no_license".to_string(),
-                details: format!("Address: {} does not contain the license.", address),
-            },
-            APIError::NotAccessible() => ApiError {
-                status: "failed".to_string(),
-                reason: "not_accessible".to_string(),
-                details: "The Blockfrost instance is not publically accessible.".to_string(),
-            },
+        let (status_code, error_response) = match &self {
+            APIError::UnexpectedError() => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "Internal Server Error".to_string(),
+                    details: "Please contact our support at https://blockfrost.io".to_string(),
+                },
+            ),
+            APIError::ValidationError(_) => (
+                StatusCode::BAD_REQUEST,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "Provided fields are not valid".to_string(),
+                    details: self.to_string(),
+                },
+            ),
+            APIError::LicenseError(address) => (
+                StatusCode::FORBIDDEN,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "no_license".to_string(),
+                    details: format!("Address: {} does not contain the license.", address),
+                },
+            ),
+            APIError::NotAccessible() => (
+                StatusCode::FORBIDDEN,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "not_accessible".to_string(),
+                    details: "The Blockfrost instance is not publicly accessible.".to_string(),
+                },
+            ),
         };
 
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(error_response)).into_response()
+        (status_code, Json(error_response)).into_response()
     }
 }

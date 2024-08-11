@@ -11,27 +11,37 @@ pub struct Payload {
 
 impl Payload {
     pub fn validate(&self) -> Result<(), APIError> {
+        // Validate mode
         if self.mode.is_empty() {
             return Err(APIError::ValidationError(
                 "Mode cannot be empty".to_string(),
             ));
         }
 
+        if !["compact", "light", "full"].contains(&self.mode.as_str()) {
+            return Err(APIError::ValidationError(
+                "Mode must be one of 'compact', 'light', or 'full'".to_string(),
+            ));
+        }
+
+        // Validate port
         if self.port <= 0 || self.port > 65535 {
             return Err(APIError::ValidationError(
                 "Port must be between 1 and 65535".to_string(),
             ));
         }
 
+        // Validate secret
         if self.secret.len() < 8 {
             return Err(APIError::ValidationError(
                 "Secret must be at least 8 characters long".to_string(),
             ));
         }
 
-        if !self.reward_address.starts_with("0x") || self.reward_address.len() != 42 {
+        // Validate reward_address
+        if self.reward_address.is_empty() {
             return Err(APIError::ValidationError(
-                "Invalid reward address format".to_string(),
+                "reward_address be empty".to_string(),
             ));
         }
 

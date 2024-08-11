@@ -6,8 +6,8 @@ use crate::{
     models::{Request, RequestNewItem},
     schema,
 };
+use axum::body::Bytes;
 use axum::extract::ConnectInfo;
-use axum::Json as JsonExt;
 use axum::{Extension, Json};
 use deadpool_diesel::postgres::Pool;
 use diesel::prelude::*;
@@ -26,8 +26,13 @@ pub async fn route(
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
     ConnectInfo(ip_address): ConnectInfo<SocketAddr>,
-    JsonExt(payload): JsonExt<Payload>,
+    body: Bytes,
 ) -> Result<Json<ResponseSuccess>, APIError> {
+    let payload: Payload = match serde_json::from_slice(&body) {
+        Ok(payload) => payload,
+        Err(e) => return Err(APIError::ValidationError(e.to_string())),
+    };
+
     // validate POST payload
     Payload::validate(&payload)?;
 
@@ -53,9 +58,9 @@ pub async fn route(
 
     let new_item_request = RequestNewItem {
         user_id: Uuid::new_v4().to_string(),
-        mode: payload.mode,
+        mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
-        port: payload.port,
+        port: payload.port.clone(),
         reward_address: payload.reward_address.clone(),
     };
 
