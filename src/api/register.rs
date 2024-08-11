@@ -7,8 +7,8 @@ use crate::{
     schema,
 };
 use axum::extract::ConnectInfo;
-use axum::Json;
-use axum::{extract::State, Json as JsonExt};
+use axum::Json as JsonExt;
+use axum::{Extension, Json};
 use deadpool_diesel::postgres::Pool;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -22,9 +22,9 @@ pub struct ResponseSuccess {
 }
 
 pub async fn route(
-    State(pool): State<Pool>,
-    State(config): State<Config>,
-    State(blockfrost): State<BlockfrostAPI>,
+    Extension(pool): Extension<Pool>,
+    Extension(config): Extension<Config>,
+    Extension(blockfrost_api): Extension<BlockfrostAPI>,
     ConnectInfo(ip_address): ConnectInfo<SocketAddr>,
     JsonExt(payload): JsonExt<Payload>,
 ) -> Result<Json<ResponseSuccess>, APIError> {
@@ -38,28 +38,28 @@ pub async fn route(
         .replace("{IP}", &ip_address.to_string())
         .replace("{PORT}", &payload.port.to_string());
 
-    reqwest::get(url)
+    reqwest::get(&url)
         .await
         .map_err(|_| APIError::NotAccessible())?;
 
     // check if NFT is at the address
-    blockfrost
+    blockfrost_api
         .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
         .await
         .map_err(|_| APIError::LicenseError(payload.reward_address.clone()))?;
 
     // success -> save the request to the database
-    let db_pool = pool.get().await.map_err(APIError::DbConnectionError)?;
+    let db_pool = pool.get().await.map_err(|_| APIError::UnexpectedError())?;
 
     let new_item_request = RequestNewItem {
         user_id: Uuid::new_v4().to_string(),
-        mode: payload.mode.clone(),
+        mode: payload.mode,
         ip_address: ip_address.to_string(),
         port: payload.port,
         reward_address: payload.reward_address.clone(),
     };
 
-    let result = db_pool
+    db_pool
         .interact(|db_pool| {
             diesel::insert_into(schema::requests::table)
                 .values(new_item_request)
@@ -67,12 +67,12 @@ pub async fn route(
                 .get_result(db_pool)
         })
         .await
-        .map_err(|_| APIError::DbInteractionError("Failed to interact with db pool".to_string()))?
-        .map_err(|_| APIError::DbInteractionError("Failed to insert new request".to_string()))?;
+        .map_err(|_| APIError::UnexpectedError())?
+        .map_err(|_| APIError::UnexpectedError())?;
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: format!("https:://YOUR_SERVER_URL/{}", result.user_id),
+        route: url,
     };
 
     Ok(Json(success_response))

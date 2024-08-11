@@ -1,19 +1,23 @@
 use crate::errors::APIError;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI as bf_sdk};
 
+#[derive(Clone)]
 pub struct BlockfrostAPI {
     api: bf_sdk,
 }
 
 impl BlockfrostAPI {
-    pub fn new(project_id: &str) -> bf_sdk {
-        bf_sdk::new(project_id, BlockFrostSettings::default())
+    pub fn new(project_id: &str) -> Self {
+        let api = bf_sdk::new(project_id, BlockFrostSettings::default());
+        BlockfrostAPI { api }
     }
 
     pub async fn nft_exists(&self, address: &str, asset: &str) -> Result<bool, APIError> {
-        let bf_result = self.api.addresses(address).await.map_err(|_| {
-            APIError::UnexpectedError("Cannot fetch data from Blockfrost endpoint".to_string())
-        })?;
+        let bf_result = self
+            .api
+            .addresses(address)
+            .await
+            .map_err(|_| APIError::UnexpectedError())?;
 
         let asset_exists = bf_result.amount.iter().any(|x| {
             x.unit == asset && {

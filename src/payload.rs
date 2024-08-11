@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use crate::errors::APIError;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug, Deserialize)]
 pub struct Payload {

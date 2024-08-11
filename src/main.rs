@@ -10,33 +10,33 @@ mod schema;
 use api::{register, root};
 use axum::{
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
+use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
     let arguments = Args::parse();
     let config: Config = config::load_config(arguments.config);
-    let cloned_config = config.clone();
 
     tracing_subscriber::fmt()
         .with_max_level(config.server.log_level)
         .init();
 
-    let pool = db::init_db(config.database.connection_string).await;
+    let pool = db::init_db(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
 
     let app = Router::new()
         .route("/", get(root::route))
         .route("/register", post(register::route))
-        .with_state(pool)
-        .with_state(config)
-        .with_state(blockfrost_api);
+        .layer(Extension(config.clone()))
+        .layer(Extension(pool))
+        .layer(Extension(blockfrost_api));
 
-    let listener = tokio::net::TcpListener::bind(config.server.address)
+    let listener = tokio::net::TcpListener::bind(&config.server.address)
         .await
         .expect("Failed to bind to address");
 
@@ -45,13 +45,19 @@ async fn main() {
         format!(
             "\nAddress: 🌍 http://{}\n\
              Log Level: 📘 {}\n",
-            cloned_config.server.address, cloned_config.server.log_level,
+            config.server.address.clone(),
+            config.server.log_level,
         )
         .white()
         .bold()
     );
 
-    axum::serve(listener, app).await.unwrap_or_else(|e| {
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap_or_else(|e| {
         eprintln!("Server error: {}", e);
         std::process::exit(1);
     });

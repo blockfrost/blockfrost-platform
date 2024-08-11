@@ -3,9 +3,10 @@ use axum::{http, Json};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Serialize, Deserialize)]
-pub struct RegisterError {
+pub struct ApiError {
     status: String,
     reason: String,
     details: String,
@@ -13,14 +14,8 @@ pub struct RegisterError {
 
 #[derive(Error, Debug)]
 pub enum APIError {
-    #[error("Database connection error")]
-    DbConnectionError(#[from] deadpool_diesel::PoolError),
-
-    #[error("Database interaction error: {0}")]
-    DbInteractionError(String),
-
-    #[error("Unexpected error: {0}")]
-    UnexpectedError(String),
+    #[error("Unexpected error")]
+    UnexpectedError(),
 
     #[error("Validation error: {0}")]
     ValidationError(String),
@@ -32,35 +27,32 @@ pub enum APIError {
     NotAccessible(),
 }
 
+impl From<deadpool_diesel::PoolError> for APIError {
+    fn from(err: deadpool_diesel::PoolError) -> Self {
+        error!("Database connection error: {}", err);
+        APIError::UnexpectedError()
+    }
+}
+
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
         let error_response = match &self {
-            APIError::DbConnectionError(_) => RegisterError {
-                status: "failed".to_string(),
-                reason: "Database Connection Error".to_string(),
-                details: self.to_string(),
-            },
-            APIError::DbInteractionError(_) => RegisterError {
-                status: "failed".to_string(),
-                reason: "Database Interaction Error".to_string(),
-                details: self.to_string(),
-            },
-            APIError::UnexpectedError(_) => RegisterError {
+            APIError::UnexpectedError() => ApiError {
                 status: "failed".to_string(),
                 reason: "Internal Server Error".to_string(),
-                details: self.to_string(),
+                details: "Please contact our support at https://blockfrost.io".to_string(),
             },
-            APIError::ValidationError(_) => RegisterError {
+            APIError::ValidationError(_) => ApiError {
                 status: "failed".to_string(),
-                reason: "Database Connection Error".to_string(),
+                reason: "Provided fields are not valid".to_string(),
                 details: self.to_string(),
             },
-            APIError::LicenseError(address) => RegisterError {
+            APIError::LicenseError(address) => ApiError {
                 status: "failed".to_string(),
                 reason: "no_license".to_string(),
                 details: format!("Address: {} does not contain the license.", address),
             },
-            APIError::NotAccessible() => RegisterError {
+            APIError::NotAccessible() => ApiError {
                 status: "failed".to_string(),
                 reason: "not_accessible".to_string(),
                 details: "The Blockfrost instance is not publically accessible.".to_string(),
