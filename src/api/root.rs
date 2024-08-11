@@ -5,12 +5,14 @@ use serde::Serialize;
 pub struct Response {
     pub url: String,
     pub version: String,
+    pub healthy: bool,
 }
 
 pub async fn route() -> Json<Response> {
     let response = Response {
         url: "https://icebreakers.blockfrost.io".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        healthy: true,
     };
 
     Json(response)
