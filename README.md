@@ -1,6 +1,4 @@
-# Blockfrost Icebreakers API
-
-<img src="docs/logo.png" alt="Blockfrost Logo" width="150"/>
+<img src="docs/logo.png" alt="Blockfrost Logo" width="250"/>
 
 When a Blockfrost instance starts, it needs to perform an initial handshake with Blockfrost.io to exchange crucial information required by both parties. This handshake involves the instance sending the following details:
 
