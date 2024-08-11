@@ -1,16 +1,15 @@
-<img src="docs/logo.png" alt="Blockfrost Logo" width="250"/>
+# Blockfrost Icebreakers API
 
-When a Blockfrost instance starts, it needs to perform an initial handshake with Blockfrost.io to exchange crucial information required by both parties. This handshake involves the instance sending the following details:
+The Blockfrost Icebreakers API provides a root endpoint to check the status and version of the API.
 
-1. **User Secret:** The secret key provided to the user during registration with Blockfrost.io.
-2. **Reward Address:** The address where the user will receive rewards.
-3. **Compact Node:** The node used by the instance.
+### Registration Process
 
-Upon receiving this information, the Blockfrost Icebreakers API (`icebreakers.blockfrost.io/api/`) performs several checks:
+When registering via the `/register` endpoint, the Blockfrost Icebreakers API (`icebreakers.blockfrost.io/api/`) performs the following checks:
 
 - **Secret Verification:** Confirms that the provided secret is registered with Blockfrost.io.
-- **NFT License Validation:** Checks whether the reward address contains the NFT issued by Blockfrost.io, which acts as a license.
-- **Hash Generation:** If both verifications are successful, the API generates a unique hash. This hash is then served by the instance in a specific route, ensuring that only authorized users can access the instance, preventing misuse of the public instance.
+- **NFT License Validation:** Ensures that the reward address contains an NFT issued by Blockfrost.io, which serves as a license.
+- **Hash Generation:** If the secret and NFT license are successfully verified, the API generates a unique hash. This hash is then made available at a specific route, allowing only authorized users to access the instance, thereby preventing misuse of the public instance.
+- **User Data Storage:** Upon successful registration, the user's data is saved in the database.
 
 ### Configuration
 
