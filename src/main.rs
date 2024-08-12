@@ -15,6 +15,7 @@ use axum::{
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
+use db::DB;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -26,7 +27,7 @@ async fn main() {
         .with_max_level(config.server.log_level)
         .init();
 
-    let pool = db::init_db(&config.database.connection_string).await;
+    let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
 
     let app = Router::new()

@@ -25,6 +25,9 @@ pub enum APIError {
 
     #[error("Not accessible")]
     NotAccessible(),
+
+    #[error("Unauthorized registration access")]
+    Unauthorized(),
 }
 
 impl From<deadpool_diesel::PoolError> for APIError {
@@ -33,6 +36,7 @@ impl From<deadpool_diesel::PoolError> for APIError {
         APIError::UnexpectedError()
     }
 }
+
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
         let (status_code, error_response) = match &self {
@@ -66,6 +70,14 @@ impl IntoResponse for APIError {
                     status: "failed".to_string(),
                     reason: "not_accessible".to_string(),
                     details: "The Blockfrost instance is not publicly accessible.".to_string(),
+                },
+            ),
+            APIError::Unauthorized() => (
+                StatusCode::FORBIDDEN,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "unauthorized".to_string(),
+                    details: "You are not authorized to access the registration. Please contact our support at https://blockfrost.io".to_string(),
                 },
             ),
         };

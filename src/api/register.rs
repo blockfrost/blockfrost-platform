@@ -1,16 +1,12 @@
 use crate::blockfrost::BlockfrostAPI;
 use crate::config::Config;
+use crate::db::DB;
 use crate::errors::APIError;
+use crate::models::RequestNewItem;
 use crate::payload::Payload;
-use crate::{
-    models::{Request, RequestNewItem},
-    schema,
-};
 use axum::body::Bytes;
 use axum::extract::ConnectInfo;
 use axum::{Extension, Json};
-use deadpool_diesel::postgres::Pool;
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -22,7 +18,7 @@ pub struct ResponseSuccess {
 }
 
 pub async fn route(
-    Extension(pool): Extension<Pool>,
+    Extension(db): Extension<DB>,
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
     ConnectInfo(ip_address): ConnectInfo<SocketAddr>,
@@ -35,6 +31,9 @@ pub async fn route(
 
     // validate POST payload
     Payload::validate(&payload)?;
+
+    // check if user has correct secret
+    db.authorize_user(payload.secret).await?;
 
     // check if the server is accessible
     let url = config
@@ -53,9 +52,6 @@ pub async fn route(
         .await
         .map_err(|_| APIError::LicenseError(payload.reward_address.clone()))?;
 
-    // success -> save the request to the database
-    let db_pool = pool.get().await.map_err(|_| APIError::UnexpectedError())?;
-
     let new_item_request = RequestNewItem {
         route: Uuid::new_v4().to_string(),
         mode: payload.mode.clone(),
@@ -64,16 +60,7 @@ pub async fn route(
         reward_address: payload.reward_address.clone(),
     };
 
-    db_pool
-        .interact(|db_pool| {
-            diesel::insert_into(schema::requests::table)
-                .values(new_item_request)
-                .returning(Request::as_returning())
-                .get_result(db_pool)
-        })
-        .await
-        .map_err(|_| APIError::UnexpectedError())?
-        .map_err(|_| APIError::UnexpectedError())?;
+    db.insert_request(new_item_request).await?;
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
