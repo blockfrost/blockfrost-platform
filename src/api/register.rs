@@ -57,7 +57,7 @@ pub async fn route(
     let db_pool = pool.get().await.map_err(|_| APIError::UnexpectedError())?;
 
     let new_item_request = RequestNewItem {
-        user_id: Uuid::new_v4().to_string(),
+        route: Uuid::new_v4().to_string(),
         mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
         port: payload.port.clone(),

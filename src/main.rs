@@ -45,8 +45,7 @@ async fn main() {
         format!(
             "\nAddress: 🌍 http://{}\n\
              Log Level: 📘 {}\n",
-            config.server.address.clone(),
-            config.server.log_level,
+            config.server.address, config.server.log_level,
         )
         .white()
         .bold()

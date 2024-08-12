@@ -5,9 +5,7 @@ diesel::table! {
         id -> Int4,
         created_at -> Timestamp,
         #[max_length = 255]
-        user_id -> Varchar,
-        #[max_length = 255]
-        status -> Varchar,
+        route -> Varchar,
         #[max_length = 255]
         mode -> Varchar,
         #[max_length = 45]
@@ -17,3 +15,21 @@ diesel::table! {
         reward_address -> Varchar,
     }
 }
+
+diesel::table! {
+    users (id) {
+        id -> Int4,
+        created_at -> Timestamp,
+        #[max_length = 255]
+        user_id -> Varchar,
+        #[max_length = 255]
+        email -> Varchar,
+        #[max_length = 255]
+        secret -> Varchar,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(
+    requests,
+    users,
+);
