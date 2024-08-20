@@ -1,7 +1,8 @@
 { pkgs ? import
+    # move to stable after rust 1.99 is stable
     (builtins.fetchTarball {
-      url = "https://github.com/NixOS/nixpkgs/archive/b83e7f5a04a3acc8e92228b0c4bae68933d504eb.tar.gz";
-      sha256 = "1n8x41nizpwid5n3y7jpbi5a6rw0kcc22fyc31bba11m755znccy";
+      url = "https://github.com/NixOS/nixpkgs/archive/a58bc8ad779655e790115244571758e8de055e3d.tar.gz";
+      sha256 = "0gnmmn1wc09z1q4bb8jkqi2f8vxl26kaa3xrs664q9i651am2mkl";
     })
     { }
 }:
@@ -13,9 +14,7 @@ rec {
     version = "unstable";
     src = ./.;
 
-    nativebuildInputs = [ rustc binutils pkg-config perl cmake pkgconfig ];
-
-    buildInputs = [ openssl ];
+    buildInputs = [ openssl libiconv rustc binutils pkg-config perl cmake libiconv ];
 
     cargoLock = {
       lockFile = ./Cargo.lock;
