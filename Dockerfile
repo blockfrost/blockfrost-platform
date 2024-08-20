@@ -23,4 +23,4 @@ COPY --from=builder /usr/src/app/config  /usr/local/bin/config
 
 ENTRYPOINT ["/usr/local/bin/blockfrost-icebreakers-api"]
 
-CMD ["--help"]
+CMD ["--config /usr/local/bin/config/developement.toml"]
