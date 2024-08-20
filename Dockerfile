@@ -13,7 +13,8 @@ FROM fedora:latest
 
 RUN dnf install -y \
     libgcc \
-    libstdc++ && \
+    libstdc++ \
+    postgresql-libs && \
     dnf clean all
 WORKDIR /usr/src/app
 
