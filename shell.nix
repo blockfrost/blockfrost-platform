@@ -7,5 +7,5 @@
 }:
 with pkgs;
 pkgs.mkShell {
-  buildInputs = [ pkgs.cargo pkgs.rustc ] ++ lib.optional stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.Security pkgs.darwin.apple_sdk.frameworks.SystemConfiguration ];
+  buildInputs = [ pkgs.cargo pkgs.rustc pkgs.doctl ] ++ lib.optional stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.Security pkgs.darwin.apple_sdk.frameworks.SystemConfiguration ];
 }
