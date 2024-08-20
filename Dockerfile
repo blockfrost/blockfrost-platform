@@ -19,7 +19,7 @@ RUN dnf install -y \
 WORKDIR /usr/src/app
 
 COPY --from=builder /usr/src/app/target/release/blockfrost-icebreakers-api /usr/local/bin/blockfrost-icebreakers-api
-COPY --from=builder /usr/src/app/config  /usr/local/bin/config
+COPY --from=builder /usr/src/app/config/developement.toml /usr/local/bin/config/developement.toml
 
 ENTRYPOINT ["/usr/local/bin/blockfrost-icebreakers-api"]
 
