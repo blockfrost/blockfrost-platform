@@ -29,7 +29,10 @@ api_url_pattern = 'https://{IP}:{PORT}/blockfrost/health'
 
 ## DigitalOcean
 
-This app is hosted on the DigitalOcean App Plasform.
+This app is hosted on the DigitalOcean App Platform. At the moment, the
+following environments are deployed:
+
+* https://api-dev.icebreakers.blockfrost.io/ from `master`
 
 ```cli
 $ doctl apps create --spec=./do-dev.yml

@@ -22,7 +22,7 @@ services:
     scope: RUN_TIME
     value: ${db.DATABASE_URL}
   github:
-    branch: mmahut/dockerfile
+    branch: master
     deploy_on_push: true
     repo: blockfrost/blockfrost-icebreakers-api
   http_port: 3000
