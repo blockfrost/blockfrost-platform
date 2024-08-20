@@ -19,8 +19,8 @@ RUN dnf install -y \
 WORKDIR /usr/src/app
 
 COPY --from=builder /usr/src/app/target/release/blockfrost-icebreakers-api /usr/local/bin/blockfrost-icebreakers-api
-COPY --from=builder /usr/src/app/config/developement.toml /usr/local/bin/config/developement.toml
+COPY --from=builder /usr/src/app/config/development.toml /usr/local/bin/config/development.toml
 
 ENTRYPOINT ["/usr/local/bin/blockfrost-icebreakers-api"]
 
-CMD ["--config=/usr/local/bin/config/developement.toml"]
+CMD ["--config=/usr/local/bin/config/development.toml"]
