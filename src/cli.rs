@@ -23,6 +23,9 @@ pub struct Args {
     #[arg(short = 'd', long, required = true)]
     node_socket_path: String,
 
+    #[arg(short = 'b', long, required = true)]
+    node_bin_path: String,
+
     #[arg(short = 'm', long, default_value = "compact")]
     mode: Mode,
 
@@ -64,6 +67,7 @@ pub struct Config {
     pub network_magic: u64,
     pub reward_address: String,
     pub node_socket_path: String,
+    pub node_bin_path: String,
     pub secret: String,
     pub mode: Mode,
 }
@@ -80,6 +84,7 @@ impl Config {
             network_magic,
             secret: args.secret,
             node_socket_path: args.node_socket_path,
+            node_bin_path: args.node_bin_path,
             mode: args.mode,
         })
     }

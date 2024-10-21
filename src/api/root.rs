@@ -23,9 +23,9 @@ pub async fn route(Extension(node): Extension<Arc<RwLock<Node>>>) -> Json<Respon
 
     let (node_version, errors) = match node_version_result {
         Ok(version) => (version, None),
-        Err(_) => (
+        Err(error) => (
             "unknown".to_string(),
-            Some(vec!["Failed to determine node version".to_string()]),
+            Some(vec![format!("Failed to determine node version: {}", error)]),
         ),
     };
 
@@ -39,3 +39,4 @@ pub async fn route(Extension(node): Extension<Arc<RwLock<Node>>>) -> Json<Respon
 
     Json(response)
 }
+

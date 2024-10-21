@@ -1,23 +1,26 @@
+use std::process::Command;
+
 use crate::errors::{AppError, BlockfrostError};
 use axum::body::Bytes;
 use pallas_crypto::hash::Hasher;
 use pallas_network::{
     facades::NodeClient,
-    miniprotocols::{
-        handshake::{self, Confirmation},
-        localtxsubmission::{EraTx, Response},
-    },
+    miniprotocols::localtxsubmission::{EraTx, Response},
 };
 use tracing::{info, warn};
 
 pub struct Node {
     client: NodeClient,
-    network_magic: u64,
+    cardano_bin_path: String,
 }
 
 impl Node {
     /// Creates a new `Node` instance
-    pub async fn new(socket: &str, network_magic: u64) -> Result<Node, AppError> {
+    pub async fn new(
+        socket: &str,
+        network_magic: u64,
+        cardano_bin_path: &str,
+    ) -> Result<Node, AppError> {
         info!("Connecting to node socket {} ...", socket);
 
         let client = NodeClient::connect(socket, network_magic).await?;
@@ -25,7 +28,7 @@ impl Node {
         info!("Connection to node was successfully established.");
         Ok(Node {
             client,
-            network_magic,
+            cardano_bin_path: cardano_bin_path.to_owned(),
         })
     }
 
@@ -52,26 +55,30 @@ impl Node {
 
     // Gets the node version from the connected Cardano node.
     pub async fn version(&mut self) -> Result<String, BlockfrostError> {
-        info!("Getting version of the node.");
+        Self::get_node_version_from_bin(&self.cardano_bin_path)
+    }
 
-        let versions = handshake::n2c::VersionTable::v10_and_above(self.network_magic);
+    fn get_node_version_from_bin(node_bin_path: &str) -> Result<String, BlockfrostError> {
+        info!("Getting version of the node from {}", node_bin_path);
 
-        // Perform the handshake and retrieve the node version in one step
-        let confirmation = self.client.handshake().handshake(versions).await?;
+        let version_output = Command::new(node_bin_path).arg("--version").output();
 
-        // Extract the node version after successful handshake
-        match confirmation {
-            Confirmation::Accepted(handshake_version, _version_data) => {
-                info!("Node version: {:?}", handshake_version);
-                Ok(format!("{:?}", handshake_version)) // Convert version to string format
+        match version_output {
+            Ok(output) => {
+                if output.status.success() {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    Ok(stdout.replace('\n', " ").trim().to_string())
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    Err(BlockfrostError::internal_server_error(
+                        stderr.replace('\n', " ").trim().to_string(),
+                    ))
+                }
             }
-            Confirmation::Rejected(reason) => Err(BlockfrostError::internal_server_error(format!(
-                "Failed to get the version: {:?}",
-                &reason
+            Err(e) => Err(BlockfrostError::internal_server_error(format!(
+                "Failed to execute command: {} {}",
+                node_bin_path, e
             ))),
-            Confirmation::QueryReply(_) => Err(BlockfrostError::internal_server_error(
-                "Failed to get the version".to_string(),
-            )),
         }
     }
 }
