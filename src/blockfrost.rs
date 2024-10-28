@@ -17,21 +17,17 @@ impl BlockfrostAPI {
             .api
             .addresses(address)
             .await
-            .map_err(|_| APIError::UnexpectedError())?;
+            .map_err(|e| APIError::Unexpected(e.to_string()))?;
 
-        let asset_exists = bf_result.amount.iter().any(|x| {
-            x.unit == asset && {
-                match x.quantity.parse::<i64>() {
-                    Ok(quantity) => quantity > 0,
-                    Err(_) => false,
-                }
-            }
-        });
+        let asset_exists = bf_result
+            .amount
+            .iter()
+            .any(|x| x.unit == asset && x.quantity.parse::<i64>().unwrap_or(0) > 0);
 
         if asset_exists {
             Ok(true)
         } else {
-            Err(APIError::LicenseError(address.to_string()))
+            Err(APIError::License(address.to_string()))
         }
     }
 }

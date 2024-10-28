@@ -26,7 +26,7 @@ pub async fn route(
 ) -> Result<Json<ResponseSuccess>, APIError> {
     let payload: Payload = match serde_json::from_slice(&body) {
         Ok(payload) => payload,
-        Err(e) => return Err(APIError::ValidationError(e.to_string())),
+        Err(e) => return Err(APIError::Validaion(e.to_string())),
     };
 
     // validate POST payload
@@ -42,15 +42,13 @@ pub async fn route(
         .replace("{IP}", &ip_address.to_string())
         .replace("{PORT}", &payload.port.to_string());
 
-    reqwest::get(&url)
-        .await
-        .map_err(|_| APIError::NotAccessible())?;
+    reqwest::get(&url).await.map_err(|_| APIError::NotAccessible())?;
 
     // check if NFT is at the address
     blockfrost_api
         .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
         .await
-        .map_err(|_| APIError::LicenseError(payload.reward_address.clone()))?;
+        .map_err(|_| APIError::License(payload.reward_address.clone()))?;
 
     let new_item_request = RequestNewItem {
         route: Uuid::new_v4().to_string(),

@@ -14,33 +14,37 @@ pub struct ApiError {
 
 #[derive(Error, Debug)]
 pub enum APIError {
-    #[error("Unexpected error")]
-    UnexpectedError(),
+    #[error("Unexpected error {0}")]
+    Unexpected(String),
 
     #[error("Validation error: {0}")]
-    ValidationError(String),
+    Validaion(String),
 
     #[error("License error: {0}")]
-    LicenseError(String),
+    License(String),
 
     #[error("Not accessible")]
     NotAccessible(),
 
     #[error("Unauthorized registration access")]
     Unauthorized(),
-}
 
-impl From<deadpool_diesel::PoolError> for APIError {
-    fn from(err: deadpool_diesel::PoolError) -> Self {
-        error!("Database connection error: {}", err);
-        APIError::UnexpectedError()
-    }
+    #[error("Database connection error: {0}")]
+    DatabaseConnection(#[from] deadpool_diesel::PoolError),
+
+    #[error("Database interaction error: {0}")]
+    DatabaseInteraction(#[from] deadpool_diesel::InteractError),
+
+    #[error("Database query error: {0}")]
+    DatabaseQuery(#[from] diesel::result::Error),
 }
 
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
+        error!("API Error occurred: {}", self);
+
         let (status_code, error_response) = match &self {
-            APIError::UnexpectedError() => (
+            APIError::Unexpected(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiError {
                     status: "failed".to_string(),
@@ -48,7 +52,7 @@ impl IntoResponse for APIError {
                     details: "Please contact our support at https://blockfrost.io".to_string(),
                 },
             ),
-            APIError::ValidationError(_) => (
+            APIError::Validaion(_) => (
                 StatusCode::BAD_REQUEST,
                 ApiError {
                     status: "failed".to_string(),
@@ -56,7 +60,7 @@ impl IntoResponse for APIError {
                     details: self.to_string(),
                 },
             ),
-            APIError::LicenseError(address) => (
+            APIError::License(address) => (
                 StatusCode::FORBIDDEN,
                 ApiError {
                     status: "failed".to_string(),
@@ -78,6 +82,14 @@ impl IntoResponse for APIError {
                     status: "failed".to_string(),
                     reason: "unauthorized".to_string(),
                     details: "You are not authorized to access the registration. Please contact our support at https://blockfrost.io".to_string(),
+                },
+            ),
+            APIError::DatabaseConnection(_) | APIError::DatabaseQuery(_) | APIError::DatabaseInteraction(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "Database error".to_string(),
+                    details: "An error occurred while accessing the database.".to_string(),
                 },
             ),
         };

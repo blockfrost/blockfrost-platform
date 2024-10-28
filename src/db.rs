@@ -17,10 +17,7 @@ pub struct DB {
 impl DB {
     pub async fn new(database_url: &str) -> Self {
         let manager = Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
-        let pool = Pool::builder(manager)
-            .build()
-            .expect("Failed to create pool.");
-
+        let pool = Pool::builder(manager).build().expect("Failed to create pool.");
         let conn = pool.get().await.expect("Failed to get a connection.");
 
         conn.interact(|conn| conn.run_pending_migrations(MIGRATIONS).map(|_| ()))
@@ -32,11 +29,7 @@ impl DB {
     }
 
     pub async fn insert_request(&self, request: RequestNewItem) -> Result<Request, APIError> {
-        let db_pool = self
-            .pool
-            .get()
-            .await
-            .map_err(|_| APIError::UnexpectedError())?;
+        let db_pool = self.pool.get().await.map_err(|e| APIError::Unexpected(e.to_string()))?;
 
         let result = db_pool
             .interact(|db_pool| {
@@ -45,19 +38,13 @@ impl DB {
                     .returning(Request::as_returning())
                     .get_result(db_pool)
             })
-            .await
-            .map_err(|_| APIError::UnexpectedError())?
-            .map_err(|_| APIError::UnexpectedError())?;
+            .await??;
 
         Ok(result)
     }
 
     pub async fn authorize_user(&self, secret: String) -> Result<(), APIError> {
-        let db_pool = self
-            .pool
-            .get()
-            .await
-            .map_err(|_| APIError::UnexpectedError())?;
+        let db_pool = self.pool.get().await?;
 
         let secret_clone = secret.clone();
 
@@ -69,9 +56,7 @@ impl DB {
                 )))
                 .get_result(db_pool)
             })
-            .await
-            .map_err(|_| APIError::UnexpectedError())?
-            .map_err(|_| APIError::UnexpectedError())?;
+            .await??;
 
         if !result {
             return Err(APIError::Unauthorized());

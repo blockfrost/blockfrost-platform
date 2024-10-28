@@ -2,7 +2,7 @@
 hard_tabs = false
 tab_spaces = 4
 newline_style = "Unix"
-max_width = 100
+max_width = 120
 
 # Control Flow
 fn_call_width = 60

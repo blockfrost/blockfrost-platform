@@ -1,6 +1,6 @@
 [server]
-address = '0.0.0.0:3000'
-log_level = 'info'
+address = 'localhost:3000'
+log_level = 'debug'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'

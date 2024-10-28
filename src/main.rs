@@ -17,6 +17,7 @@ use colored::Colorize;
 use config::{Args, Config};
 use db::DB;
 use std::net::SocketAddr;
+use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
 async fn main() {
@@ -25,6 +26,13 @@ async fn main() {
 
     tracing_subscriber::fmt()
         .with_max_level(config.server.log_level)
+        .event_format(
+            Format::default()
+                .with_ansi(true)
+                .with_level(true)
+                .with_target(false)
+                .compact(),
+        )
         .init();
 
     let pool = DB::new(&config.database.connection_string).await;
