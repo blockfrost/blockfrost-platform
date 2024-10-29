@@ -36,13 +36,13 @@ pub async fn route(
     db.authorize_user(payload.secret).await?;
 
     // check if the server is accessible
-    let url = config
-        .blockfrost
-        .api_url_pattern
-        .replace("{IP}", &ip_address.to_string())
-        .replace("{PORT}", &payload.port.to_string());
+    // let url = config
+    //     .blockfrost
+    //     .api_url_pattern
+    //     .replace("{IP}", &ip_address.to_string())
+    //     .replace("{PORT}", &payload.port.to_string());
 
-    reqwest::get(&url).await.map_err(|_| APIError::NotAccessible())?;
+    // reqwest::get(&url).await.map_err(|_| APIError::NotAccessible())?;
 
     // check if NFT is at the address
     blockfrost_api
@@ -62,7 +62,7 @@ pub async fn route(
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: url,
+        route: "URL_PLACEHOLDET".to_string(),
     };
 
     Ok(Json(success_response))

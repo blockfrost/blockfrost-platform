@@ -23,9 +23,8 @@ pub enum APIError {
     #[error("License error: {0}")]
     License(String),
 
-    #[error("Not accessible")]
-    NotAccessible(),
-
+    // #[error("Not accessible")]
+    // NotAccessible(),
     #[error("Unauthorized registration access")]
     Unauthorized(),
 
@@ -68,14 +67,14 @@ impl IntoResponse for APIError {
                     details: format!("Address: {} does not contain the license.", address),
                 },
             ),
-            APIError::NotAccessible() => (
-                StatusCode::FORBIDDEN,
-                ApiError {
-                    status: "failed".to_string(),
-                    reason: "not_accessible".to_string(),
-                    details: "The Blockfrost instance is not publicly accessible.".to_string(),
-                },
-            ),
+            // APIError::NotAccessible() => (
+            //     StatusCode::FORBIDDEN,
+            //     ApiError {
+            //         status: "failed".to_string(),
+            //         reason: "not_accessible".to_string(),
+            //         details: "The Blockfrost instance is not publicly accessible.".to_string(),
+            //     },
+            // ),
             APIError::Unauthorized() => (
                 StatusCode::FORBIDDEN,
                 ApiError {
