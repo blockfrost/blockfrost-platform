@@ -4,8 +4,10 @@ use crate::{
     schema,
 };
 use deadpool_diesel::postgres::{Manager, Pool};
+use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use schema::users::dsl::*;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -43,18 +45,12 @@ impl DB {
         Ok(result)
     }
 
-    pub async fn authorize_user(&self, secret: String) -> Result<(), APIError> {
+    pub async fn authorize_user(&self, secret_in: String) -> Result<(), APIError> {
         let db_pool = self.pool.get().await?;
-        let secret_clone = secret.clone();
+        let secret_clone = secret_in.clone();
 
         let result: bool = db_pool
-            .interact(move |db_pool| {
-                diesel::select(diesel::dsl::sql::<diesel::sql_types::Bool>(&format!(
-                    "SELECT EXISTS (SELECT 1 FROM users WHERE secret = '{}')",
-                    secret_clone
-                )))
-                .get_result(db_pool)
-            })
+            .interact(move |db_conn| select(exists(users.filter(secret.eq(secret_clone)))).get_result(db_conn))
             .await??;
 
         if !result {
