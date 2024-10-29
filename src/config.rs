@@ -75,8 +75,7 @@ pub struct Blockfrost {
 
 pub fn load_config(path: PathBuf) -> Config {
     let config_file_content = fs::read_to_string(path).expect("Reading config failed");
-    let toml_config: ConfigInput =
-        toml::from_str(&config_file_content).expect("Config file is invalid");
+    let toml_config: ConfigInput = toml::from_str(&config_file_content).expect("Config file is invalid");
 
     let log_level = match toml_config.server.log_level.to_lowercase().as_str() {
         "debug" => Level::DEBUG,

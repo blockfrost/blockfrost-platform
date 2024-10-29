@@ -29,7 +29,7 @@ impl DB {
     }
 
     pub async fn insert_request(&self, request: RequestNewItem) -> Result<Request, APIError> {
-        let db_pool = self.pool.get().await.map_err(|e| APIError::Unexpected(e.to_string()))?;
+        let db_pool = self.pool.get().await?;
 
         let result = db_pool
             .interact(|db_pool| {
@@ -45,7 +45,6 @@ impl DB {
 
     pub async fn authorize_user(&self, secret: String) -> Result<(), APIError> {
         let db_pool = self.pool.get().await?;
-
         let secret_clone = secret.clone();
 
         let result: bool = db_pool

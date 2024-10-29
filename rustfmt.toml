@@ -6,7 +6,6 @@ max_width = 120
 
 # Control Flow
 fn_call_width = 60
-
 match_block_trailing_comma = true
 
 # Ordering
