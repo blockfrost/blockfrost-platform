@@ -13,6 +13,7 @@ diesel::table! {
         port -> Int4,
         #[max_length = 255]
         reward_address -> Varchar,
+        user_id -> Int4,
     }
 }
 
@@ -20,8 +21,7 @@ diesel::table! {
     users (id) {
         id -> Int4,
         created_at -> Timestamp,
-        #[max_length = 255]
-        user_id -> Varchar,
+        user_id -> Int4,
         #[max_length = 255]
         email -> Varchar,
         #[max_length = 255]
@@ -29,4 +29,9 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(requests, users,);
+diesel::joinable!(requests -> users (user_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    requests,
+    users,
+);

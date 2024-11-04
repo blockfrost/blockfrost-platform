@@ -33,7 +33,7 @@ pub async fn route(
     Payload::validate(&payload)?;
 
     // check if user has correct secret
-    db.authorize_user(payload.secret).await?;
+    let authorized_user = db.authorize_user(payload.secret).await?;
 
     // check if the server is accessible
     // let url = config
@@ -51,6 +51,7 @@ pub async fn route(
         .map_err(|_| APIError::License(payload.reward_address.clone()))?;
 
     let new_item_request = RequestNewItem {
+        user_id: authorized_user.user_id,
         route: Uuid::new_v4().to_string(),
         mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
