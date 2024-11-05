@@ -45,12 +45,11 @@ impl DB {
         Ok(result)
     }
 
-    pub async fn authorize_user(&self, secret_in: String) -> Result<User, APIError> {
+    pub async fn authorize_user(&self, secret_param: String) -> Result<User, APIError> {
         let db_pool = self.pool.get().await?;
-        let secret_clone = secret_in.clone();
 
         let user_result: Option<User> = db_pool
-            .interact(|db_pool| users.filter(secret.eq(secret_clone)).first::<User>(db_pool).optional())
+            .interact(|db_pool| users.filter(secret.eq(secret_param)).first::<User>(db_pool).optional())
             .await??;
 
         if let Some(user) = user_result {

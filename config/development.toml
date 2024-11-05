@@ -1,5 +1,5 @@
 [server]
-address = 'localhost:3000'
+address = 'localhost:8080'
 log_level = 'info'
 
 [database]
