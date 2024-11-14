@@ -2,7 +2,8 @@ use super::connection::NodeConn;
 use crate::errors::AppError;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
 use metrics::gauge;
-use pallas_network::facades::NodeClient;
+use pallas_network::facades::{self, NodeClient};
+use tokio_retry::{strategy::ExponentialBackoff, RetryIf};
 use tracing::{error, info};
 
 pub struct NodeConnPoolManager {
@@ -15,22 +16,50 @@ impl Manager for NodeConnPoolManager {
     type Error = AppError;
 
     async fn create(&self) -> Result<NodeConn, AppError> {
-        // TODO: maybe use `ExponentialBackoff` from `tokio-retry`, to have at
-        // least _some_ debouncing between requests, if the node is down?
-        match NodeClient::connect(&self.socket_path, self.network_magic).await {
+        let retry_strategy = ExponentialBackoff::from_millis(100)
+            .factor(2)
+            .max_delay(std::time::Duration::from_secs(5))
+            .take(5);
+
+        let socket_path = self.socket_path.clone();
+        let network_magic = self.network_magic;
+
+        let attempt_connect = || async {
+            match NodeClient::connect(&socket_path, network_magic).await {
+                Ok(conn) => Ok(conn),
+                Err(err) => {
+                    error!(
+                        "Failed to connect to N2C node socket: {}: {:?}",
+                        socket_path, err
+                    );
+                    Err(err)
+                }
+            }
+        };
+
+        // Retry on all errors
+        let should_retry = |err: &facades::Error| {
+            error!("Retrying N2C connection: {:?}", err);
+            true
+        };
+
+        // Attempt to connect with retries
+        match RetryIf::spawn(retry_strategy, attempt_connect, should_retry).await {
             Ok(conn) => {
                 info!(
-                    "N2C connection to node was successfully established at socket: {}",
+                    "N2C connection to node successfully established at socket: {}",
                     self.socket_path
                 );
+
                 gauge!("cardano_node_connections").increment(1);
+
                 Ok(NodeConn {
                     underlying: Some(conn),
                 })
             }
             Err(err) => {
                 error!(
-                    "Failed to connect to a N2C node socket: {}: {:?}",
+                    "Failed to establish N2C connection after retries: {}: {:?}",
                     self.socket_path, err
                 );
                 Err(AppError::Node(err.to_string()))
