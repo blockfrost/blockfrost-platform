@@ -9,6 +9,7 @@ pub struct BlockfrostAPI {
 impl BlockfrostAPI {
     pub fn new(project_id: &str) -> Self {
         let api = bf_sdk::new(project_id, BlockFrostSettings::default());
+
         BlockfrostAPI { api }
     }
 

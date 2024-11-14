@@ -55,16 +55,16 @@ pub async fn route(
         route: Uuid::new_v4().to_string(),
         mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
-        port: payload.port.clone(),
+        port: payload.port,
         reward_address: payload.reward_address.clone(),
     };
 
-    db.insert_request(new_item_request).await?;
-
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: "URL_PLACEHOLDET".to_string(),
+        route: format!("/{}", new_item_request.route.to_string()),
     };
+
+    db.insert_request(new_item_request).await?;
 
     Ok(Json(success_response))
 }
