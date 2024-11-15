@@ -346,12 +346,14 @@ version = "0.0.1"
 dependencies = [
  "axum 0.7.6",
  "blake2",
+ "blockfrost-platform-macros",
  "cbor",
  "chrono",
  "clap",
  "deadpool",
  "hex",
  "jemalloc",
+ "macro_tests",
  "metrics",
  "metrics-exporter-prometheus",
  "pallas",
@@ -374,6 +376,15 @@ dependencies = [
  "tower-layer",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "blockfrost-platform-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
 ]
 
 [[package]]
@@ -1295,6 +1306,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "macro_tests"
+version = "0.1.0"
+dependencies = [
+ "blockfrost-platform-macros",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1905,9 +1923,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.86"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
+checksum = "f139b0662de085916d1fb67d2b4169d1addddda1919e696f3252b740b629986e"
 dependencies = [
  "unicode-ident",
 ]

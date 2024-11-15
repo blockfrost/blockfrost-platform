@@ -1,5 +1,5 @@
 use super::connection::NodeConn;
-use crate::errors::BlockfrostError;
+use crate::{cbor::haskell_types::TxValidationError, errors::BlockfrostError};
 use pallas_crypto::hash::Hasher;
 use pallas_network::miniprotocols::localtxsubmission::{EraTx, Response};
 use tracing::{info, warn};
@@ -37,5 +37,42 @@ impl NodeConn {
                 Err(BlockfrostError::custom_400(error_message))
             }
         }
+    }
+
+    /// Mimicks the data structure of the error response from the cardano-submit-api
+    fn generate_error_response(error: TxValidationError) {
+        use crate::cbor::haskell_types::{
+            TxCmdError::TxCmdTxSubmitValidationError, TxSubmitFail::TxSubmitFail,
+            TxValidationErrorInCardanoMode::TxValidationErrorInCardanoMode,
+        };
+ 
+         use blockfrost_platform_macros::{define_paren_format, ParenFormat};
+
+        define_paren_format!();
+
+        let wrapped_error = TxSubmitFail(TxCmdTxSubmitValidationError(TxValidationErrorInCardanoMode(error)));
+
+        let json_error =
+            serde_json::to_string(&wrapped_error).expect("Failed to convert error to JSON");
+        println!("{}", json_error);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cbor::haskell_types::{ApplyConwayTxPredError::*, ApplyTxErr, ShelleyBasedEra::*, TxValidationError::*};
+
+    use super::*;
+
+    #[test]
+    fn test_generate_error_response() {
+        let validation_error = ShelleyTxValidationError{
+            error: ApplyTxErr(vec![MempoolFailure(
+                "testing".to_string(),
+            )]),
+            era: ShelleyBasedEraConway,
+        };
+       
+        NodeConn::generate_error_response(validation_error);
     }
 }

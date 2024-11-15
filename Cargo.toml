@@ -31,6 +31,8 @@ metrics = { version = "0.24", default-features = false }
 metrics-exporter-prometheus = { version = "0.16", default-features = false }
 chrono = "0.4"
 deadpool = "0.12.1"
+blockfrost-platform-macros = { path = "../blockfrost-platform-macros" }
+
 
 [dev-dependencies]
 rstest = "0.22.0"
