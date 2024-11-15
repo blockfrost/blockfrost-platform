@@ -37,9 +37,12 @@
         pkgs,
         ...
       }: {
-        packages =
+        packages = let
+          internal = inputs.self.internal.${system};
+        in
           {
-            default = inputs.self.internal.${system}.package;
+            default = internal.package;
+            inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
             default-x86_64-windows = inputs.self.internal.x86_64-windows.package;
@@ -49,7 +52,9 @@
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
-          programs.alejandra.enable = true;
+          programs.alejandra.enable = true; # Nix
+          programs.ormolu.enable = true; # Haskell
+          programs.cabal-fmt.enable = true;
           programs.prettier.enable = true;
           settings.formatter.prettier.options = [
             "--config"
@@ -60,7 +65,7 @@
           ];
           programs.rustfmt.enable = true;
           programs.yamlfmt.enable = true;
-          programs.taplo.enable = true;
+          programs.taplo.enable = true; # TOML
           programs.shfmt.enable = true;
         };
       };

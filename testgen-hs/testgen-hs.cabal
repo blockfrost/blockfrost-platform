@@ -1,0 +1,52 @@
+cabal-version: 3.0
+name:          testgen-hs
+version:       0.1.0.0
+build-type:    Simple
+synopsis:      Test case generator for cross-checking CBOR (de)serializers
+
+executable testgen-hs
+  main-is:            Main.hs
+  build-depends:
+    , aeson
+    , aeson-pretty
+    , base                                                  >=4.7 && <5
+    , base16-bytestring
+    , bytestring
+    , cardano-api:internal
+    , cardano-binary
+    , cardano-ledger-binary
+    , cardano-ledger-conway
+    , cborg
+    , generic-random
+    , optparse-applicative
+    , ouroboros-consensus
+    , ouroboros-consensus-cardano
+    , ouroboros-consensus-cardano:unstable-cardano-testlib
+    , QuickCheck
+    , quickcheck-instances
+    , random
+    , serialise
+    , text
+    , time
+
+  other-modules:
+    CLI
+    Generators
+
+  default-extensions:
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingVia
+    NamedFieldPuns
+    OverloadedStrings
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+
+  ghc-options:
+    -O2 -Werror -Wall -Wcompat -Widentities -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
+    -Wunused-packages
+
+  default-language:   Haskell2010

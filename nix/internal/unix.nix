@@ -125,6 +125,32 @@ in rec {
       ln -sf $out/libexec/cardano-address $out/bin/
     '';
 
+  testgen-hs = let
+    patched-flake = let
+      unpatched = inputs.cardano-node;
+    in
+      (import inputs.flake-compat {
+        src = {
+          outPath = toString (pkgs.runCommandNoCC "source" {} ''
+            cp -r ${unpatched} $out
+            chmod -R +w $out
+            cd $out
+            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
+            cp -r ${../../testgen-hs} ./testgen-hs
+            sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+          '');
+          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
+        };
+      })
+      .defaultNix;
+  in
+    {
+      x86_64-linux = patched-flake.hydraJobs.x86_64-linux.musl.testgen-hs;
+      x86_64-darwin = patched-flake.packages.x86_64-darwin.testgen-hs;
+      aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
+    }
+    .${targetSystem};
+
   tx-build = let
     onPath = with pkgs; [
       bash
