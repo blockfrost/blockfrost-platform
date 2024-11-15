@@ -10,20 +10,21 @@ use axum::http::{header::CONTENT_TYPE, HeaderMap};
 /// * BlockfrostError - custom 400 error if content type is invalid
 pub fn validate_content_type(
     headers: &HeaderMap,
-    allowed_headers: &[&str],
+    allowed_content_types: &[&str],
 ) -> Result<bool, BlockfrostError> {
     if let Some(content_type) = headers.get(CONTENT_TYPE) {
-        if !allowed_headers.iter().any(|&header| header == content_type) {
-            if allowed_headers.len() == 1 {
-                return Err(BlockfrostError::custom_400(format!(
-                    "Content-Type must be: {:?}",
-                    allowed_headers[0]
-                )));
-            }
+        let is_valid_type = allowed_content_types
+            .iter()
+            .any(|&allowed_type| allowed_type == content_type);
 
-            return Err(BlockfrostError::custom_400(
-                format!("Content-Type must be one of: {:?}", allowed_headers).to_string(),
-            ));
+        if !is_valid_type {
+            let error_message = if allowed_content_types.len() == 1 {
+                format!("Content-Type must be: {:?}", allowed_content_types[0])
+            } else {
+                format!("Content-Type must be one of: {:?}", allowed_content_types)
+            };
+
+            return Err(BlockfrostError::custom_400(error_message));
         }
     }
 

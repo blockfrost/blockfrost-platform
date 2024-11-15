@@ -1,7 +1,6 @@
 use axum::extract::{MatchedPath, Request};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-
 use metrics::counter;
 
 pub async fn track_http_metrics(req: Request, next: Next) -> impl IntoResponse {

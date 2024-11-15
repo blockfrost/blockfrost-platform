@@ -1,21 +1,22 @@
-use super::connection::NodeConn;
+use super::connection::NodeClient;
 use crate::errors::AppError;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
 use metrics::gauge;
-use pallas_network::facades::{self, NodeClient};
+use pallas_network::facades::NodeClient as NodeClientFacade;
+use pallas_network::facades::{self};
 use tokio_retry::{strategy::ExponentialBackoff, RetryIf};
 use tracing::{error, info};
 
-pub struct NodeConnPoolManager {
+pub struct NodePoolManager {
     pub network_magic: u64,
     pub socket_path: String,
 }
 
-impl Manager for NodeConnPoolManager {
-    type Type = NodeConn;
+impl Manager for NodePoolManager {
+    type Type = NodeClient;
     type Error = AppError;
 
-    async fn create(&self) -> Result<NodeConn, AppError> {
+    async fn create(&self) -> Result<NodeClient, AppError> {
         let retry_strategy = ExponentialBackoff::from_millis(100)
             .factor(2)
             .max_delay(std::time::Duration::from_secs(5))
@@ -25,7 +26,7 @@ impl Manager for NodeConnPoolManager {
         let network_magic = self.network_magic;
 
         let attempt_connect = || async {
-            match NodeClient::connect(&socket_path, network_magic).await {
+            match NodeClientFacade::connect(&socket_path, network_magic).await {
                 Ok(conn) => Ok(conn),
                 Err(err) => {
                     error!(
@@ -53,9 +54,7 @@ impl Manager for NodeConnPoolManager {
 
                 gauge!("cardano_node_connections").increment(1);
 
-                Ok(NodeConn {
-                    underlying: Some(conn),
-                })
+                Ok(NodeClient { client: Some(conn) })
             }
             Err(err) => {
                 error!(
@@ -69,13 +68,13 @@ impl Manager for NodeConnPoolManager {
 
     /// Pallas decided to make the
     /// [`pallas_network::facades::NodeClient::abort`] take ownership of `self`.
-    /// That’s why we need our [`NodeConn::underlying`] to be an [`Option`],
+    /// That’s why we need our [`Node::client`] to be an [`Option`],
     /// because in here we only get a mutable reference. If the connection is
     /// broken, we have to call `abort`, because it joins certain multiplexer
     /// threads. Otherwise, it’s a resource leak.
-    async fn recycle(&self, conn: &mut NodeConn, metrics: &Metrics) -> RecycleResult<AppError> {
+    async fn recycle(&self, node: &mut NodeClient, metrics: &Metrics) -> RecycleResult<AppError> {
         // Check if the connection is still viable
-        match conn.ping().await {
+        match node.ping().await {
             Ok(_) => Ok(()),
             Err(err) => {
                 error!(
@@ -83,12 +82,10 @@ impl Manager for NodeConnPoolManager {
                     self.socket_path, err, metrics
                 );
 
-                gauge!("cardano_node_connections").decrement(1);
-
                 // Take ownership of the `NodeClient` from Pallas
-                // This is the only moment when `underlying` becomes `None`.
+                // This is the only moment when `client` becomes `None`.
                 // I should not be used again.
-                let owned = conn.underlying.take().unwrap();
+                let owned = node.client.take().unwrap();
 
                 // Now call `abort` to clean up their resources:
                 owned.abort().await;

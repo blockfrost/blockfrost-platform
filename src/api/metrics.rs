@@ -1,11 +1,9 @@
+use crate::errors::BlockfrostError;
 use axum::response::{Extension, IntoResponse};
-
 use metrics::{describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-use crate::errors::BlockfrostError;
 
 pub async fn route(
     Extension(prometheus_handle): Extension<Arc<RwLock<PrometheusHandle>>>,
@@ -15,7 +13,7 @@ pub async fn route(
     Ok(handle.render().into_response())
 }
 
-pub fn setup_metrics_recorder() -> PrometheusHandle {
+pub fn setup_metrics_recorder() -> Arc<RwLock<PrometheusHandle>> {
     let builder = PrometheusBuilder::new()
         .install_recorder()
         .expect("failed to install Prometheus recorder");
@@ -33,5 +31,5 @@ pub fn setup_metrics_recorder() -> PrometheusHandle {
     // Otherwise it’s not present under `GET /metrics` if we start with a failing cardano-node:
     gauge!("cardano_node_connections").set(0);
 
-    builder
+    Arc::new(RwLock::new(builder))
 }

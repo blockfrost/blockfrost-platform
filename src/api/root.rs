@@ -1,6 +1,6 @@
 use crate::{
     errors::BlockfrostError,
-    node::{pool::NodeConnPool, sync::SyncProgress},
+    node::{pool::NodePool, sync::SyncProgress},
 };
 use axum::{response::IntoResponse, Extension, Json};
 use serde::Serialize;
@@ -15,7 +15,7 @@ pub struct Response {
 }
 
 pub async fn route(
-    Extension(node): Extension<NodeConnPool>,
+    Extension(node): Extension<NodePool>,
 ) -> Result<impl IntoResponse, BlockfrostError> {
     let errors = vec![];
     let mut node = node.get().await?;

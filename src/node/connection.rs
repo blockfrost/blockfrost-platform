@@ -1,6 +1,7 @@
 use crate::cbor::haskell_types::TxValidationError;
 use crate::errors::BlockfrostError;
 use pallas_codec::minicbor::{display, Decoder};
+use pallas_network::facades::NodeClient as NodeClientFacade;
 use pallas_network::miniprotocols::localstate;
 use pallas_network::multiplexer::Error;
 use std::boxed::Box;
@@ -9,14 +10,14 @@ use tracing::warn;
 
 /// Our wrapper around [`pallas_network::facades::NodeClient`]. If you only use
 /// this, you won’t get any deadlocks, inconsistencies, etc.
-pub struct NodeConn {
+pub struct NodeClient {
     /// Note: this is an [`Option`] *only* to satisfy the borrow checker. It’s
     /// *always* [`Some`]. See [`NodeConnPoolManager::recycle`] for an
     /// explanation.
-    pub(in crate::node) underlying: Option<pallas_network::facades::NodeClient>,
+    pub(in crate::node) client: Option<NodeClientFacade>,
 }
 
-impl NodeConn {
+impl NodeClient {
     /// We always have to release the [`localstate::GenericClient`], even on errors,
     /// otherwise `cardano-node` stalls. If you use this function, it’s handled for you.
     pub async fn with_statequery<A, F>(&mut self, action: F) -> Result<A, BlockfrostError>
@@ -28,7 +29,7 @@ impl NodeConn {
         >,
     {
         // Acquire the client
-        let client = self.underlying.as_mut().unwrap().statequery();
+        let client = self.client.as_mut().unwrap().statequery();
         client.acquire(None).await?;
 
         // Run the action and ensure the client is released afterwards
@@ -82,7 +83,7 @@ mod tests {
             130, 2, 129, 130, 6, 130, 130, 1, 130, 0, 131, 6, 27, 0, 0, 0, 2, 54, 42, 119, 48, 27,
             0, 0, 0, 2, 83, 185, 193, 29, 130, 1, 130, 0, 131, 5, 26, 0, 2, 139, 253, 24, 173,
         ];
-        let error = NodeConn::try_decode_error(&buffer).unwrap();
+        let error = NodeClient::try_decode_error(&buffer).unwrap();
 
         assert!(error.is_some());
     }

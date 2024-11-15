@@ -1,8 +1,8 @@
-use crate::{common::validate_content_type, errors::BlockfrostError, node::pool::NodeConnPool};
+use crate::{common::validate_content_type, errors::BlockfrostError, node::pool::NodePool};
 use axum::{http::HeaderMap, response::IntoResponse, Extension, Json};
 
 pub async fn route(
-    Extension(node): Extension<NodeConnPool>,
+    Extension(node): Extension<NodePool>,
     headers: HeaderMap,
     body: String,
 ) -> Result<impl IntoResponse, BlockfrostError> {
