@@ -6,6 +6,7 @@ RUN	mkdir src \
 RUN	cargo build --release \
 	&& rm -rf src
 COPY	./src	./src
+RUN	touch ./src/main.rs ./src/lib.rs # trigger a rebuild
 RUN	cargo build --release
 FROM	gcr.io/distroless/cc-debian12	as	runtime
 COPY	--from=builder /usr/src/target/release/blockfrost-platform	/bin
