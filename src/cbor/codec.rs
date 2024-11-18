@@ -7,22 +7,22 @@ use pallas_codec::minicbor::{decode, Decode, Decoder};
 impl<'b> Decode<'b, ()> for TxValidationError {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         d.array()?;
-        let error = d.u16()?;
+        let error_tag = d.u16()?;
         d.array()?;
 
-        match error {
+        match error_tag {
             1 => {
-                let errors = d.decode()?;
-                Ok(TxValidationError::Byron(errors))
+                let error = d.decode()?;
+                Ok(TxValidationError::ByronTxValidationError { error })
             }
             2 => {
                 let era = d.decode()?;
-                let errors = d.decode()?;
-                Ok(TxValidationError::Shelley(errors, era))
+                let error = d.decode()?;
+                Ok(TxValidationError::ShelleyTxValidationError{error, era})
             }
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding TxValidationError: {}",
-                error
+                error_tag
             ))),
         }
     }
@@ -144,12 +144,12 @@ impl<'b> Decode<'b, ()> for ShelleyBasedEra {
         use ShelleyBasedEra::*;
 
         match era {
-            1 => Ok(Shelley()),
-            2 => Ok(Allegra()),
-            3 => Ok(Mary()),
-            4 => Ok(Alonzo()),
-            5 => Ok(Babbage()),
-            6 => Ok(Conway()),
+            1 => Ok(ShelleyBasedEraShelley),
+            2 => Ok(ShelleyBasedEraAllegra),
+            3 => Ok(ShelleyBasedEraMary),
+            4 => Ok(ShelleyBasedEraAlonzo),
+            5 => Ok(ShelleyBasedEraBabbage),
+            6 => Ok(ShelleyBasedEraConway),
             _ => Err(decode::Error::message(format!(
                 "unknown era while decoding ShelleyBasedEra: {}",
                 era

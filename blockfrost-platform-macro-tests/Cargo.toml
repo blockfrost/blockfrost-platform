@@ -1,0 +1,8 @@
+[package]
+name = "blockfrost-platform-macro-tests"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+blockfrost-platform-macros = { path = "../blockfrost-platform-macros" }
