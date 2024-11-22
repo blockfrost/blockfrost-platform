@@ -2,10 +2,9 @@ module Main where
 
 import CLI (GenSize (..), NumCases (..), Seed (..))
 import qualified CLI
-import Cardano.Ledger.Binary (EncCBOR)
-import qualified Cardano.Ledger.Binary as CLB
 import Codec.CBOR.Write as C
 import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.Aeson as J
 import qualified Data.Aeson.Encode.Pretty as J
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Lazy as BL
@@ -15,9 +14,9 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Data.Typeable (typeRep)
 import GHC.Generics (Generic)
 import qualified Generators as G
+import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
 import qualified Test.QuickCheck.Gen as QC (unGen)
 import Test.QuickCheck.Instances.Text ()
@@ -35,9 +34,8 @@ data Output a = Output
 
 data TestCase a = TestCase
   { cbor :: Text,
-    json :: a,
+    json :: J.Value,
     haskellRepr :: Text
-    -- FIXME: , submitAPIRepr :: Data.Aeson.Value
   }
   deriving (Generic, Show, FromJSON, ToJSON)
 
@@ -45,45 +43,46 @@ runCommand :: CLI.Options -> IO ()
 runCommand (CLI.Options maybeSeed genSize numCases command) = do
   seed <- case maybeSeed of
     Just s -> return s
-    Nothing -> (Seed . round) `fmap` getPOSIXTime
+    Nothing -> Seed . round . (* 1000.0) <$> getPOSIXTime
 
   ( case command of
-      CLI.ApplyTxError'Byron -> writeRandom G.genApplyTxError'Byron
-      CLI.ApplyTxError'Shelley -> writeRandom G.genApplyTxError'Shelley
-      CLI.ApplyTxError'Allegra -> writeRandom G.genApplyTxError'Allegra
-      CLI.ApplyTxError'Mary -> writeRandom G.genApplyTxError'Mary
-      CLI.ApplyTxError'Alonzo -> writeRandom G.genApplyTxError'Alonzo
-      CLI.ApplyTxError'Babbage -> writeRandom G.genApplyTxError'Babbage
-      CLI.ApplyTxError'Conway -> writeRandom G.genApplyTxError'Conway
-      CLI.TxValidationErrorInCardanoMode -> writeRandom (QC.arbitrary @Double) -- FIXME: G.genTxValidationErrorInCardanoMode
-      CLI.DataText -> writeRandom (QC.arbitrary @Text)
-      CLI.GHCInteger -> writeRandom (QC.arbitrary @Integer)
-      CLI.ExampleADT -> writeRandom (QC.arbitrary @G.ExampleADT)
+      CLI.ApplyTxErr'Byron -> writeRandom @G.ApplyTxErr'Byron Proxy
+      CLI.ApplyTxErr'Shelley -> writeRandom @G.ApplyTxErr'Shelley Proxy
+      CLI.ApplyTxErr'Allegra -> writeRandom @G.ApplyTxErr'Allegra Proxy
+      CLI.ApplyTxErr'Mary -> writeRandom @G.ApplyTxErr'Mary Proxy
+      CLI.ApplyTxErr'Alonzo -> writeRandom @G.ApplyTxErr'Alonzo Proxy
+      CLI.ApplyTxErr'Babbage -> writeRandom @G.ApplyTxErr'Babbage Proxy
+      CLI.ApplyTxErr'Conway -> writeRandom @G.ApplyTxErr'Conway Proxy
+      CLI.TxValidationErrorInCardanoMode -> writeRandom @Double Proxy -- FIXME: generate the correct type
+      CLI.DataText -> writeRandom @Text Proxy
+      CLI.GHCInteger -> writeRandom @Integer Proxy
+      CLI.ExampleADT -> writeRandom @G.ExampleADT Proxy
     )
     seed
     genSize
     numCases
 
-writeRandom :: forall a. (Show a, EncCBOR a, ToJSON a) => QC.Gen a -> Seed -> GenSize -> NumCases -> IO ()
-writeRandom genA (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
+writeRandom :: forall a. (Arbitrary a, Show a, G.OurCBOR a) => Proxy a -> Seed -> GenSize -> NumCases -> IO ()
+writeRandom _ (Seed seed) (GenSize generatorSize) (NumCases numCases) = do
   let qcGen = QC.mkQCGen seed
-      values :: [a] = QC.unGen (QC.vectorOf numCases genA) qcGen generatorSize
+      values :: [a] = QC.unGen (QC.vectorOf numCases QC.arbitrary) qcGen generatorSize
+      typeTag = case values of
+        a : _ -> T.pack . G.unwrappedType $ a
+        _ -> "unknown"
       testCases :: [TestCase a] = mkTestCase <$> values
-      output = Output {typeTag = T.pack . show . typeRep $ Proxy @a, seed, testCases}
+      output = Output {typeTag, seed, testCases}
   B.putStrLn $ J.encodePretty' (J.defConfig {J.confIndent = J.Spaces 2}) output
 
-mkTestCase :: forall a. (Show a, EncCBOR a) => a -> TestCase a
+mkTestCase :: forall a. (Show a, G.OurCBOR a) => a -> TestCase a
 mkTestCase a =
-  let haskellRepr = T.pack $ show a
-      -- XXX: we’re using the latest protocol version
-      protocolVersion :: CLB.Version = maxBound
-      cbor =
-        ( T.decodeUtf8Lenient
-            . B16.encode
-            . BL.toStrict
-            . C.toLazyByteString
-            . CLB.toPlainEncoding protocolVersion
-            . CLB.encCBOR
-        )
-          a
-   in TestCase {cbor, haskellRepr, json = a}
+  TestCase
+    { cbor =
+        T.decodeUtf8Lenient
+          . B16.encode
+          . BL.toStrict
+          . C.toLazyByteString
+          . G.ourToCBOR
+          $ a,
+      haskellRepr = T.pack . show $ a,
+      json = G.ourToJSON a
+    }

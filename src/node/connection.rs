@@ -51,7 +51,7 @@ impl NodeClient {
     }
 
     pub fn try_decode_error(buffer: &[u8]) -> Result<TxValidationError, Error> {
-        let maybe_error = Decoder::new(buffer[2..].as_ref()).decode();
+        let maybe_error = Decoder::new(buffer).decode();
 
         match maybe_error {
             Ok(error) => Ok(error),

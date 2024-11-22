@@ -138,6 +138,7 @@ in rec {
             echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
             cp -r ${../../testgen-hs} ./testgen-hs
             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+            sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
           '');
           inherit (unpatched) rev shortRev lastModified lastModifiedDate;
         };

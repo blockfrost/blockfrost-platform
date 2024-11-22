@@ -15,13 +15,13 @@ data Command
   | DataText
   | ExampleADT
   | TxValidationErrorInCardanoMode
-  | ApplyTxError'Byron
-  | ApplyTxError'Shelley
-  | ApplyTxError'Allegra
-  | ApplyTxError'Mary
-  | ApplyTxError'Alonzo
-  | ApplyTxError'Babbage
-  | ApplyTxError'Conway
+  | ApplyTxErr'Byron
+  | ApplyTxErr'Shelley
+  | ApplyTxErr'Allegra
+  | ApplyTxErr'Mary
+  | ApplyTxErr'Alonzo
+  | ApplyTxErr'Babbage
+  | ApplyTxErr'Conway
   deriving (Show)
 
 parse :: IO Options
@@ -83,13 +83,13 @@ commandParser :: Parser Command
 commandParser =
   subparser
     ( mempty
-        <> mkCommand ApplyTxError'Byron
-        <> mkCommand ApplyTxError'Shelley
-        <> mkCommand ApplyTxError'Allegra
-        <> mkCommand ApplyTxError'Mary
-        <> mkCommand ApplyTxError'Alonzo
-        <> mkCommand ApplyTxError'Babbage
-        <> mkCommand ApplyTxError'Conway
+        <> mkCommand ApplyTxErr'Byron
+        <> mkCommand ApplyTxErr'Shelley
+        <> mkCommand ApplyTxErr'Allegra
+        <> mkCommand ApplyTxErr'Mary
+        <> mkCommand ApplyTxErr'Alonzo
+        <> mkCommand ApplyTxErr'Babbage
+        <> mkCommand ApplyTxErr'Conway
         <> mkCommand TxValidationErrorInCardanoMode
         <> mkCommand GHCInteger
         <> mkCommand DataText
