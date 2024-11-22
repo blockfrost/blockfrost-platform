@@ -1,6 +1,22 @@
-module CLI (Options (..), Seed (..), GenSize (..), NumCases (..), Command (..), parse) where
+module CLI
+  ( Command (..),
+    GenerateOptions (..),
+    Seed (..),
+    GenSize (..),
+    NumCases (..),
+    TypeCommand (..),
+    parse,
+  )
+where
 
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Base16 as Base16
+import qualified Data.ByteString.Char8 as BS8
 import Options.Applicative as O
+
+data Command = Generate GenerateOptions | Deserialize ByteString deriving (Show)
+
+data GenerateOptions = GenerateOptions (Maybe Seed) GenSize NumCases TypeCommand deriving (Show)
 
 newtype Seed = Seed Int deriving (Show)
 
@@ -8,13 +24,10 @@ newtype GenSize = GenSize Int deriving (Show)
 
 newtype NumCases = NumCases Int deriving (Show)
 
-data Options = Options (Maybe Seed) GenSize NumCases Command deriving (Show)
-
-data Command
+data TypeCommand
   = GHCInteger
   | DataText
   | ExampleADT
-  | TxValidationErrorInCardanoMode
   | ApplyTxErr'Byron
   | ApplyTxErr'Shelley
   | ApplyTxErr'Allegra
@@ -24,22 +37,48 @@ data Command
   | ApplyTxErr'Conway
   deriving (Show)
 
-parse :: IO Options
+parse :: IO Command
 parse = execParser opts
 
 -------------------------------------------------------------------------------------
 
-opts :: ParserInfo Options
+opts :: ParserInfo Command
 opts =
   info
-    (optionsParser <**> helper)
+    (commandParser <**> helper)
     ( fullDesc
         <> progDesc "Test case generator for cross-checking CBOR (de)serializers"
     )
 
-optionsParser :: Parser Options
+commandParser :: Parser Command
+commandParser =
+  subparser
+    ( mempty
+        <> ( command
+               "generate"
+               ( info
+                   ( Generate
+                       <$> optionsParser
+                         <**> helper
+                   )
+                   (progDesc "Generate random CBOR test cases")
+               )
+           )
+        <> ( command
+               "deserialize"
+               ( info
+                   ( Deserialize
+                       <$> argument (eitherReader parseHex) (metavar "CBOR_HEX")
+                         <**> helper
+                   )
+                   (progDesc "Deserialize CBOR of ‘HardForkApplyTxErr’ that you got from cardano-node")
+               )
+           )
+    )
+
+optionsParser :: Parser GenerateOptions
 optionsParser =
-  Options
+  GenerateOptions
     <$> optional
       ( Seed
           <$> option
@@ -70,7 +109,7 @@ optionsParser =
                   <> help "How many test cases to generate"
               )
         )
-    <*> commandParser
+    <*> typeCommandParser
 
 positive :: ReadM Int
 positive = do
@@ -79,27 +118,32 @@ positive = do
     then return n
     else readerError "NUM must be positive"
 
-commandParser :: Parser Command
-commandParser =
+typeCommandParser :: Parser TypeCommand
+typeCommandParser =
   subparser
     ( mempty
-        <> mkCommand ApplyTxErr'Byron
-        <> mkCommand ApplyTxErr'Shelley
-        <> mkCommand ApplyTxErr'Allegra
-        <> mkCommand ApplyTxErr'Mary
-        <> mkCommand ApplyTxErr'Alonzo
-        <> mkCommand ApplyTxErr'Babbage
-        <> mkCommand ApplyTxErr'Conway
-        <> mkCommand TxValidationErrorInCardanoMode
-        <> mkCommand GHCInteger
-        <> mkCommand DataText
-        <> mkCommand ExampleADT
+        <> mkTypeCommand ApplyTxErr'Byron
+        <> mkTypeCommand ApplyTxErr'Shelley
+        <> mkTypeCommand ApplyTxErr'Allegra
+        <> mkTypeCommand ApplyTxErr'Mary
+        <> mkTypeCommand ApplyTxErr'Alonzo
+        <> mkTypeCommand ApplyTxErr'Babbage
+        <> mkTypeCommand ApplyTxErr'Conway
+        <> mkTypeCommand GHCInteger
+        <> mkTypeCommand DataText
+        <> mkTypeCommand ExampleADT
     )
 
-mkCommand :: Command -> Mod CommandFields Command
-mkCommand cmd =
+mkTypeCommand :: TypeCommand -> Mod CommandFields TypeCommand
+mkTypeCommand cmd =
   command
     (replaceQuotes . show $ cmd)
     (info (pure cmd) (progDesc ("Generate CBOR of " ++ show cmd)))
   where
     replaceQuotes = ((\c -> if c == '\'' then '_' else c) <$>)
+
+-- | Parse a hex-encoded ByteString – e.g. CBOR
+parseHex :: String -> Either String ByteString
+parseHex hexInput =
+  let bsInput = BS8.pack hexInput
+   in Base16.decode bsInput

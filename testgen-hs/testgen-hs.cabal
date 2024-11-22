@@ -35,6 +35,7 @@ executable testgen-hs
 
   other-modules:
     CLI
+    Deserialize
     Generators
 
   default-extensions:
@@ -44,6 +45,7 @@ executable testgen-hs
     DerivingVia
     FlexibleContexts
     GeneralizedNewtypeDeriving
+    LambdaCase
     NamedFieldPuns
     OverloadedStrings
     RankNTypes

@@ -9,7 +9,7 @@ import qualified Cardano.Api.Modes as CAPI
 import Cardano.Api.Orphans ()
 import qualified Cardano.Chain.Slotting as CCS
 import qualified Cardano.TxSubmit.Types as CTT
-import Codec.CBOR.Encoding as C
+import qualified Codec.CBOR.Encoding as C
 import Codec.Serialise (Serialise)
 import qualified Codec.Serialise
 import Data.Aeson (ToJSON)
@@ -31,9 +31,6 @@ import qualified Ouroboros.Consensus.Shelley.Ledger as OCSL
 import Test.Consensus.Cardano.Generators ()
 import Test.QuickCheck (Arbitrary)
 import qualified Test.QuickCheck as QC
-
-genTxValidationErrorInCardanoMode :: QC.Gen CAPI.TxValidationErrorInCardanoMode
-genTxValidationErrorInCardanoMode = QC.arbitrary
 
 -- | We define our own type class, to be able to include multiple complex
 --  encoders for our `newtype` wrappers under a single interface.
@@ -181,6 +178,25 @@ submitApiEnvelope =
     . CTT.TxSubmitFail
     . CTT.TxCmdTxSubmitValidationError
     . CAPI.TxValidationErrorInCardanoMode
+
+hfcEnvelopeToSubmitApiEnvelope :: OCHCM.HardForkApplyTxErr (OCCB.CardanoEras OCCB.StandardCrypto) -> J.Value
+hfcEnvelopeToSubmitApiEnvelope =
+  J.toJSON
+    . CTT.TxSubmitFail
+    . CTT.TxCmdTxSubmitValidationError
+    . CAPI.fromConsensusApplyTxErr
+
+hfcEnvelopeShowInner :: OCHCM.HardForkApplyTxErr (OCCB.CardanoEras OCCB.StandardCrypto) -> (String, String)
+hfcEnvelopeShowInner = go
+  where
+    go (OCCB.ApplyTxErrByron a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrShelley a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrAllegra a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrMary a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrAlonzo a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrBabbage a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrConway a) = (show . typeOf $ a, show a)
+    go (OCCB.ApplyTxErrWrongEra a) = (show . typeOf $ a, show a)
 
 ------- TxValidationErrorInCardanoMode (all at once) ---------------------------
 
