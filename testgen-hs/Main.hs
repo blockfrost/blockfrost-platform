@@ -14,6 +14,7 @@ import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Deserialize as D
 import GHC.Generics (Generic)
@@ -80,7 +81,7 @@ mkTestCase :: forall a. (Show a, G.OurCBOR a) => a -> TestCase a
 mkTestCase a =
   TestCase
     { cbor =
-        T.decodeUtf8Lenient
+        T.decodeUtf8With T.lenientDecode
           . B16.encode
           . BL.toStrict
           . C.toLazyByteString
@@ -104,7 +105,7 @@ runDeserialize cbor' =
               (J.defConfig {J.confIndent = J.Spaces 2})
               TestCase
                 { cbor =
-                    T.decodeUtf8Lenient
+                    T.decodeUtf8With T.lenientDecode
                       . B16.encode
                       $ cbor',
                   haskellRepr = T.pack haskellRepr',
