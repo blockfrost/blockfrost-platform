@@ -3,22 +3,6 @@ name = "blockfrost-platform"
 version = "0.0.1"
 edition = "2021"
 
-[patch.crates-io]
-# Temporary fix for the `RejectReason` deserializer in `localtxsubmission/codec.rs`: <https://github.com/txpipe/pallas/pull/548>.
-# The PR is based on release 0.31.0.
-pallas = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-addresses = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-applying = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-codec = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-configs = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-crypto = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-network = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-primitives = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-traverse = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-txbuilder = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-utxorpc = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-pallas-wallet = { git = "https://github.com/txpipe/pallas.git", rev = "de571b1427bc7d519c0e4943461f4311203b299c" }
-
 [dependencies]
 axum = "0.7.6"
 tokio = { version = "1.40.0", features = ["rt", "rt-multi-thread"] }
