@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703583,
+  "testCases": [
+    {
+      "cbor": "8182068282076082018211d9010281581cfa0165d3392a8938b5b5a4851d5802f43233ae1f9305b408f39477fd",
+      "haskellRepr": "ApplyTxError (ConwayMempoolFailure \"\" :| [ConwayUtxowFailure (MalformedReferenceScripts (fromList [ScriptHash \"fa0165d3392a8938b5b5a4851d5802f43233ae1f9305b408f39477fd\"]))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayMempoolFailure \"\"",
+                "ConwayUtxowFailure (MalformedReferenceScripts (fromList [ScriptHash \"fa0165d3392a8938b5b5a4851d5802f43233ae1f9305b408f39477fd\"]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

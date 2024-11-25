@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704266,
+  "testCases": [
+    {
+      "cbor": "8182068182076153",
+      "haskellRepr": "ApplyTxError (ConwayMempoolFailure \"S\" :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayMempoolFailure \"S\""
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

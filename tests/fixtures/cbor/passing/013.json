@@ -1,0 +1,26 @@
+{
+  "seed": 1732614703302,
+  "testCases": [
+    {
+      "cbor": "81820681820481581c3f784466c9efbcbc998ee0121bca9c4dc03dc37b756ed522e4d46ea6",
+      "haskellRepr": "ApplyTxError (ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"3f784466c9efbcbc998ee0121bca9c4dc03dc37b756ed522e4d46ea6\"} :| []) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"3f784466c9efbcbc998ee0121bca9c4dc03dc37b756ed522e4d46ea6\"} :| [])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

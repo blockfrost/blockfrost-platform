@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703538,
+  "testCases": [
+    {
+      "cbor": "81820682830601208203820d82828203581ca8d4974095d18fd37c4ba1da80a36851b8345ddaf233a7d75f927e2f825820da98f0e22a86a94d6a7e6f0f526959092f1a6ded895287b15dde2b78d84baf3b00828202581c6e56c2c5a5040fcda445ca0a87436e002e540870fad295f6557077bb8258204a184435fe098d9e62e429475b4e337be0acb369c84bbe39baa74740ef6d69d401",
+      "haskellRepr": "ApplyTxError (ConwayTxRefScriptsSizeTooBig 1 (-1) :| [ConwayGovFailure (DisallowedVotesDuringBootstrap ((DRepVoter (ScriptHashObj (ScriptHash \"a8d4974095d18fd37c4ba1da80a36851b8345ddaf233a7d75f927e2f\")),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"da98f0e22a86a94d6a7e6f0f526959092f1a6ded895287b15dde2b78d84baf3b\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}) :| [(DRepVoter (KeyHashObj (KeyHash {unKeyHash = \"6e56c2c5a5040fcda445ca0a87436e002e540870fad295f6557077bb\"})),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"4a184435fe098d9e62e429475b4e337be0acb369c84bbe39baa74740ef6d69d4\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}})]))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayTxRefScriptsSizeTooBig 1 (-1)",
+                "ConwayGovFailure (DisallowedVotesDuringBootstrap ((DRepVoter (ScriptHashObj (ScriptHash \"a8d4974095d18fd37c4ba1da80a36851b8345ddaf233a7d75f927e2f\")),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"da98f0e22a86a94d6a7e6f0f526959092f1a6ded895287b15dde2b78d84baf3b\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}) :| [(DRepVoter (KeyHashObj (KeyHash {unKeyHash = \"6e56c2c5a5040fcda445ca0a87436e002e540870fad295f6557077bb\"})),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"4a184435fe098d9e62e429475b4e337be0acb369c84bbe39baa74740ef6d69d4\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}})]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

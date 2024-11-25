@@ -1,0 +1,27 @@
+{
+  "seed": 1732614704280,
+  "testCases": [
+    {
+      "cbor": "8182068282038207a08203820e818202581cd6d123ba0dd693a89694142a35714bc5b44f80a23ce66f4674808baf",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (ExpirationEpochTooSmall (fromList [])) :| [ConwayGovFailure (VotersDoNotExist (DRepVoter (KeyHashObj (KeyHash {unKeyHash = \"d6d123ba0dd693a89694142a35714bc5b44f80a23ce66f4674808baf\"})) :| []))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (ExpirationEpochTooSmall (fromList []))",
+                "ConwayGovFailure (VotersDoNotExist (DRepVoter (KeyHashObj (KeyHash {unKeyHash = \"d6d123ba0dd693a89694142a35714bc5b44f80a23ce66f4674808baf\"})) :| []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

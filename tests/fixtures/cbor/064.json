@@ -1,0 +1,27 @@
+{
+  "seed": 1732614704012,
+  "testCases": [
+    {
+      "cbor": "8182068283051a0003ff8c1a0001f35282028200a1581df0fbec21d31a02eefc76bfc8f2309199173103c8157c03c8237bdfd8bc198f8e",
+      "haskellRepr": "ApplyTxError (ConwayTreasuryValueMismatch (Coin 262028) (Coin 127826) :| [ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList [(RewardAccount {raNetwork = Testnet, raCredential = ScriptHashObj (ScriptHash \"fbec21d31a02eefc76bfc8f2309199173103c8157c03c8237bdfd8bc\")},Coin 36750)]))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayTreasuryValueMismatch (Coin 262028) (Coin 127826)",
+                "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList [(RewardAccount {raNetwork = Testnet, raCredential = ScriptHashObj (ScriptHash \"fbec21d31a02eefc76bfc8f2309199173103c8157c03c8237bdfd8bc\")},Coin 36750)]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

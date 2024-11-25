@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703147,
+  "testCases": [
+    {
+      "cbor": "8182068282076082038207a0",
+      "haskellRepr": "ApplyTxError (ConwayMempoolFailure \"\" :| [ConwayGovFailure (ExpirationEpochTooSmall (fromList []))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayMempoolFailure \"\"",
+                "ConwayGovFailure (ExpirationEpochTooSmall (fromList []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

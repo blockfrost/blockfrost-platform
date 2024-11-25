@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703429,
+  "testCases": [
+    {
+      "cbor": "81820682820761528203820981828204581c5e5b6fe689a2a0b842304c912712328aa704b6c49d15e8b60e6d979882582094259fb315f35d28860159dd35231ce60ee3f99d905f9e6519731a505540bb4e01",
+      "haskellRepr": "ApplyTxError (ConwayMempoolFailure \"R\" :| [ConwayGovFailure (VotingOnExpiredGovAction ((StakePoolVoter (KeyHash {unKeyHash = \"5e5b6fe689a2a0b842304c912712328aa704b6c49d15e8b60e6d9798\"}),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"94259fb315f35d28860159dd35231ce60ee3f99d905f9e6519731a505540bb4e\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}}) :| []))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayMempoolFailure \"R\"",
+                "ConwayGovFailure (VotingOnExpiredGovAction ((StakePoolVoter (KeyHash {unKeyHash = \"5e5b6fe689a2a0b842304c912712328aa704b6c49d15e8b60e6d9798\"}),GovActionId {gaidTxId = TxId {unTxId = SafeHash \"94259fb315f35d28860159dd35231ce60ee3f99d905f9e6519731a505540bb4e\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}}) :| []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

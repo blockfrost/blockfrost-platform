@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704307,
+  "testCases": [
+    {
+      "cbor": "8182068183051a0006297c1a000456b4",
+      "haskellRepr": "ApplyTxError (ConwayTreasuryValueMismatch (Coin 403836) (Coin 284340) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayTreasuryValueMismatch (Coin 403836) (Coin 284340)"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

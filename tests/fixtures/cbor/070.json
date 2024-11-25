@@ -1,0 +1,27 @@
+{
+  "seed": 1732614704096,
+  "testCases": [
+    {
+      "cbor": "8182068283060100820481581c5d74ba4656ff6775b653b81cf012a26a9494475ea96bbe74eef53af8",
+      "haskellRepr": "ApplyTxError (ConwayTxRefScriptsSizeTooBig 1 0 :| [ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"5d74ba4656ff6775b653b81cf012a26a9494475ea96bbe74eef53af8\"} :| [])])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayTxRefScriptsSizeTooBig 1 0",
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"5d74ba4656ff6775b653b81cf012a26a9494475ea96bbe74eef53af8\"} :| [])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703711,
+  "testCases": [
+    {
+      "cbor": "8182068282038207a0820482581c6a6d35b19d4013b919faf9a21cfe32571a540f78ff9d2da0b65d69bf581c8345ef94cf81079de12c4bc2f212f2caeb186eafc7af49d539d561ae",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (ExpirationEpochTooSmall (fromList [])) :| [ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"6a6d35b19d4013b919faf9a21cfe32571a540f78ff9d2da0b65d69bf\"} :| [KeyHash {unKeyHash = \"8345ef94cf81079de12c4bc2f212f2caeb186eafc7af49d539d561ae\"}])])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (ExpirationEpochTooSmall (fromList []))",
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"6a6d35b19d4013b919faf9a21cfe32571a540f78ff9d2da0b65d69bf\"} :| [KeyHash {unKeyHash = \"8345ef94cf81079de12c4bc2f212f2caeb186eafc7af49d539d561ae\"}])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

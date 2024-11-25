@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703228,
+  "testCases": [
+    {
+      "cbor": "8182068282028201820382038200581cde174ee9f903cd93028d16e1bd0df936ddf2a842f2aa414db0598b6782038302581de0c3a48544970283c379904bf33f5ab2b8e1f6fac902a14ddcd18d2bb900",
+      "haskellRepr": "ApplyTxError (ConwayCertsFailure (CertFailure (GovCertFailure (ConwayCommitteeHasPreviouslyResigned (KeyHashObj (KeyHash {unKeyHash = \"de174ee9f903cd93028d16e1bd0df936ddf2a842f2aa414db0598b67\"}))))) :| [ConwayGovFailure (ProposalProcedureNetworkIdMismatch (RewardAccount {raNetwork = Testnet, raCredential = KeyHashObj (KeyHash {unKeyHash = \"c3a48544970283c379904bf33f5ab2b8e1f6fac902a14ddcd18d2bb9\"})}) Testnet)])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayCertsFailure (CertFailure (GovCertFailure (ConwayCommitteeHasPreviouslyResigned (KeyHashObj (KeyHash {unKeyHash = \"de174ee9f903cd93028d16e1bd0df936ddf2a842f2aa414db0598b67\"})))))",
+                "ConwayGovFailure (ProposalProcedureNetworkIdMismatch (RewardAccount {raNetwork = Testnet, raCredential = KeyHashObj (KeyHash {unKeyHash = \"c3a48544970283c379904bf33f5ab2b8e1f6fac902a14ddcd18d2bb9\"})}) Testnet)"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

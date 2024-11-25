@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704055,
+  "testCases": [
+    {
+      "cbor": "8182068182028200a0",
+      "haskellRepr": "ApplyTxError (ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList [])) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

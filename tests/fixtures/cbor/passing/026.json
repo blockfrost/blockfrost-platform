@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703483,
+  "testCases": [
+    {
+      "cbor": "818206828203820183018258203d417a35bce157152945acfe78da6938f3ade318bed839ad70d62cd827abf4470082070182076169",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (MalformedProposal (HardForkInitiation (SJust (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"3d417a35bce157152945acfe78da6938f3ade318bed839ad70d62cd827abf447\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}})) (ProtVer {pvMajor = Version 7, pvMinor = 1}))) :| [ConwayMempoolFailure \"i\"])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (MalformedProposal (HardForkInitiation (SJust (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"3d417a35bce157152945acfe78da6938f3ade318bed839ad70d62cd827abf447\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}})) (ProtVer {pvMajor = Version 7, pvMinor = 1})))",
+                "ConwayMempoolFailure \"i\""
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

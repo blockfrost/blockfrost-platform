@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704387,
+  "testCases": [
+    {
+      "cbor": "8182068182038200828258206d3a5b92857fd4ec3de160e62f194525286882ef073e27c4aa6e3e21f33e0dc100825820e015c9d455993f68e65ce4201f19ef00e24807b686682f1f0248b50d3369dcdf00",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (GovActionsDoNotExist (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"6d3a5b92857fd4ec3de160e62f194525286882ef073e27c4aa6e3e21f33e0dc1\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}} :| [GovActionId {gaidTxId = TxId {unTxId = SafeHash \"e015c9d455993f68e65ce4201f19ef00e24807b686682f1f0248b50d3369dcdf\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}])) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (GovActionsDoNotExist (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"6d3a5b92857fd4ec3de160e62f194525286882ef073e27c4aa6e3e21f33e0dc1\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}} :| [GovActionId {gaidTxId = TxId {unTxId = SafeHash \"e015c9d455993f68e65ce4201f19ef00e24807b686682f1f0248b50d3369dcdf\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

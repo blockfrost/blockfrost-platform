@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703684,
+  "testCases": [
+    {
+      "cbor": "81820682820482581c38bb836dc16459b5d268d6c035b49bd8c430d8f617d02af710795df8581cc39e3c910f66ac8ae6a8349e0878d4e529e89f992f24b811bbae222382038200828258204e1a131ff843d622e7bdecddf54b011955d12943181549df5e392faea5d7ae300182582030f363d5469e0099bd16a6f3f41bcbe77c8c8908a5a9ff3f2bc5eee5e62ce26500",
+      "haskellRepr": "ApplyTxError (ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"38bb836dc16459b5d268d6c035b49bd8c430d8f617d02af710795df8\"} :| [KeyHash {unKeyHash = \"c39e3c910f66ac8ae6a8349e0878d4e529e89f992f24b811bbae2223\"}]) :| [ConwayGovFailure (GovActionsDoNotExist (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"4e1a131ff843d622e7bdecddf54b011955d12943181549df5e392faea5d7ae30\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}} :| [GovActionId {gaidTxId = TxId {unTxId = SafeHash \"30f363d5469e0099bd16a6f3f41bcbe77c8c8908a5a9ff3f2bc5eee5e62ce265\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}]))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"38bb836dc16459b5d268d6c035b49bd8c430d8f617d02af710795df8\"} :| [KeyHash {unKeyHash = \"c39e3c910f66ac8ae6a8349e0878d4e529e89f992f24b811bbae2223\"}])",
+                "ConwayGovFailure (GovActionsDoNotExist (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"4e1a131ff843d622e7bdecddf54b011955d12943181549df5e392faea5d7ae30\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}} :| [GovActionId {gaidTxId = TxId {unTxId = SafeHash \"30f363d5469e0099bd16a6f3f41bcbe77c8c8908a5a9ff3f2bc5eee5e62ce265\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 0}}]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

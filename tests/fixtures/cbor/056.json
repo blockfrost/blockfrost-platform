@@ -1,0 +1,26 @@
+{
+  "seed": 1732614703901,
+  "testCases": [
+    {
+      "cbor": "8182068182018202d9010281581c615ba1eac6d914f3e9f0460095bd98ecaf0c54e25039cdfbea8d6783",
+      "haskellRepr": "ApplyTxError (ConwayUtxowFailure (MissingVKeyWitnessesUTXOW (fromList [KeyHash {unKeyHash = \"615ba1eac6d914f3e9f0460095bd98ecaf0c54e25039cdfbea8d6783\"}])) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (MissingVKeyWitnessesUTXOW (fromList [KeyHash {unKeyHash = \"615ba1eac6d914f3e9f0460095bd98ecaf0c54e25039cdfbea8d6783\"}]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

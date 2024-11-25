@@ -1,0 +1,26 @@
+{
+  "seed": 1732614703943,
+  "testCases": [
+    {
+      "cbor": "8182068182028201820382018201581cce65a879625908607bdef0650cc4e4a651988525e28e93d4973927a3",
+      "haskellRepr": "ApplyTxError (ConwayCertsFailure (CertFailure (GovCertFailure (ConwayDRepNotRegistered (ScriptHashObj (ScriptHash \"ce65a879625908607bdef0650cc4e4a651988525e28e93d4973927a3\"))))) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayCertsFailure (CertFailure (GovCertFailure (ConwayDRepNotRegistered (ScriptHashObj (ScriptHash \"ce65a879625908607bdef0650cc4e4a651988525e28e93d4973927a3\")))))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

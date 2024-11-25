@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703551,
+  "testCases": [
+    {
+      "cbor": "8182068282018200830c1a000d8a871a000b075682018209d9010280",
+      "haskellRepr": "ApplyTxError (ConwayUtxowFailure (UtxoFailure (InsufficientCollateral (DeltaCoin 887431) (Coin 722774))) :| [ConwayUtxowFailure (ExtraneousScriptWitnessesUTXOW (fromList []))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (UtxoFailure (InsufficientCollateral (DeltaCoin 887431) (Coin 722774)))",
+                "ConwayUtxowFailure (ExtraneousScriptWitnessesUTXOW (fromList []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

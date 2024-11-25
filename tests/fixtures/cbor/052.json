@@ -1,0 +1,26 @@
+{
+  "seed": 1732614703847,
+  "testCases": [
+    {
+      "cbor": "8182068183060100",
+      "haskellRepr": "ApplyTxError (ConwayTxRefScriptsSizeTooBig 1 0 :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayTxRefScriptsSizeTooBig 1 0"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

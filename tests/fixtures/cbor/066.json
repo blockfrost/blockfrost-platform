@@ -1,0 +1,27 @@
+{
+  "seed": 1732614704041,
+  "testCases": [
+    {
+      "cbor": "818206828203830b81581c1588aa1e2f8ed73cdf28cbf7d06241099f44f3747b50708ecc22799081581cb20a46886f87fd81f4b51689734a786f10e683e65aa6f989dc547739820481581c7fab8efda7ee7d6b04955d250f1473970ece5476871b12de0b9435ab",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (InvalidPolicyHash (SJust (ScriptHash \"1588aa1e2f8ed73cdf28cbf7d06241099f44f3747b50708ecc227990\")) (SJust (ScriptHash \"b20a46886f87fd81f4b51689734a786f10e683e65aa6f989dc547739\"))) :| [ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"7fab8efda7ee7d6b04955d250f1473970ece5476871b12de0b9435ab\"} :| [])])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (InvalidPolicyHash (SJust (ScriptHash \"1588aa1e2f8ed73cdf28cbf7d06241099f44f3747b50708ecc227990\")) (SJust (ScriptHash \"b20a46886f87fd81f4b51689734a786f10e683e65aa6f989dc547739\")))",
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"7fab8efda7ee7d6b04955d250f1473970ece5476871b12de0b9435ab\"} :| [])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

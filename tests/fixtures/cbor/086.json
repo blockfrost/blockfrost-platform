@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704321,
+  "testCases": [
+    {
+      "cbor": "8182068182018200820981a400583931b2d82464ee0f01a997469f62bfd2f86e2b81e2d6b57f32c76f15ee65470d8980522f46457bd0238fb07a7a86a488a78b595e013f9aea9d5601821b229f5c403dc6c2e3a1581cb0c53e2bf180858da4b64eb5598c5615bba7d723d2b604a83b7f9165a141351b1567a03e35825e8c02820058204cd8ff721542ba2426af9d0fa46638f60559d368b7d2fe4d1651c63e28327f4803d818584e82008303008283030181830301818200581cabde7a6c2f96943f3d0258dbb7ac1fc8769230b7c2b1a42e6aa10d758200581c8eab33aa0947bb8fff0df44cf26fe832ed82105a10ade2cb819ca68b",
+      "haskellRepr": "ApplyTxError (ConwayUtxowFailure (UtxoFailure (OutputTooSmallUTxO [(Addr Mainnet (ScriptHashObj (ScriptHash \"b2d82464ee0f01a997469f62bfd2f86e2b81e2d6b57f32c76f15ee65\")) (StakeRefBase (ScriptHashObj (ScriptHash \"470d8980522f46457bd0238fb07a7a86a488a78b595e013f9aea9d56\"))),MaryValue (Coin 2494814149570642659) (MultiAsset (fromList [(PolicyID {policyID = ScriptHash \"b0c53e2bf180858da4b64eb5598c5615bba7d723d2b604a83b7f9165\"},fromList [(\"35\",1542377586443837068)])])),DatumHash (SafeHash \"4cd8ff721542ba2426af9d0fa46638f60559d368b7d2fe4d1651c63e28327f48\"),SJust TimelockScript TimelockConstr MOfN 0 (StrictSeq {fromStrict = fromList [TimelockConstr MOfN 1 (StrictSeq {fromStrict = fromList [TimelockConstr MOfN 1 (StrictSeq {fromStrict = fromList [TimelockConstr Signature (KeyHash {unKeyHash = \"abde7a6c2f96943f3d0258dbb7ac1fc8769230b7c2b1a42e6aa10d75\"}) (blake2b_256: SafeHash \"fdb0b55cb4d5022cf5c7c9635514640829829098c97ad7e975ca9bcdbf7d4727\")]}) (blake2b_256: SafeHash \"11e9a8ea2927d727e78e4e51e47273a220af3a8a89b12f0cfcd94706cf1446c1\")]}) (blake2b_256: SafeHash \"56f45c273fe8ceef9ab3e54ce55b6358af37efa62baa21f2fba1eda3d314a0c1\"),TimelockConstr Signature (KeyHash {unKeyHash = \"8eab33aa0947bb8fff0df44cf26fe832ed82105a10ade2cb819ca68b\"}) (blake2b_256: SafeHash \"1d72a90fa27af306938a67d5694edec0f2e5c1dbc4192425004b589825e5674a\")]}) (blake2b_256: SafeHash \"120caa4d879985ab795adbed3146e6e2f4bfc09a960561aa159a01993dbd2dd9\"))])) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (UtxoFailure (OutputTooSmallUTxO [(Addr Mainnet (ScriptHashObj (ScriptHash \"b2d82464ee0f01a997469f62bfd2f86e2b81e2d6b57f32c76f15ee65\")) (StakeRefBase (ScriptHashObj (ScriptHash \"470d8980522f46457bd0238fb07a7a86a488a78b595e013f9aea9d56\"))),MaryValue (Coin 2494814149570642659) (MultiAsset (fromList [(PolicyID {policyID = ScriptHash \"b0c53e2bf180858da4b64eb5598c5615bba7d723d2b604a83b7f9165\"},fromList [(\"35\",1542377586443837068)])])),DatumHash (SafeHash \"4cd8ff721542ba2426af9d0fa46638f60559d368b7d2fe4d1651c63e28327f48\"),SJust TimelockScript TimelockConstr MOfN 0 (StrictSeq {fromStrict = fromList [TimelockConstr MOfN 1 (StrictSeq {fromStrict = fromList [TimelockConstr MOfN 1 (StrictSeq {fromStrict = fromList [TimelockConstr Signature (KeyHash {unKeyHash = \"abde7a6c2f96943f3d0258dbb7ac1fc8769230b7c2b1a42e6aa10d75\"}) (blake2b_256: SafeHash \"fdb0b55cb4d5022cf5c7c9635514640829829098c97ad7e975ca9bcdbf7d4727\")]}) (blake2b_256: SafeHash \"11e9a8ea2927d727e78e4e51e47273a220af3a8a89b12f0cfcd94706cf1446c1\")]}) (blake2b_256: SafeHash \"56f45c273fe8ceef9ab3e54ce55b6358af37efa62baa21f2fba1eda3d314a0c1\"),TimelockConstr Signature (KeyHash {unKeyHash = \"8eab33aa0947bb8fff0df44cf26fe832ed82105a10ade2cb819ca68b\"}) (blake2b_256: SafeHash \"1d72a90fa27af306938a67d5694edec0f2e5c1dbc4192425004b589825e5674a\")]}) (blake2b_256: SafeHash \"120caa4d879985ab795adbed3146e6e2f4bfc09a960561aa159a01993dbd2dd9\"))]))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

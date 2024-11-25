@@ -1,0 +1,27 @@
+{
+  "seed": 1732614704184,
+  "testCases": [
+    {
+      "cbor": "818206828207608201830cd901028158209ee8bb48e4ee4e6af2752bddcec3ec694b31702e40ad7a6f6c7fd67414d06f09d9010280",
+      "haskellRepr": "ApplyTxError (ConwayMempoolFailure \"\" :| [ConwayUtxowFailure (NotAllowedSupplementalDatums (fromList [SafeHash \"9ee8bb48e4ee4e6af2752bddcec3ec694b31702e40ad7a6f6c7fd67414d06f09\"]) (fromList []))])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayMempoolFailure \"\"",
+                "ConwayUtxowFailure (NotAllowedSupplementalDatums (fromList [SafeHash \"9ee8bb48e4ee4e6af2752bddcec3ec694b31702e40ad7a6f6c7fd67414d06f09\"]) (fromList []))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

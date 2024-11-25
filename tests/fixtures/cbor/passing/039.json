@@ -1,0 +1,27 @@
+{
+  "seed": 1732614703670,
+  "testCases": [
+    {
+      "cbor": "818206828201830d815820d15252d17f47ba042f29becbd844d9aabd83b7dafb52bd46589fb10358adb9618158201d97ba11111aee873b749791e741e6f6e9e3d3e7a5e2fc0e532ac6f323a120bf83051a0009c7ac1a000b7da8",
+      "haskellRepr": "ApplyTxError (ConwayUtxowFailure (PPViewHashesDontMatch (SJust (SafeHash \"d15252d17f47ba042f29becbd844d9aabd83b7dafb52bd46589fb10358adb961\")) (SJust (SafeHash \"1d97ba11111aee873b749791e741e6f6e9e3d3e7a5e2fc0e532ac6f323a120bf\"))) :| [ConwayTreasuryValueMismatch (Coin 640940) (Coin 753064)])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayUtxowFailure (PPViewHashesDontMatch (SJust (SafeHash \"d15252d17f47ba042f29becbd844d9aabd83b7dafb52bd46589fb10358adb961\")) (SJust (SafeHash \"1d97ba11111aee873b749791e741e6f6e9e3d3e7a5e2fc0e532ac6f323a120bf\")))",
+                "ConwayTreasuryValueMismatch (Coin 640940) (Coin 753064)"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

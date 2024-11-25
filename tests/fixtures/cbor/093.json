@@ -1,0 +1,26 @@
+{
+  "seed": 1732614704431,
+  "testCases": [
+    {
+      "cbor": "818206818203820f8203825820bce7857d66684c376526dd9431a81b9a456fbcc26064c56c43efa05e4e99440101",
+      "haskellRepr": "ApplyTxError (ConwayGovFailure (ZeroTreasuryWithdrawals (NoConfidence (SJust (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"bce7857d66684c376526dd9431a81b9a456fbcc26064c56c43efa05e4e994401\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}})))) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayGovFailure (ZeroTreasuryWithdrawals (NoConfidence (SJust (GovActionId {gaidTxId = TxId {unTxId = SafeHash \"bce7857d66684c376526dd9431a81b9a456fbcc26064c56c43efa05e4e994401\"}, gaidGovActionIx = GovActionIx {unGovActionIx = 1}}))))"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}

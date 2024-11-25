@@ -1,0 +1,26 @@
+{
+  "seed": 1732614703779,
+  "testCases": [
+    {
+      "cbor": "81820681820482581ca38aef4ba258adf98d062db8af793b3c0a8c8ac825f92ffb81733ac8581c45acc652b46732a00f29f02b674db5011023e47d639247fe68aa40a7",
+      "haskellRepr": "ApplyTxError (ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"a38aef4ba258adf98d062db8af793b3c0a8c8ac825f92ffb81733ac8\"} :| [KeyHash {unKeyHash = \"45acc652b46732a00f29f02b674db5011023e47d639247fe68aa40a7\"}]) :| [])",
+      "json": {
+        "contents": {
+          "contents": {
+            "contents": {
+              "era": "ShelleyBasedEraConway",
+              "error": [
+                "ConwayWdrlNotDelegatedToDRep (KeyHash {unKeyHash = \"a38aef4ba258adf98d062db8af793b3c0a8c8ac825f92ffb81733ac8\"} :| [KeyHash {unKeyHash = \"45acc652b46732a00f29f02b674db5011023e47d639247fe68aa40a7\"}])"
+              ],
+              "kind": "ShelleyTxValidationError"
+            },
+            "tag": "TxValidationErrorInCardanoMode"
+          },
+          "tag": "TxCmdTxSubmitValidationError"
+        },
+        "tag": "TxSubmitFail"
+      },
+      "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+    }
+  ]
+}
