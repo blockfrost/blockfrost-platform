@@ -9,6 +9,7 @@ services:
     volumes:
       - ./nix/mithril-entrypoint.sh:/app/bin/entrypoint.sh
       - node-db:/data
+
   cardano-node:
     image: ghcr.io/intersectmbo/cardano-node:9.2.0
     environment:
@@ -20,7 +21,35 @@ services:
     depends_on:
       init-node:
         condition: service_completed_successfully
+
   blockfrost-platform:
+    image: ghcr.io/blockfrost/blockfrost-platform:latest
+    build:
+      context: ./
+      target: runtime
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+    init: true
+    restart: on-failure
+    ports:
+      - 3000:3000
+    profiles: ['']
+    volumes:
+      - node-ipc:/ipc
+    entrypoint:
+      - /app/blockfrost-platform
+      - --network
+      - $NETWORK
+      - --secret
+      - $SECRET
+      - --reward-address
+      - $REWARD_ADDRESS
+      - --node-socket-path
+      - /ipc/node.socket
+
+  blockfrost-platform-solitary:
     image: ghcr.io/blockfrost/blockfrost-platform:latest
     build:
       context: ./
@@ -35,14 +64,12 @@ services:
       - 3000:3000
     volumes:
       - node-ipc:/ipc
+    profiles: [solitary]
     entrypoint:
       - /app/blockfrost-platform
       - --network
       - $NETWORK
-      - --secret
-      - $SECRET
-      - --reward-address
-      - $REWARD_ADDRESS
+      - --solitary
       - --node-socket-path
       - /ipc/node.socket
 volumes:

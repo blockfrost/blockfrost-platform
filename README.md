@@ -124,6 +124,9 @@ The below command will build and run the `blocfrost-platform` binary, along with
 In the root folder of the repository:
 
 ```console
+# Solitary Mode
+NETWORK=preview docker compose -p preview --profile solitary up --build -d
+# Or use it with blockfrost-icebreakers-api
 NETWORK=preview SECRET=my-secret REWARD_ADDRESS=my-reward-address docker compose -p preview up --build -d
 docker compose watch # Auto rebuild on changes
 ```
