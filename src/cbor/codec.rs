@@ -34,12 +34,12 @@ impl<'b> Decode<'b, ()> for ApplyConwayTxPredError {
         use ApplyConwayTxPredError::*;
 
         match error {
-            1 => Ok(UtxowFailure(d.decode()?)),
+            1 => Ok(ConwayUtxowFailure(d.decode()?)),
             2 => Ok(CertsFailure(d.decode()?)),
             3 => Ok(GovFailure(d.decode()?)),
             // TODO Fix this
             // 4 => Ok(WdrlNotDelegatedToDRep(d.decode()?)),
-            5 => Ok(TreasuryValueMismatch(d.decode()?)),
+            5 => Ok(ConwayTreasuryValueMismatch(d.decode()?, d.decode()?)),
             6 => Ok(TxRefScriptsSizeTooBig(d.decode()?)),
             7 => Ok(MempoolFailure(d.decode()?)),
             _ => Err(decode::Error::message(format!(

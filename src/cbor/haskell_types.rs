@@ -8,7 +8,8 @@ use pallas_codec::minicbor::Decode;
 use pallas_codec::utils::Bytes;
 use pallas_primitives::{
     byron::{TxIn, TxOut},
-    conway::{Coin, DatumHash, ExUnits, RewardAccount, ScriptHash, VKeyWitness, Value},
+    conway::{DatumHash, ExUnits, RewardAccount, ScriptHash, VKeyWitness, Value},
+    Coin,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -117,11 +118,11 @@ pub struct ApplyTxErr(pub Vec<ApplyConwayTxPredError>);
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Ledger.hs#L146
 #[derive(Debug, SerializeDisplay)]
 pub enum ApplyConwayTxPredError {
-    UtxowFailure(ConwayUtxoWPredFailure),
+    ConwayUtxowFailure(ConwayUtxoWPredFailure),
     CertsFailure(ConwayUtxoWPredFailure),
     GovFailure(ConwayUtxoWPredFailure),
     WdrlNotDelegatedToDRep(StakeKeyHash),
-    TreasuryValueMismatch(Coin),
+    ConwayTreasuryValueMismatch(DisplayCoin, DisplayCoin),
     TxRefScriptsSizeTooBig(u64),
     MempoolFailure(String),
 }
@@ -131,11 +132,13 @@ impl fmt::Display for ApplyConwayTxPredError {
         use ApplyConwayTxPredError::*;
 
         match self {
-            UtxowFailure(e) => write!(f, "UtxowFailure ({})", e),
+            ConwayUtxowFailure(e) => write!(f, "ConwayUtxowFailure ({})", e),
             CertsFailure(e) => write!(f, "CertsFailure ({})", e),
             GovFailure(e) => write!(f, "GovFailure ({})", e),
             WdrlNotDelegatedToDRep(e) => write!(f, "WdrlNotDelegatedToDRep ({})", e),
-            TreasuryValueMismatch(e) => write!(f, "TreasuryValueMismatch ({})", e),
+            ConwayTreasuryValueMismatch(c1, c2) => {
+                write!(f, "ConwayTreasuryValueMismatch ({}) ({})", c1, c2)
+            }
             TxRefScriptsSizeTooBig(e) => write!(f, "TxRefScriptsSizeTooBig ({})", e),
             MempoolFailure(e) => write!(f, "MempoolFailure ({})", e),
         }
@@ -222,23 +225,23 @@ pub enum ConwayUtxoPredFailure {
     OutsideValidityIntervalUTxO(ValidityInterval, SlotNo), // validity interval, current slot
     MaxTxSizeUTxO(u64),                                    // less than or equal
     InputSetEmptyUTxO(),                                   // empty
-    FeeTooSmallUTxO(Coin, Coin),                           // Mismatch expected, supplied
+    FeeTooSmallUTxO(DisplayCoin, DisplayCoin),             // Mismatch expected, supplied
     ValueNotConservedUTxO(DisplayValue, DisplayValue),
     WrongNetwork(Network, Vec<Addr>), // the expected network id,  the set of addresses with incorrect network IDs
     WrongNetworkWithdrawal(Network, Vec<RewardAccount>), // the expected network id ,  the set of reward addresses with incorrect network IDs
     OutputTooSmallUTxO(Vec<SerializableTxOut>),
     OutputBootAddrAttrsTooBig(Vec<SerializableTxOut>),
     OutputTooBigUTxO(Vec<(u64, u64, SerializableTxOut)>), //  list of supplied bad transaction output triples (actualSize,PParameterMaxValue,TxOut)
-    InsufficientCollateral(Coin, Coin), // balance computed, the required collateral for the given fee
-    ScriptsNotPaidUTxO(Utxo),           // The UTxO entries which have the wrong kind of script
-    ExUnitsTooBigUTxO(DisplayExUnits),  // check: The values are serialised in reverse order
+    InsufficientCollateral(DisplayCoin, DisplayCoin), // balance computed, the required collateral for the given fee
+    ScriptsNotPaidUTxO(Utxo), // The UTxO entries which have the wrong kind of script
+    ExUnitsTooBigUTxO(DisplayExUnits), // check: The values are serialised in reverse order
     CollateralContainsNonADA(DisplayValue),
     WrongNetworkInTxBody(), // take in Network, https://github.com/IntersectMBO/cardano-ledger/blob/78b20b6301b2703aa1fe1806ae3c129846708a10/libs/cardano-ledger-core/src/Cardano/Ledger/BaseTypes.hs#L779
     OutsideForecast(SlotNo),
     TooManyCollateralInputs(u64), // this is Haskell Natural, how many bit is it?
     NoCollateralInputs(),         // empty
-    IncorrectTotalCollateralField(Coin, Coin), // collateral provided, collateral amount declared in transaction body
-    BabbageOutputTooSmallUTxO(Vec<(SerializableTxOut, Coin)>), // list of supplied transaction outputs that are too small, together with the minimum value for the given output
+    IncorrectTotalCollateralField(DisplayCoin, DisplayCoin), // collateral provided, collateral amount declared in transaction body
+    BabbageOutputTooSmallUTxO(Vec<(SerializableTxOut, DisplayCoin)>), // list of supplied transaction outputs that are too small, together with the minimum value for the given output
     BabbageNonDisjointRefInputs(Vec<SerializableTxIn>), // TxIns that appear in both inputs and reference inputs
 }
 
@@ -255,17 +258,17 @@ impl fmt::Display for ConwayUtxoPredFailure {
             MaxTxSizeUTxO(size) => write!(f, "MaxTxSizeUTxO ({})", size),
             InputSetEmptyUTxO() => write!(f, "InputSetEmptyUTxO"),
             FeeTooSmallUTxO(expected, supplied) => {
-                write!(f, "FeeTooSmallUTxO ({}, {})", expected, supplied)
+                write!(f, "FeeTooSmallUTxO ({}) ({})", expected, supplied)
             }
             ValueNotConservedUTxO(expected, supplied) => {
-                write!(f, "ValueNotConservedUTxO ({}, {})", expected, supplied)
+                write!(f, "ValueNotConservedUTxO ({}) ({})", expected, supplied)
             }
             WrongNetwork(network, addrs) => {
-                write!(f, "WrongNetwork ({}, {})", network, display_vec(addrs))
+                write!(f, "WrongNetwork ({}) ({})", network, display_vec(addrs))
             }
             WrongNetworkWithdrawal(network, accounts) => write!(
                 f,
-                "WrongNetworkWithdrawal ({}, {})",
+                "WrongNetworkWithdrawal ({}) ({})",
                 network,
                 display_vec(accounts)
             ),
@@ -279,7 +282,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
                 write!(f, "OutputTooBigUTxO ({})", display_triple_vec(outputs))
             }
             InsufficientCollateral(balance, required) => {
-                write!(f, "InsufficientCollateral ({}, {})", balance, required)
+                write!(f, "InsufficientCollateral ({}) ({})", balance, required)
             }
             ScriptsNotPaidUTxO(utxo) => write!(f, "ScriptsNotPaidUTxO ({})", utxo),
             ExUnitsTooBigUTxO(units) => write!(f, "ExUnitsTooBigUTxO ({})", units),
@@ -445,6 +448,16 @@ type SlotNo = u64;
 pub struct EraMismatch {
     ledger: String, //  Name of the era of the ledger ("Byron" or "Shelley").
     other: String,  // Era of the block, header, transaction, or query.
+}
+
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct DisplayCoin(#[n(0)] Coin);
+
+impl fmt::Display for DisplayCoin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Coin {}", self.0)
+    }
 }
 
 /*

@@ -1,0 +1,15 @@
+{
+  "seed": 1732186210861,
+  "testCases": [
+    {
+      "cbor": "818206828201820083051a000a63d11a0009580683051a0008d00a1a0001ebc4",
+      "haskellRepr": "ApplyTxError (ConwayUtxowFailure (UtxoFailure (FeeTooSmallUTxO (Coin 680913) (Coin 612358))) :| [ConwayTreasuryValueMismatch (Coin 577546) (Coin 125892)])",
+      "jsonNaive": [
+        "ConwayUtxowFailure (UtxoFailure (FeeTooSmallUTxO (Coin 680913) (Coin 612358)))",
+        "ConwayTreasuryValueMismatch (Coin 577546) (Coin 125892)"
+      ],
+      "jsonSubmitAPI": "unimplemented (yet)"
+    }
+  ],
+  "typeTag": "ApplyTxError (ConwayEra StandardCrypto)"
+}
