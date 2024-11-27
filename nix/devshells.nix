@@ -50,6 +50,11 @@ in {
       category = "handy";
       package = internal.tx-build;
     }
+    {
+      category = "handy";
+      name = "testgen-hs";
+      package = internal.testgen-hs;
+    }
   ];
 
   language.c.compiler =

@@ -9,6 +9,8 @@
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.1.2";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
+    testgen-hs.url = "github:input-output-hk/testgen-hs/10.1.2.1"; # make sure it follows cardano-node
+    testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
     cardano-playground.url = "github:input-output-hk/cardano-playground/b4f47fd78beec0ea1ed880d6f0b794919e0c0463";
@@ -37,9 +39,12 @@
         pkgs,
         ...
       }: {
-        packages =
+        packages = let
+          internal = inputs.self.internal.${system};
+        in
           {
-            default = inputs.self.internal.${system}.package;
+            default = internal.package;
+            inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (inputs.nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
             default-x86_64-windows = inputs.self.internal.x86_64-windows.package;
@@ -49,7 +54,7 @@
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
-          programs.alejandra.enable = true;
+          programs.alejandra.enable = true; # Nix
           programs.prettier.enable = true;
           settings.formatter.prettier.options = [
             "--config"
@@ -60,7 +65,7 @@
           ];
           programs.rustfmt.enable = true;
           programs.yamlfmt.enable = true;
-          programs.taplo.enable = true;
+          programs.taplo.enable = true; # TOML
           programs.shfmt.enable = true;
         };
       };

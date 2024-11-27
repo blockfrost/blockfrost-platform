@@ -72,6 +72,10 @@ in rec {
     path = inputs.cardano-playground + "/static/book.play.dev.cardano.org/environments";
   };
 
+  testgen-hs-flake = (import inputs.flake-compat {src = inputs.testgen-hs;}).defaultNix;
+
+  testgen-hs = testgen-hs-flake.packages.${targetSystem}.default;
+
   stateDir =
     if pkgs.stdenv.isDarwin
     then "Library/Application Support/blockfrost-platform"
