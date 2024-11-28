@@ -31,6 +31,7 @@ jobs:
         run: cargo build --release --verbose
       - name: Test
         run: cargo test --verbose
+        timeout-minutes: 10
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Lint with Clippy
