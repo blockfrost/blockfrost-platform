@@ -32,6 +32,8 @@ metrics-exporter-prometheus = { version = "0.16", default-features = false }
 chrono = "0.4"
 deadpool = "0.12.1"
 serde_with = "3.11.0"
+tracing-test = "0.2.5"
+sysinfo = "0.32.1"
 
 [dev-dependencies]
 rstest = "0.22.0"
