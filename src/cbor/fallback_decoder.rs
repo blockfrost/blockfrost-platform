@@ -72,6 +72,37 @@ impl FallbackDecoder {
         })?
     }
 
+    /// This function is called at startup, so that we make sure that the worker is reasonable.
+    pub async fn startup_sanity_test(&self) -> Result<(), String> {
+        let input = hex::decode("8182068182028200a0").map_err(|err| err.to_string())?;
+        let result = self.decode(&input).await;
+        let expected = serde_json::json!({
+          "contents": {
+            "contents": {
+              "contents": {
+                "era": "ShelleyBasedEraConway",
+                "error": [
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
+                ],
+                "kind": "ShelleyTxValidationError"
+              },
+              "tag": "TxValidationErrorInCardanoMode"
+            },
+            "tag": "TxCmdTxSubmitValidationError"
+          },
+          "tag": "TxSubmitFail"
+        });
+
+        if result == Ok(expected) {
+            Ok(())
+        } else {
+            Err(format!(
+                "FallbackDecoder: startup_sanity_test failed: {:?}",
+                result
+            ))
+        }
+    }
+
     /// A heuristic to find the child binary that we’ll use.
     pub fn locate_child_binary() -> Result<String, String> {
         use std::env;
@@ -228,31 +259,12 @@ mod tests {
     use super::*;
     #[tokio::test]
     #[tracing_test::traced_test]
-    async fn test_deserialization() {
+    async fn test_fallback_decoder() {
         FallbackDecoder::locate_child_binary().unwrap();
 
         let decoder = FallbackDecoder::spawn();
-        let input = hex::decode("8182068182028200a0").unwrap();
-        let result = decoder.decode(&input).await;
-        assert_eq!(
-            result,
-            Ok(serde_json::json!({
-              "contents": {
-                "contents": {
-                  "contents": {
-                    "era": "ShelleyBasedEraConway",
-                    "error": [
-                      "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
-                    ],
-                    "kind": "ShelleyTxValidationError"
-                  },
-                  "tag": "TxValidationErrorInCardanoMode"
-                },
-                "tag": "TxCmdTxSubmitValidationError"
-              },
-              "tag": "TxSubmitFail"
-            }))
-        );
+
+        decoder.startup_sanity_test().await.unwrap();
 
         // Now, kill our child to test the restart logic:
         sysinfo::System::new_all()
