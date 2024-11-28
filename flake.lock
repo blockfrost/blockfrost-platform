@@ -148,10 +148,10 @@
       "flake": false,
       "locked": {
         "lastModified": 1732706647,
-        "narHash": "sha256-0eEzmUUcjQqsCY3FDLi0eQY+Mc1mAo/2e6w/tST9pLw=",
+        "narHash": "sha256-761CbbEvdVbp+51kYtPrK4rgHjojYk4mncrFNQURQ54=",
         "owner": "input-output-hk",
         "repo": "testgen-hs",
-        "rev": "263b69ca80d455967145774707f8a97f079fbd36",
+        "rev": "1266c36e2aee0a97e10fb3854bdf801e78650a5d",
         "type": "github"
       },
       "original": {

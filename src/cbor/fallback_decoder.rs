@@ -19,6 +19,8 @@ struct FDRequest {
     response_tx: oneshot::Sender<Result<serde_json::Value, String>>,
 }
 
+const CHILD_EXE_NAME: &str = "testgen-hs";
+
 impl FallbackDecoder {
     /// Starts a new child process.
     pub fn spawn() -> Self {
@@ -70,6 +72,55 @@ impl FallbackDecoder {
         })?
     }
 
+    /// A heuristic to find the child binary that we’ll use.
+    pub fn locate_child_binary() -> Result<String, String> {
+        use std::env;
+
+        let binary_name = if cfg!(windows) {
+            format!("{}.exe", CHILD_EXE_NAME)
+        } else {
+            CHILD_EXE_NAME.to_string()
+        };
+
+        // Check the directory of the current binary:
+        if let Ok(current_exe) = env::current_exe() {
+            if let Some(current_dir) = current_exe.parent() {
+                let potential_path = current_dir.join(&binary_name);
+                if potential_path.is_file() {
+                    return Ok(potential_path.to_string_lossy().into_owned());
+                }
+            }
+        }
+
+        // Check PATH:
+        if let Ok(paths) = env::var("PATH") {
+            for path in env::split_paths(&paths) {
+                let potential_path = path.join(&binary_name);
+                if potential_path.is_file() {
+                    return Ok(potential_path.to_string_lossy().into_owned());
+                }
+            }
+        }
+
+        // Check CHILD_EXE_NAME/CHILD_EXE_NAME.exe in the current directory if
+        // running tests and it contains Cargo.toml:
+        if cfg!(test) {
+            if let Ok(current_dir) = env::current_dir() {
+                if current_dir.join("Cargo.toml").is_file() {
+                    let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
+                    if potential_path.is_file() {
+                        return Ok(potential_path.to_string_lossy().into_owned());
+                    }
+                }
+            }
+        }
+
+        Err(format!(
+            "Could not find binary '{}' in the current directory or on PATH",
+            binary_name
+        ))
+    }
+
     /// Returns the current child PID:
     pub fn child_pid(&self) -> Option<u32> {
         match self.current_child_pid.load(atomic::Ordering::Relaxed) {
@@ -85,7 +136,7 @@ impl FallbackDecoder {
     ) -> Result<(), String> {
         // FIXME: _find_ the exe_path
         // FIXME: make a release with LineBuffering
-        let exe_path = "/nix/store/4y2jqhw3c2i407m8rmkvlja9wdr1kqhq-testgen-hs-exe-testgen-hs-x86_64-unknown-linux-musl-10.1.2.1/bin/testgen-hs";
+        let exe_path = Self::locate_child_binary().unwrap_or(CHILD_EXE_NAME.to_string());
 
         let mut child = proc::Command::new(exe_path)
             .arg("deserialize-stream")
@@ -178,6 +229,8 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_deserialization() {
+        FallbackDecoder::locate_child_binary().unwrap();
+
         let decoder = FallbackDecoder::spawn();
         let input = hex::decode("8182068182028200a0").unwrap();
         let result = decoder.decode(&input).await;
