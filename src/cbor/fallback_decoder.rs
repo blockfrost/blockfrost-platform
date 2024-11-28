@@ -82,10 +82,10 @@ impl FallbackDecoder {
             CHILD_EXE_NAME.to_string()
         };
 
-        // Check the directory of the current binary:
+        // Check in the CHILD_EXE_NAME subdirectory in the directory of the current binary:
         if let Ok(current_exe) = env::current_exe() {
             if let Some(current_dir) = current_exe.parent() {
-                let potential_path = current_dir.join(&binary_name);
+                let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
                 if potential_path.is_file() {
                     return Ok(potential_path.to_string_lossy().into_owned());
                 }

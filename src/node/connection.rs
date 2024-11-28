@@ -1,5 +1,11 @@
-use crate::BlockfrostError;
-use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
+use crate::{
+    cbor::fallback_decoder::FallbackDecoder, cbor::haskell_types::TxValidationError,
+    BlockfrostError,
+};
+use pallas_codec::minicbor::{display, Decoder};
+use pallas_network::{
+    facades::NodeClient as NodeClientFacade, miniprotocols::localstate, multiplexer::Error,
+};
 use std::{boxed::Box, pin::Pin};
 use tracing::warn;
 
@@ -10,6 +16,7 @@ pub struct NodeClient {
     /// *always* [`Some`]. See [`NodeConnPoolManager::recycle`] for an
     /// explanation.
     pub(in crate::node) client: Option<NodeClientFacade>,
+    pub(in crate::node) fallback_decoder: FallbackDecoder,
 }
 
 impl NodeClient {

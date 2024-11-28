@@ -36,6 +36,16 @@ in rec {
   package = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
+      preCheck = ''
+        export PATH=${lib.makeBinPath [testgen-hs]}:"$PATH"
+      '';
+      postInstall = ''
+        chmod -R +w $out
+        mv $out/bin $out/libexec
+        ln -sf ${testgen-hs}/bin $out/libexec/testgen-hs
+        mkdir -p $out/bin
+        ln -sf $out/libexec/blockfrost-platform $out/bin/
+      '';
     });
 
   cardano-node-flake = let

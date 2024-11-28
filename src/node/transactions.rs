@@ -45,22 +45,23 @@ impl NodeClient {
                 Ok(txid)
             }
             Ok(Response::Rejected(reason)) => {
+                // The [2..] is a Pallas bug, cf. <https://github.com/txpipe/pallas/pull/548>.
                 let reason = &reason.0[2..];
-                let msg_res = Self::try_decode_error(&reason);
 
-                match msg_res {
-                    Ok(decoded_error) => {
-                        let error_response = Self::generate_error_response(decoded_error);
-                        let error_message = serde_json::to_string(&error_response)
-                            .unwrap_or_else(|_| "Failed to serialize error response".to_string());
-
+                match self.fallback_decoder.decode(reason).await {
+                    Ok(submit_api_json) => {
+                        let error_message = "TxSubmitFail".to_string();
                         warn!(
-                            "reason in cbor: {}, error message: {}",
+                            "{}: {} ~ {:?}",
+                            error_message,
                             hex::encode(reason),
-                            error_message
+                            submit_api_json
                         );
 
-                        Err(BlockfrostError::custom_400(error_message))
+                        Err(BlockfrostError::custom_400_details(
+                            error_message,
+                            submit_api_json,
+                        ))
                     }
 
                     Err(e) => {
@@ -102,7 +103,7 @@ impl NodeClient {
     }
 
     /// Mimicks the data structure of the error response from the cardano-submit-api
-    fn generate_error_response(error: TxValidationError) -> TxSubmitFail {
+    fn _unused_i_i_i_i_i_i_i_generate_error_response(error: TxValidationError) -> TxSubmitFail {
         use crate::cbor::haskell_types::{
             TxCmdError::TxCmdTxSubmitValidationError, TxSubmitFail::TxSubmitFail,
             TxValidationErrorInCardanoMode::TxValidationErrorInCardanoMode,
@@ -138,9 +139,10 @@ mod tests {
             era: ShelleyBasedEraConway,
         };
 
-        let error_string =
-            serde_json::to_string(&NodeClient::generate_error_response(validation_error))
-                .expect("Failed to convert error to JSON");
+        let error_string = serde_json::to_string(
+            &NodeClient::_unused_i_i_i_i_i_i_i_generate_error_response(validation_error),
+        )
+        .expect("Failed to convert error to JSON");
         let expected_error_string = r#"{"tag":"TxSubmitFail","contents":{"tag":"TxCmdTxSubmitValidationError","contents":{"tag":"TxValidationErrorInCardanoMode","contents":{"kind":"ShelleyTxValidationError","error":["MempoolFailure (error1)","MempoolFailure (error2)"],"era":"ShelleyBasedEraConway"}}}}"#;
 
         assert_eq!(error_string, expected_error_string);
