@@ -64,7 +64,7 @@
             })
           ];
           programs.rustfmt.enable = true;
-          programs.yamlfmt.enable = true;
+          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
           programs.taplo.enable = true; # TOML
           programs.shfmt.enable = true;
         };

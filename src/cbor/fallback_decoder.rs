@@ -165,8 +165,6 @@ impl FallbackDecoder {
         last_unfulfilled_request: &mut Option<FDRequest>,
         current_child_pid: &Arc<AtomicU32>,
     ) -> Result<(), String> {
-        // FIXME: _find_ the exe_path
-        // FIXME: make a release with LineBuffering
         let exe_path = Self::locate_child_binary().unwrap_or(CHILD_EXE_NAME.to_string());
 
         let mut child = proc::Command::new(exe_path)
