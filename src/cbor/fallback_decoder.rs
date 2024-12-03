@@ -178,6 +178,12 @@ impl FallbackDecoder {
 
         let result = Self::process_requests(&mut child, receiver, last_unfulfilled_request);
 
+        // Let’s make sure it’s dead in case a different error landed us here.
+        // Will return Ok(()) if already dead.
+        child
+            .kill()
+            .map_err(|err| format!("couldn’t kill the child: {:?}", err))?;
+
         child
             .wait()
             .map_err(|err| format!("couldn’t reap the child: {:?}", err))?;
@@ -201,31 +207,49 @@ impl FallbackDecoder {
         let stdout_reader = BufReader::new(stdout);
         let mut stdout_lines = stdout_reader.lines();
 
-        while let Some(request) = last_unfulfilled_request
+        while let Some((request, is_a_retry)) = last_unfulfilled_request
             .take()
-            .or_else(|| receiver.blocking_recv())
+            .map(|a| (a, true))
+            .or_else(|| receiver.blocking_recv().map(|a| (a, false)))
         {
             let cbor_hex = hex::encode(&request.cbor);
             *last_unfulfilled_request = Some(request);
 
-            writeln!(stdin, "{}", cbor_hex)
-                .map_err(|err| format!("couldn’t write to stdin: {:?}", err))?;
+            let mut ask_and_receive = || -> Result<Result<serde_json::Value, String>, String> {
+                writeln!(stdin, "{}", cbor_hex)
+                    .map_err(|err| format!("couldn’t write to stdin: {:?}", err))?;
 
-            let result: Result<serde_json::Value, String> = match stdout_lines.next() {
-                Some(Ok(line)) => Self::parse_json(&line),
-                Some(Err(e)) => Err(format!("failed to read from subprocess: {}", e))?,
-                None => Err("no output from subprocess".to_string())?,
+                match stdout_lines.next() {
+                    Some(Ok(line)) => Ok(Self::parse_json(&line)),
+                    Some(Err(e)) => Err(format!("failed to read from subprocess: {}", e)),
+                    None => Err("no output from subprocess".to_string()),
+                }
             };
 
-            // unwrap is safe, we wrote there right before the writeln!()
-            let request = last_unfulfilled_request.take().unwrap();
+            // Split the result to satisfy the borrow checker:
+            let (result_for_response, result_for_logs) = partition_result(ask_and_receive());
 
-            // unwrap is safe, the other side would have to drop for a
-            // panic – can’t happen, because we control it:
-            request.response_tx.send(result).unwrap();
+            // We want to respond to the user with a failure in case this was a retry.
+            // Otherwise, it’s an infinite loop and wait time for the response.
+            if is_a_retry || result_for_response.is_ok() {
+                // unwrap is safe, we wrote there right before the writeln!()
+                let request = last_unfulfilled_request.take().unwrap();
+
+                let response = match result_for_response {
+                    Ok(ok) => ok,
+                    Err(_) => Err(format!("repeated internal failure of {}", CHILD_EXE_NAME)),
+                };
+
+                // unwrap is safe, the other side would have to drop for a
+                // panic – can’t happen, because we control it:
+                request.response_tx.send(response).unwrap();
+            }
+
+            // Now break the loop, and restart everything if we failed:
+            result_for_logs?
         }
 
-        Err("reached EOF".to_string())
+        Err("request channel closed, won’t happen".to_string())
     }
 
     fn parse_json(input: &str) -> Result<serde_json::Value, String> {
@@ -249,6 +273,13 @@ impl FallbackDecoder {
                     .map(serde_json::Value::take)
                     .ok_or_else(|| "Missing 'json' field".to_string())
             })
+    }
+}
+
+fn partition_result<A, E>(ae: Result<A, E>) -> (Result<A, ()>, Result<(), E>) {
+    match ae {
+        Err(err) => (Err(()), Err(err)),
+        Ok(ok) => (Ok(ok), Ok(())),
     }
 }
 
