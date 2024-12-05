@@ -1,11 +1,5 @@
-use crate::{
-    cbor::fallback_decoder::FallbackDecoder, cbor::haskell_types::TxValidationError,
-    BlockfrostError,
-};
-use pallas_codec::minicbor::{display, Decoder};
-use pallas_network::{
-    facades::NodeClient as NodeClientFacade, miniprotocols::localstate, multiplexer::Error,
-};
+use crate::{cbor::fallback_decoder::FallbackDecoder, BlockfrostError};
+use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
 use std::{boxed::Box, pin::Pin};
 use tracing::warn;
 

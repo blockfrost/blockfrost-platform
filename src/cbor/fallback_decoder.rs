@@ -160,6 +160,12 @@ impl FallbackDecoder {
         }
     }
 
+    #[cfg(test)]
+    /// A single global [`FallbackDecoder`] that you can cheaply use in tests.
+    pub fn instance() -> Self {
+        GLOBAL_INSTANCE.clone()
+    }
+
     fn spawn_child(
         receiver: &mut mpsc::Receiver<FDRequest>,
         last_unfulfilled_request: &mut Option<FDRequest>,
@@ -284,10 +290,14 @@ fn partition_result<A, E>(ae: Result<A, E>) -> (Result<A, ()>, Result<(), E>) {
 }
 
 #[cfg(test)]
+static GLOBAL_INSTANCE: std::sync::LazyLock<FallbackDecoder> =
+    std::sync::LazyLock::new(FallbackDecoder::spawn);
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[tokio::test]
-    #[tracing_test::traced_test]
+    //#[tracing_test::traced_test]
     async fn test_fallback_decoder() {
         FallbackDecoder::locate_child_binary().unwrap();
 
