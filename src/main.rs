@@ -1,29 +1,26 @@
 use axum::extract::Request;
 use axum::ServiceExt;
-use blockfrost_platform::{
-    background_tasks::node_health_check_task,
-    cli::{Args, Config},
-    logging::setup_tracing,
-    server::build,
-    AppError,
-};
+use blockfrost_platform::background_tasks::node_health_check_task;
+use blockfrost_platform::cli::{Args, Config};
+use blockfrost_platform::logging::setup_tracing;
+use blockfrost_platform::router::build_app;
+use blockfrost_platform::AppError;
 use clap::Parser;
-use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    // CLI
+    // 1. Parse CLI
     let arguments = Args::parse();
-    let config = Arc::new(Config::from_args(arguments)?);
+    let config = Config::from_args(arguments)?;
 
-    // Logging
-    setup_tracing(config.log_level);
+    // 2. Logging
+    setup_tracing(&config);
 
-    // Build app
-    let (app, node_conn_pool) = build(config.clone()).await?;
+    // 3. Build app
+    let (app, node_conn_pool) = build_app(&config).await?;
 
-    // Bind server
+    // 4. Bind server
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
 
