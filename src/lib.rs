@@ -8,7 +8,7 @@ pub mod icebreakers_api;
 pub mod logging;
 pub mod middlewares;
 pub mod node;
-pub mod router;
+pub mod server;
 
 pub use errors::{AppError, BlockfrostError};
 pub use node::pool::NodePool;
