@@ -304,6 +304,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "pallas",
+ "pallas-addresses",
  "pallas-codec",
  "pallas-crypto",
  "pallas-network",

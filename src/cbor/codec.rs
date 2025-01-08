@@ -1,8 +1,16 @@
-use pallas_codec::minicbor::{decode, Decode, Decoder};
+use pallas_addresses::Address;
+use pallas_codec::minicbor::{self, decode, Decode, Decoder};
+use pallas_primitives::{Bytes, Nullable, ScriptHash};
 
 use crate::cbor::haskell_types::{
-    ApplyConwayTxPredError, ApplyTxErr, ConwayUtxoPredFailure, ConwayUtxoWPredFailure,
-    PlutusPurpose, ShelleyBasedEra, TxValidationError, Utxo,
+    ApplyConwayTxPredError, ApplyTxError, ConwayUtxoPredFailure, ConwayUtxoWPredFailure, MultiAsset, PlutusPurpose, ShelleyBasedEra, StrictMaybe, TxValidationError, Utxo
+};
+
+use super::{
+    haskell_display::HaskellDisplay,
+    haskell_types::{
+        BabbageTxOut, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure, Credential, CustomSet258, DisplayValue, Network, RewardAccountFielded
+    },
 };
 
 impl<'b> Decode<'b, ()> for TxValidationError {
@@ -14,12 +22,12 @@ impl<'b> Decode<'b, ()> for TxValidationError {
     }
 }
 
-impl<'b> Decode<'b, ()> for ApplyTxErr {
+impl<'b> Decode<'b, ()> for ApplyTxError {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         let errors = d.array_iter::<ApplyConwayTxPredError>()?.collect();
 
         match errors {
-            Ok(errors) => Ok(ApplyTxErr(errors)),
+            Ok(errors) => Ok(ApplyTxError(errors)),
             Err(error) => Err(error),
         }
     }
@@ -34,16 +42,30 @@ impl<'b> Decode<'b, ()> for ApplyConwayTxPredError {
         use ApplyConwayTxPredError::*;
 
         match error {
-            1 => Ok(UtxowFailure(d.decode()?)),
-            2 => Ok(CertsFailure(d.decode()?)),
-            3 => Ok(GovFailure(d.decode()?)),
-            // TODO Fix this
-            // 4 => Ok(WdrlNotDelegatedToDRep(d.decode()?)),
-            5 => Ok(TreasuryValueMismatch(d.decode()?)),
-            6 => Ok(TxRefScriptsSizeTooBig(d.decode()?)),
-            7 => Ok(MempoolFailure(d.decode()?)),
+            1 => Ok(ConwayUtxowFailure(d.decode()?)),
+            2 => Ok(ConwayCertsFailure(d.decode()?)),
+            3 => Ok(ConwayGovFailure(d.decode()?)),
+            4 => Ok(ConwayWdrlNotDelegatedToDRep(d.decode()?)),
+            5 => Ok(ConwayTreasuryValueMismatch(d.decode()?, d.decode()?)),
+            6 => Ok(ConwayTxRefScriptsSizeTooBig(d.decode()?, d.decode()?)),
+            7 => Ok(ConwayMempoolFailure(d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ApplyTxPredError: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for Network {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let error = d.u16()?;
+
+        match error {
+            0 => Ok(Network::Testnet),
+            1 => Ok(Network::Mainnet),
+            _ => Err(decode::Error::message(format!(
+                "unknown network while decoding Network: {}",
                 error
             ))),
         }
@@ -71,7 +93,7 @@ impl<'b> Decode<'b, ()> for ConwayUtxoWPredFailure {
             10 => Ok(MissingRedeemers(d.decode()?)),
             11 => Ok(MissingRequiredDatums(d.decode()?, d.decode()?)),
             12 => Ok(NotAllowedSupplementalDatums(d.decode()?, d.decode()?)),
-            13 => Ok(PPViewHashesDontMatch(d.decode()?)),
+            13 => Ok(PPViewHashesDontMatch(d.decode()?, d.decode()?)),
             14 => Ok(UnspendableUTxONoDatumHash(d.decode()?)),
             15 => Ok(ExtraRedeemers(d.decode()?)),
             16 => Ok(MalformedScriptWitnesses(d.decode()?)),
@@ -122,6 +144,190 @@ impl<'b> Decode<'b, ()> for ConwayUtxoPredFailure {
         }
     }
 }
+impl<'b> Decode<'b, ()> for ConwayGovPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let era = d.u16()?;
+
+        use ConwayGovPredFailure::*;
+
+        match era {
+            0 => Ok(GovActionsDoNotExist(d.decode()?)),
+            1 => Ok(MalformedProposal(d.decode()?)),
+            2 => Ok(ProposalProcedureNetworkIdMismatch(d.decode()?, d.decode()?)),
+            3 => Ok(TreasuryWithdrawalsNetworkIdMismatch(
+                d.decode()?,
+                d.decode()?,
+            )),
+            4 => Ok(ProposalDepositIncorrect(d.decode()?)),
+            5 => Ok(DisallowedVoters(d.decode()?)),
+            6 => Ok(ConflictingCommitteeUpdate(d.decode()?)),
+
+            7 => Ok(ExpirationEpochTooSmall(d.decode()?)),
+
+            8 => Ok(InvalidPrevGovActionId(d.decode()?)),
+
+            9 => Ok(VotingOnExpiredGovAction(d.decode()?)),
+
+            10 => Ok(ProposalCantFollow(d.decode()?)),
+            11 => Ok(InvalidPolicyHash(d.decode()?, d.decode()?)),
+            12 => Ok(DisallowedProposalDuringBootstrap(d.decode()?)),
+            13 => Ok(DisallowedVotesDuringBootstrap(d.decode()?)),
+            14 => Ok(VotersDoNotExist(d.decode()?)),
+            15 => Ok(ZeroTreasuryWithdrawals(d.decode()?)),
+            16 => Ok(ProposalReturnAccountDoesNotExist(d.decode()?)),
+            17 => Ok(TreasuryWithdrawalReturnAccountsDoNotExist(d.decode()?)),
+
+            _ => Err(decode::Error::message(format!(
+                "unknown era while decoding ConwayGovPredFailure: {}",
+                era
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use ConwayCertsPredFailure::*;
+
+        match error {
+            0 => Ok(WithdrawalsNotInRewardsCERTS(d.decode()?)),
+            1 => Ok(CertFailure(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding ConwayCertsPredFailure: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for ConwayCertPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use ConwayCertPredFailure::*;
+
+        match error {
+            1 => Ok(DelegFailure(d.decode()?)),
+            2 => Ok(PoolFailure(d.decode()?)),
+            3 => Ok(GovCertFailure(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding ConwayCertPredFailure: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for ConwayGovCertPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use ConwayGovCertPredFailure::*;
+
+        match error {
+            0 => Ok(ConwayDRepAlreadyRegistered(d.decode()?)),
+            1 => Ok(ConwayDRepNotRegistered(d.decode()?)),
+            2 => Ok(ConwayDRepIncorrectDeposit(d.decode()?, d.decode()?)),
+            3 => Ok(ConwayCommitteeHasPreviouslyResigned(d.decode()?)),
+            4 => Ok(ConwayDRepIncorrectRefund(d.decode()?, d.decode()?)),
+            5 => Ok(ConwayCommitteeIsUnknown(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding ConwayGovCertPredFailure: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for ConwayDelegPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use ConwayDelegPredFailure::*;
+
+        match error {
+            1 => Ok(IncorrectDepositDELEG(d.decode()?)),
+            2 => Ok(StakeKeyRegisteredDELEG(d.decode()?)),
+            3 => Ok(StakeKeyNotRegisteredDELEG(d.decode()?)),
+            4 => Ok(StakeKeyHasNonZeroRewardAccountBalanceDELEG(d.decode()?)),
+            5 => Ok(DelegateeDRepNotRegisteredDELEG(d.decode()?)),
+            6 => Ok(DelegateeStakePoolNotRegisteredDELEG(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error code while decoding ConwayDelegPredFailure: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b, T> Decode<'b, ()> for StrictMaybe<T>
+where
+    T: Decode<'b, ()> + HaskellDisplay,
+{
+    fn decode(d: &mut Decoder<'b>, ctx: &mut ()) -> Result<Self, decode::Error> {
+        let pos = d.position();
+        let arr = d.array()?;
+       // d.set_position(pos);
+
+        // d.datatype()?;
+/*
+        match d.datatype()? {
+            minicbor::data::Type::Null => {
+                d.null()?;
+                Ok(Self::Null)
+            }
+            minicbor::data::Type::Undefined => {
+                d.undefined()?;
+                Ok(Self::Undefined)
+            }
+            _ => {
+                let x = d.decode_with(ctx)?;
+                Ok(Self::Some(x))
+            }
+        }
+         */
+        match arr {
+            Some(len) if len > 0 => {
+                Ok(StrictMaybe::Just(d.decode_with(ctx)?))
+            }
+            _ => {
+              //  d.skip()?;
+                Ok(StrictMaybe::Nothing)
+            },
+        }
+    }
+}
+impl<'b> Decode<'b, ()> for Credential {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+        let tag = d.u16()?;
+
+        use Credential::*;
+
+        match tag {
+            0 => Ok(KeyHashObj(d.decode()?)),
+            1 => Ok(ScriptHashObj(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown tag while decoding Credential: {}",
+                tag
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for RewardAccountFielded {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let b = d.bytes()?;
+        Ok(RewardAccountFielded::new(hex::encode(b)))
+    }
+}
 
 impl<'b> Decode<'b, ()> for ShelleyBasedEra {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
@@ -148,21 +354,65 @@ impl<'b> Decode<'b, ()> for ShelleyBasedEra {
 // not tested yet
 impl<'b> Decode<'b, ()> for PlutusPurpose {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        // d.array()?;
+        d.array()?;
         let purpose = d.u16()?;
 
         use PlutusPurpose::*;
 
         match purpose {
-            0 => Ok(Spending),
-            1 => Ok(Minting),
-            2 => Ok(Certifying),
-            3 => Ok(Rewarding),
+            0 => Ok(Spending(d.decode()?)),
+            1 => Ok(Minting(d.decode()?)),
+            2 => Ok(Certifying(d.decode()?)),
+            3 => Ok(Rewarding(d.decode()?)),
+            4 => Ok(Voting(d.decode()?)),
+            5 => Ok(Proposing(d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown purpose while decoding PlutusPurpose: {}",
                 purpose
             ))),
         }
+    }
+}
+
+
+// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L484
+impl<'b> Decode<'b, ()> for BabbageTxOut {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let len = d.map()?;
+        match len {
+            Some(2) => { 
+                
+                Ok(BabbageTxOut::NotImplemented)
+            },
+            Some(3) => {
+                Ok(BabbageTxOut::NotImplemented)
+            },
+            Some(4) => {
+
+                // key 0
+                d.u8()?;
+                let addr = Address::from_bytes(d.bytes()?).unwrap();
+
+                
+                // key 1
+                d.u8()?;
+                d.array()?;
+                let value: DisplayValue = d.decode()?;
+                let multiAsset: MultiAsset = d.decode()?;
+
+                println!("BabbageTxOut::MaryTxOut: addr: {}, value: {}, multiAsset: {:?}", addr, value, multiAsset);
+
+                Ok(BabbageTxOut::NotImplemented)
+            },
+            None => { // indef map
+                Ok(BabbageTxOut::NotImplemented)
+            }
+            _ => Err(decode::Error::message(format!(
+                "unexpected number of fields while decoding BabbageTxOut: {}",
+                len.unwrap_or(0)
+            ))),
+        }
+       
     }
 }
 
@@ -172,5 +422,15 @@ impl<'b> Decode<'b, ()> for Utxo {
         // d.array()?;
         let tx_vec = d.decode()?;
         Ok(Utxo(tx_vec))
+    }
+}
+
+impl<'b, T> Decode<'b, ()> for CustomSet258<T>
+where
+    T: Decode<'b, ()>,
+{
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let tag = d.tag()?; // we are ignoring the unknown tag 258 here
+        Ok(CustomSet258(d.decode()?))
     }
 }

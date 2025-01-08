@@ -1,0 +1,17 @@
+{
+  "seed": 1733404834625,
+  "testCases": [
+    {
+      "cbor": "6cf0b09d99f0988f8f63317433",
+      "haskellRepr": "\"\\198489\\99279c1t3\"",
+      "json": "𰝙𘏏c1t3",
+      "typeTag": "Text"
+    },
+    {
+      "cbor": "6c0b7375430116144bf3b6a68a",
+      "haskellRepr": "\"\\vsuC\\SOH\\SYN\\DC4K\\1010058\"",
+      "json": "\u000bsuC\u0001\u0016\u0014K󶦊",
+      "typeTag": "Text"
+    }
+  ]
+}

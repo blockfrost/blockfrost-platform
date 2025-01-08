@@ -2,7 +2,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::process as proc;
 use std::sync::{
     atomic::{self, AtomicU32},
-    Arc,
+    Arc, LazyLock,
 };
 use std::thread;
 use tokio::sync::{mpsc, oneshot};
@@ -160,6 +160,12 @@ impl FallbackDecoder {
         }
     }
 
+    #[cfg(test)]
+    /// A single global [`FallbackDecoder`] that you can cheaply use in tests.
+    pub fn instance() -> Self {
+        GLOBAL_INSTANCE.clone()
+    }
+
     fn spawn_child(
         receiver: &mut mpsc::Receiver<FDRequest>,
         last_unfulfilled_request: &mut Option<FDRequest>,
@@ -284,10 +290,13 @@ fn partition_result<A, E>(ae: Result<A, E>) -> (Result<A, ()>, Result<(), E>) {
 }
 
 #[cfg(test)]
+static GLOBAL_INSTANCE: LazyLock<FallbackDecoder> = LazyLock::new(FallbackDecoder::spawn);
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[tokio::test]
-    #[tracing_test::traced_test]
+    //#[tracing_test::traced_test]
     async fn test_fallback_decoder() {
         FallbackDecoder::locate_child_binary().unwrap();
 
