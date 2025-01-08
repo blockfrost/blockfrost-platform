@@ -38,3 +38,4 @@ result-*
 *.iml
 
 .DS_Store
+testgen-hs
