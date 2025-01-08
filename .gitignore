@@ -36,3 +36,5 @@ result-*
 # JetBrains IDEs (IntelliJ, CLion, etc.)
 .idea/
 *.iml
+
+.DS_Store
