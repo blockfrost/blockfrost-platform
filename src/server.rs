@@ -18,7 +18,7 @@ use crate::{
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
-pub async fn build_app(config: &Config) -> Result<(NormalizePath<Router>, NodePool), AppError> {
+pub async fn build(config: &Config) -> Result<(NormalizePath<Router>, NodePool), AppError> {
     // 1. Set up fallback decoder
     let fallback_decoder = FallbackDecoder::spawn()?;
 
@@ -55,7 +55,7 @@ pub async fn build_app(config: &Config) -> Result<(NormalizePath<Router>, NodePo
         .fallback(BlockfrostError::not_found())
         .route_layer(from_fn(track_http_metrics));
 
-    // 7. Optionally nest prefix
+    // 7. Nest prefix
     let app = if api_prefix == "/" || api_prefix.is_empty() {
         Router::new().merge(api_routes)
     } else {
