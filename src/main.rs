@@ -3,7 +3,7 @@ use axum::ServiceExt;
 use blockfrost_platform::background_tasks::node_health_check_task;
 use blockfrost_platform::cli::{Args, Config};
 use blockfrost_platform::logging::setup_tracing;
-use blockfrost_platform::router::build_app;
+use blockfrost_platform::server::build;
 use blockfrost_platform::AppError;
 use clap::Parser;
 use tracing::info;
@@ -18,7 +18,7 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(&config);
 
     // 3. Build app
-    let (app, node_conn_pool) = build_app(&config).await?;
+    let (app, node_conn_pool) = build(&config).await?;
 
     // 4. Bind server
     let address = format!("{}:{}", config.server_address, config.server_port);

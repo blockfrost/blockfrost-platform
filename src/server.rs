@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     middleware::from_fn,
     routing::{get, post},
@@ -20,8 +18,8 @@ use crate::{
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
-pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePool), AppError> {
-    // Set up fallback decoder
+pub async fn build(config: &Config) -> Result<(NormalizePath<Router>, NodePool), AppError> {
+    // 1. Set up fallback decoder
     let fallback_decoder = FallbackDecoder::spawn()?;
 
     fallback_decoder
@@ -29,16 +27,16 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
         .await
         .map_err(AppError::Server)?;
 
-    // Create node pool
-    let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
+    // 2. Create node pool
+    let node_conn_pool = NodePool::new(config, fallback_decoder)?;
 
-    // Set up optional Icebreakers API (solitary option in CLI)
-    let icebreakers_api = IcebreakersAPI::new(&config).await?;
+    // 3. Set up optional Icebreakers API
+    let icebreakers_api = IcebreakersAPI::new(config).await?;
 
-    // Metrics recorder
+    // 4. Metrics recorder
     let prometheus_handle = setup_metrics_recorder();
 
-    // Build a prefix
+    // 5. Figure out prefix
     let api_prefix = if let Some(api) = &icebreakers_api {
         api.api_prefix.clone()
     } else {
@@ -51,21 +49,20 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
         .route("/tx/submit", post(tx_submit::route))
         .route("/metrics", get(crate::api::metrics::route))
         .layer(Extension(prometheus_handle))
-        .layer(Extension(config))
         .layer(Extension(node_conn_pool.clone()))
         .layer(Extension(icebreakers_api))
         .layer(from_fn(error_middleware))
         .fallback(BlockfrostError::not_found())
         .route_layer(from_fn(track_http_metrics));
 
-    // Nest prefix
+    // 7. Nest prefix
     let app = if api_prefix == "/" || api_prefix.is_empty() {
         Router::new().merge(api_routes)
     } else {
         Router::new().nest(&api_prefix, api_routes)
     };
 
-    // Final layers (e.g., trim trailing slash)
+    // 8. Final layers (e.g., trim trailing slash)
     let app = ServiceBuilder::new()
         .layer(NormalizePathLayer::trim_trailing_slash())
         .service(app);
