@@ -1,10 +1,12 @@
 use axum::extract::Request;
 use axum::ServiceExt;
-use blockfrost_platform::background_tasks::node_health_check_task;
-use blockfrost_platform::cli::{Args, Config};
-use blockfrost_platform::logging::setup_tracing;
-use blockfrost_platform::server::build;
-use blockfrost_platform::AppError;
+use blockfrost_platform::{
+    background_tasks::node_health_check_task,
+    cli::{Args, Config},
+    logging::setup_tracing,
+    server::build,
+    AppError,
+};
 use clap::Parser;
 use tracing::info;
 
