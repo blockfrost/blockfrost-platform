@@ -42,24 +42,30 @@ jobs:
               target=testgen-hs-"$version"-aarch64-darwin.tar.bz2
               curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
               tar -xjf "$target"
+              export PATH="$PWD/testgen-hs:$PATH"
               ./testgen-hs/testgen-hs --version
               ;;
             ubuntu-latest)
               target=testgen-hs-"$version"-x86_64-linux.tar.bz2
               curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
               tar -xjf "$target"
+              export PATH="$PWD/testgen-hs:$PATH"
               ./testgen-hs/testgen-hs --version
               ;;
             windows-latest)
               target=testgen-hs-"$version"-x86_64-windows.zip
               curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
               unzip "$target"
+              export PATH="$PWD/testgen-hs:$PATH"
               ./testgen-hs/testgen-hs.exe --version
               ;;
           esac
 
       - name: Run tests (unit + integration)
-        run: cargo test --verbose
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --verbose
         timeout-minutes: 10
 
       - name: Check formatting
