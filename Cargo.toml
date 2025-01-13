@@ -38,6 +38,7 @@ sysinfo = "0.32.1"
 [dev-dependencies]
 rstest = "0.22.0"
 pretty_assertions = "1.4.1"
+lazy_static = "1.5.0"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

@@ -1,18 +1,31 @@
 #[cfg(test)]
 mod tests {
+    use std::sync::Once;
+
     use axum::body::{to_bytes, Body};
     use axum::http::Request;
     use blockfrost_platform::{
         cli::{Config, LogLevel, Mode, Network},
         server::build,
     };
+    use lazy_static::lazy_static;
     use serde_json::Value;
     use tower::ServiceExt;
 
+    lazy_static! {
+        static ref INIT: Once = Once::new();
+    }
+
+    fn initialize_logging() {
+        INIT.call_once(|| {
+            tracing_subscriber::fmt::init();
+        });
+    }
+
     fn test_config() -> Config {
         Config {
-            server_address: "127.0.0.1".into(),
-            server_port: 0,
+            server_address: "0.0.0.0".into(),
+            server_port: 8080,
             log_level: LogLevel::Info.into(),
             network_magic: 1,
             mode: Mode::Full,
@@ -25,6 +38,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_root_route() {
+        initialize_logging();
+
         let config = test_config();
         let app = match build(&config).await {
             Ok((app, _)) => app,
