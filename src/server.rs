@@ -21,10 +21,10 @@ use crate::{
 pub async fn build(config: &Config) -> Result<(NormalizePath<Router>, NodePool), AppError> {
     // 1. Set up fallback decoder
     let fallback_decoder = FallbackDecoder::spawn();
-    fallback_decoder
-        .startup_sanity_test()
-        .await
-        .map_err(AppError::Server)?;
+    // fallback_decoder
+    //     .startup_sanity_test()
+    //     .await
+    //     .map_err(AppError::Server)?;
 
     // 2. Create node pool
     let node_conn_pool = NodePool::new(config, fallback_decoder)?;

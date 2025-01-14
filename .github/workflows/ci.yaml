@@ -42,16 +42,12 @@ jobs:
               target=testgen-hs-"$version"-aarch64-darwin.tar.bz2
               curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
               tar -xjf "$target"
-              chmod +x ./testgen-hs/testgen-hs
-              ls -l ./testgen-hs/testgen-hs   # Optional: Verify permissions
               ./testgen-hs/testgen-hs --version
               ;;
             ubuntu-latest)
               target=testgen-hs-"$version"-x86_64-linux.tar.bz2
               curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
               tar -xjf "$target"
-              chmod +x ./testgen-hs/testgen-hs
-              ls -l ./testgen-hs/testgen-hs   # Optional: Verify permissions
               ./testgen-hs/testgen-hs --version
               ;;
             windows-latest)
