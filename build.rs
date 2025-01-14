@@ -1,6 +1,11 @@
-use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
+use bzip2::read::BzDecoder;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
+use tar::Archive;
+use zip::ZipArchive;
 
 fn main() {
     // Tell Cargo to rerun the build script if the build script itself changes.
@@ -25,8 +30,6 @@ fn main() {
     } else {
         panic!("Unsupported architecture");
     };
-
-    println!("DEBUG arch {:?}", arch);
 
     let suffix = if target_os == "windows" {
         ".zip"
@@ -56,7 +59,7 @@ fn main() {
         format!("{}.tar.bz2", file_name)
     };
 
-    let archive_path = cache_dir.join(&archive_name);
+    let archive_path = cache_dir.join(archive_name);
 
     // Download the artifact if not already in the cache.
     if !archive_path.exists() {
@@ -124,9 +127,6 @@ fn main() {
 }
 
 fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
-    use bzip2::read::BzDecoder;
-    use tar::Archive;
-
     let tar_bz2 = fs::File::open(&archive_path).expect("Failed to open .tar.bz2 archive");
     let tar = BzDecoder::new(tar_bz2);
     let mut archive = Archive::new(tar);
@@ -135,10 +135,8 @@ fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
         .expect("Failed to extract .tar.bz2 archive");
 }
 
-fn extract_zip(archive_path: &PathBuf, extract_dir: &PathBuf) {
-    use zip::ZipArchive;
-
-    let file = fs::File::open(&archive_path).expect("Failed to open .zip archive");
+fn extract_zip(archive_path: &PathBuf, extract_dir: &Path) {
+    let file = fs::File::open(archive_path).expect("Failed to open .zip archive");
     let mut archive = ZipArchive::new(file).expect("Failed to read .zip archive");
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).expect("Invalid entry in .zip archive");

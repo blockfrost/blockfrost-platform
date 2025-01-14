@@ -19,8 +19,6 @@ struct FDRequest {
     response_tx: oneshot::Sender<Result<serde_json::Value, String>>,
 }
 
-const CHILD_EXE_NAME: &str = "testgen-hs";
-
 impl FallbackDecoder {
     /// Starts a new child process.
     pub fn spawn() -> Self {
@@ -103,55 +101,6 @@ impl FallbackDecoder {
         }
     }
 
-    /// A heuristic to find the child binary that we’ll use.
-    pub fn locate_child_binary() -> Result<String, String> {
-        use std::env;
-
-        let binary_name = if cfg!(windows) {
-            format!("{}.exe", CHILD_EXE_NAME)
-        } else {
-            CHILD_EXE_NAME.to_string()
-        };
-
-        // Check in the CHILD_EXE_NAME subdirectory in the directory of the current binary:
-        if let Ok(current_exe) = env::current_exe() {
-            if let Some(current_dir) = current_exe.parent() {
-                let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
-                if potential_path.is_file() {
-                    return Ok(potential_path.to_string_lossy().into_owned());
-                }
-            }
-        }
-
-        // Check PATH:
-        if let Ok(paths) = env::var("PATH") {
-            for path in env::split_paths(&paths) {
-                let potential_path = path.join(&binary_name);
-                if potential_path.is_file() {
-                    return Ok(potential_path.to_string_lossy().into_owned());
-                }
-            }
-        }
-
-        // Check CHILD_EXE_NAME/CHILD_EXE_NAME.exe in the current directory if
-        // running tests and it contains Cargo.toml:
-        if cfg!(test) {
-            if let Ok(current_dir) = env::current_dir() {
-                if current_dir.join("Cargo.toml").is_file() {
-                    let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
-                    if potential_path.is_file() {
-                        return Ok(potential_path.to_string_lossy().into_owned());
-                    }
-                }
-            }
-        }
-
-        Err(format!(
-            "Could not find binary '{}' in the current directory or on PATH",
-            binary_name
-        ))
-    }
-
     /// Returns the current child PID:
     pub fn child_pid(&self) -> Option<u32> {
         match self.current_child_pid.load(atomic::Ordering::Relaxed) {
@@ -165,9 +114,10 @@ impl FallbackDecoder {
         last_unfulfilled_request: &mut Option<FDRequest>,
         current_child_pid: &Arc<AtomicU32>,
     ) -> Result<(), String> {
-        let exe_path = Self::locate_child_binary().unwrap_or(CHILD_EXE_NAME.to_string());
+        let testgen_hs_path = env::var("TESTGEN_HS_PATH")
+            .expect("TESTGEN_HS_PATH environment variable not set. Build script may not have run.");
 
-        let mut child = proc::Command::new(exe_path)
+        let mut child = proc::Command::new(testgen_hs_path)
             .arg("deserialize-stream")
             .stdin(proc::Stdio::piped())
             .stdout(proc::Stdio::piped())
@@ -234,10 +184,13 @@ impl FallbackDecoder {
             if is_a_retry || result_for_response.is_ok() {
                 // unwrap is safe, we wrote there right before the writeln!()
                 let request = last_unfulfilled_request.take().unwrap();
+                let testgen_hs_path = env::var("TESTGEN_HS_PATH").expect(
+                    "TESTGEN_HS_PATH environment variable not set. Build script may not have run.",
+                );
 
                 let response = match result_for_response {
                     Ok(ok) => ok,
-                    Err(_) => Err(format!("repeated internal failure of {}", CHILD_EXE_NAME)),
+                    Err(_) => Err(format!("repeated internal failure of {}", testgen_hs_path)),
                 };
 
                 // unwrap is safe, the other side would have to drop for a
