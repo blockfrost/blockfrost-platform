@@ -57,8 +57,8 @@ jobs:
 
       - name: Run tests (unit + integration)
         run: |
-          cargo test --verbose
           ps aux | grep cardano-node
+          cargo test --verbose
         timeout-minutes: 10
       - name: Check formatting
         run: cargo fmt --all -- --check
