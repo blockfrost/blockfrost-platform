@@ -56,7 +56,9 @@ jobs:
           esac
 
       - name: Run tests (unit + integration)
-        run: cargo test --verbose
+        run: |
+          cargo test --verbose
+          ps aux | grep cardano-node
         timeout-minutes: 10
       - name: Check formatting
         run: cargo fmt --all -- --check
