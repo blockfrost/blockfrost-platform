@@ -127,7 +127,7 @@ fn main() {
 }
 
 fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
-    let tar_bz2 = fs::File::open(&archive_path).expect("Failed to open .tar.bz2 archive");
+    let tar_bz2 = fs::File::open(archive_path).expect("Failed to open .tar.bz2 archive");
     let tar = BzDecoder::new(tar_bz2);
     let mut archive = Archive::new(tar);
     archive
