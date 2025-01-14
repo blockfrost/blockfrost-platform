@@ -13,7 +13,7 @@ env:
 jobs:
   build_and_test:
     name: CI
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, Linux, X64, nixos]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
