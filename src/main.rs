@@ -29,11 +29,8 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(&config);
 
     // Set up FallbackDecoder
-    info!(
-        "Using {} as a fallback CBOR error decoder",
-        FallbackDecoder::locate_child_binary().map_err(AppError::Server)?
-    );
     let fallback_decoder = FallbackDecoder::spawn();
+
     fallback_decoder
         .startup_sanity_test()
         .await

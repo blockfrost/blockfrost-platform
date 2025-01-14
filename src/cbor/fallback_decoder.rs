@@ -243,8 +243,6 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_fallback_decoder() {
-        FallbackDecoder::locate_child_binary().unwrap();
-
         let decoder = FallbackDecoder::spawn();
 
         decoder.startup_sanity_test().await.unwrap();
