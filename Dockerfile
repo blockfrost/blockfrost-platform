@@ -28,6 +28,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM gcr.io/distroless/cc-debian12 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
 COPY --from=downloader /app/testgen-hs /app/testgen-hs
+
+# Set the environment variable to the path of the testgen-hs binary
+ENV TESTGEN_HS_PATH=/app/testgen-hs/testgen-hs
+
 EXPOSE 3000/tcp
 STOPSIGNAL SIGINT
 ENTRYPOINT ["/app/blockfrost-platform"]
