@@ -23,13 +23,18 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     let arguments = Args::parse();
-    let config = Config::from_args(arguments);
+    let config = Config::from_args(arguments)?;
 
     // Setup logging
     setup_tracing(&config);
 
     // Set up FallbackDecoder
-    let fallback_decoder = FallbackDecoder::spawn();
+    info!(
+        "Using {} as a fallback CBOR error decoder",
+        &config.testgen_hs_path
+    );
+
+    let fallback_decoder = FallbackDecoder::spawn(config.testgen_hs_path.clone());
 
     fallback_decoder
         .startup_sanity_test()

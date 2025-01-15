@@ -1,4 +1,3 @@
-use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::process as proc;
 use std::sync::{
@@ -22,10 +21,13 @@ struct FDRequest {
 
 impl FallbackDecoder {
     /// Starts a new child process.
-    pub fn spawn() -> Self {
+    pub fn spawn(testgen_hs_path: String) -> Self {
         let current_child_pid = Arc::new(AtomicU32::new(u32::MAX));
         let current_child_pid_clone = current_child_pid.clone();
         let (sender, mut receiver) = mpsc::channel::<FDRequest>(128);
+
+        // Clone `testgen_hs_path` for the thread.
+        let testgen_hs_path_for_thread = testgen_hs_path.clone();
 
         thread::spawn(move || {
             // For retries:
@@ -33,6 +35,7 @@ impl FallbackDecoder {
 
             loop {
                 let single_run = Self::spawn_child(
+                    &testgen_hs_path_for_thread,
                     &mut receiver,
                     &mut last_unfulfilled_request,
                     &current_child_pid_clone,
@@ -111,13 +114,11 @@ impl FallbackDecoder {
     }
 
     fn spawn_child(
+        testgen_hs_path: &str,
         receiver: &mut mpsc::Receiver<FDRequest>,
         last_unfulfilled_request: &mut Option<FDRequest>,
         current_child_pid: &Arc<AtomicU32>,
     ) -> Result<(), String> {
-        let testgen_hs_path = env::var("TESTGEN_HS_PATH")
-            .expect("TESTGEN_HS_PATH environment variable not set. Build script may not have run.");
-
         let mut child = proc::Command::new(testgen_hs_path)
             .arg("deserialize-stream")
             .stdin(proc::Stdio::piped())
@@ -134,7 +135,6 @@ impl FallbackDecoder {
         child
             .kill()
             .map_err(|err| format!("couldn’t kill the child: {:?}", err))?;
-
         child
             .wait()
             .map_err(|err| format!("couldn’t reap the child: {:?}", err))?;
@@ -185,13 +185,10 @@ impl FallbackDecoder {
             if is_a_retry || result_for_response.is_ok() {
                 // unwrap is safe, we wrote there right before the writeln!()
                 let request = last_unfulfilled_request.take().unwrap();
-                let testgen_hs_path = env::var("TESTGEN_HS_PATH").expect(
-                    "TESTGEN_HS_PATH environment variable not set. Build script may not have run.",
-                );
 
                 let response = match result_for_response {
                     Ok(ok) => ok,
-                    Err(_) => Err(format!("repeated internal failure of {}", testgen_hs_path)),
+                    Err(_) => Err("repeated internal failure".to_string()),
                 };
 
                 // unwrap is safe, the other side would have to drop for a
@@ -243,7 +240,7 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_fallback_decoder() {
-        let decoder = FallbackDecoder::spawn();
+        let decoder = FallbackDecoder::spawn("testgen-hs".to_string());
 
         decoder.startup_sanity_test().await.unwrap();
 
@@ -257,6 +254,7 @@ mod tests {
 
         let input = hex::decode("8182068183051a000c275b1a000b35ec").unwrap();
         let result = decoder.decode(&input).await;
+
         assert_eq!(
             result,
             Ok(serde_json::json!({
