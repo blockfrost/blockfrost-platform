@@ -1,6 +1,7 @@
 use bzip2::read::BzDecoder;
 use std::{
-    fs,
+    env,
+    fs::{create_dir_all, write as fs_write, File},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -45,13 +46,16 @@ fn main() {
 
     println!("Fetching {}", file_name);
 
-    // Cache directory for testgen-hs artifacts.
-    let cache_dir = dirs::cache_dir()
-        .expect("Unable to determine cache directory")
+    // Use the project’s target directory instead of a system cache location.
+    let cargo_manifest_dir =
+        env::var("CARGO_MANIFEST_DIR").expect("Unable to find CARGO_MANIFEST_DIR");
+
+    let testgen_dir = PathBuf::from(&cargo_manifest_dir)
+        .join("target")
         .join("testgen-hs")
         .join(testgen_lib_version);
 
-    fs::create_dir_all(&cache_dir).expect("Unable to create cache directory");
+    create_dir_all(&testgen_dir).expect("Unable to create testgen directory");
 
     let archive_name = if target_os == "windows" {
         format!("{}.zip", file_name)
@@ -59,9 +63,9 @@ fn main() {
         format!("{}.tar.bz2", file_name)
     };
 
-    let archive_path = cache_dir.join(archive_name);
+    let archive_path = testgen_dir.join(&archive_name);
 
-    // Download the artifact if not already in the cache.
+    // Download the artifact if not already in the target directory.
     if !archive_path.exists() {
         println!("Downloading from: {}", download_url);
 
@@ -69,19 +73,21 @@ fn main() {
             .expect("Failed to download archive")
             .bytes()
             .expect("Failed to read archive");
-        fs::write(&archive_path, &response).expect("Failed to write archive to disk");
+
+        fs_write(&archive_path, &response).expect("Failed to write archive to disk");
 
         println!("Downloaded to: {}", archive_path.display());
     } else {
-        println!("Using cached archive at: {}", archive_path.display());
+        println!("Using existing archive at: {}", archive_path.display());
     }
 
-    let extract_dir = cache_dir.join("extracted");
-    fs::create_dir_all(&extract_dir).expect("Unable to create extraction directory");
+    // Extraction path inside the target directory.
+    let extract_dir = testgen_dir.join("extracted");
+    create_dir_all(&extract_dir).expect("Unable to create extraction directory");
 
-    // Extract the artifact if not already extracted.
     let testgen_hs_dir = extract_dir.join("testgen-hs");
 
+    // Extract the artifact if not already extracted.
     if !testgen_hs_dir.exists() {
         println!("Extracting archive...");
         if target_os == "windows" {
@@ -127,17 +133,19 @@ fn main() {
 }
 
 fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
-    let tar_bz2 = fs::File::open(archive_path).expect("Failed to open .tar.bz2 archive");
+    let tar_bz2 = File::open(archive_path).expect("Failed to open .tar.bz2 archive");
     let tar = BzDecoder::new(tar_bz2);
     let mut archive = Archive::new(tar);
+
     archive
         .unpack(extract_dir)
         .expect("Failed to extract .tar.bz2 archive");
 }
 
 fn extract_zip(archive_path: &PathBuf, extract_dir: &Path) {
-    let file = fs::File::open(archive_path).expect("Failed to open .zip archive");
+    let file = File::open(archive_path).expect("Failed to open .zip archive");
     let mut archive = ZipArchive::new(file).expect("Failed to read .zip archive");
+
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).expect("Invalid entry in .zip archive");
         let outpath = match entry.enclosed_name() {
@@ -146,13 +154,13 @@ fn extract_zip(archive_path: &PathBuf, extract_dir: &Path) {
         };
 
         if entry.is_dir() {
-            fs::create_dir_all(&outpath).expect("Unable to create directory");
+            create_dir_all(&outpath).expect("Unable to create directory");
         } else {
             if let Some(parent) = outpath.parent() {
-                fs::create_dir_all(parent).expect("Unable to create parent directory");
+                create_dir_all(parent).expect("Unable to create parent directory");
             }
 
-            let mut outfile = fs::File::create(&outpath).expect("Unable to create file");
+            let mut outfile = File::create(&outpath).expect("Unable to create file");
             std::io::copy(&mut entry, &mut outfile).expect("Unable to write file");
         }
     }
