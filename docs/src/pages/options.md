@@ -1,4 +1,6 @@
-### Options
+# Advanced options
+
+The Blockfrost platform accepts the following advanced options:
 
 `--server-address <SERVER_ADDRESS>`
 Default: 0.0.0.0

@@ -1,3 +1,6 @@
 {
   "extends": ["eslint:recommended", "next", "prettier"]
+  "rules": {
+    "no-dupe-keys": "off"
+  }
 }

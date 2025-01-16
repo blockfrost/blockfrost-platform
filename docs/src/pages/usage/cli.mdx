@@ -1,0 +1,68 @@
+import { Callout, Table } from 'nextra/components'
+
+# Running the platform from your command line
+
+Now that you have the Blockfrost platform binary, you can run it:
+
+```console
+blockfrost-platform [OPTIONS] --network <NETWORK> \
+                              --node-address <NODE_ADDRESS> \
+                              --secret <SECRET> \
+                              --reward-address <REWARD_ADDRESS>
+```
+
+<Callout>
+For the full list of the command line options, run `blockfrost-platform --help`.
+</Callout>
+
+# Setting up systemd for your instance
+
+Running it from command line is a good way of testing your new binary, however, as you want your instance
+be up and running accross the reboots, we recommend you setup a `systemd` service for it.
+
+First, we need to create a bash script file that will serve as a startup script for the Blockfrost platform,
+we can call it for example `start-blockfrost-platform.sh` with a content similar to an example below.
+
+Please note, this is just an example and you need to modify it to fit your use case. It won't work if you just copy paste it.
+
+```bash
+#!/usr/bin/env bash
+# You can modify these variables for your specific setup
+# NETWORK=mainnet
+# NODE_ADDR=127.0.0.1
+SECRET=my_icebreaker_secret_i_have_received_from_the_blockfrost_team
+REWARD_ADDR=addr1_rest_of_my_reward_address_that_holds_my_nft_license_provided_by_the_blockfrost_team
+
+
+/usr/local/bin/blockfrost-platform --network ${NEWORK:=mainnet} \
+                                   --node-address ${NODE_ADDR:=127.0.0.1} \
+                                   --secret $SECRET \
+                                   --reward-address $REWARD_ADDR
+```
+
+
+Create a new `blockfrost-platform.service` file and add this to it:
+
+```systemd
+[Unit]
+Description       = Blockfrost Platform
+Wants             = network-online.target
+After             = network-online.target
+
+[Service]
+User              = <$USER>
+Type              = simple
+WorkingDirectory  = <$HOME>/blockfrost-platform
+ExecStart         = /bin/bash -c '<$HOME>/cardano-platform/start-blockfrost-plastform.sh'
+ExecReload        = pkill -HUP blockfrost-platform
+KillSignal        = SIGINT
+RestartKillSignal = SIGINT
+TimeoutStopSec    = 300
+LimitNOFILE       = 32768
+Restart           = always
+RestartSec        = 5
+SyslogIdentifier  = blockfrost-platform
+
+[Install]
+WantedBy          = multi-user.target
+```

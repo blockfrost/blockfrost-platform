@@ -1,0 +1,50 @@
+import { Tabs, Tab } from "nextra/components"
+
+## Building from the source code
+
+Building `blockfrost-platform` from source code is not the easiest way to
+install it, but it ensures that the binary you are running comes directly
+from the project's source code.
+
+First, we need to install dependencies on your system.
+
+<Tabs items={['Fedora','Ubuntu']}>
+  <Tabs.Tab>
+    ```shell
+    dnf install git cargo openssl-devel
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```shell
+    apt install git rustup libssl-dev pkg-config
+    ```
+
+   After installing `rustup`, you need to switch to latest stable Rust.
+   ```shell
+   rustup default stable
+   ```
+  </Tabs.Tab>
+</Tabs>
+
+
+```bash
+# Clone the repository
+git clone https://github.com/blockfrost/blockfrost-platform
+
+# Navigate to the project directory
+cd blockfrost-platform
+
+# To build the latest main version (experimental)
+git checkout main
+
+# To build a release version (recommended)
+# NOTE: this option will be available after the first release
+# git checkout v0.1 
+
+# Build the project
+cargo build --release
+
+# Run the binary
+./target/release/blockfrost-platform  --version
+blockfrost-platform 0.0.1
+```
