@@ -38,7 +38,7 @@ in rec {
     // {
       inherit cargoArtifacts;
       # Do not use build script in nix
-      postPatch = ''
+      prePatch = ''
         sed -i -e '/^build =/d' Cargo.toml
       '';
       preCheck = ''
