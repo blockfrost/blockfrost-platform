@@ -240,7 +240,8 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_fallback_decoder() {
-        let decoder = FallbackDecoder::spawn("testgen-hs".to_string());
+        let testgen_hs_path = std::env::var("TESTGEN_HS_PATH").unwrap();
+        let decoder = FallbackDecoder::spawn(testgen_hs_path);
 
         decoder.startup_sanity_test().await.unwrap();
 
