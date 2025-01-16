@@ -5,6 +5,7 @@ use axum::{
 use http::StatusCode;
 use pallas_network::miniprotocols::localtxsubmission::Error as TxSubmissionError;
 use serde::{Deserialize, Serialize};
+use std::env::VarError;
 use std::{array::TryFromSliceError, fmt, io};
 use thiserror::Error;
 use tracing::error;
@@ -53,6 +54,12 @@ impl From<AppError> for BlockfrostError {
             AppError::Registration(e) => Self::internal_server_error(e),
             AppError::Server(e) => Self::internal_server_error(e),
         }
+    }
+}
+
+impl From<VarError> for AppError {
+    fn from(err: VarError) -> Self {
+        AppError::Server(err.to_string())
     }
 }
 

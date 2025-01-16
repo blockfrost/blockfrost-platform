@@ -29,31 +29,6 @@ jobs:
           components: rustfmt, rust-src, clippy
       - name: Build
         run: cargo build --release --verbose
-      - name: Download `testgen-hs`
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="10.1.4.0"
-          case "${{ matrix.os }}" in
-            macos-latest)
-              target=testgen-hs-"$version"-aarch64-darwin.tar.bz2
-              curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
-              tar -xjf "$target"
-              ./testgen-hs/testgen-hs --version
-              ;;
-            ubuntu-latest)
-              target=testgen-hs-"$version"-x86_64-linux.tar.bz2
-              curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
-              tar -xjf "$target"
-              ./testgen-hs/testgen-hs --version
-              ;;
-            windows-latest)
-              target=testgen-hs-"$version"-x86_64-windows.zip
-              curl -fsSL -O https://github.com/input-output-hk/testgen-hs/releases/download/"$version"/"$target"
-              unzip "$target"
-              ./testgen-hs/testgen-hs.exe --version
-              ;;
-          esac
       - name: Test
         run: cargo test --verbose
         timeout-minutes: 10

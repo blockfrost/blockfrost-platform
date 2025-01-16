@@ -1,12 +1,15 @@
+use crate::AppError;
 use std::io::{BufRead, BufReader, Write};
-use std::process as proc;
+use std::path::{Path, PathBuf};
+use std::process::{self as proc, Command};
 use std::sync::{
     atomic::{self, AtomicU32},
     Arc,
 };
-use std::thread;
+use std::{env, thread};
 use tokio::sync::{mpsc, oneshot};
-use tracing::error;
+use tracing::{error, info};
+use walkdir::WalkDir;
 
 #[derive(Clone)]
 pub struct FallbackDecoder {
@@ -19,14 +22,28 @@ struct FDRequest {
     response_tx: oneshot::Sender<Result<serde_json::Value, String>>,
 }
 
-const CHILD_EXE_NAME: &str = "testgen-hs";
-
 impl FallbackDecoder {
     /// Starts a new child process.
-    pub fn spawn() -> Self {
+    pub fn spawn() -> Result<Self, AppError> {
+        let search_roots = [
+            // Common paths
+            "/usr/bin",
+            "/bin",
+            // Build script
+            "target/testgen-hs/extracted/testgen-hs",
+            // Docker
+            "/app/testgen-hs",
+        ];
+        let testgen_hs_lib = Self::find_testgen_hs(&search_roots).map_err(AppError::Server)?;
+
+        info!("Using {} as a fallback CBOR error decoder", &testgen_hs_lib);
+
         let current_child_pid = Arc::new(AtomicU32::new(u32::MAX));
         let current_child_pid_clone = current_child_pid.clone();
         let (sender, mut receiver) = mpsc::channel::<FDRequest>(128);
+
+        // Clone `testgen_hs_path` for the thread.
+        let testgen_hs_path_for_thread = testgen_hs_lib.clone();
 
         thread::spawn(move || {
             // For retries:
@@ -34,6 +51,7 @@ impl FallbackDecoder {
 
             loop {
                 let single_run = Self::spawn_child(
+                    &testgen_hs_path_for_thread,
                     &mut receiver,
                     &mut last_unfulfilled_request,
                     &current_child_pid_clone,
@@ -47,10 +65,10 @@ impl FallbackDecoder {
             }
         });
 
-        Self {
+        Ok(Self {
             sender,
             current_child_pid,
-        }
+        })
     }
 
     /// Decodes a CBOR error using the child process.
@@ -70,6 +88,48 @@ impl FallbackDecoder {
                 err
             )
         })?
+    }
+
+    /// Searches first for `testgen-hs` in your project root, then recursively in the specified
+    /// directories. Returns the first valid path found or an error if nothing is found.
+    pub fn find_testgen_hs(roots: &[&str]) -> Result<String, String> {
+        // 1. Check project root
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+
+        #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
+        let mut root_candidate: PathBuf = PathBuf::from(&manifest_dir).join("testgen-hs");
+
+        // On Windows, adjust the filename
+        #[cfg(target_os = "windows")]
+        {
+            root_candidate.set_file_name("testgen-hs.exe");
+        }
+
+        // If the file exists and responds to --version, return it
+        if Self::is_executable(root_candidate.as_path()) {
+            return Ok(root_candidate.to_string_lossy().to_string());
+        }
+
+        // 2. Not found in project root, so recursively walk the directories in `roots`
+        for root in roots {
+            for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+                let path = entry.path();
+                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                if file_name.starts_with("testgen-hs")
+                    && path.is_file()
+                    && Self::is_executable(path)
+                {
+                    return Ok(path.to_string_lossy().to_string());
+                }
+            }
+        }
+
+        Err("No valid `testgen-hs` binary found in subdomains.".to_string())
+    }
+
+    /// Checks if the path is runnable. Adjust for platform specifics if needed.
+    fn is_executable(path: &Path) -> bool {
+        Command::new(path).arg("--version").output().is_ok()
     }
 
     /// This function is called at startup, so that we make sure that the worker is reasonable.
@@ -103,55 +163,6 @@ impl FallbackDecoder {
         }
     }
 
-    /// A heuristic to find the child binary that we’ll use.
-    pub fn locate_child_binary() -> Result<String, String> {
-        use std::env;
-
-        let binary_name = if cfg!(windows) {
-            format!("{}.exe", CHILD_EXE_NAME)
-        } else {
-            CHILD_EXE_NAME.to_string()
-        };
-
-        // Check in the CHILD_EXE_NAME subdirectory in the directory of the current binary:
-        if let Ok(current_exe) = env::current_exe() {
-            if let Some(current_dir) = current_exe.parent() {
-                let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
-                if potential_path.is_file() {
-                    return Ok(potential_path.to_string_lossy().into_owned());
-                }
-            }
-        }
-
-        // Check PATH:
-        if let Ok(paths) = env::var("PATH") {
-            for path in env::split_paths(&paths) {
-                let potential_path = path.join(&binary_name);
-                if potential_path.is_file() {
-                    return Ok(potential_path.to_string_lossy().into_owned());
-                }
-            }
-        }
-
-        // Check CHILD_EXE_NAME/CHILD_EXE_NAME.exe in the current directory if
-        // running tests and it contains Cargo.toml:
-        if cfg!(test) {
-            if let Ok(current_dir) = env::current_dir() {
-                if current_dir.join("Cargo.toml").is_file() {
-                    let potential_path = current_dir.join(CHILD_EXE_NAME).join(&binary_name);
-                    if potential_path.is_file() {
-                        return Ok(potential_path.to_string_lossy().into_owned());
-                    }
-                }
-            }
-        }
-
-        Err(format!(
-            "Could not find binary '{}' in the current directory or on PATH",
-            binary_name
-        ))
-    }
-
     /// Returns the current child PID:
     pub fn child_pid(&self) -> Option<u32> {
         match self.current_child_pid.load(atomic::Ordering::Relaxed) {
@@ -161,13 +172,12 @@ impl FallbackDecoder {
     }
 
     fn spawn_child(
+        testgen_hs_path: &str,
         receiver: &mut mpsc::Receiver<FDRequest>,
         last_unfulfilled_request: &mut Option<FDRequest>,
         current_child_pid: &Arc<AtomicU32>,
     ) -> Result<(), String> {
-        let exe_path = Self::locate_child_binary().unwrap_or(CHILD_EXE_NAME.to_string());
-
-        let mut child = proc::Command::new(exe_path)
+        let mut child = proc::Command::new(testgen_hs_path)
             .arg("deserialize-stream")
             .stdin(proc::Stdio::piped())
             .stdout(proc::Stdio::piped())
@@ -183,7 +193,6 @@ impl FallbackDecoder {
         child
             .kill()
             .map_err(|err| format!("couldn’t kill the child: {:?}", err))?;
-
         child
             .wait()
             .map_err(|err| format!("couldn’t reap the child: {:?}", err))?;
@@ -237,7 +246,7 @@ impl FallbackDecoder {
 
                 let response = match result_for_response {
                     Ok(ok) => ok,
-                    Err(_) => Err(format!("repeated internal failure of {}", CHILD_EXE_NAME)),
+                    Err(_) => Err("repeated internal failure".to_string()),
                 };
 
                 // unwrap is safe, the other side would have to drop for a
@@ -289,11 +298,7 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_fallback_decoder() {
-        FallbackDecoder::locate_child_binary().unwrap();
-
-        let decoder = FallbackDecoder::spawn();
-
-        decoder.startup_sanity_test().await.unwrap();
+        let decoder = FallbackDecoder::spawn().unwrap();
 
         // Now, kill our child to test the restart logic:
         sysinfo::System::new_all()
@@ -305,6 +310,7 @@ mod tests {
 
         let input = hex::decode("8182068183051a000c275b1a000b35ec").unwrap();
         let result = decoder.decode(&input).await;
+
         assert_eq!(
             result,
             Ok(serde_json::json!({

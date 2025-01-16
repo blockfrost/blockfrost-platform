@@ -2,6 +2,7 @@
 name = "blockfrost-platform"
 version = "0.0.1"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 axum = "0.7.6"
@@ -34,6 +35,7 @@ deadpool = "0.12.1"
 serde_with = "3.11.0"
 tracing-test = "0.2.5"
 sysinfo = "0.32.1"
+walkdir = "2.5.0"
 
 [dev-dependencies]
 rstest = "0.22.0"
@@ -41,3 +43,10 @@ pretty_assertions = "1.4.1"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"
+
+[build-dependencies]
+reqwest = { version = "0.12.7", features = ["blocking"] }
+dirs = "5.0"
+bzip2 = "0.4.3"
+tar = "0.4.38"
+zip = "0.6.6"

@@ -3,6 +3,8 @@ use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC}
 use std::fmt::{self, Formatter};
 use tracing::Level;
 
+use crate::AppError;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
@@ -86,9 +88,8 @@ pub struct IcebreakersConfig {
 }
 
 impl Config {
-    pub fn from_args(args: Args) -> Self {
+    pub fn from_args(args: Args) -> Result<Self, AppError> {
         let network_magic = Self::get_network_magic(&args.network);
-
         let icebreakers_config = match (args.solitary, args.reward_address, args.secret) {
             (false, Some(reward_address), Some(secret)) => Some(IcebreakersConfig {
                 reward_address,
@@ -97,7 +98,7 @@ impl Config {
             _ => None,
         };
 
-        Config {
+        Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
             log_level: args.log_level.into(),
@@ -107,7 +108,7 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             network: args.network,
-        }
+        })
     }
 
     fn get_network_magic(network: &Network) -> u64 {

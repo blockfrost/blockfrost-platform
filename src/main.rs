@@ -23,21 +23,13 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     let arguments = Args::parse();
-    let config = Config::from_args(arguments);
+    let config = Config::from_args(arguments)?;
 
     // Setup logging
     setup_tracing(&config);
 
     // Set up FallbackDecoder
-    info!(
-        "Using {} as a fallback CBOR error decoder",
-        FallbackDecoder::locate_child_binary().map_err(AppError::Server)?
-    );
-    let fallback_decoder = FallbackDecoder::spawn();
-    fallback_decoder
-        .startup_sanity_test()
-        .await
-        .map_err(AppError::Server)?;
+    let fallback_decoder = FallbackDecoder::spawn()?;
 
     let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
     let icebreakers_api = IcebreakersAPI::new(&config).await?;
