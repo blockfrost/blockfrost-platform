@@ -36,7 +36,7 @@ in rec {
 
   package = craneLib.buildPackage (commonArgs
     // {
-      inherit cargoArtifacts;
+      # inherit cargoArtifacts;
       # Do not use build script in nix
       prePatch = ''
         sed -i -e '/^build =/d' Cargo.toml
