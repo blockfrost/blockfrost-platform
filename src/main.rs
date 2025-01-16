@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::{
     extract::Request,
     middleware::from_fn,
@@ -8,7 +9,7 @@ use blockfrost_platform::{
     api::{self, metrics::setup_metrics_recorder, root, tx_submit},
     background_tasks::node_health_check_task,
     cbor::fallback_decoder::FallbackDecoder,
-    cli::{Args, Config},
+    cli::{Cli, Config},
     errors::{AppError, BlockfrostError},
     icebreakers_api::IcebreakersAPI,
     logging::setup_tracing,
@@ -21,9 +22,10 @@ use tower_http::normalize_path::NormalizePathLayer;
 use tracing::info;
 
 #[tokio::main]
-async fn main() -> Result<(), AppError> {
-    let arguments = Args::parse();
-    let config = Config::from_args(arguments);
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    let config = Config::init(cli)?;
 
     // Setup logging
     setup_tracing(&config);
