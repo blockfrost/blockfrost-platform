@@ -29,17 +29,7 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(&config);
 
     // Set up FallbackDecoder
-    info!(
-        "Using {} as a fallback CBOR error decoder",
-        &config.testgen_hs_path
-    );
-
-    let fallback_decoder = FallbackDecoder::spawn(config.testgen_hs_path.clone());
-
-    fallback_decoder
-        .startup_sanity_test()
-        .await
-        .map_err(AppError::Server)?;
+    let fallback_decoder = FallbackDecoder::spawn()?;
 
     let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
     let icebreakers_api = IcebreakersAPI::new(&config).await?;

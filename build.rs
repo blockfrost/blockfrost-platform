@@ -52,8 +52,7 @@ fn main() {
 
     let testgen_dir = PathBuf::from(&cargo_manifest_dir)
         .join("target")
-        .join("testgen-hs")
-        .join(testgen_lib_version);
+        .join("testgen-hs");
 
     create_dir_all(&testgen_dir).expect("Unable to create testgen directory");
 

@@ -1,9 +1,6 @@
 use clap::{arg, command, Parser, ValueEnum};
 use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
-use std::{
-    env,
-    fmt::{self, Formatter},
-};
+use std::fmt::{self, Formatter};
 use tracing::Level;
 
 use crate::AppError;
@@ -83,7 +80,6 @@ pub struct Config {
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
     pub network: Network,
-    pub testgen_hs_path: String,
 }
 
 pub struct IcebreakersConfig {
@@ -93,7 +89,6 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let testgen_hs_path = env::var("TESTGEN_HS_PATH")?;
         let network_magic = Self::get_network_magic(&args.network);
         let icebreakers_config = match (args.solitary, args.reward_address, args.secret) {
             (false, Some(reward_address), Some(secret)) => Some(IcebreakersConfig {
@@ -113,7 +108,6 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             network: args.network,
-            testgen_hs_path,
         })
     }
 

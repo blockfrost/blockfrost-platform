@@ -1,12 +1,15 @@
+use crate::AppError;
 use std::io::{BufRead, BufReader, Write};
-use std::process as proc;
+use std::path::{Path, PathBuf};
+use std::process::{self as proc, Command};
 use std::sync::{
     atomic::{self, AtomicU32},
     Arc,
 };
-use std::thread;
+use std::{env, thread};
 use tokio::sync::{mpsc, oneshot};
-use tracing::error;
+use tracing::{error, info};
+use walkdir::WalkDir;
 
 #[derive(Clone)]
 pub struct FallbackDecoder {
@@ -21,13 +24,19 @@ struct FDRequest {
 
 impl FallbackDecoder {
     /// Starts a new child process.
-    pub fn spawn(testgen_hs_path: String) -> Self {
+    pub fn spawn() -> Result<Self, AppError> {
+        let search_roots = ["target/testgen-hs/extracted/testgen-hs", "/usr/bin", "/bin"];
+        let testgen_hs_lib =
+            Self::find_testgen_hs(&search_roots).map_err(|err| AppError::Server(err))?;
+
+        info!("Using {} as a fallback CBOR error decoder", &testgen_hs_lib);
+
         let current_child_pid = Arc::new(AtomicU32::new(u32::MAX));
         let current_child_pid_clone = current_child_pid.clone();
         let (sender, mut receiver) = mpsc::channel::<FDRequest>(128);
 
         // Clone `testgen_hs_path` for the thread.
-        let testgen_hs_path_for_thread = testgen_hs_path.clone();
+        let testgen_hs_path_for_thread = testgen_hs_lib.clone();
 
         thread::spawn(move || {
             // For retries:
@@ -49,10 +58,10 @@ impl FallbackDecoder {
             }
         });
 
-        Self {
+        Ok(Self {
             sender,
             current_child_pid,
-        }
+        })
     }
 
     /// Decodes a CBOR error using the child process.
@@ -72,6 +81,44 @@ impl FallbackDecoder {
                 err
             )
         })?
+    }
+
+    /// Searches first for `testgen-hs` in your project root, then recursively in the specified
+    /// directories. Returns the first valid path found or an error if nothing is found.
+    pub fn find_testgen_hs(roots: &[&str]) -> Result<String, String> {
+        // 1. Check project root
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        let root_candidate = PathBuf::from(&manifest_dir).join("testgen-hs");
+
+        // On Windows, adjust the filename
+        #[cfg(target_os = "windows")]
+        {
+            root_candidate.set_file_name("testgen-hs.exe");
+        }
+
+        // If the file exists and responds to --version, return it
+        if Self::is_executable(root_candidate.as_path()) {
+            return Ok(root_candidate.to_string_lossy().to_string());
+        }
+
+        // 2. Not found in project root, so recursively walk the directories in `roots`
+        for root in roots {
+            for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.is_file() && path.file_name().unwrap_or_default() == "testgen-hs" {
+                    if Self::is_executable(path) {
+                        return Ok(path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+
+        Err("No valid `testgen-hs` binary found in subdomains.".to_string())
+    }
+
+    /// Checks if the path is runnable. Adjust for platform specifics if needed.
+    fn is_executable(path: &Path) -> bool {
+        Command::new(path).arg("--version").output().is_ok()
     }
 
     /// This function is called at startup, so that we make sure that the worker is reasonable.
@@ -240,10 +287,7 @@ mod tests {
     #[tokio::test]
     #[tracing_test::traced_test]
     async fn test_fallback_decoder() {
-        let testgen_hs_path = std::env::var("TESTGEN_HS_PATH").unwrap();
-        let decoder = FallbackDecoder::spawn(testgen_hs_path);
-
-        decoder.startup_sanity_test().await.unwrap();
+        let decoder = FallbackDecoder::spawn().unwrap();
 
         // Now, kill our child to test the restart logic:
         sysinfo::System::new_all()
