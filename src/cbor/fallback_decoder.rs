@@ -25,9 +25,16 @@ struct FDRequest {
 impl FallbackDecoder {
     /// Starts a new child process.
     pub fn spawn() -> Result<Self, AppError> {
-        let search_roots = ["target/testgen-hs/extracted/testgen-hs", "/usr/bin", "/bin"];
-        let testgen_hs_lib =
-            Self::find_testgen_hs(&search_roots).map_err(|err| AppError::Server(err))?;
+        let search_roots = [
+            // Build script
+            "target/testgen-hs/extracted/testgen-hs",
+            // Common paths
+            "/usr/bin",
+            "/bin",
+            // Docker
+            "/app/testgen-hs",
+        ];
+        let testgen_hs_lib = Self::find_testgen_hs(&search_roots).map_err(AppError::Server)?;
 
         info!("Using {} as a fallback CBOR error decoder", &testgen_hs_lib);
 
@@ -88,7 +95,9 @@ impl FallbackDecoder {
     pub fn find_testgen_hs(roots: &[&str]) -> Result<String, String> {
         // 1. Check project root
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-        let root_candidate = PathBuf::from(&manifest_dir).join("testgen-hs");
+
+        #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
+        let mut root_candidate: PathBuf = PathBuf::from(&manifest_dir).join("testgen-hs");
 
         // On Windows, adjust the filename
         #[cfg(target_os = "windows")]
@@ -105,10 +114,11 @@ impl FallbackDecoder {
         for root in roots {
             for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
                 let path = entry.path();
-                if path.is_file() && path.file_name().unwrap_or_default() == "testgen-hs" {
-                    if Self::is_executable(path) {
-                        return Ok(path.to_string_lossy().to_string());
-                    }
+                if path.is_file()
+                    && path.file_name().unwrap_or_default() == "testgen-hs"
+                    && Self::is_executable(path)
+                {
+                    return Ok(path.to_string_lossy().to_string());
                 }
             }
         }

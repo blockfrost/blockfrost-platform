@@ -17,6 +17,7 @@ in rec {
     strictDeps = true;
     nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
       pkgs.pkg-config
+      testgen-hs
     ];
     buildInputs =
       lib.optionals pkgs.stdenv.isLinux [
@@ -36,6 +37,10 @@ in rec {
   package = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
+      # Do not use build script in nix
+      postPatch = ''
+        sed -i -e '/^build =/d' Cargo.toml
+      '';
       preCheck = ''
         export PATH=${lib.makeBinPath [testgen-hs]}:"$PATH"
       '';
