@@ -54,8 +54,11 @@ jobs:
               ./testgen-hs/testgen-hs.exe --version
               ;;
           esac
-      - name: Test
-        run: cargo test --verbose
+
+      - name: Run tests (unit + integration)
+        run: |
+          ps aux | grep cardano-node
+          cargo test --verbose
         timeout-minutes: 10
       - name: Check formatting
         run: cargo fmt --all -- --check
