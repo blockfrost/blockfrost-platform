@@ -32,7 +32,7 @@ in rec {
   };
 
   # For better caching:
-  cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+  # cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
   package = craneLib.buildPackage (commonArgs
     // {
