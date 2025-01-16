@@ -26,11 +26,11 @@ impl FallbackDecoder {
     /// Starts a new child process.
     pub fn spawn() -> Result<Self, AppError> {
         let search_roots = [
-            // Build script
-            "target/testgen-hs/extracted/testgen-hs",
             // Common paths
             "/usr/bin",
             "/bin",
+            // Build script
+            "target/testgen-hs/extracted/testgen-hs",
             // Docker
             "/app/testgen-hs",
         ];
