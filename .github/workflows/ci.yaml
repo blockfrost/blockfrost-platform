@@ -15,7 +15,7 @@ env:
 
 jobs:
   build_and_test:
-    name: CI
+    name: Build and Test
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -27,29 +27,53 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
+
       - name: Build
         run: cargo build --release --verbose
+
       - name: Test
         run: cargo test --verbose
         timeout-minutes: 10
+
       - name: Check formatting
         run: cargo fmt --all -- --check
+
       - name: Lint with Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         run: |
           mkdir -p artifacts
           cp target/release/blockfrost-platform* artifacts/
           cp -r testgen-hs artifacts/
+
       - name: Upload artifacts
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binary
           path: artifacts/
+
+  integration_tests:
+    name: Integration Tests
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: build_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, rust-src, clippy
+
+      - name: Run Integration Tests
+        run: cargo test --verbose --test integration
