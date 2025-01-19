@@ -30,7 +30,7 @@ pub async fn build(config: &Config) -> Result<(NormalizePath<Router>, NodePool),
     // 2. Create node pool
     let node_conn_pool = NodePool::new(config, fallback_decoder)?;
 
-    // 3. Set up optional Icebreakers API
+    // 3. Set up optional Icebreakers API (solitary mode)
     let icebreakers_api = IcebreakersAPI::new(config).await?;
 
     // 4. Metrics recorder
