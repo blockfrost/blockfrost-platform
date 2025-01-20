@@ -38,6 +38,7 @@ in rec {
   package = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
+      doCheck = false; # we run tests with `cargo-nextest` below
       postInstall = ''
         chmod -R +w $out
         mv $out/bin $out/libexec
@@ -46,6 +47,35 @@ in rec {
         ln -sf $out/libexec/blockfrost-platform $out/bin/
       '';
     });
+
+  cargoChecks = {
+    cargo-clippy = craneLib.cargoClippy (commonArgs
+      // {
+        inherit cargoArtifacts;
+        # Maybe also add `--deny clippy::pedantic`?
+        cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+      });
+
+    cargo-doc = craneLib.cargoDoc (commonArgs
+      // {
+        RUSTDOCFLAGS = "-D warnings";
+        inherit cargoArtifacts;
+      });
+
+    cargo-audit = craneLib.cargoAudit {
+      inherit src;
+      inherit (inputs) advisory-db;
+    };
+
+    cargo-deny = craneLib.cargoDeny {
+      inherit src;
+    };
+
+    cargo-test = craneLib.cargoNextest (commonArgs
+      // {
+        inherit cargoArtifacts;
+      });
+  };
 
   cardano-node-flake = let
     unpatched = inputs.cardano-node;

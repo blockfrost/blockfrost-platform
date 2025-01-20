@@ -15,6 +15,8 @@
     devshell.inputs.nixpkgs.follows = "nixpkgs";
     cardano-playground.url = "github:input-output-hk/cardano-playground/b4f47fd78beec0ea1ed880d6f0b794919e0c0463";
     cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
+    advisory-db.url = "github:rustsec/advisory-db";
+    advisory-db.flake = false;
   };
 
   outputs = inputs: let
@@ -45,10 +47,10 @@
         system,
         pkgs,
         ...
-      }: {
-        packages = let
-          internal = inputs.self.internal.${system};
-        in
+      }: let
+        internal = inputs.self.internal.${system};
+      in {
+        packages =
           {
             default = internal.package;
             inherit (internal) tx-build cardano-address testgen-hs;
@@ -58,6 +60,8 @@
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
+
+        checks = internal.cargoChecks;
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";

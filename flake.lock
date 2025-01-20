@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "advisory-db": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1737246984,
+        "narHash": "sha256-cjWzMwqej9zVoFGV5NkefOspMDJJ+gN3+zkFZcBBAkc=",
+        "owner": "rustsec",
+        "repo": "advisory-db",
+        "rev": "cfd49ce116f12c856a3f3c065d041fd0dd7169dc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rustsec",
+        "repo": "advisory-db",
+        "type": "github"
+      }
+    },
     "cardano-node": {
       "flake": false,
       "locked": {
@@ -133,6 +149,7 @@
     },
     "root": {
       "inputs": {
+        "advisory-db": "advisory-db",
         "cardano-node": "cardano-node",
         "cardano-playground": "cardano-playground",
         "crane": "crane",
