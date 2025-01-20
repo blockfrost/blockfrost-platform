@@ -7,18 +7,17 @@ use serde::{Deserialize, Serialize};
 use std::boxed::Box;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct NodeInfo {
-    pub block: String,
-    pub epoch: u32,
-    pub era: String,
-    pub slot: u64,
-    #[serde(rename = "syncProgress")]
-    pub sync_progress: f64,
+pub struct SyncProgress {
+    pub percentage: f64,
+    era: u16,
+    epoch: u32,
+    slot: u64,
+    block: String,
 }
 
 impl NodeClient {
     /// Reports the sync progress of the node.
-    pub async fn sync_progress(&mut self) -> Result<NodeInfo, BlockfrostError> {
+    pub async fn sync_progress(&mut self) -> Result<SyncProgress, BlockfrostError> {
         self.with_statequery(|generic_client: &mut localstate::GenericClient| {
             Box::pin(async {
                 let current_era = localstate::queries_v16::get_current_era(generic_client).await?;
@@ -104,13 +103,11 @@ impl NodeClient {
 
                 let tolerance = 60; // [s]
                 let percentage = if (utc_now - utc_slot_capped).num_seconds() < tolerance {
-                    100.00
+                    1.0
                 } else {
                     let network_duration = (utc_now - utc_start).num_seconds() as f64;
                     let duration_up_to_slot = (utc_slot_capped - utc_start).num_seconds() as f64;
-                    // Multiply by 100 to get a percentage, then multiply by 100 again, round, and divide by 100
-                    // to limit the result to two decimal places.
-                    ((duration_up_to_slot / network_duration) * 100.0 * 100.0).round() / 100.0
+                    duration_up_to_slot / network_duration
                 };
 
                 let block = match chain_point {
@@ -118,9 +115,9 @@ impl NodeClient {
                     miniprotocols::Point::Specific(_, block) => hex::encode(&block),
                 };
 
-                Ok(NodeInfo {
-                    sync_progress: percentage,
-                    era: current_era.to_string(),
+                Ok(SyncProgress {
+                    percentage,
+                    era: current_era,
                     epoch,
                     slot,
                     block,
