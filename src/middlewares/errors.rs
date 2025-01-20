@@ -30,8 +30,6 @@ pub async fn error_middleware(request: Request, next: Next) -> Result<Response, 
         return Ok(BlockfrostError::method_not_allowed().into_response());
     }
 
-    println!("response:{:?}", response.body());
-
     // Transform server errors to internal server error for user
     if response.status().is_server_error() {
         handle_server_error(response, &request_path, status_code).await
