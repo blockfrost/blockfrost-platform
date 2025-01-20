@@ -1,9 +1,9 @@
 use crate::{node::sync_progress::SyncProgress, BlockfrostError, NodePool};
 use axum::{response::IntoResponse, Extension, Json};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
-pub struct Response {
+#[derive(Serialize, Deserialize)]
+pub struct RootResponse {
     pub name: String,
     pub version: String,
     pub sync_progress: SyncProgress,
@@ -18,7 +18,7 @@ pub async fn route(
     let mut node = node.get().await?;
     let sync_progress = node.sync_progress().await?;
 
-    let response = Response {
+    let response = RootResponse {
         name: "blockfrost-platform".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         sync_progress,

@@ -3,11 +3,12 @@ use crate::BlockfrostError;
 use chrono::{Duration, TimeZone, Utc};
 use pallas_network::{miniprotocols, miniprotocols::localstate};
 use pallas_traverse::wellknown;
+use serde::{Deserialize, Serialize};
 use std::boxed::Box;
 
-#[derive(serde::Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SyncProgress {
-    percentage: f64,
+    pub percentage: f64,
     era: u16,
     epoch: u32,
     slot: u64,
