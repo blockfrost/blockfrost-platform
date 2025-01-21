@@ -34,7 +34,11 @@ pub async fn build(config: &Config) -> Result<(NormalizePath<Router>, NodePool),
     let icebreakers_api = IcebreakersAPI::new(config).await?;
 
     // 4. Metrics recorder
-    let prometheus_handle = setup_metrics_recorder();
+    let prometheus_handle = if config.metrics {
+        Some(setup_metrics_recorder())
+    } else {
+        None
+    };
 
     // 5. Figure out prefix
     let api_prefix = if let Some(api) = &icebreakers_api {
