@@ -76,4 +76,4 @@ jobs:
           components: rustfmt, rust-src, clippy
 
       - name: Run Integration Tests
-        run: cargo test --verbose --test integration
+        run: cargo test --verbose --test endpoints_test
