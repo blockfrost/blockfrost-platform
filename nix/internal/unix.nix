@@ -53,7 +53,7 @@ in rec {
       // {
         inherit cargoArtifacts;
         # Maybe also add `--deny clippy::pedantic`?
-        cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+        cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
       });
 
     cargo-doc = craneLib.cargoDoc (commonArgs

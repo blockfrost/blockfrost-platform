@@ -37,6 +37,7 @@ in {
       package = internal.cardano-address;
     }
     {package = config.language.rust.packageSet.cargo;}
+    {package = pkgs.cargo-nextest;}
     {package = pkgs.rust-analyzer;}
     {
       category = "handy";
@@ -70,6 +71,13 @@ in {
 
     You can now run ‘{bold}cargo run{reset}’.
   '';
+
+  env = [
+    {
+      name = "TESTGEN_HS_PATH";
+      value = lib.getExe internal.testgen-hs;
+    }
+  ];
 
   devshell.startup.symlink-configs.text = ''
     ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
