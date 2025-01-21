@@ -29,6 +29,7 @@ pub fn test_config() -> Config {
         icebreakers_config: None,
         max_pool_connections: 10,
         network: Network::Preview,
+        metrics: false,
     }
 }
 
