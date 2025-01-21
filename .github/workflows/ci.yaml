@@ -69,5 +69,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Query Tip
+        run: nix develop .# --command cardano-cli query tip --socket-path /run/cardano-node/node.socket --testnet-magic 2
+
       - name: Run Integration Tests
         run: nix develop .# --command cargo test --verbose --test endpoints_test
