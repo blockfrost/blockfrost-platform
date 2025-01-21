@@ -10,8 +10,8 @@ use pallas_primitives::{
         GovActionId, PoolVotingThresholds, ProposalProcedure, ProtocolParamUpdate, VKeyWitness,
         Voter,
     },
-    Bytes, DatumHash, ExUnits, Hash, Nullable, ProtocolVersion, RationalNumber, RewardAccount,
-    ScriptHash, StakeCredential, TransactionInput,
+    Bytes, DatumHash, ExUnits, Hash, KeyValuePairs, Nullable, ProtocolVersion, RationalNumber,
+    RewardAccount, ScriptHash, StakeCredential, TransactionInput,
 };
 
 use crate::cbor::haskell_types::get_network_and_credentials;
@@ -19,11 +19,11 @@ use crate::cbor::haskell_types::get_network_and_credentials;
 use super::haskell_types::{
     AddressBytes, Array, AsIx, BabbageTxOut, ConwayCertPredFailure, ConwayDelegPredFailure,
     ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayUtxoWPredFailure, Credential,
-    CustomSet258, DatumEnum, DisplayAssetName, DisplayCoin, DisplayDatum, DisplayDatumHash,
-    DisplayHash, DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo, EraScript, KeyHash,
-    MaryValue, Mismatch, MultiAsset, PlutusPurpose, RewardAccountFielded, SafeHash,
-    SerializableTxIn, SerializableTxOut, ShelleyPoolPredFailure, StrictMaybe, Timelock,
-    TimelockRaw, VKey,
+    CustomSet258, DatumEnum, DeltaCoin, DisplayAssetName, DisplayCoin, DisplayDatum,
+    DisplayDatumHash, DisplayHash, DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo,
+    EraScript, KeyHash, MaryValue, Mismatch, MultiAsset, PlutusPurpose, RewardAccountFielded,
+    SafeHash, SerializableTxIn, SerializableTxOut, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    Timelock, TimelockRaw, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -67,7 +67,9 @@ impl HaskellDisplay for ShelleyPoolPredFailure {
     fn to_haskell_str(&self) -> String {
         use ShelleyPoolPredFailure::*;
         match self {
-            StakePoolNotRegisteredOnKeyPOOL(kh) => kh.to_haskell_str(),
+            StakePoolNotRegisteredOnKeyPOOL(kh) => {
+                format!("StakePoolNotRegisteredOnKeyPOOL ({})", kh.to_haskell_str())
+            }
             StakePoolRetirementWrongEpochPOOL(mis1, mis2) => {
                 format!(
                     "StakePoolRetirementWrongEpochPOOL ({}) ({})",
@@ -101,7 +103,7 @@ impl fmt::Display for ConwayUtxoWPredFailure {
         use ConwayUtxoWPredFailure::*;
 
         match self {
-            UtxoFailure(e) => write!(f, "(UtxoFailure ({}))", e),
+            UtxoFailure(e) => write!(f, "(UtxoFailure {})", e),
             InvalidWitnessesUTXOW(e) => {
                 write!(f, "(InvalidWitnessesUTXOW {})", e.to_haskell_str())
             }
@@ -123,7 +125,11 @@ impl fmt::Display for ConwayUtxoWPredFailure {
                 "(MissingTxBodyMetadataHash ({}))",
                 display_bytes_as_aux_data_hash(b)
             ),
-            MissingTxMetadata(e) => write!(f, "(MissingTxMetadata ({}))", e),
+            MissingTxMetadata(e) => write!(
+                f,
+                "(MissingTxMetadata ({}))",
+                display_bytes_as_aux_data_hash(e)
+            ),
             ConflictingMetadataHash(e1, e2) => {
                 write!(f, "(ConflictingMetadataHash ({}, {}))", e1, e2)
             }
@@ -138,7 +144,7 @@ impl fmt::Display for ConwayUtxoWPredFailure {
             MissingRedeemers(e) => write!(f, "(MissingRedeemers {})", e.to_haskell_str()),
             MissingRequiredDatums(e1, e2) => write!(
                 f,
-                "(MissingRequiredDatums ({}, {}))",
+                "(MissingRequiredDatums ({}) ({}))",
                 e1.to_haskell_str(),
                 e2.to_haskell_str()
             ),
@@ -208,7 +214,13 @@ impl fmt::Display for ConwayGovPredFailure {
             VotingOnExpiredGovAction(vec) => {
                 write!(f, "VotingOnExpiredGovAction ({})", vec.to_haskell_str())
             }
-            ProposalCantFollow(s) => write!(f, "ProposalCantFollow ({})", s),
+            ProposalCantFollow(a, p1, p2) => write!(
+                f,
+                "ProposalCantFollow ({}) ({}) ({})",
+                a.to_haskell_str(),
+                p1.as_protocol_version(),
+                p2.as_protocol_version()
+            ),
             InvalidPolicyHash(maybe1, maybe2) => write!(
                 f,
                 "InvalidPolicyHash {} {}",
@@ -227,7 +239,7 @@ impl fmt::Display for ConwayGovPredFailure {
             }
             VotersDoNotExist(s) => write!(f, "VotersDoNotExist ({})", s.to_haskell_str()),
             ZeroTreasuryWithdrawals(s) => {
-                write!(f, "ZeroTreasuryWithdrawals ({})", s.to_haskell_str())
+                write!(f, "ZeroTreasuryWithdrawals {}", s.to_haskell_str_p())
             }
             ProposalReturnAccountDoesNotExist(s) => {
                 write!(f, "ProposalReturnAccountDoesNotExist ({})", s)
@@ -244,10 +256,9 @@ impl fmt::Display for ConwayGovPredFailure {
 }
 pub trait HaskellDisplay {
     fn to_haskell_str(&self) -> String;
-}
-
-pub trait HaskellDisplayParentesis {
-    fn to_haskell_str_p(&self) -> String;
+    fn to_haskell_str_p(&self) -> String {
+        format!("({})", self.to_haskell_str())
+    }
 }
 
 impl HaskellDisplay for ConwayDelegPredFailure {
@@ -340,15 +351,39 @@ impl HaskellDisplay for GovActionId {
     }
 }
 
+impl HaskellDisplay for ValidityInterval {
+    fn to_haskell_str(&self) -> String {
+        format!(
+            "(ValidityInterval {{invalidBefore = {}, invalidHereafter = {}}})",
+            &self.invalid_before.to_haskell_str(),
+            &self.invalid_hereafter.to_haskell_str()
+        )
+    }
+}
+
 impl<T> HaskellDisplay for Nullable<T>
 where
-    T: HaskellDisplay + std::clone::Clone,
+    T: HaskellDisplay + std::clone::Clone + 'static,
 {
     fn to_haskell_str(&self) -> String {
         match self {
-            Nullable::Some(v) => format!("SJust ({})", v.to_haskell_str()),
+            Nullable::Some(v) => {
+                if is_primitive::<T>() {
+                    format!("SJust {}", v.to_haskell_str())
+                } else {
+                    format!("SJust ({})", v.to_haskell_str())
+                }
+            }
             _ => "SNothing".to_string(),
         }
+    }
+
+    fn to_haskell_str_p(&self) -> String {
+        let str = self.to_haskell_str();
+        if &str == "SNothing" {
+            return str;
+        }
+        format!("({})", self.to_haskell_str())
     }
 }
 
@@ -368,24 +403,13 @@ where
             _ => "SNothing".to_string(),
         }
     }
-}
 
-fn display_nullable<T>(x: &Nullable<T>) -> String
-where
-    T: HaskellDisplay + std::clone::Clone + 'static,
-{
-    if is_primitive::<T>() {
-        return format!("(SJust {})", x.to_haskell_str());
-    }
-    match x {
-        Nullable::Some(v) => {
-            if is_primitive::<T>() {
-                format!("SJust {}", v.to_haskell_str())
-            } else {
-                format!("(SJust ({}))", v.to_haskell_str())
-            }
+    fn to_haskell_str_p(&self) -> String {
+        let str = self.to_haskell_str();
+        if &str == "SNothing" {
+            return str;
         }
-        _ => "SNothing".to_string(),
+        format!("({})", self.to_haskell_str())
     }
 }
 
@@ -412,7 +436,7 @@ impl HaskellDisplay for GovAction {
             ParameterChange(a, b, c) => {
                 format!(
                     "ParameterChange {} {} {}",
-                    a.to_haskell_str(),
+                    a.to_haskell_str_p(),
                     b.to_haskell_str(),
                     c.to_haskell_str(),
                 )
@@ -420,15 +444,19 @@ impl HaskellDisplay for GovAction {
             HardForkInitiation(a, b) => {
                 format!(
                     "HardForkInitiation {} ({})",
-                    display_nullable(a),
+                    a.to_haskell_str_p(),
                     b.as_protocol_version()
                 )
             }
             TreasuryWithdrawals(a, b) => {
-                format!("TreasuryWithdrawals ({:?}, {})", a, b.to_haskell_str(),)
+                format!(
+                    "TreasuryWithdrawals {} {}",
+                    a.to_haskell_str_p(),
+                    b.to_haskell_str_p(),
+                )
             }
             NoConfidence(a) => {
-                format!("NoConfidence {}", display_nullable(a))
+                format!("NoConfidence {}", a.to_haskell_str_p())
             }
             UpdateCommittee(a, b, c, d) => {
                 format!(
@@ -448,6 +476,15 @@ impl HaskellDisplay for GovAction {
             }
             Information => "InfoAction".to_string(),
         }
+    }
+
+    fn to_haskell_str_p(&self) -> String {
+        let str = self.to_haskell_str();
+
+        if str == "InfoAction" {
+            return str;
+        }
+        format!("({})", self.to_haskell_str())
     }
 }
 
@@ -924,6 +961,23 @@ impl AsDisplayCoin for Option<u64> {
     }
 }
 
+// This trait is used to present values coming from a Map, but we don't use Map
+trait AsInMap {
+    fn as_in_map(&self) -> String;
+}
+
+impl<T> AsInMap for StrictMaybe<T>
+where
+    T: HaskellDisplay + 'static,
+{
+    fn as_in_map(&self) -> String {
+        match self {
+            StrictMaybe::Just(v) => format!("SJust {}", v.to_haskell_str()),
+            StrictMaybe::Nothing => "SNothing".to_string(),
+        }
+    }
+}
+
 impl HaskellDisplay for AsIx {
     fn to_haskell_str(&self) -> String {
         format!("AsIx {{unAsIx = {}}}", self.0)
@@ -971,10 +1025,29 @@ impl AsText for Bytes {
         haskell_show_string(s)
     }
 }
-
+impl HaskellDisplay for Bytes {
+    fn to_haskell_str(&self) -> String {
+        format!("Bytes \"{}\"", self)
+    }
+}
 impl HaskellDisplay for MultiAsset {
     fn to_haskell_str(&self) -> String {
         format!("MultiAsset ({})", self.0.to_haskell_str())
+    }
+}
+
+impl<K, V> HaskellDisplay for KeyValuePairs<K, V>
+where
+    K: Clone + HaskellDisplay,
+    V: Clone + HaskellDisplay,
+{
+    fn to_haskell_str(&self) -> String {
+        let result = self
+            .iter()
+            .map(|(k, v)| format!("({}, {})", k.to_haskell_str(), v.to_haskell_str()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("fromList [{}]", result)
     }
 }
 
@@ -1017,7 +1090,7 @@ impl HaskellDisplay for BabbageTxOut {
                     value.to_haskell_str(),
                     multiasset.to_haskell_str(),
                     datum_hash.to_haskell_str(),
-                    era_script.to_haskell_str()
+                    era_script.as_in_map()
                 )
             }
             _ => "HaskellDisplay not implemented yet".to_string(),
@@ -1147,8 +1220,8 @@ impl HaskellDisplay for TimelockRaw {
             AllOf(vec) => format!("AllOf ({})", vec.to_haskell_str()),
             AnyOf(vec) => format!("AnyOf ({})", vec.to_haskell_str()),
             MOfN(m, vec) => format!("MOfN {} ({})", m, vec.as_strict_seq()),
-            TimeStart(slot_no) => format!("TimeStart ({})", slot_no),
-            TimeExpire(slot_no) => format!("TimeExpire ({})", slot_no),
+            TimeStart(slot_no) => format!("TimeStart ({})", slot_no.to_haskell_str()),
+            TimeExpire(slot_no) => format!("TimeExpire ({})", slot_no.to_haskell_str()),
         }
     }
 }
@@ -1160,7 +1233,11 @@ impl HaskellDisplay for Timelock {
         format!("TimelockConstr {} {}", raw, memo)
     }
 }
-
+impl HaskellDisplay for SlotNo {
+    fn to_haskell_str(&self) -> String {
+        format!("SlotNo {}", self.0)
+    }
+}
 impl HaskellDisplay for DisplayHash {
     fn to_haskell_str(&self) -> String {
         format!("(blake2b_256: SafeHash \"{}\")", hex::encode(self.0))
@@ -1192,24 +1269,27 @@ impl HaskellDisplay for SerializableTxIn {
 
 impl<T> HaskellDisplay for StrictMaybe<T>
 where
-    T: HaskellDisplay,
+    T: HaskellDisplay + 'static,
 {
     fn to_haskell_str(&self) -> String {
         match self {
-            StrictMaybe::Just(v) => format!("SJust {}", v.to_haskell_str()),
+            StrictMaybe::Just(v) => {
+                if is_primitive::<T>() {
+                    format!("SJust {}", v.to_haskell_str())
+                } else {
+                    format!("SJust ({})", v.to_haskell_str())
+                }
+            }
             StrictMaybe::Nothing => "SNothing".to_string(),
         }
     }
-}
-impl<T> HaskellDisplayParentesis for StrictMaybe<T>
-where
-    T: HaskellDisplay,
-{
+
     fn to_haskell_str_p(&self) -> String {
-        match self {
-            StrictMaybe::Just(v) => format!("(SJust ({}))", v.to_haskell_str()),
-            StrictMaybe::Nothing => "SNothing".to_string(),
+        let str = self.to_haskell_str();
+        if &str == "SNothing" {
+            return str;
         }
+        format!("({})", self.to_haskell_str())
     }
 }
 
@@ -1237,6 +1317,21 @@ where
     }
 }
 
+impl HaskellDisplay for DeltaCoin {
+    fn to_haskell_str(&self) -> String {
+        format!("DeltaCoin {}", self.0.to_haskell_str())
+    }
+}
+
+impl HaskellDisplay for i32 {
+    fn to_haskell_str(&self) -> String {
+        if *self >= 0 {
+            format!("{}", self)
+        } else {
+            format!("({})", self)
+        }
+    }
+}
 impl HaskellDisplay for DatumHash {
     fn to_haskell_str(&self) -> String {
         format!("DatumHash \"{}\"", hex::encode(self.as_ref()))

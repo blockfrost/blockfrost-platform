@@ -13,8 +13,8 @@ use super::{
     haskell_types::{
         BabbageTxOut, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegPredFailure,
         ConwayGovCertPredFailure, ConwayGovPredFailure, Credential, CustomSet258, DisplayHash,
-        EraScript, Mismatch, Network, RewardAccountFielded, ShelleyPoolPredFailure, Timelock,
-        TimelockRaw,
+        EraScript, Mismatch, Network, RewardAccountFielded, ShelleyPoolPredFailure, SlotNo,
+        Timelock, TimelockRaw, ValidityInterval,
     },
 };
 
@@ -79,6 +79,26 @@ impl<'b> Decode<'b, ()> for Network {
 }
 */
 
+impl<'b> Decode<'b, ()> for ValidityInterval {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        d.array()?;
+
+        let invalid_before: Option<SlotNo> = match d.array()? {
+            Some(1) => Some(d.decode()?),
+            _ => None,
+        };
+
+        let invalid_hereafter: Option<SlotNo> = match d.array()? {
+            Some(1) => Some(d.decode()?),
+            _ => None,
+        };
+
+        Ok(ValidityInterval {
+            invalid_before,
+            invalid_hereafter,
+        })
+    }
+}
 impl<'b> Decode<'b, ()> for ShelleyPoolPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         let start = d.position();
@@ -223,7 +243,11 @@ impl<'b> Decode<'b, ()> for ConwayGovPredFailure {
 
             9 => Ok(VotingOnExpiredGovAction(d.decode()?)),
 
-            10 => Ok(ProposalCantFollow(d.decode()?)),
+            10 => {
+                d.array()?;
+                let a = d.decode()?;
+                Ok(ProposalCantFollow(a, d.decode()?, d.decode()?))
+            }
             11 => Ok(InvalidPolicyHash(d.decode()?, d.decode()?)),
             12 => Ok(DisallowedProposalDuringBootstrap(d.decode()?)),
             13 => Ok(DisallowedVotesDuringBootstrap(d.decode()?)),

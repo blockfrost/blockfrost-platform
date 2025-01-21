@@ -16,7 +16,8 @@ use pallas_primitives::{
         Anchor, DatumHash, ExUnits, GovAction, GovActionId, ProposalProcedure, RewardAccount,
         ScriptHash, Value, Voter,
     },
-    AddrKeyhash, AssetName, Coin, PolicyId, StakeCredential, TransactionInput,
+    AddrKeyhash, AssetName, Coin, Nullable, PolicyId, ProtocolVersion, StakeCredential,
+    TransactionInput,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -188,7 +189,7 @@ pub enum ConwayUtxoWPredFailure {
     InvalidMetadata(),                     // empty
     ExtraneousScriptWitnessesUTXOW(CustomSet258<ScriptHash>),
     MissingRedeemers(Array<(PlutusPurpose, ScriptHash)>),
-    MissingRequiredDatums(Vec<DatumHash>, Vec<DatumHash>), // set of missing data hashes, set of recieved data hashes
+    MissingRequiredDatums(CustomSet258<SafeHash>, CustomSet258<SafeHash>), // set of missing data hashes, set of recieved data hashes
     NotAllowedSupplementalDatums(CustomSet258<SafeHash>, CustomSet258<SafeHash>), // set of unallowed data hashes, set of acceptable data hashes
     PPViewHashesDontMatch(StrictMaybe<SafeHash>, StrictMaybe<SafeHash>),
     UnspendableUTxONoDatumHash(CustomSet258<TransactionInput>), //  Set of transaction inputs that are TwoPhase scripts, and should have a DataHash but don't
@@ -230,78 +231,87 @@ impl fmt::Display for ConwayUtxoPredFailure {
         use ConwayUtxoPredFailure::*;
 
         match self {
-            UtxosFailure(e) => write!(f, "UtxosFailure ({})", e),
-            BadInputsUTxO(e) => write!(f, "BadInputsUTxO ({})", e.to_haskell_str()),
+            UtxosFailure(e) => write!(f, "(UtxosFailure ({}))", e),
+            BadInputsUTxO(e) => write!(f, "(BadInputsUTxO ({}))", e.to_haskell_str()),
             OutsideValidityIntervalUTxO(vi, slot) => {
-                write!(f, "OutsideValidityIntervalUTxO ({}, {})", vi, slot)
+                write!(
+                    f,
+                    "(OutsideValidityIntervalUTxO {} ({}))",
+                    vi.to_haskell_str(),
+                    slot.to_haskell_str()
+                )
             }
-            MaxTxSizeUTxO(size) => write!(f, "MaxTxSizeUTxO ({})", size),
+            MaxTxSizeUTxO(size) => write!(f, "(MaxTxSizeUTxO ({}))", size),
             InputSetEmptyUTxO() => write!(f, "InputSetEmptyUTxO"),
             FeeTooSmallUTxO(expected, supplied) => {
                 write!(
                     f,
-                    "FeeTooSmallUTxO ({}) ({})",
+                    "(FeeTooSmallUTxO ({}) ({}))",
                     expected.to_haskell_str(),
                     supplied.to_haskell_str()
                 )
             }
             ValueNotConservedUTxO(expected, supplied) => {
-                write!(f, "ValueNotConservedUTxO ({}) ({})", expected, supplied)
+                write!(f, "(ValueNotConservedUTxO ({}) ({}))", expected, supplied)
             }
             WrongNetwork(network, addrs) => {
                 write!(
                     f,
-                    "WrongNetwork ({}) ({:?})",
+                    "(WrongNetwork ({}) ({:?}))",
                     network.to_haskell_str(),
                     addrs
                 )
             }
             WrongNetworkWithdrawal(network, accounts) => write!(
                 f,
-                "WrongNetworkWithdrawal ({}) ({})",
+                "(WrongNetworkWithdrawal ({}) ({}))",
                 network.to_haskell_str(),
                 accounts.to_haskell_str()
             ),
             OutputTooSmallUTxO(tx_outs) => {
-                write!(f, "OutputTooSmallUTxO {}", tx_outs.to_haskell_str())
+                write!(f, "(OutputTooSmallUTxO {})", tx_outs.to_haskell_str())
             }
             OutputBootAddrAttrsTooBig(outputs) => {
-                write!(f, "OutputBootAddrAttrsTooBig {}", outputs.to_haskell_str())
+                write!(
+                    f,
+                    "(OutputBootAddrAttrsTooBig {})",
+                    outputs.to_haskell_str()
+                )
             }
             OutputTooBigUTxO(outputs) => {
-                write!(f, "OutputTooBigUTxO ({})", display_triple_vec(outputs))
+                write!(f, "(OutputTooBigUTxO {})", display_triple_vec(outputs))
             }
             InsufficientCollateral(balance, required) => {
                 write!(
                     f,
-                    "InsufficientCollateral ({}) ({})",
-                    balance,
+                    "(InsufficientCollateral ({}) ({}))",
+                    balance.to_haskell_str(),
                     required.to_haskell_str()
                 )
             }
-            ScriptsNotPaidUTxO(utxo) => write!(f, "ScriptsNotPaidUTxO ({})", utxo),
-            ExUnitsTooBigUTxO(units) => write!(f, "ExUnitsTooBigUTxO ({})", units),
-            CollateralContainsNonADA(value) => write!(f, "CollateralContainsNonADA ({})", value),
+            ScriptsNotPaidUTxO(utxo) => write!(f, "(ScriptsNotPaidUTxO ({}))", utxo),
+            ExUnitsTooBigUTxO(units) => write!(f, "(ExUnitsTooBigUTxO ({}))", units),
+            CollateralContainsNonADA(value) => write!(f, "(CollateralContainsNonADA ({}))", value),
             WrongNetworkInTxBody() => write!(f, "WrongNetworkInTxBody"),
-            OutsideForecast(slot) => write!(f, "OutsideForecast ({})", slot),
-            TooManyCollateralInputs(inputs) => write!(f, "TooManyCollateralInputs ({})", inputs),
+            OutsideForecast(slot) => write!(f, "(OutsideForecast ({}))", slot.to_haskell_str()),
+            TooManyCollateralInputs(inputs) => write!(f, "(TooManyCollateralInputs ({}))", inputs),
             NoCollateralInputs() => write!(f, "NoCollateralInputs"),
             IncorrectTotalCollateralField(provided, declared) => write!(
                 f,
-                "IncorrectTotalCollateralField ({}, {})",
+                "(IncorrectTotalCollateralField ({}, {}))",
                 provided, declared
             ),
             BabbageOutputTooSmallUTxO(outputs) => {
                 write!(
                     f,
-                    "BabbageOutputTooSmallUTxO ({})",
+                    "(BabbageOutputTooSmallUTxO ({}))",
                     display_tuple_vec(outputs)
                 )
             }
             BabbageNonDisjointRefInputs(inputs) => {
                 write!(
                     f,
-                    "BabbageNonDisjointRefInputs ({})",
+                    "(BabbageNonDisjointRefInputs ({}))",
                     inputs.to_haskell_str()
                 )
             }
@@ -323,7 +333,7 @@ pub enum ConwayGovPredFailure {
     ExpirationEpochTooSmall(HashMap<StakeCredential, EpochNo>), // Probably wrong credintial type!, epochno
     InvalidPrevGovActionId(ProposalProcedure),                  // (ProposalProcedure era)
     VotingOnExpiredGovAction(Vec<(Voter, GovActionId)>), // (NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
-    ProposalCantFollow(String), //        (StrictMaybe (GovPurposeId 'HardForkPurpose era)) |
+    ProposalCantFollow(Nullable<GovActionId>, ProtocolVersion, ProtocolVersion), //        (StrictMaybe (GovPurposeId 'HardForkPurpose era)) |
     InvalidPolicyHash(
         StrictMaybe<DisplayScriptHash>,
         StrictMaybe<DisplayScriptHash>,
@@ -442,24 +452,10 @@ impl HaskellDisplay for Network {
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs#L109
-#[derive(Debug, Decode, Serialize)]
-
+#[derive(Debug)]
 pub struct ValidityInterval {
-    #[n(0)]
-    pub invalid_before: Option<SlotNo>, // SlotNo
-    #[n(1)]
-    pub invalid_hereafter: Option<SlotNo>, // SlotNo
-}
-
-impl fmt::Display for ValidityInterval {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ValidityInterval {{ invalid_before: {}, invalid_hereafter: {} }}",
-            display_option(&self.invalid_before),
-            display_option(&self.invalid_hereafter)
-        )
-    }
+    pub invalid_before: Option<SlotNo>,
+    pub invalid_hereafter: Option<SlotNo>,
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/libs/cardano-ledger-core/src/Cardano/Ledger/UTxO.hs#L83
@@ -596,7 +592,9 @@ impl fmt::Display for DisplayCoin {
     }
 }
 
-type SlotNo = u64;
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct SlotNo(#[n(0)] pub u64);
 
 // https://github.com/IntersectMBO/ouroboros-consensus/blob/e86b921443bd6e8ea25e7190eb7cb5788e28f4cc/ouroboros-consensus/src/ouroboros-consensus/Ouroboros/Consensus/HardFork/Combinator/AcrossEras.hs#L208
 #[derive(Serialize)]
@@ -615,7 +613,7 @@ pub struct EpochNo(#[n(0)] pub u64);
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
-pub struct DeltaCoin(#[n(0)] Coin);
+pub struct DeltaCoin(#[n(0)] pub i32);
 
 #[derive(Debug)]
 //#[cbor(transparent)]
@@ -644,12 +642,6 @@ impl From<&[u8]> for StrictMaybe<ScriptHash> {
             0 => StrictMaybe::Nothing,
             _ => StrictMaybe::Just(bytes.into()),
         }
-    }
-}
-
-impl fmt::Display for DeltaCoin {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DeltaCoin {}", self.0)
     }
 }
 
