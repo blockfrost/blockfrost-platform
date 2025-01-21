@@ -4,7 +4,8 @@ use pallas_crypto::hash::Hasher;
 
 use crate::cbor::haskell_types::{
     ApplyConwayTxPredError, ApplyTxError, ConwayUtxoPredFailure, ConwayUtxoWPredFailure, DatumEnum,
-    MaryValue, MultiAsset, PlutusPurpose, ShelleyBasedEra, StrictMaybe, TxValidationError, Utxo,
+    EpochNo, MaryValue, MultiAsset, PlutusPurpose, ShelleyBasedEra, StrictMaybe, TxValidationError,
+    Utxo,
 };
 
 use super::{
@@ -12,7 +13,8 @@ use super::{
     haskell_types::{
         BabbageTxOut, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegPredFailure,
         ConwayGovCertPredFailure, ConwayGovPredFailure, Credential, CustomSet258, DisplayHash,
-        EraScript, Network, RewardAccountFielded, Timelock, TimelockRaw,
+        EraScript, Mismatch, Network, RewardAccountFielded, ShelleyPoolPredFailure, Timelock,
+        TimelockRaw,
     },
 };
 
@@ -60,6 +62,7 @@ impl<'b> Decode<'b, ()> for ApplyConwayTxPredError {
     }
 }
 
+/*
 impl<'b> Decode<'b, ()> for Network {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         let error = d.u16()?;
@@ -71,6 +74,54 @@ impl<'b> Decode<'b, ()> for Network {
                 "unknown network while decoding Network: {}",
                 error
             ))),
+        }
+    }
+}
+*/
+
+impl<'b> Decode<'b, ()> for ShelleyPoolPredFailure {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let start = d.position();
+        let cbor = &d.input()[start..];
+        let cbor_hex = hex::encode(cbor);
+        println!("ShelleyPoolPredFailure CBOR: {}", cbor_hex);
+
+        d.array()?;
+        let tag = d.u16()?;
+
+        use ShelleyPoolPredFailure::*;
+        match tag {
+            0 => Ok(StakePoolNotRegisteredOnKeyPOOL(d.decode()?)),
+            1 => Ok(StakePoolRetirementWrongEpochPOOL(
+                Mismatch(EpochNo(1), d.decode()?),
+                d.decode()?,
+            )),
+            3 => Ok(StakePoolCostTooLowPOOL(d.decode()?)),
+            4 => Ok(WrongNetworkPOOL(d.decode()?, d.decode()?)),
+            5 => Ok(PoolMedataHashTooBig(d.decode()?, d.decode()?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding ShelleyPoolPredFailure: {}",
+                tag
+            ))),
+        }
+    }
+}
+
+impl<'b, T> Decode<'b, ()> for Mismatch<T>
+where
+    T: Decode<'b, ()> + HaskellDisplay,
+{
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let start = d.position();
+        let cbor = &d.input()[start..];
+        let cbor_hex = hex::encode(cbor);
+        println!("Mismatch CBOR: {}", cbor_hex);
+        match d.decode() {
+            Ok(mis1) => match d.decode() {
+                Ok(mis2) => Ok(Mismatch(mis1, mis2)),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(e),
         }
     }
 }
@@ -162,7 +213,7 @@ impl<'b> Decode<'b, ()> for ConwayGovPredFailure {
                 d.decode()?,
                 d.decode()?,
             )),
-            4 => Ok(ProposalDepositIncorrect(d.decode()?)),
+            4 => Ok(ProposalDepositIncorrect(d.decode()?, d.decode()?)),
             5 => Ok(DisallowedVoters(d.decode()?)),
             6 => Ok(ConflictingCommitteeUpdate(d.decode()?)),
 
@@ -191,6 +242,10 @@ impl<'b> Decode<'b, ()> for ConwayGovPredFailure {
 
 impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let start = d.position();
+        let cbor = &d.input()[start..];
+        let cbor_hex = hex::encode(cbor);
+        println!("ConwayCertsPredFailure CBOR: {}", cbor_hex);
         d.array()?;
         let error = d.u16()?;
 
@@ -209,6 +264,10 @@ impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
 
 impl<'b> Decode<'b, ()> for ConwayCertPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let start = d.position();
+        let cbor = &d.input()[start..];
+        let cbor_hex = hex::encode(cbor);
+        println!("ConwayCertPredFailure CBOR: {}", cbor_hex);
         d.array()?;
         let error = d.u16()?;
 
@@ -264,6 +323,21 @@ impl<'b> Decode<'b, ()> for ConwayDelegPredFailure {
             6 => Ok(DelegateeStakePoolNotRegisteredDELEG(d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error code while decoding ConwayDelegPredFailure: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b> Decode<'b, ()> for Network {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let error = d.u16()?;
+
+        match error {
+            0 => Ok(Network::Testnet),
+            1 => Ok(Network::Mainnet),
+            _ => Err(decode::Error::message(format!(
+                "unknown network while decoding Network: {}",
                 error
             ))),
         }
