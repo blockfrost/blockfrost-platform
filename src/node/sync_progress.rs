@@ -103,11 +103,13 @@ impl NodeClient {
 
                 let tolerance = 60; // [s]
                 let percentage = if (utc_now - utc_slot_capped).num_seconds() < tolerance {
-                    1.0
+                    100.00
                 } else {
                     let network_duration = (utc_now - utc_start).num_seconds() as f64;
                     let duration_up_to_slot = (utc_slot_capped - utc_start).num_seconds() as f64;
-                    duration_up_to_slot / network_duration
+                    // Multiply by 100 to get a percentage, then multiply by 100 again, round, and divide by 100
+                    // to limit the result to two decimal places.
+                    ((duration_up_to_slot / network_duration) * 100.0 * 100.0).round() / 100.0
                 };
 
                 let block = match chain_point {
