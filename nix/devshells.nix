@@ -13,10 +13,9 @@ in {
     "${inputs.devshell}/extra/language/rust.nix"
   ];
 
-  devshell.packages = [
-      pkgs.unixtools.xxd
-      pkgs.openssl
-    ] ++ lib.optionals pkgs.stdenv.isLinux [
+  devshell.packages =
+    [pkgs.unixtools.xxd]
+    ++ lib.optionals pkgs.stdenv.isLinux [
       pkgs.pkg-config
     ]
     ++ lib.optionals pkgs.stdenv.isDarwin [
