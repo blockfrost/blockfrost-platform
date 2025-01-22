@@ -5,7 +5,7 @@ use blockfrost_platform::{
     AppError, NodePool,
 };
 use lazy_static::lazy_static;
-use std::sync::Once;
+use std::sync::{Arc, Once};
 use tower_http::normalize_path::NormalizePath;
 
 lazy_static! {
@@ -18,8 +18,8 @@ pub fn initialize_logging() {
     });
 }
 
-pub fn test_config() -> Config {
-    Config {
+pub fn test_config() -> Arc<Config> {
+    let config = Config {
         server_address: "0.0.0.0".into(),
         server_port: 8080,
         log_level: LogLevel::Info.into(),
@@ -29,12 +29,13 @@ pub fn test_config() -> Config {
         icebreakers_config: None,
         max_pool_connections: 10,
         network: Network::Preview,
-        metrics: false,
-    }
+    };
+
+    Arc::new(config)
 }
 
 pub async fn build_app() -> Result<(NormalizePath<Router>, NodePool), AppError> {
     let config = test_config();
 
-    build(&config).await
+    build(config).await
 }
