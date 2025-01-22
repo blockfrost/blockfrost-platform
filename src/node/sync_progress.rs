@@ -7,17 +7,18 @@ use serde::{Deserialize, Serialize};
 use std::boxed::Box;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SyncProgress {
-    pub percentage: f64,
-    era: u16,
-    epoch: u32,
-    slot: u64,
-    block: String,
+pub struct NodeInfo {
+    pub block: String,
+    pub epoch: u32,
+    pub era: String,
+    pub slot: u64,
+    #[serde(rename = "syncProgress")]
+    pub sync_progress: f64,
 }
 
 impl NodeClient {
     /// Reports the sync progress of the node.
-    pub async fn sync_progress(&mut self) -> Result<SyncProgress, BlockfrostError> {
+    pub async fn sync_progress(&mut self) -> Result<NodeInfo, BlockfrostError> {
         self.with_statequery(|generic_client: &mut localstate::GenericClient| {
             Box::pin(async {
                 let current_era = localstate::queries_v16::get_current_era(generic_client).await?;
@@ -117,9 +118,9 @@ impl NodeClient {
                     miniprotocols::Point::Specific(_, block) => hex::encode(&block),
                 };
 
-                Ok(SyncProgress {
-                    percentage,
-                    era: current_era,
+                Ok(NodeInfo {
+                    sync_progress: percentage,
+                    era: current_era.to_string(),
                     epoch,
                     slot,
                     block,
