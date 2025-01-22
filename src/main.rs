@@ -9,6 +9,7 @@ use blockfrost_platform::{
 };
 use clap::Parser;
 use std::sync::Arc;
+use tokio::signal;
 use tracing::info;
 
 #[tokio::main]
@@ -32,11 +33,19 @@ async fn main() -> Result<(), AppError> {
         config.server_address, config.server_port
     );
 
-    // 5. Spawn background tasks
+    // Shutdown signal
+    let shutdown_signal = async {
+        let _ = signal::ctrl_c().await;
+        info!("Received shutdown signal");
+    };
+
+    // Spawn background tasks
     tokio::spawn(node_health_check_task(node_conn_pool));
 
-    // 6. Serve
-    axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;
+    // Serve
+    axum::serve(listener, ServiceExt::<Request>::into_make_service(app))
+        .with_graceful_shutdown(shutdown_signal)
+        .await?;
 
     Ok(())
 }

@@ -1,13 +1,3 @@
-use std::sync::Arc;
-
-use axum::{
-    middleware::from_fn,
-    routing::{get, post},
-    Extension, Router,
-};
-use tower::ServiceBuilder;
-use tower_http::normalize_path::{NormalizePath, NormalizePathLayer};
-
 use crate::{
     api::{metrics::setup_metrics_recorder, root, tx_submit},
     cbor::fallback_decoder::FallbackDecoder,
@@ -17,6 +7,14 @@ use crate::{
     middlewares::{errors::error_middleware, metrics::track_http_metrics},
     node::pool::NodePool,
 };
+use axum::{
+    middleware::from_fn,
+    routing::{get, post},
+    Extension, Router,
+};
+use std::sync::Arc;
+use tower::ServiceBuilder;
+use tower_http::normalize_path::{NormalizePath, NormalizePathLayer};
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
@@ -45,7 +43,7 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
         "/".to_string()
     };
 
-    // 6. Routes
+    // Routes
     let api_routes = Router::new()
         .route("/", get(root::route))
         .route("/tx/submit", post(tx_submit::route))
