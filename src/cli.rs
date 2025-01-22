@@ -29,9 +29,6 @@ pub struct Args {
     #[arg(long)]
     solitary: bool,
 
-    #[arg(long, required = false, default_value = "true")]
-    metrics: bool,
-
     #[arg(
         long,
         required_unless_present("solitary"),
@@ -83,7 +80,6 @@ pub struct Config {
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
     pub network: Network,
-    pub metrics: bool,
 }
 
 #[derive(Clone)]
@@ -113,7 +109,6 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             network: args.network,
-            metrics: args.metrics,
         })
     }
 

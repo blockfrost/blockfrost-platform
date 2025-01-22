@@ -8,21 +8,22 @@ use blockfrost_platform::{
     AppError,
 };
 use clap::Parser;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    // 1. Parse CLI
+    // CLI
     let arguments = Args::parse();
-    let config = Config::from_args(arguments)?;
+    let config = Arc::new(Config::from_args(arguments)?);
 
-    // 2. Logging
-    setup_tracing(&config);
+    // Logging
+    setup_tracing(config.log_level);
 
-    // 3. Build app
-    let (app, node_conn_pool) = build(&config).await?;
+    // Build app
+    let (app, node_conn_pool) = build(config.clone()).await?;
 
-    // 4. Bind server
+    // Bind server
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
 
