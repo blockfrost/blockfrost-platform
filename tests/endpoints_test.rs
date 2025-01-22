@@ -38,35 +38,49 @@ mod tests {
         assert_eq!(root_response.node_info.sync_progress, 100.0);
     }
 
-    // Test: `/tx/submit` route error invalid tx (already sent)
+    // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
     async fn test_submit_route_error() {
         initialize_logging();
         let (app, _handle) = build_app().await.expect("Failed to build the application");
 
-        let tx = "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
+        let tx =    "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
 
-        let body = Body::from(tx);
-
-        let request = Request::builder()
+        // Local (Platform)
+        let local_request = Request::builder()
             .method(Method::POST)
             .uri("/tx/submit")
             .header("Content-Type", "application/cbor")
-            .body(body)
+            .body(Body::from(tx))
             .unwrap();
 
-        let response = app
-            .oneshot(request)
+        let local_response = app
+            .oneshot(local_request)
             .await
             .expect("Request to /tx/submit failed");
 
-        let cbor = to_bytes(response.into_body(), usize::MAX)
+        let local_body_bytes = to_bytes(local_response.into_body(), usize::MAX)
             .await
             .expect("Failed to read response body");
 
+        // Blockfrost API
+        let bf_response = reqwest::Client::new()
+            .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
+            .header("Content-Type", "application/cbor")
+            .header("project_id", "previewWrlEvs2PlZUw8hEN5usP5wG4DK4L46A3")
+            .body(tx)
+            .send()
+            .await
+            .expect("Blockfrost request failed");
+
+        let bf_body_bytes = bf_response
+            .bytes()
+            .await
+            .expect("Failed to read Blockfrost response");
+
         assert_eq!(
-            cbor,
-            "1f2cac5e80a0bdb92cfebe5bad20427b9a8b25b139d3161a2d8bed08328a4596"
+            local_body_bytes, bf_body_bytes,
+            "Local and Blockfrost response bodies differ."
         );
     }
 }
