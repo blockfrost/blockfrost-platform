@@ -74,6 +74,7 @@ in rec {
     cargo-test = craneLib.cargoNextest (commonArgs
       // {
         inherit cargoArtifacts;
+        cargoNextestExtraArgs = "--lib";
       });
   };
 
