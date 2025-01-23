@@ -1,12 +1,11 @@
-use axum::{body::Bytes, Router};
+use axum::Router;
 use blockfrost_platform::{
     cli::{Config, LogLevel, Mode, Network},
     server::build,
     AppError, NodePool,
 };
 use dotenv::dotenv;
-use pretty_assertions::assert_eq;
-use serde_json::{from_slice, Value};
+// use pretty_assertions::assert_eq;;
 use std::{
     env,
     sync::{Arc, LazyLock},
@@ -23,7 +22,6 @@ pub fn initialize_logging() {
 
 pub fn test_config() -> Arc<Config> {
     dotenv().ok();
-
     let node_socket_path_env =
         env::var("NODE_SOCKET_PATH").unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
 
@@ -49,16 +47,16 @@ pub async fn build_app() -> Result<(NormalizePath<Router>, NodePool), AppError> 
     build(config).await
 }
 
-fn prettify_json(s: &[u8]) -> String {
-    let json_value: Value = from_slice(s).expect("Invalid JSON data");
+// fn prettify_json(s: &[u8]) -> String {
+//     let json_value: Value = from_slice(s).expect("Invalid JSON data");
 
-    serde_json::to_string_pretty(&json_value).expect("Failed to serialize JSON")
-}
+//     serde_json::to_string_pretty(&json_value).expect("Failed to serialize JSON")
+// }
 
-pub fn compare_pretty_jsons(s1: Bytes, s2: Bytes) {
-    assert_eq!(
-        prettify_json(&s1),
-        prettify_json(&s2),
-        "JSON strings are not equal"
-    );
-}
+// pub fn _compare_pretty_jsons(s1: Bytes, s2: Bytes) {
+//     assert_eq!(
+//         prettify_json(&s1),
+//         prettify_json(&s2),
+//         "JSON strings are not equal"
+//     );
+// }
