@@ -142,6 +142,7 @@ fn proptest_with_params(
                 }
             ));
 
+            failing_cbor.sort_by_key(|cbor| cbor.len());
             for cbor in failing_cbor.iter().take(show_max) {
                 details.push_str(&format!("\n- {}", cbor));
             }

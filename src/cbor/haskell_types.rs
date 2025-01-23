@@ -6,14 +6,13 @@ use std::{
 };
 
 use pallas_addresses::Address;
-use pallas_codec::minicbor::{self, decode, Decode, Decoder};
+use pallas_codec::minicbor::{self, Decode};
 use pallas_codec::utils::Bytes;
 use pallas_network::miniprotocols::localstate::queries_v16::Datum;
 use pallas_primitives::{
     byron::{Blake2b256, TxIn, TxOut},
     conway::{
-        Anchor, DatumHash, ExUnits, GovAction, GovActionId, ProposalProcedure, RewardAccount,
-        ScriptHash, Value, Voter,
+        Anchor, DRep, DatumHash, ExUnits, GovAction, GovActionId, ProposalProcedure, RewardAccount, ScriptHash, Value, Voter
     },
     AddrKeyhash, AssetName, Coin, Nullable, PolicyId, ProtocolVersion, StakeCredential,
     TransactionInput,
@@ -201,24 +200,24 @@ pub enum ConwayUtxoWPredFailure {
 #[derive(Debug)]
 pub enum ConwayUtxoPredFailure {
     UtxosFailure(ConwayUtxosPredFailure),
-    BadInputsUTxO(Vec<TransactionInput>),
+    BadInputsUTxO(CustomSet258<TransactionInput>),
     OutsideValidityIntervalUTxO(ValidityInterval, SlotNo), // validity interval, current slot
     MaxTxSizeUTxO(u64, i64),                                    // less than or equal
     InputSetEmptyUTxO(),                                   // empty
     FeeTooSmallUTxO(DisplayCoin, DisplayCoin),             // Mismatch expected, supplied
     ValueNotConservedUTxO(DisplayValue, DisplayValue),
     WrongNetwork(Network, CustomSet258<DisplayAddress>), // the expected network id,  the set of addresses with incorrect network IDs
-    WrongNetworkWithdrawal(Network, Vec<RewardAccountFielded>), // the expected network id ,  the set of reward addresses with incorrect network IDs
+    WrongNetworkWithdrawal(Network, CustomSet258<RewardAccountFielded>), // the expected network id ,  the set of reward addresses with incorrect network IDs
     OutputTooSmallUTxO(Array<BabbageTxOut>),
     OutputBootAddrAttrsTooBig(Array<SerializableTxOut>),
     OutputTooBigUTxO(Vec<(u64, u64, SerializableTxOut)>), //  list of supplied bad transaction output triples (actualSize,PParameterMaxValue,TxOut)
     InsufficientCollateral(DeltaCoin, DisplayCoin), // balance computed, the required collateral for the given fee
     ScriptsNotPaidUTxO(Utxo), // The UTxO entries which have the wrong kind of script
-    ExUnitsTooBigUTxO(DisplayExUnits), // check: The values are serialised in reverse order
+    ExUnitsTooBigUTxO(ExUnits, ExUnits), // check: The values are serialised in reverse order
     CollateralContainsNonADA(DisplayValue),
     WrongNetworkInTxBody(Network, Network), // take in Network, https://github.com/IntersectMBO/cardano-ledger/blob/78b20b6301b2703aa1fe1806ae3c129846708a10/libs/cardano-ledger-core/src/Cardano/Ledger/BaseTypes.hs#L779
     OutsideForecast(SlotNo),
-    TooManyCollateralInputs(u64), // this is Haskell Natural, how many bit is it?
+    TooManyCollateralInputs(u64, u64), // this is Haskell Natural, how many bit is it?
     NoCollateralInputs(),         // empty
     IncorrectTotalCollateralField(DeltaCoin, DisplayCoin), // collateral provided, collateral amount declared in transaction body
     BabbageOutputTooSmallUTxO(Array<(SerializableTxOut, DisplayCoin)>), // list of supplied transaction outputs that are too small, together with the minimum value for the given output
@@ -228,11 +227,23 @@ pub enum ConwayUtxoPredFailure {
 // https://github.com/IntersectMBO/cardano-ledger/blob/5fda7bbf778fb110bd28b306147da3e287ace124/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Utxos.hs#L73
 #[derive(Debug)]
 pub enum ConwayUtxosPredFailure {
-   ValidationTagMismatch(),
-   CollectErrors(Array<CollectError>)
+    ValidationTagMismatch(bool, TagMismatchDescription),
+    CollectErrors(Array<CollectError>)
 }
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L365
+#[derive(Debug)]
+pub enum TagMismatchDescription
+{
+     PassedUnexpectedly,
+     FailedUnexpectedly(Vec<FailureDescription>)
+}
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L332
+#[derive(Debug)]
+pub enum FailureDescription {
+    PlutusFailure(String, Bytes)
+}
 
 #[derive(Debug, Decode)]
 pub struct CollectError ();
@@ -275,9 +286,9 @@ impl fmt::Display for ConwayUtxoPredFailure {
             }
             WrongNetworkWithdrawal(network, accounts) => write!(
                 f,
-                "(WrongNetworkWithdrawal ({}) ({}))",
+                "(WrongNetworkWithdrawal {} {})",
                 network.to_haskell_str(),
-                accounts.to_haskell_str()
+                accounts.to_haskell_str_p()
             ),
             OutputTooSmallUTxO(tx_outs) => {
                 write!(f, "(OutputTooSmallUTxO {})", tx_outs.to_haskell_str())
@@ -300,12 +311,12 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     required.to_haskell_str()
                 )
             }
-            ScriptsNotPaidUTxO(utxo) => write!(f, "(ScriptsNotPaidUTxO ({}))", utxo),
-            ExUnitsTooBigUTxO(units) => write!(f, "(ExUnitsTooBigUTxO ({}))", units),
+            ScriptsNotPaidUTxO(utxo) => write!(f, "(ScriptsNotPaidUTxO {})", utxo.to_haskell_str_p()),
+            ExUnitsTooBigUTxO(u1, u2) => write!(f, "(ExUnitsTooBigUTxO {} {})", u1.to_haskell_str_p(), u2.to_haskell_str_p()),
             CollateralContainsNonADA(value) => write!(f, "(CollateralContainsNonADA ({}))", value),
             WrongNetworkInTxBody(n1, n2) => write!(f, "(WrongNetworkInTxBody {} {})", n1.to_haskell_str(), n2.to_haskell_str()),
             OutsideForecast(slot) => write!(f, "(OutsideForecast ({}))", slot.to_haskell_str()),
-            TooManyCollateralInputs(inputs) => write!(f, "(TooManyCollateralInputs ({}))", inputs),
+            TooManyCollateralInputs(i1, i2) => write!(f, "(TooManyCollateralInputs {} {})", i1, i2),
             NoCollateralInputs() => write!(f, "NoCollateralInputs"),
             IncorrectTotalCollateralField(provided, declared) => write!(
                 f,
@@ -422,6 +433,7 @@ pub enum ConwayDelegPredFailure {
 #[cbor(transparent)]
 pub struct DisplayScriptHash(#[n(0)] pub ScriptHash);
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L148
 #[derive(Debug)]
 pub struct DisplayAddress(pub Address);
 
@@ -445,21 +457,55 @@ pub enum PlutusPurpose {
 // not tested yet
 #[derive(Debug)]
 pub enum ConwayPlutusPurpose {
-    ConwaySpending(TransactionInput),   // 0
+    ConwaySpending(AsItem<TransactionInput>),   // 0
     ConwayMinting(AsItem<DisplayPolicyId>),    // 1
-    ConwayCertifying(String), // @todo
+    ConwayCertifying(AsItem<ConwayTxCert>), // 2
     ConwayRewarding(AsItem<RewardAccountFielded>),  // 3
     ConwayVoting(AsItem<Voter>),
     ConwayProposing(ProposalProcedure),
 }
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct AsIx(#[n(0)] pub u16);
 
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L587
+#[derive(Debug)]
+pub enum ConwayTxCert{
+    ConwayTxCertDeleg(ConwayDelegCert),
+    ConwayTxCertPool(PoolCert),
+    ConwayTxCertGov(ConwayGovCert),
+}
+
+#[derive(Debug)]
+pub struct PoolCert(String); // todo
+#[derive(Debug)]
+pub struct ConwayGovCert(String); // todo
+
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
-pub struct AsItem<T>(#[n(0)] pub T);
+pub struct AsIx(#[n(0)] pub u64);
+
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L426
+#[derive(Debug)]
+pub enum ConwayDelegCert{
+    ConwayRegCert(StakeCredential, Option<DisplayCoin>),
+    ConwayUnRegCert(StakeCredential, Option<DisplayCoin>),
+    ConwayDelegCert(StakeCredential, Delegatee),
+    ConwayRegDelegCert(StakeCredential, Delegatee, Option<DisplayCoin>)
+}
+
+// https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L357
+#[derive(Debug)]
+pub enum Delegatee {
+    DelegStake(KeyHash),
+    DelegVote(DRep),
+    DelegStakeVote(KeyHash, DRep),
+}
+
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct AsItem<T>(#[n(0)] pub T)
+where
+    T: HaskellDisplay;
+
 
 #[derive(Debug)]
 pub enum PurposeAs {
@@ -496,13 +542,7 @@ pub struct ValidityInterval {
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/libs/cardano-ledger-core/src/Cardano/Ledger/UTxO.hs#L83
 #[derive(Debug)]
-pub struct Utxo(pub Vec<(TransactionInput, SerializableTxOut)>);
-
-impl fmt::Display for Utxo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Utxo({})", self.0.to_haskell_str())
-    }
-}
+pub struct Utxo(pub HashMap<TransactionInput, SerializableTxOut>);
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
@@ -528,7 +568,7 @@ pub enum BabbageTxOut {
     TxOutCompactDH(CompactAddr, CompactForm, DataHash32),
     TxOutCompactDatum(CompactAddr, CompactForm, Bytes),
     TxOutCompactRefScript(
-        Address,
+        DisplayAddress,
         (MaryValue, MultiAsset),
         DatumEnum,
         StrictMaybe<EraScript>,
@@ -861,6 +901,11 @@ fn display_triple<T: Display, U: Display, V: Display>(t: &(T, U, V)) -> String {
     format!("({} {} {})", t.0, t.1, t.2)
 }
 fn display_triple_vec<T: Display, U: Display, V: Display>(vec: &[(T, U, V)]) -> String {
+    if vec.is_empty()
+        {
+            return "[]".to_string();
+        }
+
     vec.iter()
         .map(|x| display_triple(x))
         .collect::<Vec<String>>()

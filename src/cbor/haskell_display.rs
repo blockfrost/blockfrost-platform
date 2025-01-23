@@ -1,14 +1,15 @@
 use std::{
-    collections::HashMap,
-    fmt::{self},
+    arch::x86_64, collections::HashMap, fmt::{self}, ops::Deref
 };
 
-use pallas_addresses::{Address, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart};
+ use pallas_addresses::{
+    byron::{AddrAttrProperty, AddrType, AddressPayload},
+    Address, ByronAddress, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart,
+};
+use pallas_codec::utils::OrderPreservingProperties;
 use pallas_primitives::{
     conway::{
-        Anchor, Constitution, CostModels, DRepVotingThresholds, ExUnitPrices, GovAction,
-        GovActionId, PoolVotingThresholds, ProposalProcedure, ProtocolParamUpdate, VKeyWitness,
-        Voter,
+        Anchor, Certificate, Constitution, CostModels, DRepVotingThresholds, ExUnitPrices, GovAction, GovActionId, PoolVotingThresholds, ProposalProcedure, ProtocolParamUpdate, VKeyWitness, Voter
     },
     Bytes, DatumHash, ExUnits, Hash, KeyValuePairs, Nullable, ProtocolVersion, RationalNumber,
     RewardAccount, ScriptHash, StakeCredential, TransactionInput,
@@ -17,7 +18,7 @@ use pallas_primitives::{
 use crate::cbor::haskell_types::get_network_and_credentials;
 
 use super::haskell_types::{
-    AddressBytes, Array, AsItem, AsIx, BabbageTxOut, CollectError, ConwayCertPredFailure, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatum, DisplayDatumHash, DisplayHash, DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo, EraScript, KeyHash, MaryValue, Mismatch, MultiAsset, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash, SerializableTxOut, ShelleyPoolPredFailure, SlotNo, StrictMaybe, Timelock, TimelockRaw, VKey, ValidityInterval
+    AddressBytes, Array, AsItem, AsIx, BabbageTxOut, CollectError, ConwayCertPredFailure, ConwayDelegCert, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatum, DisplayDatumHash, DisplayHash, DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch, MultiAsset, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash, SerializableTxOut, ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, Utxo, VKey, ValidityInterval
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -28,7 +29,6 @@ pub trait HaskellDisplay {
         format!("({})", self.to_haskell_str())
     }
 }
-
 
 impl fmt::Display for ConwayGovCertPredFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -122,18 +122,17 @@ impl fmt::Display for ConwayUtxoWPredFailure {
                     e.to_haskell_str()
                 )
             }
-            MissingTxBodyMetadataHash(b) => write!(
-                f,
-                "(MissingTxBodyMetadataHash ({}))",
-                b.as_aux_data_hash()
-            ),
-            MissingTxMetadata(e) => write!(
-                f,
-                "(MissingTxMetadata ({}))",
-                e.as_aux_data_hash()
-            ),
+            MissingTxBodyMetadataHash(b) => {
+                write!(f, "(MissingTxBodyMetadataHash ({}))", b.as_aux_data_hash())
+            }
+            MissingTxMetadata(e) => write!(f, "(MissingTxMetadata ({}))", e.as_aux_data_hash()),
             ConflictingMetadataHash(e1, e2) => {
-                write!(f, "(ConflictingMetadataHash ({}) ({}))", e1.as_aux_data_hash(), e2.as_aux_data_hash())
+                write!(
+                    f,
+                    "(ConflictingMetadataHash ({}) ({}))",
+                    e1.as_aux_data_hash(),
+                    e2.as_aux_data_hash()
+                )
             }
             InvalidMetadata() => write!(f, "InvalidMetadata"),
             ExtraneousScriptWitnessesUTXOW(vec) => {
@@ -259,11 +258,11 @@ impl fmt::Display for ConwayGovPredFailure {
 
 impl HaskellDisplay for ConwayUtxosPredFailure {
     fn to_haskell_str(&self) -> String {
-        
         use ConwayUtxosPredFailure::*;
-        
+
         match self {
-            ValidationTagMismatch() => "ValidationTagMismatch".to_string(),
+            ValidationTagMismatch(is_valid, desc) => 
+            format!("ValidationTagMismatch ({}) {}", is_valid.as_is_valid(), desc.to_haskell_str_p()),
             CollectErrors(errors) => format!("CollectErrors {}", errors.to_haskell_str()),
         }
     }
@@ -271,9 +270,31 @@ impl HaskellDisplay for ConwayUtxosPredFailure {
 
 impl HaskellDisplay for CollectError {
     fn to_haskell_str(&self) -> String {
-        format!("CollectError {{ ... }}") 
+        format!("CollectError {{ ... }}")
     }
 }
+
+impl HaskellDisplay for TagMismatchDescription {
+    fn to_haskell_str(&self) -> String {
+        use TagMismatchDescription::*;
+        match self {
+            PassedUnexpectedly => "PassedUnexpectedly".to_string(),
+            FailedUnexpectedly(desc) => format!("FailedUnexpectedly {}", desc.to_haskell_str_p()),
+        }
+    }
+}
+
+impl HaskellDisplay for FailureDescription {
+    fn to_haskell_str(&self) -> String {
+        
+        use FailureDescription::*;
+        match self {
+            PlutusFailure(s, b) => format!("PlutusFailure {} {}", s.to_haskell_str(), b.to_haskell_str()),
+        }
+    }
+}
+
+
 impl HaskellDisplay for ConwayDelegPredFailure {
     fn to_haskell_str(&self) -> String {
         use ConwayDelegPredFailure::*;
@@ -462,7 +483,8 @@ impl HaskellDisplay for GovAction {
                 )
             }
             TreasuryWithdrawals(a, b) => {
-                 let data: KeyValuePairs<RewardAccountFielded, DisplayCoin> = a.iter().map(|(k, v)| (k.into(), v.into())).collect();
+                let data: KeyValuePairs<RewardAccountFielded, DisplayCoin> =
+                    a.iter().map(|(k, v)| (k.into(), v.into())).collect();
 
                 format!(
                     "TreasuryWithdrawals {} {}",
@@ -591,7 +613,7 @@ impl HaskellDisplay for CostModels {
 impl HaskellDisplay for ExUnits {
     fn to_haskell_str(&self) -> String {
         format!(
-            "WrapExUnits {{unWrapExUnits = ExUnits' {{exUnitsMem' = {}, exUnitsSteps' = {}}}}}",
+            "WrapExUnits {{unWrapExUnits = ExUnits' {{exUnitsMem' = {:?}, exUnitsSteps' = {}}}}}",
             self.mem, self.steps
         )
     }
@@ -709,9 +731,7 @@ impl HaskellDisplay for i64 {
 }
 impl HaskellDisplay for u8 {
     fn to_haskell_str(&self) -> String {
- 
-            format!("{}", self)
-         
+        format!("{}", self)
     }
 }
 
@@ -769,10 +789,7 @@ impl HaskellDisplay for Voter {
                 format!("CommitteeVoter ({})", addr.as_key_hash_obj())
             }
             ConstitutionalCommitteeScript(scrpt) => {
-                format!(
-                    "CommitteeVoter ({})",
-                    scrpt.as_script_hash_obj()
-                )
+                format!("CommitteeVoter ({})", scrpt.as_script_hash_obj())
             }
             DRepKey(addr) => {
                 format!("DRepVoter ({})", addr.as_key_hash_obj())
@@ -935,6 +952,9 @@ impl AsProtocolVersion for ProtocolVersion {
     }
 }
 
+trait AsConwayCertificate {
+    fn as_conway_certificate(&self) -> String;
+}
 trait AsRewardAccountFielded {
     fn as_reward_account_fielded(&self) -> String;
 }
@@ -1058,7 +1078,7 @@ impl AsText for Bytes {
 }
 impl HaskellDisplay for Bytes {
     fn to_haskell_str(&self) -> String {
-        format!("Bytes \"{}\"", self)
+        format!("\"{}\"", self)
     }
 }
 impl HaskellDisplay for MultiAsset {
@@ -1129,18 +1149,98 @@ impl HaskellDisplay for BabbageTxOut {
     }
 }
 
-impl HaskellDisplay for Address {
-    fn to_haskell_str(&self) -> String {
-        let str = match self {
-            Address::Byron(addr) => format!("{:?}",addr.decode() ),
-            Address::Shelley(addr) => addr.to_haskell_str(),
-            Address::Stake(addr) => addr.to_hex(),
-        };
 
-        format!("Addr {}", str)
+impl HaskellDisplay for ByronAddress {
+    fn to_haskell_str(&self) -> String {
+        let payload = self.decode().unwrap();
+        format!("BootstrapAddress {}", payload.to_haskell_str_p())
     }
 }
 
+impl HaskellDisplay for AddressPayload {
+    fn to_haskell_str(&self) -> String {
+        let root = hex::encode(self.root);
+
+        use AddrType::*;
+        let addr_type = match self.addrtype  {
+            PubKey =>  "ATVerKey",
+            Script=> "Script todo",
+            Redeem=> "Redeem todo ",
+            Other(v) =>"Other todo"
+        };
+        format!(
+            "Address {{addrRoot = {}, addrAttributes = {}, addrType = {}}}",
+            root,
+            self.attributes.to_haskell_str(),
+            addr_type
+        )
+    }
+}
+
+impl HaskellDisplay for OrderPreservingProperties<AddrAttrProperty> {
+    fn to_haskell_str(&self) -> String {
+        let items = self.deref();
+
+        let mut att_map: HashMap<&str, String> = HashMap::with_capacity(2);
+
+        for item in items {
+            use AddrAttrProperty::*;
+
+            match item {
+                DerivationPath(bv) => {
+                    att_map.insert("aaVKDerivationPath", format!("{:?}", bv));
+                }
+                NetworkTag(bv) => {
+                    att_map.insert("aaNetworkMagic", format!("{:?}", bv));
+                }
+                _ => {}
+            }
+        }
+
+        format!("Attributes {{ data_ = AddrAttributes {{aaVKDerivationPath = {}, aaNetworkMagic = {}}} }}", 
+        att_map.get("aaVKDerivationPath").unwrap_or(&"Nothing".to_string()),
+        att_map.get("aaVKDerivationPath").unwrap_or(&"NetworkMainOrStage".to_string())
+
+    )
+    }
+}
+
+/*
+impl HaskellDisplay for AddrAttrProperty
+{
+    fn to_haskell_str(&self) -> String {
+
+        use AddrAttrProperty::*;
+
+       let str =  match self {
+            AddrDistr(dist) => "AddrDistr not implemented yet".to_string(),
+            DerivationPath(bv ) => {
+                let bytes = bv.deref();
+                let dp = if(bytes.len() == 0) {
+                     "Nothing"
+                } else {
+                    "aaVKDerivationPath not implemented yet"
+                };
+
+                format!("aaVKDerivationPath {}", dp)
+            } ,
+            NetworkTag(bv) => "NetworkTag not implemented yet".to_string(),
+        };
+
+       format!("AddrAttrProperty {{unAddrAttrProperty = {}}}", str)
+    }
+
+}
+
+*/
+
+impl HaskellDisplay for Utxo {
+    fn to_haskell_str(&self) -> String {
+        format!(
+            "UTxO {}", self.0.to_haskell_str_p()
+        )
+    }
+}
 impl fmt::Display for DisplayValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Value {{ {:?} }}", self.0)
@@ -1156,7 +1256,7 @@ impl HaskellDisplay for MaryValue {
 impl HaskellDisplay for ShelleyAddress {
     fn to_haskell_str(&self) -> String {
         format!(
-            "{} ({}) ({})",
+            "Addr {} ({}) ({})",
             self.network().to_haskell_str(),
             self.payment().to_haskell_str(),
             self.delegation().to_haskell_str()
@@ -1194,6 +1294,19 @@ impl HaskellDisplay for ShelleyDelegationPart {
         format!("StakeRefBase ({})", str)
     }
 }
+
+impl HaskellDisplay for Address {
+    fn to_haskell_str(&self) -> String {
+        let str = match self {
+            Address::Byron(addr) => format!("AddrBootstrap {}", addr.to_haskell_str_p()),
+            Address::Shelley(addr) => addr.to_haskell_str(),
+            Address::Stake(addr) => addr.to_hex(),
+        };
+
+        format!("{}", str)
+    }
+}
+
 impl HaskellDisplay for AddressBytes {
     fn to_haskell_str(&self) -> String {
         let (network, credential) = get_network_and_credentials(&self.0);
@@ -1299,18 +1412,89 @@ impl HaskellDisplay for ConwayPlutusPurpose {
             ConwayMinting(policy_id) => format!("ConwayMinting ({})", policy_id.to_haskell_str()),
             ConwaySpending(txin) => format!("ConwaySpending ({})", txin.to_haskell_str()),
             ConwayRewarding(item) => format!("ConwayRewarding ({})", item.to_haskell_str()),
-            ConwayCertifying(cert_index) => format!("ConwayCertifying ({})", cert_index.to_haskell_str()),
+            ConwayCertifying(cert) => {
+                format!("ConwayCertifying ({})", cert.to_haskell_str())
+            }
             ConwayVoting(gov_id) => format!("ConwayVoting ({})", gov_id.to_haskell_str()),
-            ConwayProposing(proposal_id) => format!("ConwayProposing ({})", proposal_id.to_haskell_str()),
+            ConwayProposing(proposal_id) => {
+                format!("ConwayProposing ({})", proposal_id.to_haskell_str())
+            }
+        }
+    }
+}
+
+impl HaskellDisplay for ConwayTxCert {
+    fn to_haskell_str(&self) -> String {
+        
+        use ConwayTxCert::*;
+        match self {
+            ConwayTxCertDeleg(conway_deleg_cert) => format!("ConwayTxCertDeleg {}", conway_deleg_cert.to_haskell_str_p()),
+            ConwayTxCertPool(pool_cert) => todo!(),
+            ConwayTxCertGov(conway_gov_cert) => todo!(),
+        }
+    }
+}
+
+impl HaskellDisplay for ConwayDelegCert {
+    fn to_haskell_str(&self) -> String {
+
+        match self {
+            ConwayDelegCert::ConwayRegCert(stake_credential, display_coin) => 
+            format!("ConwayRegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
+            ConwayDelegCert::ConwayUnRegCert(stake_credential, display_coin) => 
+            format!("ConwayUnRegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
+            
+            ConwayDelegCert::ConwayDelegCert(stake_credential, delegatee) => 
+            format!("ConwayDelegCert {} {}", stake_credential.to_haskell_str_p(), delegatee.to_haskell_str()),
+                        ConwayDelegCert::ConwayRegDelegCert(stake_credential, delegatee, display_coin) =>
+            format!("ConwayRegDelegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
+            
+        }
+    }
+}
+impl HaskellDisplay for Delegatee {
+    fn to_haskell_str(&self) -> String {
+        use Delegatee::*;
+
+         "Delegatee not implemented".to_string()
+    }
+}
+
+impl HaskellDisplay for Certificate {
+    fn to_haskell_str(&self) -> String {
+        
+
+        use Certificate::*;
+        match self {
+            /* 
+            StakeDeregistration(stake_credential) => todo!(),
+            StakeDelegation(stake_credential, hash) => todo!(),
+            PoolRegistration { operator, vrf_keyhash, pledge, cost, margin, reward_account, pool_owners, relays, pool_metadata } => todo!(),
+            PoolRetirement(hash, _) => todo!(),
+             UnReg(stake_credential, _) => todo!(),
+            VoteDeleg(stake_credential, drep) => todo!(),
+            StakeVoteDeleg(stake_credential, hash, drep) => todo!(),
+            StakeRegDeleg(stake_credential, hash, _) => todo!(),
+            VoteRegDeleg(stake_credential, drep, _) => todo!(),
+            StakeVoteRegDeleg(stake_credential, hash, drep, _) => todo!(),
+            AuthCommitteeHot(stake_credential, stake_credential1) => todo!(),
+            ResignCommitteeCold(stake_credential, nullable) => todo!(),
+            RegDRepCert(stake_credential, _, nullable) => todo!(),
+            UnRegDRepCert(stake_credential, _) => todo!(),
+            UpdateDRepCert(stake_credential, nullable) => todo!(),
+            */
+            StakeRegistration(stake_credential) =>  format!("ConwayRegCert {} SNothing", stake_credential.to_haskell_str()),
+            Reg(stake_credential, coin) => format!("ConwayRegCert {} {}", stake_credential.to_haskell_str(), coin.to_haskell_str()),
+           
+            _ => format!("Certificate not implemented: {:?}", self),
+
         }
     }
 }
 
 impl HaskellDisplay for PurposeAs {
     fn to_haskell_str(&self) -> String {
-
         use PurposeAs::*;
-
 
         match self {
             Ix(i) => i.to_haskell_str(),
@@ -1319,10 +1503,10 @@ impl HaskellDisplay for PurposeAs {
     }
 }
 
-impl <T>HaskellDisplay for AsItem<T>
+impl<T> HaskellDisplay for AsItem<T>
 where
-    T: HaskellDisplay ,
-{ 
+    T: HaskellDisplay,
+{
     fn to_haskell_str(&self) -> String {
         // Implement the display logic for AsItem here
         format!("AsItem {{unAsItem = {}}}", self.0.to_haskell_str())
@@ -1331,7 +1515,7 @@ where
 
 impl HaskellDisplay for DisplayAddress {
     fn to_haskell_str(&self) -> String {
-        format!("AddrBootstrap {{ address = {} }}", self.0.to_haskell_str())
+        format!("{}",self.0.to_haskell_str())
     }
 }
 
@@ -1410,13 +1594,29 @@ fn display_governance_action_id_index(index: &u32) -> String {
     format!("GovActionIx {{unGovActionIx = {}}}", index)
 }
 
-
 trait AsAuxDataHash {
     fn as_aux_data_hash(&self) -> String;
 }
 
 impl AsAuxDataHash for Bytes {
     fn as_aux_data_hash(&self) -> String {
-        format!("AuxiliaryDataHash {{unsafeAuxiliaryDataHash = SafeHash \"{}\"}}", self)
+        format!(
+            "AuxiliaryDataHash {{unsafeAuxiliaryDataHash = SafeHash \"{}\"}}",
+            self
+        )
+    }
+}
+
+trait AsIsValid {
+    fn as_is_valid(&self) -> &str;
+}
+
+impl AsIsValid for bool {
+    fn as_is_valid(&self) -> &str {
+        if *self {
+            "IsValid True" 
+        } else {
+            "IsValid False" 
+        }
     }
 }
