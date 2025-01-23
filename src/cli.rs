@@ -44,6 +44,9 @@ pub struct Args {
         requires("secret")
     )]
     reward_address: Option<String>,
+
+    #[arg(long, default_value = "true", required = false)]
+    metrics: bool,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -80,6 +83,7 @@ pub struct Config {
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
     pub network: Network,
+    pub metrics: bool,
 }
 
 #[derive(Clone)]
@@ -109,6 +113,7 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             network: args.network,
+            metrics: args.metrics,
         })
     }
 

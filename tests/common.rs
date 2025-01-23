@@ -34,6 +34,7 @@ pub fn test_config() -> Arc<Config> {
         icebreakers_config: None,
         max_pool_connections: 10,
         network: Network::Preview,
+        metrics: false,
     };
 
     Arc::new(config)
