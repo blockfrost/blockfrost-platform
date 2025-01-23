@@ -16,11 +16,14 @@ use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
 use db::DB;
+use dotenvy;
 use std::net::SocketAddr;
 use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
+
     let arguments = Args::parse();
     let config: Config = config::load_config(arguments.config);
 
