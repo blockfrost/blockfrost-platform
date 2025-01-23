@@ -47,12 +47,14 @@ pub async fn build_app() -> Result<(NormalizePath<Router>, NodePool), AppError> 
     build(config).await
 }
 
+// TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
 // fn prettify_json(s: &[u8]) -> String {
 //     let json_value: Value = from_slice(s).expect("Invalid JSON data");
 
 //     serde_json::to_string_pretty(&json_value).expect("Failed to serialize JSON")
 // }
 
+// TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
 // pub fn _compare_pretty_jsons(s1: Bytes, s2: Bytes) {
 //     assert_eq!(
 //         prettify_json(&s1),

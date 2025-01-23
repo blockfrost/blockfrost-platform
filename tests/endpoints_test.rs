@@ -78,6 +78,9 @@ mod tests {
             .await
             .expect("Failed to read Blockfrost response");
 
+        // TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
+        // assert_eq!(local_body_bytes, bf_body_bytes);
+        // This should be uncommented when the issue is resolved
         println!("bf response {:?}", bf_body_bytes);
         println!("local response {:?}", local_body_bytes);
 
