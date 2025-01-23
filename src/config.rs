@@ -1,5 +1,6 @@
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
+use std::env::var;
 use std::str::FromStr;
 use std::{fs, path::PathBuf};
 use tracing::Level;
@@ -29,7 +30,6 @@ pub struct DbInput {
 pub struct BlockfrostInput {
     pub project_id: String,
     pub nft_asset: String,
-    pub api_url_pattern: String,
 }
 
 fn deserialize_log_level<'de, D>(deserializer: D) -> Result<Level, D::Error>
@@ -70,7 +70,6 @@ pub struct Config {
 pub struct Blockfrost {
     pub project_id: String,
     pub nft_asset: String,
-    pub api_url_pattern: String,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
@@ -86,7 +85,7 @@ pub fn load_config(path: PathBuf) -> Config {
         _ => Level::INFO,
     };
 
-    Config {
+    let config = Config {
         server: Server {
             address: toml_config.server.address,
             log_level,
@@ -97,7 +96,36 @@ pub fn load_config(path: PathBuf) -> Config {
         blockfrost: Blockfrost {
             project_id: toml_config.blockfrost.project_id,
             nft_asset: toml_config.blockfrost.nft_asset,
-            api_url_pattern: toml_config.blockfrost.api_url_pattern,
         },
+    };
+
+    override_with_env(config)
+}
+
+fn override_with_env(config: Config) -> Config {
+    let server_address = var("SERVER_ADDRESS").unwrap_or_else(|_| config.server.address);
+    let log_level_str = var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
+    let db_connection = var("DB_CONNECTION_STRING").unwrap_or_else(|_| config.database.connection_string);
+    let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or_else(|_| config.blockfrost.project_id);
+    let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or_else(|_| config.blockfrost.nft_asset);
+
+    let final_log_level = match log_level_str.to_lowercase().as_str() {
+        "debug" => Level::DEBUG,
+        "info" => Level::INFO,
+        "warn" => Level::WARN,
+        "error" => Level::ERROR,
+        "trace" => Level::TRACE,
+        _ => Level::INFO,
+    };
+
+    Config {
+        server: Server {
+            address: server_address,
+            log_level: final_log_level,
+        },
+        database: Db {
+            connection_string: db_connection,
+        },
+        blockfrost: Blockfrost { project_id, nft_asset },
     }
 }
