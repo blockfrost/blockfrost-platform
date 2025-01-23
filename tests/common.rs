@@ -20,7 +20,7 @@ pub fn initialize_logging() {
 }
 
 pub fn test_config() -> Arc<Config> {
-    dotenvy::dotenv().expect("Could not load env configuation");
+    dotenvy::dotenv().ok();
 
     let node_socket_path_env =
         env::var("NODE_SOCKET_PATH").unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
