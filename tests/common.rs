@@ -4,7 +4,6 @@ use blockfrost_platform::{
     server::build,
     AppError, NodePool,
 };
-use dotenv::dotenv;
 // use pretty_assertions::assert_eq;;
 use std::{
     env,
@@ -21,7 +20,8 @@ pub fn initialize_logging() {
 }
 
 pub fn test_config() -> Arc<Config> {
-    dotenv().ok();
+    dotenvy::dotenv().expect("Could not load env configuation");
+
     let node_socket_path_env =
         env::var("NODE_SOCKET_PATH").unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
 
