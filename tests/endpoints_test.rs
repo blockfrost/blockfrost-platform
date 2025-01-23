@@ -2,7 +2,7 @@
 mod common;
 
 mod tests {
-    use crate::common::{build_app, initialize_logging};
+    use crate::common::{build_app, compare_pretty_jsons, initialize_logging};
     use axum::{
         body::{to_bytes, Body},
         http::Request,
@@ -78,9 +78,6 @@ mod tests {
             .await
             .expect("Failed to read Blockfrost response");
 
-        assert_eq!(
-            local_body_bytes, bf_body_bytes,
-            "Local and Blockfrost response bodies differ."
-        );
+        compare_pretty_jsons(local_body_bytes, bf_body_bytes);
     }
 }
