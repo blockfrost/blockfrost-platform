@@ -1,5 +1,15 @@
 ## Unreleased
 
+## [1.2.0] - 2025-01-23
+
+### Added
+
+- Check if server us accessible
+
+### Fixed
+
+- internal IP address -> external IP address
+
 ## [1.1.0] - 2025-01-23
 
 ### Added

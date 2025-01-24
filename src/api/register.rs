@@ -5,10 +5,12 @@ use crate::errors::APIError;
 use crate::models::RequestNewItem;
 use crate::payload::Payload;
 use axum::body::Bytes;
-use axum::extract::ConnectInfo;
+use axum::http::{HeaderMap, HeaderValue};
 use axum::{Extension, Json};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::time::Duration;
+use tokio::time::timeout;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,7 +23,7 @@ pub async fn route(
     Extension(db): Extension<DB>,
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
-    ConnectInfo(ip_address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     body: Bytes,
 ) -> Result<Json<ResponseSuccess>, APIError> {
     let payload: Payload = match serde_json::from_slice(&body) {
@@ -35,14 +37,16 @@ pub async fn route(
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
 
-    // check if the server is accessible
-    // let url = config
-    //     .blockfrost
-    //     .api_url_pattern
-    //     .replace("{IP}", &ip_address.to_string())
-    //     .replace("{PORT}", &payload.port.to_string());
+    // get IP address
+    let ip_address: &str = headers
+        .get("x-forwarded-for")
+        .and_then(|val: &HeaderValue| val.to_str().ok())
+        .unwrap_or("unknown");
 
-    // reqwest::get(&url).await.map_err(|_| APIError::NotAccessible())?;
+    // check if the server is accessible
+    if !is_accessible(ip_address, payload.port).await {
+        return Err(APIError::NotAccessible());
+    }
 
     // check if NFT is at the address
     blockfrost_api
@@ -67,4 +71,15 @@ pub async fn route(
     db.insert_request(new_item_request).await?;
 
     Ok(Json(success_response))
+}
+
+async fn is_accessible(ip: &str, port: i32) -> bool {
+    let client = Client::new();
+    let url = format!("http://{}:{}", ip, port);
+    let request_future = client.get(&url).send();
+
+    match timeout(Duration::from_secs(5), request_future).await {
+        Ok(Ok(response)) => response.status().is_success(),
+        _ => false,
+    }
 }
