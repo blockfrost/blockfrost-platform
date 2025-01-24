@@ -45,7 +45,10 @@ pub async fn route(
 
     // check if the server is accessible
     if !is_accessible(ip_address, payload.port).await {
-        return Err(APIError::NotAccessible());
+        return Err(APIError::NotAccessible {
+            ip: ip_address.to_string(),
+            port: payload.port,
+        });
     }
 
     // check if NFT is at the address
