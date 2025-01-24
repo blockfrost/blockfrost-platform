@@ -14,9 +14,6 @@ pub struct ApiError {
 
 #[derive(Error, Debug)]
 pub enum APIError {
-    #[error("Unexpected error {0}")]
-    Unexpected(String),
-
     #[error("Validation error: {0}")]
     Validaion(String),
 
@@ -43,14 +40,14 @@ impl IntoResponse for APIError {
         error!("API Error occurred: {}", self);
 
         let (status_code, error_response) = match &self {
-            APIError::Unexpected(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ApiError {
-                    status: "failed".to_string(),
-                    reason: "Internal Server Error".to_string(),
-                    details: "Please contact our support at https://blockfrost.io".to_string(),
-                },
-            ),
+            // APIError::Unexpected(_) => (
+            //     StatusCode::INTERNAL_SERVER_ERROR,
+            //     ApiError {
+            //         status: "failed".to_string(),
+            //         reason: "Internal Server Error".to_string(),
+            //         details: "Please contact our support at https://blockfrost.io".to_string(),
+            //     },
+            // ),
             APIError::Validaion(_) => (
                 StatusCode::BAD_REQUEST,
                 ApiError {
