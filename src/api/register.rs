@@ -39,8 +39,11 @@ pub async fn route(
 
     // get IP address
     let ip_address: &str = headers
+        // Try the DO-specific header first
         .get("HTTP_DO_CONNECTING_IP")
-        .and_then(|val: &HeaderValue| val.to_str().ok())
+        // Fallback to X-Forwarded-For if missing
+        .or_else(|| headers.get("X-Forwarded-For"))
+        .and_then(|val| val.to_str().ok())
         .unwrap_or("unknown");
 
     // check if the server is accessible
