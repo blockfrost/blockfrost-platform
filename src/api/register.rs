@@ -5,7 +5,7 @@ use crate::errors::APIError;
 use crate::models::RequestNewItem;
 use crate::payload::Payload;
 use axum::body::Bytes;
-use axum::http::{HeaderMap, HeaderValue};
+use axum::http::HeaderMap;
 use axum::{Extension, Json};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
