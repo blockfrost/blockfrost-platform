@@ -1,6 +1,7 @@
 use crate::AppError;
 use clap::{arg, command, Parser, ValueEnum};
 use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
+use std::env;
 use std::fmt::{self, Formatter};
 use tracing::Level;
 
@@ -94,26 +95,90 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network_magic = Self::get_network_magic(&args.network);
-        let icebreakers_config = match (args.solitary, args.reward_address, args.secret) {
-            (false, Some(reward_address), Some(secret)) => Some(IcebreakersConfig {
-                reward_address,
-                secret,
-            }),
+        let server_address = match env::var("SERVER_ADDRESS") {
+            Ok(val) => val,
+            Err(_) => args.server_address,
+        };
+
+        let server_port = match env::var("SERVER_PORT") {
+            Ok(val) => val.parse::<u16>().unwrap_or(args.server_port),
+            Err(_) => args.server_port,
+        };
+
+        let node_socket_path = match env::var("NODE_SOCKET_PATH") {
+            Ok(val) => val,
+            Err(_) => args.node_socket_path,
+        };
+
+        // For the network, parse an env var if present and convert it to the enum.
+        // If parsing fails or not set, keep the CLI version.
+        let network = match env::var("NETWORK") {
+            Ok(val) => match val.to_lowercase().as_str() {
+                "mainnet" => Network::Mainnet,
+                "preprod" => Network::Preprod,
+                "preview" => Network::Preview,
+                _ => args.network, // fallback
+            },
+            Err(_) => args.network,
+        };
+
+        let log_level = match env::var("LOG_LEVEL") {
+            Ok(val) => match val.to_lowercase().as_str() {
+                "debug" => LogLevel::Debug.into(),
+                "info" => LogLevel::Info.into(),
+                "warn" => LogLevel::Warn.into(),
+                "error" => LogLevel::Error.into(),
+                "trace" => LogLevel::Trace.into(),
+                _ => args.log_level.into(),
+            },
+            Err(_) => args.log_level.into(),
+        };
+
+        let mode = match env::var("MODE") {
+            Ok(val) => match val.to_lowercase().as_str() {
+                "compact" => Mode::Compact,
+                "light" => Mode::Light,
+                "full" => Mode::Full,
+                _ => args.mode,
+            },
+            Err(_) => args.mode,
+        };
+
+        let metrics = match env::var("METRICS") {
+            Ok(val) => val.to_lowercase() == "true",
+            Err(_) => args.metrics,
+        };
+
+        let icebreakers_config = match (
+            args.solitary,
+            args.reward_address.clone(),
+            args.secret.clone(),
+        ) {
+            (false, Some(reward_address), Some(secret)) => {
+                let reward_address = env::var("REWARD_ADDRESS").unwrap_or(reward_address);
+                let secret = env::var("SECRET").unwrap_or(secret);
+
+                Some(IcebreakersConfig {
+                    reward_address,
+                    secret,
+                })
+            }
             _ => None,
         };
 
+        let network_magic = Self::get_network_magic(&network);
+
         Ok(Config {
-            server_address: args.server_address,
-            server_port: args.server_port,
-            log_level: args.log_level.into(),
-            network_magic,
-            node_socket_path: args.node_socket_path,
-            mode: args.mode,
-            icebreakers_config,
             max_pool_connections: 10,
-            network: args.network,
-            metrics: args.metrics,
+            server_address,
+            server_port,
+            log_level,
+            network_magic,
+            node_socket_path,
+            mode,
+            icebreakers_config,
+            network,
+            metrics,
         })
     }
 

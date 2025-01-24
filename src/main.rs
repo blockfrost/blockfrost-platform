@@ -8,12 +8,16 @@ use blockfrost_platform::{
     AppError,
 };
 use clap::Parser;
+use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::signal;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
+    // Load .env file
+    dotenv().ok();
+
     // CLI
     let arguments = Args::parse();
     let config = Arc::new(Config::from_args(arguments)?);
