@@ -39,7 +39,7 @@ pub async fn route(
 
     // get IP address
     let ip_address: &str = headers
-        .get("DO_Connecting-IP")
+        .get("HTTP_DO_CONNECTING_IP")
         .and_then(|val: &HeaderValue| val.to_str().ok())
         .unwrap_or("unknown");
 
