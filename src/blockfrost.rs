@@ -14,16 +14,19 @@ impl BlockfrostAPI {
     }
 
     pub async fn nft_exists(&self, address: &str, asset: &str) -> Result<bool, APIError> {
+        let policy_id_size = 56;
+
         let bf_result = self
             .api
             .addresses(address)
             .await
-            .map_err(|e| APIError::Unexpected(e.to_string()))?;
+            .map_err(|err| APIError::License(err.to_string()))?;
 
         let asset_exists = bf_result
             .amount
             .iter()
-            .any(|x| x.unit == asset && x.quantity.parse::<i64>().unwrap_or(0) > 0);
+            .filter(|x| x.unit != "lovelace")
+            .any(|x| &x.unit[..policy_id_size] == asset && x.quantity.parse::<i64>().unwrap_or(0) > 0);
 
         if asset_exists {
             Ok(true)

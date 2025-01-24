@@ -20,5 +20,5 @@ thiserror = "1.0.63"
 uuid = { version = "1.10.0", features = ["v4"] }
 chrono = { version = "0.4.3", features = ["serde"] }
 reqwest = "0.12.5"
-blockfrost = "1.0.1"
+blockfrost = "1.0.5"
 dotenvy = "0.15.7"
