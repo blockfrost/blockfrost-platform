@@ -38,13 +38,13 @@ pub async fn route(
     let authorized_user = db.authorize_user(payload.secret).await?;
 
     // get IP address
-    let ip_address: &str = headers
-        // Try the DO-specific header first
+    let ip_header_value = headers
         .get("HTTP_DO_CONNECTING_IP")
-        // Fallback to X-Forwarded-For if missing
         .or_else(|| headers.get("X-Forwarded-For"))
         .and_then(|val| val.to_str().ok())
         .unwrap_or("unknown");
+
+    let ip_address: &str = ip_header_value.split(',').next().unwrap_or("unknown").trim();
 
     // check if the server is accessible
     if !is_accessible(ip_address, payload.port).await {
