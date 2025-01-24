@@ -1,5 +1,11 @@
 ## Unreleased
 
+## [1.2.1] - 2025-01-24
+
+### Fixed
+
+- Digital Ocean ip address header
+
 ## [1.2.0] - 2025-01-24
 
 ### Added
