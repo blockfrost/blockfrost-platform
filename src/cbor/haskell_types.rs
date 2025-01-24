@@ -8,14 +8,14 @@ use std::{
 use pallas_addresses::Address;
 use pallas_codec::minicbor::{self, Decode};
 use pallas_codec::utils::Bytes;
-use pallas_network::miniprotocols::localstate::queries_v16::Datum;
 use pallas_primitives::{
     byron::{Blake2b256, TxIn, TxOut},
     conway::{
-        Anchor, DRep, DatumHash, ExUnits, GovAction, GovActionId, ProposalProcedure, RewardAccount, ScriptHash, Value, Voter
+        Anchor, DRep, DatumHash, ExUnits, GovAction, GovActionId, ProposalProcedure, RewardAccount,
+        ScriptHash, Value, Voter,
     },
-    AddrKeyhash, AssetName, Coin, Nullable, PolicyId, ProtocolVersion, StakeCredential,
-    TransactionInput,
+    AddrKeyhash, AssetName, Coin, Nullable, PlutusData, PolicyId, PoolKeyhash, ProtocolVersion,
+    StakeCredential, TransactionInput,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -202,7 +202,7 @@ pub enum ConwayUtxoPredFailure {
     UtxosFailure(ConwayUtxosPredFailure),
     BadInputsUTxO(CustomSet258<TransactionInput>),
     OutsideValidityIntervalUTxO(ValidityInterval, SlotNo), // validity interval, current slot
-    MaxTxSizeUTxO(u64, i64),                                    // less than or equal
+    MaxTxSizeUTxO(i64, i64),                               // less than or equal
     InputSetEmptyUTxO(),                                   // empty
     FeeTooSmallUTxO(DisplayCoin, DisplayCoin),             // Mismatch expected, supplied
     ValueNotConservedUTxO(DisplayValue, DisplayValue),
@@ -218,7 +218,7 @@ pub enum ConwayUtxoPredFailure {
     WrongNetworkInTxBody(Network, Network), // take in Network, https://github.com/IntersectMBO/cardano-ledger/blob/78b20b6301b2703aa1fe1806ae3c129846708a10/libs/cardano-ledger-core/src/Cardano/Ledger/BaseTypes.hs#L779
     OutsideForecast(SlotNo),
     TooManyCollateralInputs(u64, u64), // this is Haskell Natural, how many bit is it?
-    NoCollateralInputs(),         // empty
+    NoCollateralInputs(),              // empty
     IncorrectTotalCollateralField(DeltaCoin, DisplayCoin), // collateral provided, collateral amount declared in transaction body
     BabbageOutputTooSmallUTxO(Array<(SerializableTxOut, DisplayCoin)>), // list of supplied transaction outputs that are too small, together with the minimum value for the given output
     BabbageNonDisjointRefInputs(Vec<TransactionInput>), // TxIns that appear in both inputs and reference inputs
@@ -228,25 +228,24 @@ pub enum ConwayUtxoPredFailure {
 #[derive(Debug)]
 pub enum ConwayUtxosPredFailure {
     ValidationTagMismatch(bool, TagMismatchDescription),
-    CollectErrors(Array<CollectError>)
+    CollectErrors(Array<CollectError>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L365
 #[derive(Debug)]
-pub enum TagMismatchDescription
-{
-     PassedUnexpectedly,
-     FailedUnexpectedly(Vec<FailureDescription>)
+pub enum TagMismatchDescription {
+    PassedUnexpectedly,
+    FailedUnexpectedly(Vec<FailureDescription>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L332
 #[derive(Debug)]
 pub enum FailureDescription {
-    PlutusFailure(String, Bytes)
+    PlutusFailure(String, Bytes),
 }
 
 #[derive(Debug, Decode)]
-pub struct CollectError ();
+pub struct CollectError();
 
 impl fmt::Display for ConwayUtxoPredFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -263,7 +262,12 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     slot.to_haskell_str()
                 )
             }
-            MaxTxSizeUTxO(n1,n2) => write!(f, "(MaxTxSizeUTxO {} {})", n1.to_haskell_str(), n2.to_haskell_str()),
+            MaxTxSizeUTxO(n1, n2) => write!(
+                f,
+                "(MaxTxSizeUTxO {} {})",
+                n1.to_haskell_str(),
+                n2.to_haskell_str()
+            ),
             InputSetEmptyUTxO() => write!(f, "InputSetEmptyUTxO"),
             FeeTooSmallUTxO(expected, supplied) => {
                 write!(
@@ -311,17 +315,30 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     required.to_haskell_str()
                 )
             }
-            ScriptsNotPaidUTxO(utxo) => write!(f, "(ScriptsNotPaidUTxO {})", utxo.to_haskell_str_p()),
-            ExUnitsTooBigUTxO(u1, u2) => write!(f, "(ExUnitsTooBigUTxO {} {})", u1.to_haskell_str_p(), u2.to_haskell_str_p()),
+            ScriptsNotPaidUTxO(utxo) => {
+                write!(f, "(ScriptsNotPaidUTxO {})", utxo.to_haskell_str_p())
+            }
+            ExUnitsTooBigUTxO(u1, u2) => write!(
+                f,
+                "(ExUnitsTooBigUTxO {} {})",
+                u1.to_haskell_str_p(),
+                u2.to_haskell_str_p()
+            ),
             CollateralContainsNonADA(value) => write!(f, "(CollateralContainsNonADA ({}))", value),
-            WrongNetworkInTxBody(n1, n2) => write!(f, "(WrongNetworkInTxBody {} {})", n1.to_haskell_str(), n2.to_haskell_str()),
+            WrongNetworkInTxBody(n1, n2) => write!(
+                f,
+                "(WrongNetworkInTxBody {} {})",
+                n1.to_haskell_str(),
+                n2.to_haskell_str()
+            ),
             OutsideForecast(slot) => write!(f, "(OutsideForecast ({}))", slot.to_haskell_str()),
             TooManyCollateralInputs(i1, i2) => write!(f, "(TooManyCollateralInputs {} {})", i1, i2),
             NoCollateralInputs() => write!(f, "NoCollateralInputs"),
             IncorrectTotalCollateralField(provided, declared) => write!(
                 f,
                 "(IncorrectTotalCollateralField {} {})",
-                provided.to_haskell_str_p(), declared.to_haskell_str_p()
+                provided.to_haskell_str_p(),
+                declared.to_haskell_str_p()
             ),
             BabbageOutputTooSmallUTxO(outputs) => {
                 write!(
@@ -445,10 +462,10 @@ pub type Addr = Bytes;
 // not tested yet
 #[derive(Debug)]
 pub enum PlutusPurpose {
-    Spending(AsIx),   // 0
-    Minting(AsIx),    // 1
-    Certifying(AsIx), // 2
-    Rewarding(PurposeAs),  // 3
+    Spending(AsIx),       // 0
+    Minting(AsIx),        // 1
+    Certifying(AsIx),     // 2
+    Rewarding(PurposeAs), // 3
     Voting(PurposeAs),
     Proposing(AsIx),
 }
@@ -457,45 +474,42 @@ pub enum PlutusPurpose {
 // not tested yet
 #[derive(Debug)]
 pub enum ConwayPlutusPurpose {
-    ConwaySpending(AsItem<TransactionInput>),   // 0
-    ConwayMinting(AsItem<DisplayPolicyId>),    // 1
-    ConwayCertifying(AsItem<ConwayTxCert>), // 2
-    ConwayRewarding(AsItem<RewardAccountFielded>),  // 3
+    ConwaySpending(AsItem<TransactionInput>),      // 0
+    ConwayMinting(AsItem<DisplayPolicyId>),        // 1
+    ConwayCertifying(AsItem<ConwayTxCert>),        // 2
+    ConwayRewarding(AsItem<RewardAccountFielded>), // 3
     ConwayVoting(AsItem<Voter>),
     ConwayProposing(ProposalProcedure),
 }
 
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L587
 #[derive(Debug)]
-pub enum ConwayTxCert{
+pub enum ConwayTxCert {
     ConwayTxCertDeleg(ConwayDelegCert),
     ConwayTxCertPool(PoolCert),
     ConwayTxCertGov(ConwayGovCert),
 }
 
 #[derive(Debug)]
-pub struct PoolCert(String); // todo
+pub struct PoolCert(pub String); // todo
 #[derive(Debug)]
-pub struct ConwayGovCert(String); // todo
-
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct AsIx(#[n(0)] pub u64);
+pub struct ConwayGovCert(pub String); // todo
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L426
 #[derive(Debug)]
-pub enum ConwayDelegCert{
+pub enum ConwayDelegCert {
     ConwayRegCert(StakeCredential, Option<DisplayCoin>),
     ConwayUnRegCert(StakeCredential, Option<DisplayCoin>),
     ConwayDelegCert(StakeCredential, Delegatee),
-    ConwayRegDelegCert(StakeCredential, Delegatee, Option<DisplayCoin>)
+    ConwayRegDelegCert(StakeCredential, Delegatee, Option<DisplayCoin>),
 }
-
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct AsIx(#[n(0)] pub u64);
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L357
 #[derive(Debug)]
 pub enum Delegatee {
-    DelegStake(KeyHash),
+    DelegStake(PoolKeyhash),
     DelegVote(DRep),
     DelegStakeVote(KeyHash, DRep),
 }
@@ -506,11 +520,10 @@ pub struct AsItem<T>(#[n(0)] pub T)
 where
     T: HaskellDisplay;
 
-
 #[derive(Debug)]
 pub enum PurposeAs {
- Ix(AsIx),
- Item(AsItem<RewardAccountFielded>),
+    Ix(AsIx),
+    Item(AsItem<RewardAccountFielded>),
 }
 
 #[derive(Debug, Decode)]
@@ -639,19 +652,14 @@ pub struct StrictSeq<T>(#[n(0)] pub Vec<T>);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/5aed6e50d9efc9443ec2c17197671cc4c0de5498/libs/cardano-ledger-core/src/Cardano/Ledger/Plutus/Data.hs#L206
 #[derive(Debug)]
-
 pub enum DatumEnum {
     DatumHash(DisplayDatumHash),
-    Datum(DisplayDatum),
+    Datum(CborBytes<PlutusData>),
     NoDatum,
 }
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct DisplayDatumHash(#[n(0)] pub DatumHash);
-
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct DisplayDatum(#[n(0)] pub Datum);
 
 impl fmt::Display for SerializableTxOut {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -689,7 +697,8 @@ pub struct DeltaCoin(#[n(0)] pub i32);
 
 #[derive(Debug)]
 //#[cbor(transparent)]
-pub struct Mismatch<T>(pub T, pub T) // supplied, expecte
+pub struct Mismatch<T>(pub T, pub T)
+// supplied, expecte
 where
     T: HaskellDisplay;
 
@@ -776,7 +785,6 @@ impl Into<DisplayCoin> for &u64 {
         DisplayCoin(self.to_owned())
     }
 }
- 
 
 #[derive(Debug, Decode, Hash, Eq, PartialEq)]
 #[cbor(transparent)]
@@ -875,6 +883,9 @@ impl fmt::Display for DisplayExUnits {
 #[cbor(transparent)]
 pub struct DisplayValue(#[n(0)] pub Value);
 
+#[derive(Debug)]
+pub struct CborBytes<T>(pub T);
+
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct MaryValue(#[n(0)] pub DisplayCoin);
@@ -901,10 +912,9 @@ fn display_triple<T: Display, U: Display, V: Display>(t: &(T, U, V)) -> String {
     format!("({} {} {})", t.0, t.1, t.2)
 }
 fn display_triple_vec<T: Display, U: Display, V: Display>(vec: &[(T, U, V)]) -> String {
-    if vec.is_empty()
-        {
-            return "[]".to_string();
-        }
+    if vec.is_empty() {
+        return "[]".to_string();
+    }
 
     vec.iter()
         .map(|x| display_triple(x))

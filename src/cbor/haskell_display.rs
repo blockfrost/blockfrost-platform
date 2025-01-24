@@ -1,24 +1,38 @@
 use std::{
-    arch::x86_64, collections::HashMap, fmt::{self}, ops::Deref
+    collections::HashMap,
+    fmt::{self, format},
+    ops::Deref,
 };
 
- use pallas_addresses::{
+use chrono::format;
+use pallas_addresses::{
     byron::{AddrAttrProperty, AddrType, AddressPayload},
     Address, ByronAddress, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart,
 };
 use pallas_codec::utils::OrderPreservingProperties;
 use pallas_primitives::{
     conway::{
-        Anchor, Certificate, Constitution, CostModels, DRepVotingThresholds, ExUnitPrices, GovAction, GovActionId, PoolVotingThresholds, ProposalProcedure, ProtocolParamUpdate, VKeyWitness, Voter
+        Anchor, Certificate, CommitteeColdCredential, Constitution, CostModels,
+        DRepVotingThresholds, ExUnitPrices, GovAction, GovActionId, PoolVotingThresholds,
+        ProposalProcedure, ProtocolParamUpdate, VKeyWitness, Voter,
     },
-    Bytes, DatumHash, ExUnits, Hash, KeyValuePairs, Nullable, ProtocolVersion, RationalNumber,
-    RewardAccount, ScriptHash, StakeCredential, TransactionInput,
+    BoundedBytes, Bytes, DatumHash, Epoch, ExUnits, Hash, Int, KeyValuePairs, MaybeIndefArray,
+    Nullable, PlutusData, ProtocolVersion, RationalNumber, RewardAccount, ScriptHash,
+    StakeCredential, TransactionInput,
 };
 
 use crate::cbor::haskell_types::get_network_and_credentials;
 
 use super::haskell_types::{
-    AddressBytes, Array, AsItem, AsIx, BabbageTxOut, CollectError, ConwayCertPredFailure, ConwayDelegCert, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatum, DisplayDatumHash, DisplayHash, DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch, MultiAsset, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash, SerializableTxOut, ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, Utxo, VKey, ValidityInterval
+    AddressBytes, Array, AsItem, AsIx, BabbageTxOut, CborBytes, CollectError,
+    ConwayCertPredFailure, ConwayDelegCert, ConwayDelegPredFailure, ConwayGovCert,
+    ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
+    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, Delegatee,
+    DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatumHash, DisplayHash,
+    DisplayPolicyId, DisplayScriptHash, DisplayValue, EpochNo, EraScript, FailureDescription,
+    KeyHash, MaryValue, Mismatch, MultiAsset, PlutusPurpose, PoolCert, PurposeAs,
+    RewardAccountFielded, SafeHash, SerializableTxOut, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    TagMismatchDescription, Timelock, TimelockRaw, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -261,8 +275,11 @@ impl HaskellDisplay for ConwayUtxosPredFailure {
         use ConwayUtxosPredFailure::*;
 
         match self {
-            ValidationTagMismatch(is_valid, desc) => 
-            format!("ValidationTagMismatch ({}) {}", is_valid.as_is_valid(), desc.to_haskell_str_p()),
+            ValidationTagMismatch(is_valid, desc) => format!(
+                "ValidationTagMismatch ({}) {}",
+                is_valid.as_is_valid(),
+                desc.to_haskell_str_p()
+            ),
             CollectErrors(errors) => format!("CollectErrors {}", errors.to_haskell_str()),
         }
     }
@@ -286,14 +303,16 @@ impl HaskellDisplay for TagMismatchDescription {
 
 impl HaskellDisplay for FailureDescription {
     fn to_haskell_str(&self) -> String {
-        
         use FailureDescription::*;
         match self {
-            PlutusFailure(s, b) => format!("PlutusFailure {} {}", s.to_haskell_str(), b.to_haskell_str()),
+            PlutusFailure(s, b) => format!(
+                "PlutusFailure {} {}",
+                s.to_haskell_str(),
+                b.to_haskell_str()
+            ),
         }
     }
 }
-
 
 impl HaskellDisplay for ConwayDelegPredFailure {
     fn to_haskell_str(&self) -> String {
@@ -471,8 +490,8 @@ impl HaskellDisplay for GovAction {
                 format!(
                     "ParameterChange {} {} {}",
                     a.to_haskell_str_p(),
-                    b.to_haskell_str(),
-                    c.to_haskell_str(),
+                    b.to_haskell_str_p(),
+                    c.to_haskell_str_p(),
                 )
             }
             HardForkInitiation(a, b) => {
@@ -495,12 +514,17 @@ impl HaskellDisplay for GovAction {
             NoConfidence(a) => {
                 format!("NoConfidence {}", a.to_haskell_str_p())
             }
-            UpdateCommittee(a, b, c, d) => {
+            UpdateCommittee(a, b, kv, d) => {
+                let kv: KeyValuePairs<CommitteeColdCredential, EpochNo> = kv
+                    .iter()
+                    .map(|(k, v)| (k.to_owned(), EpochNo(*v)))
+                    .collect();
+
                 format!(
                     "UpdateCommittee {} {} {} {}",
                     a.to_haskell_str_p(),
                     b.to_haskell_str_p(),
-                    c.to_haskell_str_p(),
+                    kv.to_haskell_str_p(),
                     d.to_haskell_str_p()
                 )
             }
@@ -529,11 +553,11 @@ impl HaskellDisplay for GovAction {
 impl HaskellDisplay for ProtocolParamUpdate {
     fn to_haskell_str(&self) -> String {
         format!(
-            "(PParamsUpdate (ConwayPParams {{cppMinFeeA = {}, cppMinFeeB = {}, cppMaxBBSize = {}, cppMaxTxSize = {}, cppMaxBHSize = {}, cppKeyDeposit = {}, cppPoolDeposit = {}, \
+            "PParamsUpdate (ConwayPParams {{cppMinFeeA = {}, cppMinFeeB = {}, cppMaxBBSize = {}, cppMaxTxSize = {}, cppMaxBHSize = {}, cppKeyDeposit = {}, cppPoolDeposit = {}, \
              cppEMax = {}, cppNOpt = {}, cppA0 = {}, cppRho = {}, cppTau = {}, cppProtocolVersion = {}, cppMinPoolCost = {}, cppCoinsPerUTxOByte = {}, cppCostModels = {}, \
              cppPrices = {}, cppMaxTxExUnits = {}, cppMaxBlockExUnits = {}, cppMaxValSize = {}, cppCollateralPercentage = {}, cppMaxCollateralInputs = {}, \
              cppPoolVotingThresholds = {}, cppDRepVotingThresholds = {}, cppCommitteeMinSize = {}, cppCommitteeMaxTermLength = {}, cppGovActionLifetime = {}, \
-             cppGovActionDeposit = {}, cppDRepDeposit = {}, cppDRepActivity = {}, cppMinFeeRefScriptCostPerByte = {}}}))",
+             cppGovActionDeposit = {}, cppDRepDeposit = {}, cppDRepActivity = {}, cppMinFeeRefScriptCostPerByte = {}}})",
             self.minfee_a.as_display_coin(),
             self.minfee_b.as_display_coin(),
             self.max_block_body_size.to_haskell_str(),
@@ -547,7 +571,7 @@ impl HaskellDisplay for ProtocolParamUpdate {
             self.expansion_rate.to_haskell_str(),
             self.treasury_growth_rate.to_haskell_str(),
             "NoUpdate",
-            self.min_pool_cost.to_haskell_str(),
+            self.min_pool_cost.as_display_coin(),
             self.ada_per_utxo_byte.as_display_coin(),
             self.cost_models_for_script_languages.to_haskell_str(),
             self.execution_costs.to_haskell_str(),
@@ -560,7 +584,7 @@ impl HaskellDisplay for ProtocolParamUpdate {
             self.drep_voting_thresholds.to_haskell_str(),
             self.min_committee_size.to_haskell_str(),
             self.committee_term_limit.as_epoch_interval(),
-            self.governance_action_validity_period.to_haskell_str(),
+            self.governance_action_validity_period.as_epoch_interval(),
             self.governance_action_deposit.as_display_coin(),
             self.drep_deposit.as_display_coin(),
             self.drep_inactivity_period.as_epoch_interval(),
@@ -613,7 +637,7 @@ impl HaskellDisplay for CostModels {
 impl HaskellDisplay for ExUnits {
     fn to_haskell_str(&self) -> String {
         format!(
-            "WrapExUnits {{unWrapExUnits = ExUnits' {{exUnitsMem' = {:?}, exUnitsSteps' = {}}}}}",
+            "WrapExUnits {{unWrapExUnits = ExUnits' {{exUnitsMem' = {}, exUnitsSteps' = {}}}}}",
             self.mem, self.steps
         )
     }
@@ -1149,7 +1173,6 @@ impl HaskellDisplay for BabbageTxOut {
     }
 }
 
-
 impl HaskellDisplay for ByronAddress {
     fn to_haskell_str(&self) -> String {
         let payload = self.decode().unwrap();
@@ -1162,11 +1185,11 @@ impl HaskellDisplay for AddressPayload {
         let root = hex::encode(self.root);
 
         use AddrType::*;
-        let addr_type = match self.addrtype  {
-            PubKey =>  "ATVerKey",
-            Script=> "Script todo",
-            Redeem=> "Redeem todo ",
-            Other(v) =>"Other todo"
+        let addr_type = match self.addrtype {
+            PubKey => "ATVerKey",
+            Script => "Script todo",
+            Redeem => "Redeem todo ",
+            Other(v) => "Other todo",
         };
         format!(
             "Address {{addrRoot = {}, addrAttributes = {}, addrType = {}}}",
@@ -1236,9 +1259,7 @@ impl HaskellDisplay for AddrAttrProperty
 
 impl HaskellDisplay for Utxo {
     fn to_haskell_str(&self) -> String {
-        format!(
-            "UTxO {}", self.0.to_haskell_str_p()
-        )
+        format!("UTxO {}", self.0.to_haskell_str_p())
     }
 }
 impl fmt::Display for DisplayValue {
@@ -1324,7 +1345,7 @@ impl HaskellDisplay for DatumEnum {
 
         match self {
             DatumHash(datum_hash) => datum_hash.to_haskell_str().to_string(),
-            Datum(datum) => format!("Datum ({:?})", datum),
+            Datum(datum) => format!("Datum {}", datum.to_haskell_str()),
             NoDatum => "NoDatum".to_string(),
         }
     }
@@ -1336,9 +1357,66 @@ impl HaskellDisplay for DisplayDatumHash {
     }
 }
 
-impl HaskellDisplay for DisplayDatum {
+impl HaskellDisplay for PlutusData {
     fn to_haskell_str(&self) -> String {
-        format!("Datum ({:?})", self.0)
+        use PlutusData::*;
+        match self {
+            Constr(constr) => format!("Constr {:?}", constr),
+            Map(key_value_pairs) => {
+                format!("PlutusData KeyValue {}", key_value_pairs.to_haskell_str())
+            }
+            BigInt(big_int) => match big_int {
+                pallas_primitives::BigInt::Int(i) => format!("BigInt Int {}", i.to_haskell_str()),
+                pallas_primitives::BigInt::BigNInt(bb) => {
+                    format!("BigNInt {}", bb.to_haskell_str())
+                }
+                pallas_primitives::BigInt::BigUInt(bb) => {
+                    format!("BigUInt {}", bb.to_haskell_str())
+                }
+            },
+            BoundedBytes(bb) => bb.to_haskell_str(),
+            Array(arr) => format!("Array {}", arr.to_haskell_str()),
+        }
+    }
+}
+
+impl HaskellDisplay for BoundedBytes {
+    fn to_haskell_str(&self) -> String {
+        let arr = self.deref();
+
+        let str = arr.iter().map(|&c| c as char).collect::<String>();
+
+        haskell_show_string(&str)
+        // format!("BoundedBytes {}", self.deref().to_haskell_str())
+    }
+}
+
+impl<T> HaskellDisplay for MaybeIndefArray<T>
+where
+    T: HaskellDisplay,
+{
+    fn to_haskell_str(&self) -> String {
+        let str = match self {
+            MaybeIndefArray::Def(vec) => vec.to_haskell_str(),
+            MaybeIndefArray::Indef(vec) => vec.to_haskell_str(),
+        };
+
+        format!("MaybeIndefArray {}", str)
+    }
+}
+
+impl HaskellDisplay for Int {
+    fn to_haskell_str(&self) -> String {
+        format!("Int {}", self.0)
+    }
+}
+
+impl<T> HaskellDisplay for CborBytes<T>
+where
+    T: HaskellDisplay,
+{
+    fn to_haskell_str(&self) -> String {
+        format!("{}", self.0.to_haskell_str())
     }
 }
 
@@ -1425,30 +1503,59 @@ impl HaskellDisplay for ConwayPlutusPurpose {
 
 impl HaskellDisplay for ConwayTxCert {
     fn to_haskell_str(&self) -> String {
-        
         use ConwayTxCert::*;
         match self {
-            ConwayTxCertDeleg(conway_deleg_cert) => format!("ConwayTxCertDeleg {}", conway_deleg_cert.to_haskell_str_p()),
-            ConwayTxCertPool(pool_cert) => todo!(),
-            ConwayTxCertGov(conway_gov_cert) => todo!(),
+            ConwayTxCertDeleg(conway_deleg_cert) => {
+                format!("ConwayTxCertDeleg {}", conway_deleg_cert.to_haskell_str_p())
+            }
+            ConwayTxCertPool(pool_cert) => {
+                format!("ConwayTxCertPool {}", pool_cert.to_haskell_str_p())
+            }
+            ConwayTxCertGov(conway_gov_cert) => {
+                format!("ConwayTxCertGov {}", conway_gov_cert.to_haskell_str_p())
+            }
         }
+    }
+}
+
+impl HaskellDisplay for PoolCert {
+    fn to_haskell_str(&self) -> String {
+        format!("PoolCert {}", self.0.to_haskell_str())
+    }
+}
+
+impl HaskellDisplay for ConwayGovCert {
+    fn to_haskell_str(&self) -> String {
+        format!("ConwayGovCert {}", self.0.to_haskell_str())
     }
 }
 
 impl HaskellDisplay for ConwayDelegCert {
     fn to_haskell_str(&self) -> String {
-
         match self {
-            ConwayDelegCert::ConwayRegCert(stake_credential, display_coin) => 
-            format!("ConwayRegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
-            ConwayDelegCert::ConwayUnRegCert(stake_credential, display_coin) => 
-            format!("ConwayUnRegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
-            
-            ConwayDelegCert::ConwayDelegCert(stake_credential, delegatee) => 
-            format!("ConwayDelegCert {} {}", stake_credential.to_haskell_str_p(), delegatee.to_haskell_str()),
-                        ConwayDelegCert::ConwayRegDelegCert(stake_credential, delegatee, display_coin) =>
-            format!("ConwayRegDelegCert {} {}", stake_credential.to_haskell_str_p(), display_coin.to_haskell_str()),
-            
+            ConwayDelegCert::ConwayRegCert(stake_credential, display_coin) => format!(
+                "ConwayRegCert {} {}",
+                stake_credential.to_haskell_str_p(),
+                display_coin.to_haskell_str()
+            ),
+            ConwayDelegCert::ConwayUnRegCert(stake_credential, display_coin) => format!(
+                "ConwayUnRegCert {} {}",
+                stake_credential.to_haskell_str_p(),
+                display_coin.to_haskell_str()
+            ),
+
+            ConwayDelegCert::ConwayDelegCert(stake_credential, delegatee) => format!(
+                "ConwayDelegCert {} {}",
+                stake_credential.to_haskell_str_p(),
+                delegatee.to_haskell_str()
+            ),
+            ConwayDelegCert::ConwayRegDelegCert(stake_credential, delegatee, display_coin) => {
+                format!(
+                    "ConwayRegDelegCert {} {}",
+                    stake_credential.to_haskell_str_p(),
+                    display_coin.to_haskell_str()
+                )
+            }
         }
     }
 }
@@ -1456,17 +1563,15 @@ impl HaskellDisplay for Delegatee {
     fn to_haskell_str(&self) -> String {
         use Delegatee::*;
 
-         "Delegatee not implemented".to_string()
+        "Delegatee not implemented".to_string()
     }
 }
 
 impl HaskellDisplay for Certificate {
     fn to_haskell_str(&self) -> String {
-        
-
         use Certificate::*;
         match self {
-            /* 
+            /*
             StakeDeregistration(stake_credential) => todo!(),
             StakeDelegation(stake_credential, hash) => todo!(),
             PoolRegistration { operator, vrf_keyhash, pledge, cost, margin, reward_account, pool_owners, relays, pool_metadata } => todo!(),
@@ -1483,11 +1588,17 @@ impl HaskellDisplay for Certificate {
             UnRegDRepCert(stake_credential, _) => todo!(),
             UpdateDRepCert(stake_credential, nullable) => todo!(),
             */
-            StakeRegistration(stake_credential) =>  format!("ConwayRegCert {} SNothing", stake_credential.to_haskell_str()),
-            Reg(stake_credential, coin) => format!("ConwayRegCert {} {}", stake_credential.to_haskell_str(), coin.to_haskell_str()),
-           
-            _ => format!("Certificate not implemented: {:?}", self),
+            StakeRegistration(stake_credential) => format!(
+                "ConwayRegCert {} SNothing",
+                stake_credential.to_haskell_str()
+            ),
+            Reg(stake_credential, coin) => format!(
+                "ConwayRegCert {} {}",
+                stake_credential.to_haskell_str(),
+                coin.to_haskell_str()
+            ),
 
+            _ => format!("Certificate not implemented: {:?}", self),
         }
     }
 }
@@ -1515,7 +1626,7 @@ where
 
 impl HaskellDisplay for DisplayAddress {
     fn to_haskell_str(&self) -> String {
-        format!("{}",self.0.to_haskell_str())
+        format!("{}", self.0.to_haskell_str())
     }
 }
 
@@ -1614,9 +1725,9 @@ trait AsIsValid {
 impl AsIsValid for bool {
     fn as_is_valid(&self) -> &str {
         if *self {
-            "IsValid True" 
+            "IsValid True"
         } else {
-            "IsValid False" 
+            "IsValid False"
         }
     }
 }

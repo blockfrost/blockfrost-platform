@@ -1,15 +1,22 @@
 use pallas_addresses::Address;
 use pallas_codec::minicbor::{self, data::Type, decode, Decode, Decoder};
 use pallas_crypto::hash::Hasher;
-use pallas_primitives::conway::Certificate;
+use pallas_primitives::{conway::Certificate, Bytes, PlutusData};
 
- 
-
+use crate::cbor::haskell_types::Delegatee;
 
 use super::{
     haskell_display::HaskellDisplay,
     haskell_types::{
-         ApplyConwayTxPredError, ApplyTxError, Array, BabbageTxOut, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegCert, ConwayDelegPredFailure, ConwayGovCert, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, DisplayAddress, DisplayHash, EpochNo, EraScript, FailureDescription, MaryValue, Mismatch, MultiAsset, Network, PlutusPurpose, PoolCert, PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxValidationError, Utxo, ValidityInterval
+        ApplyConwayTxPredError, ApplyTxError, Array, BabbageTxOut, CborBytes,
+        ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegCert, ConwayDelegPredFailure,
+        ConwayGovCert, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose,
+        ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure,
+        Credential, CustomSet258, DatumEnum, DisplayAddress, DisplayHash, EpochNo, EraScript,
+        FailureDescription, MaryValue, Mismatch, MultiAsset, Network, PlutusPurpose, PoolCert,
+        PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo,
+        StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxValidationError, Utxo,
+        ValidityInterval,
     },
 };
 
@@ -113,13 +120,12 @@ impl<'b> Decode<'b, ()> for ShelleyPoolPredFailure {
                 ))
             }
             3 => Ok(StakePoolCostTooLowPOOL(d.decode()?)),
-            4 => 
-            {
+            4 => {
                 let expected: Network = d.decode()?;
                 let supplied: Network = d.decode()?;
 
                 Ok(WrongNetworkPOOL(Mismatch(supplied, expected), d.decode()?))
-            },
+            }
             5 => Ok(PoolMedataHashTooBig(d.decode()?, d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ShelleyPoolPredFailure: {}",
@@ -144,21 +150,15 @@ where
     }
 }
 
-impl<'b> Decode<'b, ()> for ConwayUtxosPredFailure
-{
+impl<'b> Decode<'b, ()> for ConwayUtxosPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-       
         d.array()?;
         let error = d.u16()?;
 
         use ConwayUtxosPredFailure::*;
 
         match error {
-            0 =>
-            { 
-                Ok(ValidationTagMismatch(d.decode()?, d.decode()?))
-                
-            },
+            0 => Ok(ValidationTagMismatch(d.decode()?, d.decode()?)),
             1 => Ok(CollectErrors(Array(Vec::new()))),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ConwayUtxosPredFailure: {}",
@@ -167,8 +167,6 @@ impl<'b> Decode<'b, ()> for ConwayUtxosPredFailure
         }
     }
 }
-
-
 
 impl<'b> Decode<'b, ()> for ConwayUtxoWPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
@@ -193,10 +191,7 @@ impl<'b> Decode<'b, ()> for ConwayUtxoWPredFailure {
             12 => Ok(NotAllowedSupplementalDatums(d.decode()?, d.decode()?)),
             13 => Ok(PPViewHashesDontMatch(d.decode()?, d.decode()?)),
             14 => Ok(UnspendableUTxONoDatumHash(d.decode()?)),
-            15 => 
-            {
-                Ok(ExtraRedeemers(d.decode()?))
-            },
+            15 => Ok(ExtraRedeemers(d.decode()?)),
             16 => Ok(MalformedScriptWitnesses(d.decode()?)),
             17 => Ok(MalformedReferenceScripts(d.decode()?)),
             _ => Err(decode::Error::message(format!(
@@ -293,7 +288,6 @@ impl<'b> Decode<'b, ()> for ConwayGovPredFailure {
 
 impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
         d.array()?;
         let error = d.u16()?;
 
@@ -312,7 +306,6 @@ impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
 
 impl<'b> Decode<'b, ()> for DisplayAddress {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
         let address_bytes = d.bytes()?;
 
         Ok(DisplayAddress(Address::from_bytes(address_bytes).unwrap()))
@@ -321,32 +314,28 @@ impl<'b> Decode<'b, ()> for DisplayAddress {
 
 impl<'b> Decode<'b, ()> for ConwayPlutusPurpose {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
         d.array()?;
         let error = d.u16()?;
 
         use ConwayPlutusPurpose::*;
 
         match error {
-           
             0 => Ok(ConwaySpending(d.decode()?)),
             1 => Ok(ConwayMinting(d.decode()?)),
-            2  => Ok(ConwayCertifying (d.decode()?)),
-            3  =>Ok(ConwayRewarding (d.decode()?)),
-            4  => Ok(ConwayVoting (d.decode()?)),
-            5  => Ok(ConwayProposing (d.decode()?)),
-            _  => Err(decode::Error::message(format!(
+            2 => Ok(ConwayCertifying(d.decode()?)),
+            3 => Ok(ConwayRewarding(d.decode()?)),
+            4 => Ok(ConwayVoting(d.decode()?)),
+            5 => Ok(ConwayProposing(d.decode()?)),
+            _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ConwayPlutusPurpose: {}",
                 error
-            )))
+            ))),
         }
     }
 }
 
-
 impl<'b> Decode<'b, ()> for ConwayCertPredFailure {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
         d.array()?;
         let error = d.u16()?;
 
@@ -410,76 +399,116 @@ impl<'b> Decode<'b, ()> for ConwayDelegPredFailure {
 
 impl<'b> Decode<'b, ()> for ConwayTxCert {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
         let cert: Certificate = d.decode()?;
-        
-       use Certificate::*;
- 
+
+        use Certificate::*;
+
         match cert {
-            StakeRegistration(stake_credential) => 
-                Ok(ConwayTxCert::ConwayTxCertDeleg(ConwayDelegCert::ConwayRegCert(stake_credential,None))),
-            
-            StakeDeregistration(stake_credential) => 
-            Ok(ConwayTxCert::ConwayTxCertDeleg(ConwayDelegCert::ConwayUnRegCert(stake_credential,None))),
-            StakeDelegation(stake_credential, hash) => todo!(),
-            PoolRegistration { operator, vrf_keyhash, pledge, cost, margin, reward_account, pool_owners, relays, pool_metadata } => todo!(),
-            PoolRetirement(hash, _) => todo!(),
-            Reg(stake_credential, _) => todo!(),
-            UnReg(stake_credential, _) => todo!(),
-            VoteDeleg(stake_credential, drep) => todo!(),
-            StakeVoteDeleg(stake_credential, hash, drep) => todo!(),
-            StakeRegDeleg(stake_credential, hash, _) => todo!(),
-            VoteRegDeleg(stake_credential, drep, _) => todo!(),
-            StakeVoteRegDeleg(stake_credential, hash, drep, _) => todo!(),
-            AuthCommitteeHot(stake_credential, stake_credential1) => todo!(),
-            ResignCommitteeCold(stake_credential, nullable) => todo!(),
-            RegDRepCert(stake_credential, _, nullable) => todo!(),
-            UnRegDRepCert(stake_credential, _) => todo!(),
-            UpdateDRepCert(stake_credential, nullable) => todo!(),
+            // ↧ Shelley backwards compatibility ↧
+            StakeRegistration(stake_credential) => Ok(ConwayTxCert::ConwayTxCertDeleg(
+                ConwayDelegCert::ConwayRegCert(stake_credential, None),
+            )),
+
+            StakeDeregistration(stake_credential) => Ok(ConwayTxCert::ConwayTxCertDeleg(
+                ConwayDelegCert::ConwayUnRegCert(stake_credential, None),
+            )),
+
+            StakeDelegation(stake_credential, hash) => Ok(ConwayTxCert::ConwayTxCertDeleg(
+                ConwayDelegCert::ConwayDelegCert(stake_credential, Delegatee::DelegStake(hash)),
+            )),
+
+            //  ↧ Not used till item seven? ↧
+            PoolRegistration {
+                operator,
+                vrf_keyhash,
+                pledge,
+                cost,
+                margin,
+                reward_account,
+                pool_owners,
+                relays,
+                pool_metadata,
+            } => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todo1".to_string(),
+            ))),
+            PoolRetirement(hash, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todo2".to_string(),
+            ))),
+            //  ↧ new in conway ↧
+            Reg(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todo3".to_string(),
+            ))),
+            UnReg(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todo4".to_string(),
+            ))),
+            VoteDeleg(stake_credential, drep) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todo5".to_string(),
+            ))),
+            StakeVoteDeleg(stake_credential, hash, drep) => Ok(ConwayTxCert::ConwayTxCertPool(
+                PoolCert("todo6".to_string()),
+            )),
+            StakeRegDeleg(stake_credential, hash, _) => Ok(ConwayTxCert::ConwayTxCertPool(
+                PoolCert("todo7".to_string()),
+            )),
+            VoteRegDeleg(stake_credential, drep, _) => {
+                Ok(ConwayTxCert::ConwayTxCertPool(PoolCert("tod8".to_string())))
+            }
+            StakeVoteRegDeleg(stake_credential, hash, drep, _) => Ok(
+                ConwayTxCert::ConwayTxCertPool(PoolCert("todo9".to_string())),
+            ),
+
+            AuthCommitteeHot(stake_credential, stake_credential1) => {
+                Ok(ConwayTxCert::ConwayTxCertPool(PoolCert("todo".to_string())))
+            }
+
+            ResignCommitteeCold(stake_credential, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
+                PoolCert("todou".to_string()),
+            )),
+            RegDRepCert(stake_credential, _, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
+                PoolCert("todoi".to_string()),
+            )),
+            UnRegDRepCert(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
+                "todoe".to_string(),
+            ))),
+            UpdateDRepCert(stake_credential, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
+                PoolCert("todoa".to_string()),
+            )),
         }
     }
-} 
-impl<'b> Decode<'b, ()> for ConwayDelegCert { 
+}
+impl<'b> Decode<'b, ()> for ConwayDelegCert {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        
-
         let cert: Certificate = d.decode()?;
- 
 
-       Ok(ConwayDelegCert::ConwayRegCert(d.decode()?, d.decode()?))
+        Ok(ConwayDelegCert::ConwayRegCert(d.decode()?, d.decode()?))
     }
 }
 
-impl<'b> Decode<'b, ()> for PoolCert { 
+impl<'b> Decode<'b, ()> for PoolCert {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         d.array()?;
         let cert = d.u16()?;
- 
 
-       Ok( d.decode()?)
+        Ok(d.decode()?)
     }
 }
 
-impl<'b> Decode<'b, ()> for ConwayGovCert { 
+impl<'b> Decode<'b, ()> for ConwayGovCert {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         d.array()?;
         let cert = d.u16()?;
- 
 
-       Ok( d.decode()?)
+        Ok(d.decode()?)
     }
 }
-impl<'b> Decode<'b, ()> for TagMismatchDescription
-{
+impl<'b> Decode<'b, ()> for TagMismatchDescription {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-       
         d.array()?;
         let error = d.u16()?;
 
         use TagMismatchDescription::*;
 
         match error {
-           
             0 => Ok(PassedUnexpectedly),
             1 => Ok(FailedUnexpectedly(d.decode()?)),
             _ => Err(decode::Error::message(format!(
@@ -489,10 +518,8 @@ impl<'b> Decode<'b, ()> for TagMismatchDescription
         }
     }
 }
-impl<'b> Decode<'b, ()> for FailureDescription
-{
+impl<'b> Decode<'b, ()> for FailureDescription {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-       
         d.array()?;
         // d.array()?;
         let error = d.u16()?;
@@ -500,7 +527,6 @@ impl<'b> Decode<'b, ()> for FailureDescription
         use FailureDescription::*;
 
         match error {
-           
             1 => Ok(PlutusFailure(d.decode()?, d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding FailureDescription: {}",
@@ -617,12 +643,10 @@ impl<'b> Decode<'b, ()> for PlutusPurpose {
 
 impl<'b> Decode<'b, ()> for PurposeAs {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-
-        
         use PurposeAs::*;
 
         let tp = d.probe().datatype()?;
- 
+
         match d.probe().datatype()? {
             Type::U8 => Ok(Ix(d.decode()?)),
             Type::Bytes => Ok(Item(d.decode()?)),
@@ -631,9 +655,6 @@ impl<'b> Decode<'b, ()> for PurposeAs {
                 tp
             ))),
         }
-
-        
-        
     }
 }
 
@@ -659,25 +680,18 @@ impl<'b> Decode<'b, ()> for BabbageTxOut {
                 // key 2
                 // datum enum
                 d.u8()?;
+                // let datum_set: CustomSet258<DatumEnum> = d.decode()?;
                 let datum: DatumEnum = d.decode()?;
 
                 // key 3
                 // inner cbor
                 d.u8()?;
 
-                d.tag()?;
-                let inner_cbor_bytes = d.bytes()?;
+                //d.tag()?;
+                let inner_cbor: CborBytes<Bytes> = d.decode()?;
+                // let inner_cbor_bytes = d.bytes()?;
                 // let inner_cbor = hex::encode(bytes);
-                let era_script = minicbor::decode::<EraScript>(inner_cbor_bytes)?;
-
-                println!(
-                    "BabbageTxOut::MaryTxOut: addr: {} ",
-                    multi_asset.to_haskell_str()
-                );
-
-                // println!("BabbageTxOut::MaryTxOut: addr: {}, value: {}, multiAsset: {}, datum: {:?}, era_script: {:?}", addr, value, multiAsset.to_haskell_str(), datum, era_script);
-
-                // Ok(BabbageTxOut::NotImplemented)
+                let era_script = minicbor::decode::<EraScript>(&inner_cbor.0)?;
 
                 Ok(BabbageTxOut::TxOutCompactRefScript(
                     addr,
@@ -769,7 +783,16 @@ impl<'b> Decode<'b, ()> for DatumEnum {
         }
     }
 }
+/*
+impl<'b> Decode<'b, ()> for DisplayDatum {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
 
+        let b = d.bytes()?;
+        Ok(DisplayDatum( b.to_vec().into()))
+
+    }
+}
+ */
 // not tested yet
 impl<'b> Decode<'b, ()> for Utxo {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
@@ -784,7 +807,30 @@ where
     T: Decode<'b, ()>,
 {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        let _tag = d.tag()?; // we are ignoring the tag 258 here
+        let tag = d.tag()?;
+        if (tag.as_u64() != 258) {
+            return Err(decode::Error::message(format!(
+                "unexpected tag while decoding CustomSet258: {}",
+                tag
+            )));
+        }
         Ok(CustomSet258(d.decode()?))
+    }
+}
+
+impl<'b, T> Decode<'b, ()> for CborBytes<T>
+where
+    T: Decode<'b, ()>,
+{
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+        let tag = d.tag()?;
+        if (tag.as_u64() != 24) {
+            return Err(decode::Error::message(format!(
+                "unexpected tag while decoding CustomSet258: {}",
+                tag
+            )));
+        }
+
+        Ok(CborBytes(d.decode()?))
     }
 }
