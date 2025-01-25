@@ -7,9 +7,9 @@ use crate::payload::Payload;
 use axum::body::Bytes;
 use axum::http::HeaderMap;
 use axum::{Extension, Json};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::time::timeout;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,7 +46,7 @@ pub async fn route(
     let ip_address: &str = ip_header_value.split(',').next().unwrap_or("unknown").trim();
 
     // check if the server is accessible
-    if !is_accessible(ip_address, payload.port).await {
+    if !is_port_open(ip_address, payload.port).await {
         return Err(APIError::NotAccessible {
             ip: ip_address.to_string(),
             port: payload.port,
@@ -78,13 +78,12 @@ pub async fn route(
     Ok(Json(success_response))
 }
 
-async fn is_accessible(ip: &str, port: i32) -> bool {
-    let client = Client::new();
-    let url = format!("http://{}:{}", ip, port);
-    let request_future = client.get(&url).send();
+async fn is_port_open(ip: &str, port: i32) -> bool {
+    let address = format!("{}:{}", ip, port);
+    let connection_future = TcpStream::connect(&address);
 
-    match timeout(Duration::from_secs(5), request_future).await {
-        Ok(Ok(response)) => response.status().is_success(),
+    match timeout(Duration::from_secs(10), connection_future).await {
+        Ok(Ok(_stream)) => true,
         _ => false,
     }
 }
