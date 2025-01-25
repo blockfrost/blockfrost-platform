@@ -22,16 +22,11 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(config.log_level);
 
     // Build app
-    let (app, node_conn_pool) = build(config.clone()).await?;
+    let (app, node_conn_pool, icebreakers_api) = build(config.clone()).await?;
 
     // Bind server
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
-
-    info!(
-        "Server is listening on http://{}:{}/",
-        config.server_address, config.server_port
-    );
 
     // Shutdown signal
     let shutdown_signal = async {
@@ -42,10 +37,27 @@ async fn main() -> Result<(), AppError> {
     // Spawn background tasks
     tokio::spawn(node_health_check_task(node_conn_pool));
 
-    // Serve
-    axum::serve(listener, ServiceExt::<Request>::into_make_service(app))
-        .with_graceful_shutdown(shutdown_signal)
-        .await?;
+    // Create server task
+    let spawn_task = tokio::spawn(async move {
+        axum::serve(listener, ServiceExt::<Request>::into_make_service(app))
+            .with_graceful_shutdown(shutdown_signal)
+            .await
+    });
+
+    // Register with Icebreakers API after server is up
+    if let Some(icebreakers_api) = icebreakers_api {
+        icebreakers_api.register().await?;
+    }
+
+    info!(
+        "Server is listening on http://{}:{}/",
+        config.server_address, config.server_port
+    );
+
+    // Wait for the server task to finish
+    spawn_task
+        .await
+        .map_err(|err| AppError::Server(err.to_string()))??;
 
     Ok(())
 }

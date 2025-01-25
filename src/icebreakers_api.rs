@@ -16,7 +16,7 @@ pub struct IcebreakersAPI {
     mode: String,
     port: u16,
     reward_address: String,
-    pub api_prefix: String,
+    api_prefix: String,
 }
 
 #[derive(Deserialize)]
@@ -32,7 +32,7 @@ pub struct SuccessResponse {
 
 impl IcebreakersAPI {
     /// Creates a new `IcebreakersAPI` instance or logs a warning if not configured
-    pub async fn new(config: &Config) -> Result<Option<Arc<Self>>, AppError> {
+    pub async fn new(config: &Config, api_prefix: String) -> Result<Option<Arc<Self>>, AppError> {
         let api_url = match config.network {
             Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
             Network::Mainnet => "https://icebreakers-api.blockfrost.io",
@@ -40,29 +40,19 @@ impl IcebreakersAPI {
 
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
-                info!("Connecting to Icebreakers API...");
-
                 let client = Client::new();
                 let base_url = api_url.to_string();
-
-                let mut icebreakers_api = IcebreakersAPI {
+                let icebreakers_api = IcebreakersAPI {
                     client,
                     base_url,
                     secret: icebreakers_config.secret.clone(),
                     mode: config.mode.to_string(),
                     port: config.server_port,
                     reward_address: icebreakers_config.reward_address.clone(),
-                    api_prefix: "/".to_string(),
+                    api_prefix,
                 };
 
-                let result = icebreakers_api.register().await?;
-
-                // Pass the route to the icebreakers_api instance
-                icebreakers_api.api_prefix = result.route;
-
                 let icebreakers_api = Arc::new(icebreakers_api);
-
-                info!("Successfully registered with Icebreakers API.");
 
                 Ok(Some(icebreakers_api))
             }
@@ -86,6 +76,7 @@ impl IcebreakersAPI {
 
     /// Registers with the Icebreakers API
     pub async fn register(&self) -> Result<SuccessResponse, AppError> {
+        info!("Connecting to Icebreakers API...");
         info!("Registering with icebreakers api...");
 
         let url = format!("{}/register", self.base_url);
@@ -94,6 +85,7 @@ impl IcebreakersAPI {
             "mode": self.mode,
             "port": self.port,
             "reward_address": self.reward_address,
+            "api_prefix": self.api_prefix,
         });
 
         let response = self
@@ -108,6 +100,8 @@ impl IcebreakersAPI {
             let success_response = response.json::<SuccessResponse>().await.map_err(|e| {
                 AppError::Registration(format!("Failed to parse success response: {}", e))
             })?;
+
+            info!("Successfully registered with Icebreakers API.");
 
             Ok(success_response)
         } else {

@@ -15,10 +15,13 @@ use axum::{
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::normalize_path::{NormalizePath, NormalizePathLayer};
+use uuid::Uuid;
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
-pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePool), AppError> {
+pub async fn build(
+    config: Arc<Config>,
+) -> Result<(NormalizePath<Router>, NodePool, Option<Arc<IcebreakersAPI>>), AppError> {
     // Set up fallback decoder
     let fallback_decoder = FallbackDecoder::spawn()?;
 
@@ -30,21 +33,21 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
     // Create node pool
     let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
 
+    // Build a prefix
+    let api_prefix = if config.icebreakers_config.is_some() {
+        "/".to_string()
+    } else {
+        Uuid::new_v4().to_string()
+    };
+
     // Set up optional Icebreakers API (solitary option in CLI)
-    let icebreakers_api = IcebreakersAPI::new(&config).await?;
+    let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
     // Metrics recorder
     let prometheus_handle = if config.metrics {
         Some(setup_metrics_recorder())
     } else {
         None
-    };
-
-    // Build a prefix
-    let api_prefix = if let Some(api) = &icebreakers_api {
-        api.api_prefix.clone()
-    } else {
-        "/".to_string()
     };
 
     // Routes
@@ -55,7 +58,6 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
         .layer(Extension(prometheus_handle))
         .layer(Extension(config))
         .layer(Extension(node_conn_pool.clone()))
-        .layer(Extension(icebreakers_api))
         .layer(from_fn(error_middleware))
         .fallback(BlockfrostError::not_found())
         .route_layer(from_fn(track_http_metrics));
@@ -72,5 +74,5 @@ pub async fn build(config: Arc<Config>) -> Result<(NormalizePath<Router>, NodePo
         .layer(NormalizePathLayer::trim_trailing_slash())
         .service(app);
 
-    Ok((app, node_conn_pool))
+    Ok((app, node_conn_pool, icebreakers_api))
 }

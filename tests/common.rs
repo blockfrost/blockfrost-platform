@@ -1,6 +1,7 @@
 use axum::Router;
 use blockfrost_platform::{
     cli::{Config, LogLevel, Mode, Network},
+    icebreakers_api::IcebreakersAPI,
     server::build,
     AppError, NodePool,
 };
@@ -41,7 +42,8 @@ pub fn test_config() -> Arc<Config> {
     Arc::new(config)
 }
 
-pub async fn build_app() -> Result<(NormalizePath<Router>, NodePool), AppError> {
+pub async fn build_app(
+) -> Result<(NormalizePath<Router>, NodePool, Option<Arc<IcebreakersAPI>>), AppError> {
     let config = test_config();
 
     build(config).await
