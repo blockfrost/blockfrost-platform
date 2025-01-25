@@ -8,7 +8,8 @@ use blockfrost_platform::{
     AppError,
 };
 use clap::Parser;
-use std::sync::Arc;
+
+use std::{sync::Arc, time::Duration};
 use tokio::{signal, sync::oneshot};
 use tracing::info;
 
@@ -52,6 +53,10 @@ async fn main() -> Result<(), AppError> {
 
     if let Ok(()) = ready_rx.await {
         info!("Server is listening on http://{}{}", address, api_prefix);
+
+        info!("waiting 5s");
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        info!("Waiting done");
 
         if let Some(icebreakers_api) = &icebreakers_api {
             icebreakers_api.register().await?;
