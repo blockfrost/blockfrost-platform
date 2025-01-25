@@ -33,9 +33,6 @@ async fn main() -> Result<(), AppError> {
         info!("Received shutdown signal");
     };
 
-    // Spawn background tasks
-    tokio::spawn(node_health_check_task(node_conn_pool));
-
     // Spawn the server in its own task
     let spawn_task = tokio::spawn({
         let app = app;
@@ -61,6 +58,9 @@ async fn main() -> Result<(), AppError> {
         if let Some(icebreakers_api) = &icebreakers_api {
             icebreakers_api.register().await?;
         }
+
+        // Spawn background tasks
+        tokio::spawn(node_health_check_task(node_conn_pool));
     }
 
     spawn_task
