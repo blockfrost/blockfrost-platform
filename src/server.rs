@@ -21,7 +21,15 @@ use uuid::Uuid;
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
 pub async fn build(
     config: Arc<Config>,
-) -> Result<(NormalizePath<Router>, NodePool, Option<Arc<IcebreakersAPI>>), AppError> {
+) -> Result<
+    (
+        NormalizePath<Router>,
+        NodePool,
+        Option<Arc<IcebreakersAPI>>,
+        String,
+    ),
+    AppError,
+> {
     // Set up fallback decoder
     let fallback_decoder = FallbackDecoder::spawn()?;
 
@@ -35,9 +43,9 @@ pub async fn build(
 
     // Build a prefix
     let api_prefix = if config.icebreakers_config.is_some() {
-        "/".to_string()
+        format!("/{}", Uuid::new_v4().to_string())
     } else {
-        Uuid::new_v4().to_string()
+        "/".to_string()
     };
 
     // Set up optional Icebreakers API (solitary option in CLI)
@@ -74,5 +82,5 @@ pub async fn build(
         .layer(NormalizePathLayer::trim_trailing_slash())
         .service(app);
 
-    Ok((app, node_conn_pool, icebreakers_api))
+    Ok((app, node_conn_pool, icebreakers_api, api_prefix))
 }

@@ -22,7 +22,7 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(config.log_level);
 
     // Build app
-    let (app, node_conn_pool, icebreakers_api) = build(config.clone()).await?;
+    let (app, node_conn_pool, icebreakers_api, api_prefix) = build(config.clone()).await?;
 
     // Bind server
     let address = format!("{}:{}", config.server_address, config.server_port);
@@ -50,8 +50,8 @@ async fn main() -> Result<(), AppError> {
     }
 
     info!(
-        "Server is listening on http://{}:{}/",
-        config.server_address, config.server_port
+        "Server is listening on {}",
+        format!("http://{}{}", address, api_prefix)
     );
 
     // Wait for the server task to finish
