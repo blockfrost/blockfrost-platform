@@ -85,7 +85,7 @@ impl IcebreakersAPI {
             "mode": self.mode,
             "port": self.port,
             "reward_address": self.reward_address,
-            "api_prefix": self.api_prefix,
+            "api_prefix": self.api_prefix.strip_prefix("/"),
         });
 
         let response = self
