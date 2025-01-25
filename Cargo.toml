@@ -1,6 +1,6 @@
 [package]
 name = "blockfrost-icebreakers-api"
-version = "1.2.5"
+version = "1.2.2"
 edition = "2021"
 
 [dependencies]
@@ -17,7 +17,6 @@ colored = "2.1.0"
 clap = { version = "4.5.14", features = ["derive"] }
 toml = "0.8.19"
 thiserror = "1.0.63"
-uuid = { version = "1.10.0", features = ["v4"] }
 chrono = { version = "0.4.3", features = ["serde"] }
 reqwest = "0.12.5"
 blockfrost = "1.0.5"

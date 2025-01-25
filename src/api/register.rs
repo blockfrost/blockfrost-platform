@@ -11,7 +11,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::timeout;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseSuccess {
@@ -62,16 +61,16 @@ pub async fn route(
 
     let new_item_request = RequestNewItem {
         user_id: authorized_user.user_id,
-        route: Uuid::new_v4().to_string(),
         mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
         port: payload.port,
+        route: payload.api_prefix.clone(),
         reward_address: payload.reward_address.clone(),
     };
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: format!("/{}", new_item_request.route.to_string()),
+        route: payload.api_prefix.clone(),
     };
 
     db.insert_request(new_item_request).await?;
