@@ -43,7 +43,7 @@ pub async fn build(
 
     // Build a prefix
     let api_prefix = if config.icebreakers_config.is_some() {
-        format!("/{}", Uuid::new_v4().to_string())
+        format!("/{}", Uuid::new_v4())
     } else {
         "/".to_string()
     };
