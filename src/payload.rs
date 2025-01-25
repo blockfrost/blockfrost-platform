@@ -7,6 +7,7 @@ pub struct Payload {
     pub port: i32,
     pub secret: String,
     pub reward_address: String,
+    pub api_prefix: String,
 }
 
 impl Payload {
@@ -38,7 +39,12 @@ impl Payload {
 
         // Validate reward_address
         if self.reward_address.is_empty() {
-            return Err(APIError::Validaion("reward_address be empty".to_string()));
+            return Err(APIError::Validaion("reward_address is empty".to_string()));
+        }
+
+        // Validate api_prefix
+        if self.api_prefix.is_empty() {
+            return Err(APIError::Validaion("api_prefix is empty".to_string()));
         }
 
         Ok(())
