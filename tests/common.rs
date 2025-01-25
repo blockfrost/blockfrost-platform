@@ -42,8 +42,15 @@ pub fn test_config() -> Arc<Config> {
     Arc::new(config)
 }
 
-pub async fn build_app(
-) -> Result<(NormalizePath<Router>, NodePool, Option<Arc<IcebreakersAPI>>), AppError> {
+pub async fn build_app() -> Result<
+    (
+        NormalizePath<Router>,
+        NodePool,
+        Option<Arc<IcebreakersAPI>>,
+        String,
+    ),
+    AppError,
+> {
     let config = test_config();
 
     build(config).await

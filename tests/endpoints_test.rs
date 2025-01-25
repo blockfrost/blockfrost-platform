@@ -17,7 +17,7 @@ mod tests {
     async fn test_root_route() {
         initialize_logging();
 
-        let (app, _, _) = build_app().await.expect("Failed to build the application");
+        let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
@@ -42,7 +42,7 @@ mod tests {
     #[tokio::test]
     async fn test_submit_route_error() {
         initialize_logging();
-        let (app, _, _) = build_app().await.expect("Failed to build the application");
+        let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 
         let tx =    "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
 
