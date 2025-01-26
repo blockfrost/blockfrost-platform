@@ -66,3 +66,26 @@ SyslogIdentifier  = blockfrost-platform
 [Install]
 WantedBy          = multi-user.target
 ```
+
+Now, move it to the systemd folder and set appropriate permissions. 
+
+```bash
+mv blockfrost-platform.service /etc/systemd/system/
+sudo chmod 644 /etc/systemd/system/blockfrost-platform.service
+```
+
+After, you can enable the service.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable blockfrost-platform.service
+````
+
+Let's restart the service and see if it is working.
+
+```bash
+sudo systemctl restart blockfrost-platform.service
+journalctl -f -u blockfrost-platform
+```
+
+Your Blockfrost platform is now enabled within `systemd` which means it should survive even reboots. But please test it.
