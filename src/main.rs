@@ -1,10 +1,7 @@
 use axum::extract::Request;
 use axum::ServiceExt;
 use blockfrost_platform::{
-    background_tasks::node_health_check_task,
-    cli::Args,
-    errors::AppError,
-    logging::setup_tracing,
+    background_tasks::node_health_check_task, cli::Args, errors::AppError, logging::setup_tracing,
     server::build,
 };
 use dotenvy::dotenv;

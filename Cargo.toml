@@ -39,7 +39,7 @@ sysinfo = "0.33.1"
 walkdir = "2.5.0"
 dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
-twelf = {version = "0.15.0", features = ["clap"]}
+twelf = { version = "0.15.0", features = ["clap"] }
 
 [dev-dependencies]
 tracing-test = "0.2.5"
