@@ -4,6 +4,7 @@ use clap::{arg, command, Parser, ValueEnum};
 use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
+use std::path::PathBuf;
 use tracing::Level;
 use twelf::{config, Layer};
 
@@ -43,16 +44,30 @@ pub struct Args {
     metrics: bool,
 }
 
+fn get_config_path() -> PathBuf {
+    dirs::config_dir()
+        .expect("Could not determine config directory")
+        .join("blockfrost")
+        .join("config.toml")
+}
+
 impl Args {
     pub fn init() -> Result<Config, AppError> {
         let matches = Self::command().get_matches();
-        let arguments = Self::with_layers(&[
+        let config_path = get_config_path();
+
+        let mut config_layers = vec![
             Layer::Env(Some(String::from("BLOCKFROST_"))),
             Layer::Clap(matches),
-        ])
-        .map_err(|it| AppError::Server(it.to_string()))?;
+        ];
+        if config_path.exists() {
+            config_layers.insert(0, Layer::Toml(config_path));
+        }
 
-        Config::from_args(arguments)
+        let arguments =
+            Self::with_layers(&config_layers).map_err(|it| AppError::Server(it.to_string()))?;
+
+        Config::from_args(dbg!(arguments))
     }
 }
 
