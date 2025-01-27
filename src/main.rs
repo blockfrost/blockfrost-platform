@@ -3,6 +3,10 @@ use axum::ServiceExt;
 use blockfrost_platform::{
     background_tasks::node_health_check_task,
     cli::{Args, Config},
+    cbor::fallback_decoder::FallbackDecoder,
+    cli::Args,
+    errors::{AppError, BlockfrostError},
+    icebreakers_api::IcebreakersAPI,
     logging::setup_tracing,
     server::build,
     AppError,
@@ -10,13 +14,13 @@ use blockfrost_platform::{
 use clap::Parser;
 use std::sync::Arc;
 use tokio::{signal, sync::oneshot};
+use tower::ServiceBuilder;
+use tower_http::normalize_path::NormalizePathLayer;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    // CLI
-    let arguments = Args::parse();
-    let config = Arc::new(Config::from_args(arguments)?);
+    let config = Args::init()?;
 
     // Logging
     setup_tracing(config.log_level);
