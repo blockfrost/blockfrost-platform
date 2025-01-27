@@ -17,14 +17,14 @@ pub struct Args {
     #[arg(long, default_value = "3000")]
     server_port: u16,
 
-    #[arg(long, required = true)]
-    network: Network,
+    #[arg(long)]
+    network: Option<Network>,
 
     #[arg(long, default_value = "info")]
     log_level: LogLevel,
 
-    #[arg(long, required = true)]
-    node_socket_path: String,
+    #[arg(long)]
+    node_socket_path: Option<String>,
 
     #[arg(long, default_value = "compact")]
     mode: Mode,
@@ -57,8 +57,8 @@ impl Args {
     pub fn init() -> Result<Config, AppError> {
         let matches = Self::command().get_matches();
         let arguments = Self::with_layers(&[
-            Layer::Clap(matches),
             Layer::Env(Some(String::from("BLOCKFROST_"))),
+            Layer::Clap(matches),
         ])
         .map_err(|it| AppError::Server(it.to_string()))?;
 
@@ -114,7 +114,10 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network_magic = Self::get_network_magic(&args.network);
+        let network =  args.network.ok_or(AppError::Server("--network must be set".into()))?;
+        let node_socket_path =  args.node_socket_path.ok_or(AppError::Server("--node-socket-path must be set".into()))?;
+
+        let network_magic = Self::get_network_magic(&network);
         let icebreakers_config = match (args.solitary, args.reward_address, args.secret) {
             (false, Some(reward_address), Some(secret)) => Some(IcebreakersConfig {
                 reward_address,
@@ -128,12 +131,12 @@ impl Config {
             server_port: args.server_port,
             log_level: args.log_level.into(),
             network_magic,
-            node_socket_path: args.node_socket_path,
+            node_socket_path,
             mode: args.mode,
             icebreakers_config,
             max_pool_connections: 10,
-            network: args.network,
             metrics: args.metrics,
+            network
         })
     }
 
