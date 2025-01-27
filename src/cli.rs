@@ -45,7 +45,12 @@ pub struct Args {
 
     #[arg(long)]
     #[serde(skip_serializing_if = "should_skip_serializng_fields")]
+    #[serde(default)]
     init: bool,
+
+    #[arg(long)]
+    #[serde(skip_serializing_if = "should_skip_serializng_fields")]
+    config: Option<PathBuf>,
 
     /// Whether to run in solitary mode, without registering with the Icebreakers API
     #[arg(long)]
@@ -69,9 +74,8 @@ fn get_config_path() -> PathBuf {
 }
 
 impl Args {
-    pub fn init() -> Result<Config, AppError> {
+    fn parse_args(config_path: PathBuf) -> Result<Args, AppError> {
         let matches = Self::command().get_matches();
-        let config_path = get_config_path();
 
         let mut config_layers = vec![
             Layer::Env(Some(String::from("BLOCKFROST_"))),
@@ -81,8 +85,12 @@ impl Args {
             config_layers.insert(0, Layer::Toml(config_path));
         }
 
-        let arguments =
-            Self::with_layers(&config_layers).map_err(|it| AppError::Server(it.to_string()))?;
+        Self::with_layers(&config_layers).map_err(|it| AppError::Server(it.to_string()))
+    }
+    pub fn init() -> Result<Config, AppError> {
+        let config_path = get_config_path();
+
+        let arguments = Args::parse_args(config_path)?;
 
         SHOULD_SKIP_SERIALIZNG_FIELDS.store(true, Ordering::SeqCst);
 
@@ -90,7 +98,10 @@ impl Args {
             Args::generate_config().map_err(|e| AppError::Server(e.to_string()))?;
         }
 
-        Config::from_args(arguments)
+        match arguments.config {
+            Some(path) => Config::from_args(Args::parse_args(path)?),
+            None => Config::from_args(arguments),
+        }
     }
 
     fn enum_prompt<T: std::fmt::Debug>(message: &str, enum_values: &[T]) -> Result<String> {
@@ -176,6 +187,7 @@ impl Args {
 
         let mut app_config = Args {
             init: false,
+            config: None,
             solitary: is_solitary,
             network: Some(network),
             metrics,
