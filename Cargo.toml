@@ -40,6 +40,8 @@ dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 dirs = "5.0"
+inquire = "0.7.5"
+anyhow = "1.0.95"
 
 [dev-dependencies]
 tracing-test = "0.2.5"
