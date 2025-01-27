@@ -33,20 +33,10 @@ pub struct Args {
     #[arg(long)]
     solitary: bool,
 
-    #[arg(
-        long,
-        required_unless_present("solitary"),
-        conflicts_with("solitary"),
-        requires("reward_address")
-    )]
+    #[arg(long)]
     secret: Option<String>,
 
-    #[arg(
-        long,
-        required_unless_present("solitary"),
-        conflicts_with("solitary"),
-        requires("secret")
-    )]
+    #[arg(long)]
     reward_address: Option<String>,
 
     #[arg(long, default_value = "true", required = false)]
@@ -114,16 +104,28 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network =  args.network.ok_or(AppError::Server("--network must be set".into()))?;
-        let node_socket_path =  args.node_socket_path.ok_or(AppError::Server("--node-socket-path must be set".into()))?;
+        let network = args
+            .network
+            .ok_or(AppError::Server("--network must be set".into()))?;
+        let node_socket_path = args
+            .node_socket_path
+            .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
 
         let network_magic = Self::get_network_magic(&network);
-        let icebreakers_config = match (args.solitary, args.reward_address, args.secret) {
-            (false, Some(reward_address), Some(secret)) => Some(IcebreakersConfig {
+
+        let icebreakers_config = if !args.solitary {
+            let reward_address = args
+                .reward_address
+                .ok_or(AppError::Server("--rewards-address must be set".into()))?;
+            let secret = args
+                .secret
+                .ok_or(AppError::Server("--secret must be set".into()))?;
+            Some(IcebreakersConfig {
                 reward_address,
                 secret,
-            }),
-            _ => None,
+            })
+        } else {
+            None
         };
 
         Ok(Config {
@@ -136,7 +138,7 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             metrics: args.metrics,
-            network
+            network,
         })
     }
 
