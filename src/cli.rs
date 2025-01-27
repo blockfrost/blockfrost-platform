@@ -10,8 +10,16 @@ use std::fmt::{self, Formatter};
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use tracing::Level;
 use twelf::{config, Layer};
+
+static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
+
+fn should_skip_serializng_fields<T>(_: &T) -> bool {
+    SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
+}
 
 #[derive(Parser, Debug, Serialize)]
 #[command(author, version, about, long_about = None)]
@@ -36,6 +44,7 @@ pub struct Args {
     mode: Mode,
 
     #[arg(long)]
+    #[serde(skip_serializing_if = "should_skip_serializng_fields")]
     init: bool,
 
     /// Whether to run in solitary mode, without registering with the Icebreakers API
@@ -75,11 +84,13 @@ impl Args {
         let arguments =
             Self::with_layers(&config_layers).map_err(|it| AppError::Server(it.to_string()))?;
 
+        SHOULD_SKIP_SERIALIZNG_FIELDS.store(true, Ordering::SeqCst);
+
         if arguments.init {
             Args::generate_config().map_err(|e| AppError::Server(e.to_string()))?;
         }
 
-        Config::from_args(arguments)))
+        Config::from_args(arguments)
     }
 
     fn enum_prompt<T: std::fmt::Debug>(message: &str, enum_values: &[T]) -> Result<String> {
