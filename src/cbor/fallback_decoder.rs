@@ -1,6 +1,6 @@
 use crate::AppError;
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};
 use std::sync::{
     atomic::{self, AtomicU32},
@@ -8,8 +8,7 @@ use std::sync::{
 };
 use std::{env, thread};
 use tokio::sync::{mpsc, oneshot};
-use tracing::{error, info};
-use walkdir::WalkDir;
+use tracing::{debug, error, info};
 
 #[derive(Clone)]
 pub struct FallbackDecoder {
@@ -25,29 +24,19 @@ struct FDRequest {
 impl FallbackDecoder {
     /// Starts a new child process.
     pub fn spawn() -> Result<Self, AppError> {
-        let mut search_roots = vec![
-            PathBuf::from("/usr/bin"),
-            PathBuf::from("/bin"),
-            PathBuf::from("target/testgen-hs/extracted/testgen-hs"),
-            PathBuf::from("/app/testgen-hs"),
-        ];
+        let testgen_hs_path = Self::find_testgen_hs().map_err(AppError::Server)?;
 
-        if let Ok(path_var) = env::var("PATH") {
-            for dir in path_var.split(MAIN_SEPARATOR) {
-                search_roots.push(PathBuf::from(dir));
-            }
-        }
-
-        let testgen_hs_lib = Self::find_testgen_hs(&search_roots).map_err(AppError::Server)?;
-
-        info!("Using {} as a fallback CBOR error decoder", &testgen_hs_lib);
+        info!(
+            "Using {} as a fallback CBOR error decoder",
+            &testgen_hs_path
+        );
 
         let current_child_pid = Arc::new(AtomicU32::new(u32::MAX));
         let current_child_pid_clone = current_child_pid.clone();
         let (sender, mut receiver) = mpsc::channel::<FDRequest>(128);
 
         // Clone `testgen_hs_path` for the thread.
-        let testgen_hs_path_for_thread = testgen_hs_lib.clone();
+        let testgen_hs_path_for_thread = testgen_hs_path.clone();
 
         thread::spawn(move || {
             // For retries:
@@ -95,54 +84,62 @@ impl FallbackDecoder {
     }
 
     /// Searches for `testgen-hs` in multiple directories.
-    pub fn find_testgen_hs(roots: &[PathBuf]) -> Result<String, String> {
-        // 1. Check project root
-        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    pub fn find_testgen_hs() -> Result<String, String> {
+        let env_var_dir: Option<PathBuf> = env::var("TESTGEN_HS_PATH")
+            .ok()
+            .and_then(|a| PathBuf::from(a).parent().map(|a| a.to_path_buf()));
 
-        // 2. Check the TESTGEN_HS_PATH environment variable
-        if let Ok(val) = env::var("TESTGEN_HS_PATH") {
-            let candidate = PathBuf::from(val);
-            if candidate.is_file() && candidate.exists() {
-                return Ok(candidate.to_string_lossy().into_owned());
+        // This is the most important one for relocatable directories (that keep the initial
+        // structure) on Windows, Linux, macOS:
+        let current_exe_dir: Option<PathBuf> = env::current_exe()
+            .map_err(|e| e.to_string())?
+            .parent()
+            .map(|a| a.to_path_buf().join("testgen-hs"));
+
+        let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .map(|root| PathBuf::from(root).join("target/testgen-hs/extracted/testgen-hs"));
+
+        let docker_path: Option<PathBuf> = Some(PathBuf::from("/app/testgen-hs"));
+
+        let system_path: Vec<PathBuf> = env::var("PATH")
+            .map(|p| env::split_paths(&p).collect())
+            .unwrap_or_default();
+
+        let search_path: Vec<PathBuf> =
+            vec![env_var_dir, current_exe_dir, cargo_target_dir, docker_path]
+                .into_iter()
+                .flatten()
+                .chain(system_path)
+                .collect();
+
+        let exe_name = if cfg!(target_os = "windows") {
+            "testgen-hs.exe"
+        } else {
+            "testgen-hs"
+        };
+
+        debug!("{} search directories = {:?}", exe_name, search_path);
+
+        // Checks if the path is runnable. Adjust for platform specifics if needed.
+        // TODO: check that the --version matches what we expect.
+        fn is_our_executable(path: &Path) -> bool {
+            Command::new(path).arg("--version").output().is_ok()
+        }
+
+        // Look in each candidate directory to find a matching file
+        for candidate in &search_path {
+            let path = candidate.join(exe_name);
+
+            if path.is_file() && is_our_executable(path.as_path()) {
+                return Ok(path.to_string_lossy().to_string());
             }
         }
 
-        // 3. Construct a potential path in the project root
-        #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
-        let mut root_candidate = PathBuf::from(&manifest_dir).join("testgen-hs");
-
-        // On Windows, add .exe suffix
-        #[cfg(target_os = "windows")]
-        {
-            root_candidate.set_file_name("testgen-hs.exe");
-        }
-
-        // 4. If that file exists and responds to --version, use it
-        if Self::is_executable(root_candidate.as_path()) {
-            return Ok(root_candidate.to_string_lossy().to_string());
-        }
-
-        // 5. Recursively walk each directory in `roots` to find a matching file
-        for root in roots {
-            for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
-                let path = entry.path();
-                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-
-                if file_name.starts_with("testgen-hs")
-                    && path.is_file()
-                    && Self::is_executable(path)
-                {
-                    return Ok(path.to_string_lossy().to_string());
-                }
-            }
-        }
-
-        Err("No valid `testgen-hs` binary found in subdomains.".to_string())
-    }
-
-    /// Checks if the path is runnable. Adjust for platform specifics if needed.
-    fn is_executable(path: &Path) -> bool {
-        Command::new(path).arg("--version").output().is_ok()
+        Err(format!(
+            "No valid `{}` binary found in {:?}.",
+            exe_name, &search_path
+        ))
     }
 
     /// This function is called at startup, so that we make sure that the worker is reasonable.

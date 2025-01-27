@@ -28,6 +28,9 @@ result-*
 
 /cardano-node-configs
 
+testgen-hs
+testgen-hs.exe
+
 # Ignore IDE specific files
 # Visual Studio Code
 .vscode/
