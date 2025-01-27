@@ -57,8 +57,8 @@ impl Args {
     pub fn init() -> Result<Config, AppError> {
         let matches = Self::command().get_matches();
         let arguments = Self::with_layers(&[
-            Layer::Env(Some(String::from("BLOCKFROST_"))),
             Layer::Clap(matches),
+            Layer::Env(Some(String::from("BLOCKFROST_"))),
         ])
         .map_err(|it| AppError::Server(it.to_string()))?;
 
@@ -67,6 +67,7 @@ impl Args {
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Mode {
     Compact,
     Light,
@@ -74,6 +75,7 @@ pub enum Mode {
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Network {
     Mainnet,
     Preprod,
@@ -81,6 +83,7 @@ pub enum Network {
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     Debug,
     Info,
