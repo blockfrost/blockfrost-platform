@@ -116,7 +116,7 @@ impl Config {
         let icebreakers_config = if !args.solitary {
             let reward_address = args
                 .reward_address
-                .ok_or(AppError::Server("--rewards-address must be set".into()))?;
+                .ok_or(AppError::Server("--reward-address must be set".into()))?;
             let secret = args
                 .secret
                 .ok_or(AppError::Server("--secret must be set".into()))?;

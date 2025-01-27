@@ -2,30 +2,24 @@ use axum::extract::Request;
 use axum::ServiceExt;
 use blockfrost_platform::{
     background_tasks::node_health_check_task,
-    cli::{Args, Config},
-    cbor::fallback_decoder::FallbackDecoder,
     cli::Args,
-    errors::{AppError, BlockfrostError},
-    icebreakers_api::IcebreakersAPI,
+    errors::AppError,
     logging::setup_tracing,
     server::build,
-    AppError,
 };
-use clap::Parser;
-use std::sync::Arc;
+use dotenvy::dotenv;
 use tokio::{signal, sync::oneshot};
-use tower::ServiceBuilder;
-use tower_http::normalize_path::NormalizePathLayer;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
+    dotenv().ok();
     let config = Args::init()?;
 
     // Logging
     setup_tracing(config.log_level);
 
-    let (app, node_conn_pool, icebreakers_api, api_prefix) = build(config.clone()).await?;
+    let (app, node_conn_pool, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
     let (ready_tx, ready_rx) = oneshot::channel();
