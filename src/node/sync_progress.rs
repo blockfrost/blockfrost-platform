@@ -10,7 +10,7 @@ use std::boxed::Box;
 pub struct NodeInfo {
     pub block: String,
     pub epoch: u32,
-    pub era: String,
+    pub era: u16,
     pub slot: u64,
     pub sync_progress: f64,
 }
@@ -119,7 +119,7 @@ impl NodeClient {
 
                 Ok(NodeInfo {
                     sync_progress: percentage,
-                    era: current_era.to_string(),
+                    era: current_era,
                     epoch,
                     slot,
                     block,
