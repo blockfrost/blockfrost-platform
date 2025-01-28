@@ -8,7 +8,7 @@ When registering via the `/register` endpoint, the Blockfrost Icebreakers API (`
 
 - **Secret Verification:** Confirms that the provided secret is registered with Blockfrost.io.
 - **NFT License Validation:** Ensures that the reward address contains an NFT issued by Blockfrost.io, which serves as a license.
-- **Hash Generation:** If the secret and NFT license are successfully verified, the API generates a unique hash. This hash is then made available at a specific route, allowing only authorized users to access the instance, thereby preventing misuse of the public instance.
+- **Platform Accessibility Check:** Verifies that the platform is listening on the specified port and is publicly accessible.
 - **User Data Storage:** Upon successful registration, the user's data is saved in the database.
 
 ### Configuration
