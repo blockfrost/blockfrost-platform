@@ -7,7 +7,6 @@ pub struct RootResponse {
     pub name: String,
     pub version: String,
     pub healthy: bool,
-    #[serde(rename = "nodeInfo")]
     pub node_info: NodeInfo,
     pub errors: Vec<String>,
 }
@@ -20,7 +19,7 @@ pub async fn route(
     let node_info = node.sync_progress().await?;
 
     let response = RootResponse {
-        name: "blockfrost-platform".to_string(),
+        name: env!("CARGO_PKG_NAME").to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         node_info,
         healthy: errors.is_empty(),

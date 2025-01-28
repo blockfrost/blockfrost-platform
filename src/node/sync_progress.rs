@@ -12,7 +12,6 @@ pub struct NodeInfo {
     pub epoch: u32,
     pub era: String,
     pub slot: u64,
-    #[serde(rename = "syncProgress")]
     pub sync_progress: f64,
 }
 
