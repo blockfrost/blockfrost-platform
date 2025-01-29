@@ -15,19 +15,20 @@ env:
 
 jobs:
   lint_docker:
-      name: Lint Dockerfile
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Install Hadolint
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y hadolint
+      - name: Install Hadolint
+        run: |
+          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
 
-        - name: Run Hadolint
-          run: hadolint Dockerfile
+      - name: Lint Dockerfile
+        run: hadolint Dockerfile
 
   build_and_test:
     name: Build and Test
