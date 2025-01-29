@@ -69,7 +69,7 @@ pub struct Args {
 fn get_config_path() -> PathBuf {
     dirs::config_dir()
         .expect("Could not determine config directory")
-        .join("blockfrost")
+        .join("blockfrost-platform")
         .join("config.toml")
 }
 
@@ -234,7 +234,7 @@ impl Args {
         }
 
         app_config.to_file(&config_path)?;
-        println!("Config has been written to {:?}", config_path);
+        println!("\nConfig has been written to {:?}", config_path);
 
         std::process::exit(0);
     }
