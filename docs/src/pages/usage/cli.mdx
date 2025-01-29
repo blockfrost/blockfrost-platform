@@ -16,15 +16,16 @@ blockfrost-platform [OPTIONS] --network <NETWORK> \
   --help`.
 </Callout>
 
-# Setting up systemd for your instance
+# Setting up `systemd` for your instance
 
-Running it from command line is a good way of testing your new binary, however, as you want your instance
-be up and running accross the reboots, we recommend you setup a `systemd` service for it.
+Running it from the command line is a good way of testing your new binary; however, as you want your instance
+to be up and running across the reboots, we recommend you setup a `systemd` service for it.
 
-First, we need to create a bash script file that will serve as a startup script for the Blockfrost platform,
-we can call it for example `start-blockfrost-platform.sh` with a content similar to an example below.
+First, we need to create a bash script file that will serve as a startup script for the Blockfrost platform.
+We can call it, for example, `start-blockfrost-platform.sh`, with content similar to the example below.
 
-Please note, this is just an example and you need to modify it to fit your use case. It won't work if you just copy paste it.
+Please note that this is just an example and you need to modify it to fit your specific use case. 
+It won't work if you just copy and paste it.
 
 ```bash
 #!/usr/bin/env bash
@@ -67,14 +68,14 @@ SyslogIdentifier  = blockfrost-platform
 WantedBy          = multi-user.target
 ```
 
-Now, move it to the systemd folder and set appropriate permissions. 
+Next, move it to the systemd folder and set appropriate permissions. 
 
 ```bash
 mv blockfrost-platform.service /etc/systemd/system/
 sudo chmod 644 /etc/systemd/system/blockfrost-platform.service
 ```
 
-After, you can enable the service.
+Following that, you can then enable the service.
 
 ```bash
 sudo systemctl daemon-reload
