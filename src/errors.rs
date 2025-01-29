@@ -124,8 +124,6 @@ impl BlockfrostError {
         }
     }
 
-    /// Our custom 400 error
-
     /// This error is converted in middleware to internal_server_error_user
     pub fn internal_server_error(error: String) -> Self {
         Self {
