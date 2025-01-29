@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo build --release
 
-FROM gcr.io/distroless/cc-debian12 AS runtime
+FROM gcr.io/distroless/cc-debian12:dca9008b864a381b5ce97196a4d8399ac3c2fa65 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
 COPY --from=downloader /app/testgen-hs /app/testgen-hs
 
