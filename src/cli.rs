@@ -290,7 +290,7 @@ impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
         let network = args
             .network
-            .ok_or(AppError::Server("--network must be set".into()))?;
+            .ok_or(AppError::Server("--network must be set. [possible values: mainnet, preprod, preview]".into()))?;
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;

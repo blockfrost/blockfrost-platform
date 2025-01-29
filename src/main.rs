@@ -11,7 +11,10 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     dotenv().ok();
-    let config = Args::init()?;
+    let config = Args::init().unwrap_or_else(|e| {
+        eprintln!("\n{}", e);
+        std::process::exit(1);
+    });
 
     // Logging
     setup_tracing(config.log_level);
