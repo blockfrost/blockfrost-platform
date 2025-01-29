@@ -86,6 +86,7 @@ mod tests {
 
         let local_body_str = String::from_utf8_lossy(&local_body_bytes);
 
+        // Uncomment this to see the difference between the blockfrost response and platform response
         // assert_eq!(bf_body_bytes, local_body_bytes,);
 
         assert!(
