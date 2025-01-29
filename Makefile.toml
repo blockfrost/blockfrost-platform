@@ -1,0 +1,3 @@
+[tasks.hadolint]
+script = ["hadolint Dockerfile"]
+description = "Lint the Dockerfile with hadolint"
