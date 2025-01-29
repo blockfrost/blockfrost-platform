@@ -1,5 +1,5 @@
 FROM lukemathwalker/cargo-chef:0.1.68-rust-slim-bookworm AS base
-RUN apt update ; apt install sccache pkg-config libssl-dev bzip2 -y
+RUN apt-get update ; apt-get install sccache pkg-config libssl-dev bzip2 -y
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
