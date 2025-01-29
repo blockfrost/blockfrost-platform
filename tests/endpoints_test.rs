@@ -86,6 +86,8 @@ mod tests {
 
         let local_body_str = String::from_utf8_lossy(&local_body_bytes);
 
+        // assert_eq!(bf_body_bytes, local_body_bytes,);
+
         assert!(
             local_body_str.contains("BadInputsUTxO"),
             "Expected 'BadInputsUTxO' in the local response, but it was not found."
