@@ -82,13 +82,20 @@ impl Args {
             Layer::Clap(matches),
         ];
         if config_path.exists() {
-            config_layers.insert(0, Layer::Toml(config_path));
+            config_layers.insert(0, Layer::Toml(config_path.clone()));
         }
 
-        Self::with_layers(&config_layers).map_err(|it| AppError::Server(it.to_string()))
+        Self::with_layers(&config_layers).map_err(|e| match e {
+            twelf::Error::Toml(_) => AppError::Server(format!(
+                "Failed to parse config file '{}'",
+                config_path.to_string_lossy()
+            )),
+            _ => AppError::Server(e.to_string()),
+        })
     }
     pub fn init() -> Result<Config, AppError> {
-        let config_path = get_config_path();
+        let initial_args = Args::parse();
+        let config_path = initial_args.config.unwrap_or(get_config_path());
 
         let arguments = Args::parse_args(config_path)?;
 
