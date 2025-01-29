@@ -24,7 +24,7 @@ to be up and running across the reboots, we recommend you setup a `systemd` serv
 First, we need to create a bash script file that will serve as a startup script for the Blockfrost platform.
 We can call it, for example, `start-blockfrost-platform.sh`, with content similar to the example below.
 
-Please note that this is just an example and you need to modify it to fit your specific use case. 
+Please note that this is just an example and you need to modify it to fit your specific use case.
 It won't work if you just copy and paste it.
 
 ```bash
@@ -68,7 +68,7 @@ SyslogIdentifier  = blockfrost-platform
 WantedBy          = multi-user.target
 ```
 
-Next, move it to the systemd folder and set appropriate permissions. 
+Next, move it to the systemd folder and set appropriate permissions.
 
 ```bash
 mv blockfrost-platform.service /etc/systemd/system/
@@ -80,7 +80,7 @@ Following that, you can then enable the service.
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable blockfrost-platform.service
-````
+```
 
 Let's restart the service and see if it is working.
 
