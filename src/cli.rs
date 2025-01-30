@@ -43,12 +43,12 @@ pub struct Args {
     #[arg(long, default_value = "compact")]
     mode: Mode,
 
-    #[arg(long)]
+    #[arg(long, help = "Initialize a new configuration file")]
     #[serde(skip_serializing_if = "should_skip_serializng_fields")]
     #[serde(default)]
     init: bool,
 
-    #[arg(long)]
+    #[arg(long, help = "Path to an existing configuration file")]
     #[serde(skip_serializing_if = "should_skip_serializng_fields")]
     config: Option<PathBuf>,
 
