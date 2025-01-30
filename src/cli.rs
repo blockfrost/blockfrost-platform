@@ -75,10 +75,19 @@ fn get_config_path() -> PathBuf {
 
 impl Args {
     fn parse_args(config_path: PathBuf) -> Result<Args, AppError> {
+        const ENV_PREFIX: &str = "BLOCKFROST_";
+
+        let no_config_file = !config_path.exists();
+        let no_env_vars = std::env::vars().all(|(key, _val)| !key.starts_with(ENV_PREFIX));
+        let empty_argv = std::env::args().len() == 1;
+        if no_config_file && no_env_vars && empty_argv {
+            Self::command().print_help().unwrap();
+            std::process::exit(1);
+        }
         let matches = Self::command().get_matches();
 
         let mut config_layers = vec![
-            Layer::Env(Some(String::from("BLOCKFROST_"))),
+            Layer::Env(Some(String::from(ENV_PREFIX))),
             Layer::Clap(matches),
         ];
         if config_path.exists() {
