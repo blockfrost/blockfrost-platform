@@ -1,5 +1,11 @@
 ## Unreleased
 
+## [1.3.0] - 2025-01-30
+
+### Added
+
+`asset_name` column in `requests` table that contains the asset name of the NFT
+
 ## [1.2.2] - 2025-01-24
 
 ### Changed

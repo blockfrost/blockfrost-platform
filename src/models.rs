@@ -24,6 +24,7 @@ pub struct RequestNewItem {
     pub ip_address: String,
     pub port: i32,
     pub reward_address: String,
+    pub asset_name: Option<String>,
 }
 
 #[derive(Selectable, Insertable, Queryable, Deserialize, Serialize)]
