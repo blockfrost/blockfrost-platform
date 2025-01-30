@@ -5,6 +5,8 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
     crane.url = "github:ipetkov/crane";
+    fenix.url = "github:nix-community/fenix";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
     flake-compat.url = "github:input-output-hk/flake-compat";
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.1.4";
@@ -17,6 +19,10 @@
     cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
     advisory-db.url = "github:rustsec/advisory-db";
     advisory-db.flake = false;
+    nixpkgs-nsis.url = "github:input-output-hk/nixpkgs/be445a9074f139d63e704fa82610d25456562c3d";
+    nixpkgs-nsis.flake = false;
+    nix-bundle-exe.url = "github:3noch/nix-bundle-exe";
+    nix-bundle-exe.flake = false;
   };
 
   outputs = inputs: let
@@ -74,6 +80,7 @@
               name = "prettierrc.json";
             })
           ];
+          programs.rufo.enable = true; # Ruby
           programs.rustfmt.enable = true;
           programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
           programs.taplo.enable = true; # TOML
@@ -83,16 +90,21 @@
 
       flake.hydraJobs = let
         allJobs = {
-          blockfrost-platform =
-            lib.genAttrs (
-              config.systems
-              # ++ ["x86_64-windows"]
-            ) (
-              targetSystem: inputs.self.internal.${targetSystem}.package
-            );
+          blockfrost-platform = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+            targetSystem: inputs.self.internal.${targetSystem}.package
+          );
           devshell = lib.genAttrs config.systems (
             targetSystem: inputs.self.devShells.${targetSystem}.default
           );
+          archive = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+            targetSystem: inputs.self.internal.${targetSystem}.archive
+          );
+          installer = {
+            x86_64-windows = inputs.self.internal.x86_64-windows.installer;
+          };
+          homebrew-tap = {
+            aarch64-darwin = inputs.self.internal.aarch64-darwin.homebrew-tap;
+          };
           inherit (inputs.self) checks;
         };
       in
