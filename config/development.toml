@@ -1,5 +1,5 @@
 [server]
-address = '0.0.0.0:3000'
+address = '0.0.0.0:3001'
 log_level = 'info'
 
 [database]

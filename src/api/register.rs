@@ -54,7 +54,7 @@ pub async fn route(
     }
 
     // check if NFT is at the address
-    blockfrost_api
+    let asset = blockfrost_api
         .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
         .await
         .map_err(|_| APIError::License(payload.reward_address.clone()))?;
@@ -66,6 +66,7 @@ pub async fn route(
         port: payload.port,
         route: payload.api_prefix.clone(),
         reward_address: payload.reward_address.clone(),
+        asset_name: Some(asset.asset_name),
     };
 
     let success_response = ResponseSuccess {

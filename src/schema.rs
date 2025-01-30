@@ -14,6 +14,7 @@ diesel::table! {
         #[max_length = 255]
         reward_address -> Varchar,
         user_id -> Int4,
+        asset_name -> Nullable<Text>,
     }
 }
 
@@ -31,4 +32,7 @@ diesel::table! {
 
 diesel::joinable!(requests -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(requests, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    requests,
+    users,
+);
