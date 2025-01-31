@@ -214,8 +214,9 @@ in
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;
       } ''
-        substituteAll ${./curl-bash-install.sh} $out
-        chmod +x $out
-        shellcheck $out
+        mkdir -p $out
+        substituteAll ${./curl-bash-install.sh} $out/curl-bash-install.sh
+        chmod +x $out/*.sh
+        shellcheck $out/*.sh
       '';
   }

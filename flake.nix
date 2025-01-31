@@ -105,6 +105,9 @@
           homebrew-tap = {
             aarch64-darwin = inputs.self.internal.aarch64-darwin.homebrew-tap;
           };
+          curl-bash-install = {
+            x86_64-linux = inputs.self.internal.x86_64-linux.curl-bash-install;
+          };
           inherit (inputs.self) checks;
         };
       in
