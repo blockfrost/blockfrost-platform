@@ -39,7 +39,7 @@ in
         lib_dir = "./lib";
       };
 
-    # Portable directory that can be run on any modern Linux:
+    # Portable directory that can be run on any modern Darwin:
     bundle =
       (nix-bundle-exe-lib-subdir "${unix.package}/libexec/blockfrost-platform")
       .overrideAttrs (drv: {
