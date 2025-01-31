@@ -1,24 +1,31 @@
 use pallas_addresses::Address;
-use pallas_codec::minicbor::{self, data::Type, decode, Decode, Decoder};
+use pallas_codec::{
+    minicbor::{self, data::Type, decode, Decode, Decoder},
+    utils::CborWrap,
+};
 use pallas_crypto::hash::Hasher;
-use pallas_primitives::{conway::Certificate, Bytes, PlutusData};
-
-use crate::cbor::haskell_types::Delegatee;
+use pallas_primitives::conway::Certificate;
 
 use super::{
     haskell_display::HaskellDisplay,
     haskell_types::{
-        ApplyConwayTxPredError, ApplyTxError, Array, BabbageTxOut, CborBytes,
-        ConwayCertPredFailure, ConwayCertsPredFailure, ConwayDelegCert, ConwayDelegPredFailure,
-        ConwayGovCert, ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose,
-        ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure,
-        Credential, CustomSet258, DatumEnum, DisplayAddress, DisplayHash, EpochNo, EraScript,
-        FailureDescription, MaryValue, Mismatch, MultiAsset, Network, PlutusPurpose, PoolCert,
-        PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo,
-        StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxValidationError, Utxo,
-        ValidityInterval,
+        ApplyConwayTxPredError, ApplyTxError, BabbageTxOut, CborBytes, CollectError,
+        ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError, ConwayDelegPredFailure,
+        ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
+        ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
+        CustomSet258, DatumEnum, DisplayAddress, DisplayHash, DisplayTransactionOutput,
+        DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, PlutusDataBytes,
+        PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure,
+        SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxValidationError,
+        Utxo, ValidityInterval,
     },
 };
+
+macro_rules! decode_err {
+    ($msg:expr) => {
+        return Err(decode::Error::message($msg))
+    };
+}
 
 impl<'b> Decode<'b, ()> for TxValidationError {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
@@ -57,7 +64,7 @@ impl<'b> Decode<'b, ()> for ApplyConwayTxPredError {
             6 => Ok(ConwayTxRefScriptsSizeTooBig(d.decode()?, d.decode()?)),
             7 => Ok(ConwayMempoolFailure(d.decode()?)),
             _ => Err(decode::Error::message(format!(
-                "unknown error tag while decoding ApplyTxPredError: {}",
+                "unknown error tag while decoding ApplyConwayTxPredError: {}",
                 error
             ))),
         }
@@ -159,7 +166,7 @@ impl<'b> Decode<'b, ()> for ConwayUtxosPredFailure {
 
         match error {
             0 => Ok(ValidationTagMismatch(d.decode()?, d.decode()?)),
-            1 => Ok(CollectErrors(Array(Vec::new()))),
+            1 => Ok(CollectErrors(d.decode()?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ConwayUtxosPredFailure: {}",
                 error
@@ -304,16 +311,58 @@ impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
     }
 }
 
-impl<'b> Decode<'b, ()> for DisplayAddress {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for DisplayAddress {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         let address_bytes = d.bytes()?;
-
         Ok(DisplayAddress(Address::from_bytes(address_bytes).unwrap()))
     }
 }
 
-impl<'b> Decode<'b, ()> for ConwayPlutusPurpose {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for CollectError {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        match error {
+            0 => todo!(),
+            1 => todo!(),
+            2 => todo!(),
+            3 => Ok(CollectError::BadTranslation(d.decode_with(ctx)?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding CollectError: {}",
+                error
+            ))),
+        }
+    }
+}
+impl<'b, C> Decode<'b, C> for ConwayContextError {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use ConwayContextError::*;
+
+        match error {
+            8 => Ok(BabbageContextError(d.decode()?)),
+
+            9 => Ok(CertificateNotSupported(d.decode()?)),
+
+            10 => Ok(PlutusPurposeNotSupported(d.decode()?)),
+            11 => Ok(CurrentTreasuryFieldNotSupported(d.decode()?)),
+            12 => Ok(VotingProceduresFieldNotSupported(d.decode()?)),
+            13 => Ok(ProposalProceduresFieldNotSupported(d.decode()?)),
+            14 => Ok(TreasuryDonationFieldNotSupported(d.decode()?)),
+
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding CollectError: {}",
+                error
+            ))),
+        }
+    }
+}
+
+impl<'b, C> Decode<'b, C> for ConwayPlutusPurpose {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let error = d.u16()?;
 
@@ -397,110 +446,52 @@ impl<'b> Decode<'b, ()> for ConwayDelegPredFailure {
     }
 }
 
-impl<'b> Decode<'b, ()> for ConwayTxCert {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for ConwayTxCert {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
+        let pos = d.position();
+        d.array()?;
+        let variant = d.u16()?;
+
+        d.set_position(pos);
         let cert: Certificate = d.decode()?;
 
-        use Certificate::*;
+        match variant {
+            // shelley deleg certificates
+            0..3 => Ok(ConwayTxCert::ConwayTxCertDeleg(cert)),
+            // pool certificates
+            3..5 => Ok(ConwayTxCert::ConwayTxCertPool(cert)),
+            // conway deleg certificates
+            5 => decode_err!("Genesis delegation certificates are no longer supported"),
+            6 => decode_err!("MIR certificates are no longer supported"),
+            7..14 => Ok(ConwayTxCert::ConwayTxCertDeleg(cert)),
+            14..19 => Ok(ConwayTxCert::ConwayTxCertGov(cert)),
+            _ => Err(decode::Error::message(format!(
+                "unknown certificate variant while decoding ConwayTxCert: {}",
+                variant
+            ))),
+        }
+    }
+}
 
-        match cert {
-            // ↧ Shelley backwards compatibility ↧
-            StakeRegistration(stake_credential) => Ok(ConwayTxCert::ConwayTxCertDeleg(
-                ConwayDelegCert::ConwayRegCert(stake_credential, None),
-            )),
-
-            StakeDeregistration(stake_credential) => Ok(ConwayTxCert::ConwayTxCertDeleg(
-                ConwayDelegCert::ConwayUnRegCert(stake_credential, None),
-            )),
-
-            StakeDelegation(stake_credential, hash) => Ok(ConwayTxCert::ConwayTxCertDeleg(
-                ConwayDelegCert::ConwayDelegCert(stake_credential, Delegatee::DelegStake(hash)),
-            )),
-
-            //  ↧ Not used till item seven? ↧
-            PoolRegistration {
-                operator,
-                vrf_keyhash,
-                pledge,
-                cost,
-                margin,
-                reward_account,
-                pool_owners,
-                relays,
-                pool_metadata,
-            } => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todo1".to_string(),
-            ))),
-            PoolRetirement(hash, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todo2".to_string(),
-            ))),
-            //  ↧ new in conway ↧
-            Reg(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todo3".to_string(),
-            ))),
-            UnReg(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todo4".to_string(),
-            ))),
-            VoteDeleg(stake_credential, drep) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todo5".to_string(),
-            ))),
-            StakeVoteDeleg(stake_credential, hash, drep) => Ok(ConwayTxCert::ConwayTxCertPool(
-                PoolCert("todo6".to_string()),
-            )),
-            StakeRegDeleg(stake_credential, hash, _) => Ok(ConwayTxCert::ConwayTxCertPool(
-                PoolCert("todo7".to_string()),
-            )),
-            VoteRegDeleg(stake_credential, drep, _) => {
-                Ok(ConwayTxCert::ConwayTxCertPool(PoolCert("tod8".to_string())))
+impl<'b, C> Decode<'b, C> for DisplayValue {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        match d.datatype()? {
+            Type::U16 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
+            Type::U32 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
+            Type::U64 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
+            Type::Array => {
+                d.array()?;
+                let coin = d.decode_with(ctx)?;
+                let multiasset = d.decode_with(ctx)?;
+                Ok(DisplayValue::Multiasset(coin, multiasset))
             }
-            StakeVoteRegDeleg(stake_credential, hash, drep, _) => Ok(
-                ConwayTxCert::ConwayTxCertPool(PoolCert("todo9".to_string())),
-            ),
-
-            AuthCommitteeHot(stake_credential, stake_credential1) => {
-                Ok(ConwayTxCert::ConwayTxCertPool(PoolCert("todo".to_string())))
-            }
-
-            ResignCommitteeCold(stake_credential, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
-                PoolCert("todou".to_string()),
-            )),
-            RegDRepCert(stake_credential, _, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
-                PoolCert("todoi".to_string()),
-            )),
-            UnRegDRepCert(stake_credential, _) => Ok(ConwayTxCert::ConwayTxCertPool(PoolCert(
-                "todoe".to_string(),
-            ))),
-            UpdateDRepCert(stake_credential, nullable) => Ok(ConwayTxCert::ConwayTxCertPool(
-                PoolCert("todoa".to_string()),
+            _ => Err(minicbor::decode::Error::message(
+                "unknown cbor data type for Alonzo Value enum",
             )),
         }
     }
 }
-impl<'b> Decode<'b, ()> for ConwayDelegCert {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        let cert: Certificate = d.decode()?;
 
-        Ok(ConwayDelegCert::ConwayRegCert(d.decode()?, d.decode()?))
-    }
-}
-
-impl<'b> Decode<'b, ()> for PoolCert {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        d.array()?;
-        let cert = d.u16()?;
-
-        Ok(d.decode()?)
-    }
-}
-
-impl<'b> Decode<'b, ()> for ConwayGovCert {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        d.array()?;
-        let cert = d.u16()?;
-
-        Ok(d.decode()?)
-    }
-}
 impl<'b> Decode<'b, ()> for TagMismatchDescription {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         d.array()?;
@@ -551,11 +542,11 @@ impl<'b> Decode<'b, ()> for Network {
     }
 }
 
-impl<'b, T> Decode<'b, ()> for StrictMaybe<T>
+impl<'b, T, C> Decode<'b, C> for StrictMaybe<T>
 where
-    T: Decode<'b, ()> + HaskellDisplay,
+    T: Decode<'b, C> + HaskellDisplay,
 {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut ()) -> Result<Self, decode::Error> {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let arr = d.array()?;
 
         match arr {
@@ -658,71 +649,106 @@ impl<'b> Decode<'b, ()> for PurposeAs {
     }
 }
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L484
-impl<'b> Decode<'b, ()> for BabbageTxOut {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        let len = d.map()?;
-        match len {
-            Some(2) => Ok(BabbageTxOut::NotImplemented),
-            Some(3) => Ok(BabbageTxOut::NotImplemented),
-            Some(4) => {
-                // key 0
-                d.u8()?;
-                let addr: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
-
-                // key 1
-                d.u8()?;
-                d.array()?;
-                let value: MaryValue = d.decode()?;
-
-                let multi_asset: MultiAsset = d.decode()?;
-
-                // key 2
-                // datum enum
-                d.u8()?;
-                // let datum_set: CustomSet258<DatumEnum> = d.decode()?;
-                let datum: DatumEnum = d.decode()?;
-
-                // key 3
-                // inner cbor
-                d.u8()?;
-
-                //d.tag()?;
-                let inner_cbor: CborBytes<Bytes> = d.decode()?;
-                // let inner_cbor_bytes = d.bytes()?;
-                // let inner_cbor = hex::encode(bytes);
-                let era_script = minicbor::decode::<EraScript>(&inner_cbor.0)?;
-
-                Ok(BabbageTxOut::TxOutCompactRefScript(
-                    addr,
-                    (value, multi_asset),
-                    datum,
-                    StrictMaybe::Just(era_script),
-                ))
+impl<'b, C> Decode<'b, C> for DisplayTransactionOutput {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        use pallas_codec::minicbor::data::Type;
+        match d.datatype()? {
+            Type::Array | Type::ArrayIndef => {
+                Ok(DisplayTransactionOutput::Legacy(d.decode_with(ctx)?))
             }
-            None => {
-                // indef map
-                Ok(BabbageTxOut::NotImplemented)
+            Type::Map | Type::MapIndef => {
+                Ok(DisplayTransactionOutput::PostAlonzo(d.decode_with(ctx)?))
             }
-            _ => Err(decode::Error::message(format!(
-                "unexpected number of fields while decoding BabbageTxOut: {}",
-                len.unwrap_or(0)
-            ))),
+            _ => Err(minicbor::decode::Error::message(
+                "invalid type for DisplayTransactionOutput",
+            )),
         }
     }
 }
 
-// not tested yet
-impl<'b> Decode<'b, ()> for EraScript {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L484
+// This is replaced by TransactionOutput from pallas
+impl<'b, C> Decode<'b, C> for BabbageTxOut {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
+        if d.datatype()? == Type::Map {
+            d.map()?;
+
+            // key 0
+            d.u8()?;
+            let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
+
+            let pos = d.position();
+            // key 1
+            let value: Option<DisplayValue> = if d.datatype()? == Type::U8 && d.u8()? == 1 {
+                d.decode()?
+            } else {
+                d.set_position(pos);
+                None
+            };
+
+            // key 2
+            // datum enum
+            let pos = d.position();
+            let datum: Option<DatumEnum> = if d.datatype()? == Type::U8 && d.u8()? == 2 {
+                d.decode()?
+            } else {
+                d.set_position(pos);
+                None
+            };
+
+            // key 3
+            // inner cbor
+            let script = if d.datatype()? == Type::U8 && d.u8()? == 3 {
+                let wrapped: CborWrap<EraScript> = d.decode()?;
+                Some(wrapped.0)
+            } else {
+                None
+            };
+
+            Ok(BabbageTxOut {
+                address,
+                value,
+                datum,
+                script,
+            })
+        } else if d.datatype()? == Type::Array {
+            let size = d.array()?.unwrap();
+            let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
+            let value: Option<DisplayValue> = if size > 1 { d.decode()? } else { None };
+            let datum: Option<DatumEnum> = if size > 2 { d.decode()? } else { None };
+            Ok(BabbageTxOut {
+                address,
+                value,
+                datum,
+                script: None,
+            })
+        } else {
+            Err(minicbor::decode::Error::message(
+                "invalid type for BabbageTxOut",
+            ))
+        }
+    }
+}
+
+impl<'b, C> Decode<'b, C> for EraScript {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let tag = d.u16()?;
 
         match tag {
             0 => Ok(EraScript::Native(d.decode()?)),
-            1 => Ok(EraScript::PlutusV1(d.decode()?)),
-            2 => Ok(EraScript::PlutusV2(d.decode()?)),
-            3 => Ok(EraScript::PlutusV3(d.decode()?)),
+            1 => {
+                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 1);
+                Ok(EraScript::PlutusV1(hash))
+            }
+            2 => {
+                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 2);
+                Ok(EraScript::PlutusV2(hash))
+            }
+            3 => {
+                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 3);
+                Ok(EraScript::PlutusV3(hash))
+            }
             _ => Err(decode::Error::message(format!(
                 "unknown index while decoding EraScript: {}",
                 tag
@@ -770,16 +796,19 @@ impl<'b> Decode<'b, ()> for Timelock {
     }
 }
 
-// not tested yet
-impl<'b> Decode<'b, ()> for DatumEnum {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        d.array()?;
-        let tag = d.u16()?;
+impl<'b, C> Decode<'b, C> for DatumEnum {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        if d.datatype()? == Type::Array {
+            d.array()?;
+            let tag = d.u16()?;
 
-        match tag {
-            0 => Ok(DatumEnum::DatumHash(d.decode()?)),
-            1 => Ok(DatumEnum::Datum(d.decode()?)),
-            _ => Ok(DatumEnum::NoDatum),
+            match tag {
+                0 => Ok(DatumEnum::DatumHash(d.decode_with(ctx)?)),
+                1 => Ok(DatumEnum::Datum(d.decode_with(ctx)?)),
+                _ => Ok(DatumEnum::NoDatum),
+            }
+        } else {
+            Ok(DatumEnum::DatumHash(d.decode_with(ctx)?))
         }
     }
 }
@@ -808,7 +837,7 @@ where
 {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         let tag = d.tag()?;
-        if (tag.as_u64() != 258) {
+        if tag.as_u64() != 258 {
             return Err(decode::Error::message(format!(
                 "unexpected tag while decoding CustomSet258: {}",
                 tag
@@ -818,19 +847,38 @@ where
     }
 }
 
-impl<'b, T> Decode<'b, ()> for CborBytes<T>
+impl<'b, T, C> Decode<'b, C> for CborBytes<T>
 where
-    T: Decode<'b, ()>,
+    T: Decode<'b, C>,
 {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let tag = d.tag()?;
-        if (tag.as_u64() != 24) {
+        if tag.as_u64() != 24 {
             return Err(decode::Error::message(format!(
-                "unexpected tag while decoding CustomSet258: {}",
+                "unexpected tag while decoding tag 24: {}",
                 tag
             )));
         }
 
-        Ok(CborBytes(d.decode()?))
+        let cbor = d.bytes()?;
+        let wrapped = pallas_codec::minicbor::decode_with(cbor, ctx)?;
+
+        Ok(CborBytes(wrapped))
+    }
+}
+
+impl<'b, C> Decode<'b, C> for PlutusDataBytes {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
+        let tag = d.tag()?;
+        if tag.as_u64() != 24 {
+            return Err(decode::Error::message(format!(
+                "unexpected tag while decoding tag 24: {}",
+                tag
+            )));
+        }
+
+        //let cbor = d.bytes()?;
+
+        Ok(PlutusDataBytes(d.decode()?))
     }
 }
