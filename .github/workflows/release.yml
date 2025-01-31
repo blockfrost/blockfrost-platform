@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-tag runs
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: |
+          echo >&2 'fatal: this workflow must be run from a Git tag reference, not ‘${{ github.ref }}’'
+          exit 1
+
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            substituters = https://cache.nixos.org https://cache.iog.io
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
+      - name: Download release artifacts from Hydra
+        run: |
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-linux \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-linux.archive
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-windows \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-windows.archive
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-installer-x86_64-windows \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-windows.installer
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-aarch64-darwin \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.aarch64-darwin.archive
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-archive-x86_64-darwin \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-darwin.archive
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-homebrew-tap \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.aarch64-darwin.homebrew-tap
+
+          nix build -L --builders '' --max-jobs 0 --out-link \
+            result-curl-bash-install \
+            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-linux.curl-bash-install
+
+          find -L result-*
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            result-archive-x86_64-linux/*.tar.bz2
+            result-archive-x86_64-darwin/*.tar.bz2
+            result-archive-aarch64-darwin/*.tar.bz2
+            result-archive-x86_64-windows/*.zip
+            result-installer-x86_64-windows/*.exe
+            result-curl-bash-install/*.sh
+
+      - name: Update the Homebrew tap
+        run: |
+          git clone https://github.com/blockfrost/homebrew-tap.git homebrew-tap-old
+          mkdir homebrew-tap
+          mv homebrew-tap-old/.git homebrew-tap/
+          cp -r result-homebrew-tap/. homebrew-tap/.
+          cd homebrew-tap/
+          git add .
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -m "Release $(sed -r 's,^refs/tags/,,g' <<<"${{ github.ref }}")"
+          git push https://${{ secrets.HOMEBREW_TAP_PAT }}@github.com/blockfrost/homebrew-tap.git main
