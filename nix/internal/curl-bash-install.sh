@@ -61,9 +61,11 @@ else
 fi
 
 if [ -e "$install_dir" ]; then
-  old_installation="${install_dir}.$(date -Iseconds)"
+  old_installation="${install_dir}.$(date '+%Y-%m-%dT%H:%M:%S%z')"
   echo >&2 "warn: moving previous installation to ${color_bold}${old_installation}${color_reset}"
+  chmod +w "$install_dir"
   mv "$install_dir" "$old_installation"
+  chmod -w "$old_installation"
   unset old_installation
 fi
 
@@ -85,7 +87,7 @@ EOF
 chmod -w "$add_to_path_script" "$install_dir"
 
 at_least_one=
-for rcname in .profile .bash_profile .bash_login .bashrc .zshrc .zshenv; do
+for rcname in .profile .bash_profile .bash_login .bashrc .zshrc .zshenv .zprofile; do
   rcfile="$HOME/$rcname"
   if [ -e "$rcfile" ]; then
     if grep -qF "$add_to_path_expr" "$rcfile"; then
