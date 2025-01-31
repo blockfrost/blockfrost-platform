@@ -62,8 +62,8 @@ in
     homebrew-tap =
       pkgs.runCommandNoCC "homebrew-repo" {
         version = unix.package.version;
-        url_x86_64 = "http://127.0.0.1:12345/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
-        url_aarch64 = "http://127.0.0.1:12345/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
+        url_x86_64 = "${unix.releaseBaseUrl}/${unix.package.version}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
+        url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
       } ''
         cp -r ${./homebrew-tap} $out
         chmod -R +w $out

@@ -202,6 +202,9 @@ in
       meta.description = "Builds a valid CBOR transaction for testing ‘/tx/submit’";
     };
 
+    # FIXME: change to blockfrost/blockfrost-platform
+    releaseBaseUrl = "https://github.com/michalrus/bfp-release-testing/releases/download/${package.version}";
+
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
@@ -209,7 +212,7 @@ in
         projectName = package.pname;
         projectVersion = package.version;
         shortRev = inputs.self.shortRev or "dirty";
-        baseUrl = "http://127.0.0.1:12345";
+        baseUrl = releaseBaseUrl;
       } ''
         substituteAll ${./curl-bash-install.sh} $out
         chmod +x $out
