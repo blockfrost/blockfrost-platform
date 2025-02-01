@@ -34,31 +34,31 @@ jobs:
         run: |
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-archive-x86_64-linux \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-linux.archive
+            .#internal.x86_64-linux.archive
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-archive-x86_64-windows \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-windows.archive
+            .#internal.x86_64-windows.archive
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-installer-x86_64-windows \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-windows.installer
+            .#internal.x86_64-windows.installer
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-archive-aarch64-darwin \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.aarch64-darwin.archive
+            .#internal.aarch64-darwin.archive
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-archive-x86_64-darwin \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-darwin.archive
+            .#internal.x86_64-darwin.archive
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-homebrew-tap \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.aarch64-darwin.homebrew-tap
+            .#internal.aarch64-darwin.homebrew-tap
 
           nix build -L --builders '' --max-jobs 0 --out-link \
             result-curl-bash-install \
-            github:blockfrost/blockfrost-platform/pull/141/head#internal.x86_64-linux.curl-bash-install
+            .#internal.x86_64-linux.curl-bash-install
 
           find -L result-*
 
