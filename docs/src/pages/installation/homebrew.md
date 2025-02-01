@@ -13,3 +13,5 @@ After tapping into it, you should be able to run it:
 $ blockfrost-platform --version
 blockfrost-platform 0.0.1
 ```
+
+Now you can move to the configuration section.
