@@ -1,4 +1,4 @@
-let config = {
+export default {
   index: "Introduction",
   "---": {
     type: "separator",
@@ -12,5 +12,3 @@ let config = {
   },
   faq: "FAQ",
 };
-
-export default config;
