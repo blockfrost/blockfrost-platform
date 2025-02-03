@@ -91,10 +91,11 @@ impl FallbackDecoder {
 
         // This is the most important one for relocatable directories (that keep the initial
         // structure) on Windows, Linux, macOS:
-        let current_exe_dir: Option<PathBuf> = env::current_exe()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .map(|a| a.to_path_buf().join("testgen-hs"));
+        let current_exe_dir: Option<PathBuf> =
+            std::fs::canonicalize(env::current_exe().map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
+                .parent()
+                .map(|a| a.to_path_buf().join("testgen-hs"));
 
         let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
             .ok()
