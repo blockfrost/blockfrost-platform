@@ -9,7 +9,7 @@
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.1.4";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    testgen-hs.url = "github:input-output-hk/testgen-hs/10.1.4.0"; # make sure it follows cardano-node
+    testgen-hs.url = "github:input-output-hk/testgen-hs/10.1.4.1"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
