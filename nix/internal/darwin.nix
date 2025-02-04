@@ -165,7 +165,9 @@ in
         /usr/bin/iconutil --convert icns --output $out iconset.iconset
       '';
 
-    dmgImage = let
+    installer = dmg-image;
+
+    dmg-image = let
       outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
       # See <https://dmgbuild.readthedocs.io/en/latest/settings.html>:
       settingsPy = let
@@ -215,14 +217,14 @@ in
           # license = { … }
         '';
     in
-      pkgs.runCommand "blockchain-services-dmg" {
+      pkgs.runCommand "blockfrost-platform-dmg" {
         passthru = {inherit outFileName;};
       } ''
         mkdir -p $out
         target=$out/${outFileName}
 
         ${dmgbuild}/bin/dmgbuild \
-          -D app_path=${app-bundle}/Applications/*.app \
+          -D app_path="$(echo ${app-bundle}/Applications/*.app)" \
           -D icon_path=${badgeIcon} \
           -s ${settingsPy} \
           ${lib.escapeShellArg prettyName} $target
@@ -262,19 +264,6 @@ in
       postFixup = ''sed -r 's+main\(\)+main(sys.argv[1:])+g' -i $out/bin/.${pname}-wrapped'';
     };
 
-    # Apple make changes to the original libffi, e.g. adding this non-standard symbol: `ffi_find_closure_for_code_np`
-    apple_libffi = pkgs.stdenv.mkDerivation {
-      name = "apple-libffi";
-      dontUnpack = true;
-      installPhase = let
-        sdk = newestSDK.MacOSX-SDK;
-      in ''
-        mkdir -p $out/include $out/lib
-        cp -r ${sdk}/usr/include/ffi $out/include/
-        cp -r ${sdk}/usr/lib/libffi.* $out/lib/
-      '';
-    };
-
     # For the DMG tooling:
     newestSDK = pkgs.darwin.apple_sdk_11_0;
 
@@ -309,16 +298,15 @@ in
         };
         nativeBuildInputs = [newestSDK.xcodebuild pkgs.darwin.cctools];
         buildInputs =
-          (with pkgs; [])
-          ++ [newestSDK.objc4 apple_libffi newestSDK.libs.simd]
+          (with pkgs; [darwin.libffi])
+          ++ [newestSDK.objc4 newestSDK.libs.simd]
           ++ (with newestSDK.frameworks; [Foundation GameplayKit MetalPerformanceShaders]);
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations"];
+        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type"];
         preBuild =
           commonPreBuild
           + ''
-            sed -r 's+\(.*usr/include/objc/runtime\.h.*\)+("${newestSDK.objc4}/include/objc/runtime.h")+g' -i setup.py
-            sed -r 's+/usr/include/ffi+${apple_libffi}/include+g' -i setup.py
+            sed -r 's+/usr/include/ffi+${pkgs.darwin.libffi.dev}/include+g' -i setup.py
 
             # Turn off clang’s Link Time Optimization, or else we can’t recognize (and link) Objective C .o’s:
             sed -r 's/"-flto=[^"]+",//g' -i setup.py
@@ -328,6 +316,7 @@ in
               sed -r "s+"sw_vers"+"/usr/bin/sw_vers"+g" -i "$file"
             done
           '';
+
         # XXX: We’re turning tests off, because they’re mostly working (0.54% failures among 4,600 tests),
         # and I don’t have any more time to investigate now (maybe in a Nixpkgs contribution in the future):
         #
@@ -336,6 +325,7 @@ in
         # pyobjc-core> SUMMARY: {'count': 4600, 'fails': 3, 'errors': 25, 'xfails': 3, 'xpass': 0, 'skip': 4}
         # pyobjc-core> error: some tests failed
         dontUseSetuptoolsCheck = true;
+        doCheck = false;
       };
 
       framework-Cocoa = pythonPackages.buildPythonPackage rec {
@@ -369,12 +359,6 @@ in
       };
     };
 
-    # How to get it in a saner way?
-    apple_SetFile = pkgs.runCommand "SetFile" {} ''
-      mkdir -p $out/bin
-      cp ${newestSDK.CLTools_Executables}/usr/bin/SetFile $out/bin/
-    '';
-
     # dmgbuild doesn’t rely on Finder to customize appearance of the mounted DMT directory
     # Finder is unreliable and requires graphical environment
     # dmgbuild still uses /usr/bin/hdiutil, but it's possible to use it w/o root (in 2 stages), which they do
@@ -390,13 +374,13 @@ in
       patches = [./dmgbuild--force-badge.diff];
       propagatedBuildInputs = (with pythonPackages; [setuptools]) ++ [ds_store pyobjc.framework-Quartz];
       format = "pyproject";
-      preBuild = ''sed -r 's+/usr/bin/SetFile+${apple_SetFile}/bin/SetFile+g' -i src/dmgbuild/core.py''; # impure
+      preBuild = ''sed -r 's+/usr/bin/SetFile+${lib.getExe pkgs.darwin.stubs.setfile}+g' -i src/dmgbuild/core.py''; # impure
     };
 
     mkBadge =
       pkgs.writers.makePythonWriter pythonPackages.python pythonPackages pythonPackages "mkBadge" {
         libraries = [
-          (dmgbuild.overrideDerivation (drv: {
+          (dmgbuild.overrideAttrs (drv: {
             preBuild =
               (drv.preBuild or "")
               + "\n"

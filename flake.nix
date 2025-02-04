@@ -101,6 +101,8 @@
           );
           installer = {
             x86_64-windows = inputs.self.internal.x86_64-windows.installer;
+            x86_64-darwin = inputs.self.internal.x86_64-darwin.installer;
+            aarch64-darwin = inputs.self.internal.aarch64-darwin.installer;
           };
           homebrew-tap = {
             aarch64-darwin = inputs.self.internal.aarch64-darwin.homebrew-tap;
