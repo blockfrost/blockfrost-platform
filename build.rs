@@ -22,7 +22,7 @@ fn main() {
     // Tell Cargo to rerun the build script if the build script itself changes.
     println!("cargo:rerun-if-changed=build.rs");
 
-    let testgen_lib_version = "10.1.4.0";
+    let testgen_lib_version = "10.1.4.1";
 
     let target_os = if cfg!(target_os = "macos") {
         "darwin"
