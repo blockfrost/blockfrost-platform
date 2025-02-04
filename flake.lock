@@ -147,16 +147,16 @@
     "testgen-hs": {
       "flake": false,
       "locked": {
-        "lastModified": 1736946079,
-        "narHash": "sha256-nmi9i05h8AnhlqcHLhshx9Um94rzc2sbanb1laNBTI4=",
+        "lastModified": 1738671367,
+        "narHash": "sha256-9htTIILDoHsK+olKfED+3jo8dy5w2lmMT4OWLO0ZAD4=",
         "owner": "input-output-hk",
         "repo": "testgen-hs",
-        "rev": "a6193b7bd64eab1f1633331e1f55891321caee67",
+        "rev": "d8b08921cdcf47ea834acbc64b538fb7ff8d8cec",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "10.1.4.0",
+        "ref": "10.1.4.1",
         "repo": "testgen-hs",
         "type": "github"
       }
