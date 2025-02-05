@@ -1,5 +1,6 @@
 let config = {
   index: "Introduction",
+  icebreakers: "Icebreakers 🧊",
   "---": {
     type: "separator",
   },
