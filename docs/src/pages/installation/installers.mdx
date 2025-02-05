@@ -1,0 +1,39 @@
+import { Tabs, Tab } from "nextra/components";
+
+# Blockfrost Platform official installers
+
+<Tabs items={['Linux','macOS','Windows']}>
+  <Tabs.Tab>
+    Paste this in Linux shell prompt.
+
+    ```shell
+    curl -fsSL \
+         https://github.com/blockfrost/blockfrost-platform/releases/latest/download/curl-bash-install.sh \
+         | bash
+    ```
+    ## Manual installation
+
+    You can also download the pre-build binaries at [github.com/blockfrost/blockfrost-platform](https://github.com/blockfrost/blockfrost-platform/releases).
+  </Tabs.Tab>
+  <Tabs.Tab>
+  
+    Paste this in a macOS Terminal.
+
+    ```shell
+    curl -fsSL \
+         https://github.com/blockfrost/blockfrost-platform/releases/latest/download/curl-bash-install.sh \
+         | bash
+    ```
+
+    ## Installing using Homebrew
+    If you are using [Homebrew](https://brew.sh/) on your macOS (or Linux), you
+    just need to run:
+
+    ```shell
+    brew install blockfrost/tap/blockfrost-platform
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  Download `setup.exe` from [github.com/blockfrost/blockfrost-platform](https://github.com/blockfrost/blockfrost-platform/releases) or you can use `.zip` for the manual installation.
+  </Tabs.Tab>
+</Tabs>
