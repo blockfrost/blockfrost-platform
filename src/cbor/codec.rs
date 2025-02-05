@@ -9,15 +9,16 @@ use pallas_primitives::conway::Certificate;
 use super::{
     haskell_display::HaskellDisplay,
     haskell_types::{
-        ApplyConwayTxPredError, ApplyTxError, BabbageTxOut, CborBytes, CollectError,
-        ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError, ConwayDelegPredFailure,
-        ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
-        ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
-        CustomSet258, DatumEnum, DisplayAddress, DisplayHash, DisplayTransactionOutput,
-        DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, PlutusDataBytes,
-        PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure,
-        SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxValidationError,
-        Utxo, ValidityInterval,
+        ApplyConwayTxPredError, ApplyTxError, BabbageContextError, BabbageTxOut, CborBytes,
+        CollectError, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError,
+        ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure,
+        ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure,
+        ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, DisplayAddress,
+        DisplayGovAction, DisplayHash, DisplayProposalProcedure, DisplayTransactionOutput,
+        DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, OHashMap,
+        PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra,
+        ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
+        TxOutSource, TxValidationError, Utxo, ValidityInterval,
     },
 };
 
@@ -157,16 +158,19 @@ where
     }
 }
 
-impl<'b> Decode<'b, ()> for ConwayUtxosPredFailure {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for ConwayUtxosPredFailure {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let error = d.u16()?;
 
         use ConwayUtxosPredFailure::*;
 
         match error {
-            0 => Ok(ValidationTagMismatch(d.decode()?, d.decode()?)),
-            1 => Ok(CollectErrors(d.decode()?)),
+            0 => Ok(ValidationTagMismatch(
+                d.decode_with(ctx)?,
+                d.decode_with(ctx)?,
+            )),
+            1 => Ok(CollectErrors(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding ConwayUtxosPredFailure: {}",
                 error
@@ -311,6 +315,33 @@ impl<'b> Decode<'b, ()> for ConwayCertsPredFailure {
     }
 }
 
+impl<'b, C, K: pallas_codec::minicbor::Decode<'b, C>, V: pallas_codec::minicbor::Decode<'b, C>>
+    Decode<'b, C> for OHashMap<K, V>
+{
+    fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
+        let v: Vec<(K, V)> = d
+            .map_iter_with::<C, K, V>(ctx)
+            .unwrap()
+            .map(|item| item.unwrap())
+            .collect();
+
+        Ok(OHashMap(v))
+    }
+}
+
+impl<'b, C> Decode<'b, C> for DisplayProposalProcedure {
+    fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
+        d.array()?;
+
+        Ok(Self {
+            deposit: d.decode_with(ctx)?,
+            reward_account: d.decode_with(ctx)?,
+            gov_action: d.decode_with(ctx)?,
+            anchor: d.decode_with(ctx)?,
+        })
+    }
+}
+
 impl<'b, C> Decode<'b, C> for DisplayAddress {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         let address_bytes = d.bytes()?;
@@ -323,11 +354,12 @@ impl<'b, C> Decode<'b, C> for CollectError {
         d.array()?;
         let error = d.u16()?;
 
+        use CollectError::*;
         match error {
-            0 => todo!(),
-            1 => todo!(),
-            2 => todo!(),
-            3 => Ok(CollectError::BadTranslation(d.decode_with(ctx)?)),
+            0 => Ok(NoRedeemer(d.decode_with(ctx)?)),
+            1 => Ok(NoWitness(d.decode_with(ctx)?)),
+            2 => Ok(NoCostModel(d.decode_with(ctx)?)),
+            3 => Ok(BadTranslation(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding CollectError: {}",
                 error
@@ -336,14 +368,14 @@ impl<'b, C> Decode<'b, C> for CollectError {
     }
 }
 impl<'b, C> Decode<'b, C> for ConwayContextError {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let error = d.u16()?;
 
         use ConwayContextError::*;
 
         match error {
-            8 => Ok(BabbageContextError(d.decode()?)),
+            8 => Ok(BabbageContextError(d.decode_with(ctx)?)),
 
             9 => Ok(CertificateNotSupported(d.decode()?)),
 
@@ -360,7 +392,46 @@ impl<'b, C> Decode<'b, C> for ConwayContextError {
         }
     }
 }
+impl<'b, C> Decode<'b, C> for BabbageContextError {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
 
+        use BabbageContextError::*;
+
+        match error {
+            0 => Ok(ByronTxOutInContext(d.decode_with(ctx)?)),
+            1 => Ok(AlonzoMissingInput(d.decode_with(ctx)?)),
+            2 => Ok(RedeemerPointerPointsToNothing(d.decode_with(ctx)?)),
+            4 => Ok(InlineDatumsNotSupported(d.decode_with(ctx)?)),
+            5 => Ok(ReferenceScriptsNotSupported(d.decode_with(ctx)?)),
+            6 => Ok(ReferenceInputsNotSupported(d.decode_with(ctx)?)),
+            7 => Ok(AlonzoTimeTranslationPastHorizon(d.decode_with(ctx)?)),
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding BabbageContextError: {}",
+                error
+            ))),
+        }
+    }
+}
+impl<'b, C> Decode<'b, C> for TxOutSource {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        d.array()?;
+        let error = d.u16()?;
+
+        use TxOutSource::*;
+
+        match error {
+            0 => Ok(TxOutFromInput(d.decode_with(ctx)?)),
+            1 => Ok(TxOutFromOutput(d.decode_with(ctx)?)),
+
+            _ => Err(decode::Error::message(format!(
+                "unknown error tag while decoding TxOutSource: {}",
+                error
+            ))),
+        }
+    }
+}
 impl<'b, C> Decode<'b, C> for ConwayPlutusPurpose {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
@@ -492,8 +563,8 @@ impl<'b, C> Decode<'b, C> for DisplayValue {
     }
 }
 
-impl<'b> Decode<'b, ()> for TagMismatchDescription {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for TagMismatchDescription {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let error = d.u16()?;
 
@@ -501,7 +572,7 @@ impl<'b> Decode<'b, ()> for TagMismatchDescription {
 
         match error {
             0 => Ok(PassedUnexpectedly),
-            1 => Ok(FailedUnexpectedly(d.decode()?)),
+            1 => Ok(FailedUnexpectedly(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding TagMismatchDescription: {}",
                 error
@@ -509,16 +580,15 @@ impl<'b> Decode<'b, ()> for TagMismatchDescription {
         }
     }
 }
-impl<'b> Decode<'b, ()> for FailureDescription {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for FailureDescription {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
-        // d.array()?;
         let error = d.u16()?;
 
         use FailureDescription::*;
 
         match error {
-            1 => Ok(PlutusFailure(d.decode()?, d.decode()?)),
+            1 => Ok(PlutusFailure(d.decode_with(ctx)?, d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown error tag while decoding FailureDescription: {}",
                 error
@@ -573,20 +643,13 @@ impl<'b> Decode<'b, ()> for Credential {
     }
 }
 
-impl<'b> Decode<'b, ()> for RewardAccountFielded {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for RewardAccountFielded {
+    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         let b = d.bytes()?;
         Ok(RewardAccountFielded::new(hex::encode(b)))
     }
 }
-/*
-impl<'b> Decode<'b, ()>  for AsItem {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        let r: RewardAccountFielded = d.decode()?;
-        Ok(AsItem(r))
-        }
-}
- */
+
 impl<'b> Decode<'b, ()> for ShelleyBasedEra {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         d.array()?;
@@ -609,21 +672,20 @@ impl<'b> Decode<'b, ()> for ShelleyBasedEra {
     }
 }
 
-// not tested yet
-impl<'b> Decode<'b, ()> for PlutusPurpose {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for PlutusPurpose {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
         let purpose = d.u16()?;
 
         use PlutusPurpose::*;
 
         match purpose {
-            0 => Ok(Spending(d.decode()?)),
-            1 => Ok(Minting(d.decode()?)),
-            2 => Ok(Certifying(d.decode()?)),
-            3 => Ok(Rewarding(d.decode()?)),
-            4 => Ok(Voting(d.decode()?)),
-            5 => Ok(Proposing(d.decode()?)),
+            0 => Ok(Spending(d.decode_with(ctx)?)),
+            1 => Ok(Minting(d.decode_with(ctx)?)),
+            2 => Ok(Certifying(d.decode_with(ctx)?)),
+            3 => Ok(Rewarding(d.decode_with(ctx)?)),
+            4 => Ok(Voting(d.decode_with(ctx)?)),
+            5 => Ok(Proposing(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown purpose while decoding PlutusPurpose: {}",
                 purpose
@@ -632,15 +694,15 @@ impl<'b> Decode<'b, ()> for PlutusPurpose {
     }
 }
 
-impl<'b> Decode<'b, ()> for PurposeAs {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+impl<'b, C> Decode<'b, C> for PurposeAs {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         use PurposeAs::*;
 
         let tp = d.probe().datatype()?;
 
         match d.probe().datatype()? {
-            Type::U8 => Ok(Ix(d.decode()?)),
-            Type::Bytes => Ok(Item(d.decode()?)),
+            Type::U8 => Ok(Ix(d.decode_with(ctx)?)),
+            Type::Bytes => Ok(Item(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown datatype while decoding PurposeAs: {:?}",
                 tp
@@ -674,11 +736,10 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
             d.map()?;
 
             // key 0
-            d.u8()?;
             let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
 
-            let pos = d.position();
             // key 1
+            let pos = d.position();
             let value: Option<DisplayValue> = if d.datatype()? == Type::U8 && d.u8()? == 1 {
                 d.decode()?
             } else {
@@ -698,7 +759,7 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
 
             // key 3
             // inner cbor
-            let script = if d.datatype()? == Type::U8 && d.u8()? == 3 {
+            let script = if d.datatype().unwrap_or(Type::Null) == Type::U8 && d.u8()? == 3 {
                 let wrapped: CborWrap<EraScript> = d.decode()?;
                 Some(wrapped.0)
             } else {
@@ -733,9 +794,9 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
 impl<'b, C> Decode<'b, C> for EraScript {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
-        let tag = d.u16()?;
+        let version = d.u16()?;
 
-        match tag {
+        match version {
             0 => Ok(EraScript::Native(d.decode()?)),
             1 => {
                 let hash = Hasher::<224>::hash_tagged(d.bytes()?, 1);
@@ -750,8 +811,8 @@ impl<'b, C> Decode<'b, C> for EraScript {
                 Ok(EraScript::PlutusV3(hash))
             }
             _ => Err(decode::Error::message(format!(
-                "unknown index while decoding EraScript: {}",
-                tag
+                "unknown version while decoding EraScript: {}",
+                version
             ))),
         }
     }
@@ -812,30 +873,19 @@ impl<'b, C> Decode<'b, C> for DatumEnum {
         }
     }
 }
-/*
-impl<'b> Decode<'b, ()> for DisplayDatum {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
 
-        let b = d.bytes()?;
-        Ok(DisplayDatum( b.to_vec().into()))
-
-    }
-}
- */
-// not tested yet
 impl<'b> Decode<'b, ()> for Utxo {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
-        // d.array()?;
         let tx_vec = d.decode()?;
         Ok(Utxo(tx_vec))
     }
 }
 
-impl<'b, T> Decode<'b, ()> for CustomSet258<T>
+impl<'b, T, C> Decode<'b, C> for CustomSet258<T>
 where
-    T: Decode<'b, ()>,
+    T: Decode<'b, C>,
 {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let tag = d.tag()?;
         if tag.as_u64() != 258 {
             return Err(decode::Error::message(format!(
@@ -843,7 +893,7 @@ where
                 tag
             )));
         }
-        Ok(CustomSet258(d.decode()?))
+        Ok(Self(d.decode_with(ctx)?))
     }
 }
 
@@ -880,5 +930,53 @@ impl<'b, C> Decode<'b, C> for PlutusDataBytes {
         //let cbor = d.bytes()?;
 
         Ok(PlutusDataBytes(d.decode()?))
+    }
+}
+
+impl<'b, C> Decode<'b, C> for DisplayGovAction {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
+        d.array()?;
+        let variant = d.u16()?;
+
+        use DisplayGovAction::*;
+
+        match variant {
+            0 => {
+                let a = d.decode_with(ctx)?;
+                let b = d.decode_with(ctx)?;
+                let c = d.decode_with(ctx)?;
+                Ok(ParameterChange(a, b, c))
+            }
+            1 => {
+                let a = d.decode_with(ctx)?;
+                let b = d.decode_with(ctx)?;
+                Ok(HardForkInitiation(a, b))
+            }
+            2 => {
+                let a = d.decode_with(ctx)?;
+                let b = d.decode_with(ctx)?;
+                Ok(TreasuryWithdrawals(a, b))
+            }
+            3 => {
+                let a = d.decode_with(ctx)?;
+                Ok(NoConfidence(a))
+            }
+            4 => {
+                let a = d.decode_with(ctx)?;
+                let b = d.decode_with(ctx)?;
+                let c = d.decode_with(ctx)?;
+                let d = d.decode_with(ctx)?;
+                Ok(UpdateCommittee(a, b, c, d))
+            }
+            5 => {
+                let a = d.decode_with(ctx)?;
+                let b = d.decode_with(ctx)?;
+                Ok(NewConstitution(a, b))
+            }
+            6 => Ok(Information),
+            _ => Err(minicbor::decode::Error::message(
+                "unknown variant id for certificate",
+            )),
+        }
     }
 }
