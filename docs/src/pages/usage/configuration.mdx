@@ -1,0 +1,23 @@
+# Configuration
+
+If this is your first time, you can use the `--init` flag to generate your configuration file. It can look like this for example:
+
+```
+$ blockfrost-platform --init
+> Run in solitary mode? No
+> Enable metrics? Yes
+> Which network are you connecting to? Mainnet
+> Mode? Compact
+> What should be the log level? Debug
+> Enter the server IP address: 0.0.0.0
+> Enter the port number: 3000
+> Enter path to Cardano node socket: /Users/blockfrost/Library/Application Support/Daedalus Mainnet/cardano-node.socket
+> Enter the reward address: addr1qyppgpfznd04jxfmc7mq53nt8pjayjzv854xw2usavwgsrzegm73yx3pu8q4egayq3l5lz8suwylrq4t4y4tc6qlv6tqrvq6qw
+> Enter the icebreakers secret: 1234567890
+
+Config has been written to "/Users/blockfrost/Library/Application Support/blockfrost-platform/config.toml"
+```
+
+Unless you know what you are doing, we recommend you to keep the default settings, except for the Cardano node socket, the reward address and the secret which are specific to your own setup.
+
+As you can see, the example above is from macOS. On Linux, you will find it at `~/.config/blockfrost/config.toml`
