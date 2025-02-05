@@ -32,33 +32,20 @@ jobs:
 
       - name: Download release artifacts from Hydra
         run: |
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-archive-x86_64-linux \
-            .#internal.x86_64-linux.archive
+          nixdl="nix build -L --builders '' --max-jobs 0 --out-link"
+          ref="."
 
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-archive-x86_64-windows \
-            .#internal.x86_64-windows.archive
+          $nixdl  result-archive-x86_64-linux      "$ref"#internal.x86_64-linux.archive
+          $nixdl  result-archive-x86_64-windows    "$ref"#internal.x86_64-windows.archive
+          $nixdl  result-archive-x86_64-darwin     "$ref"#internal.x86_64-darwin.archive
+          $nixdl  result-archive-aarch64-darwin    "$ref"#internal.aarch64-darwin.archive
 
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-installer-x86_64-windows \
-            .#internal.x86_64-windows.installer
+          $nixdl  result-installer-x86_64-windows  "$ref"#internal.x86_64-windows.installer
+          $nixdl  result-installer-x86_64-darwin   "$ref"#internal.x86_64-darwin.installer
+          $nixdl  result-installer-aarch64-darwin  "$ref"#internal.aarch64-darwin.installer
 
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-archive-aarch64-darwin \
-            .#internal.aarch64-darwin.archive
-
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-archive-x86_64-darwin \
-            .#internal.x86_64-darwin.archive
-
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-homebrew-tap \
-            .#internal.aarch64-darwin.homebrew-tap
-
-          nix build -L --builders '' --max-jobs 0 --out-link \
-            result-curl-bash-install \
-            .#internal.x86_64-linux.curl-bash-install
+          $nixdl  result-homebrew-tap              "$ref"#internal.aarch64-darwin.homebrew-tap
+          $nixdl  result-curl-bash-install         "$ref"#internal.x86_64-linux.curl-bash-install
 
           find -L result-*
 
@@ -68,9 +55,11 @@ jobs:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
             result-archive-x86_64-darwin/*.tar.bz2
-            result-archive-aarch64-darwin/*.tar.bz2
             result-archive-x86_64-windows/*.zip
+            result-archive-aarch64-darwin/*.tar.bz2
             result-installer-x86_64-windows/*.exe
+            result-installer-x86_64-darwin/*.dmg
+            result-installer-aarch64-darwin/*.dmg
             result-curl-bash-install/*.sh
 
       - name: Update the Homebrew tap
