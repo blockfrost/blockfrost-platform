@@ -264,20 +264,16 @@ in
       postFixup = ''sed -r 's+main\(\)+main(sys.argv[1:])+g' -i $out/bin/.${pname}-wrapped'';
     };
 
-    # For the DMG tooling:
-    newestSDK = pkgs.darwin.apple_sdk_11_0;
-
     pyobjc = rec {
       version = "9.2";
 
       commonPreBuild = ''
+        # 1004 instead of 10.4, 1100 instead of 11.0 etc.
+        PyObjC_BUILD_RELEASE=$(echo "$MACOSX_DEPLOYMENT_TARGET" | awk -F. '{printf "%02d%02d\n", $1, $2}')
+
         # Force it to target our ‘darwinMinVersion’, it’s not recognized correctly:
         grep -RF -- '-DPyObjC_BUILD_RELEASE=%02d%02d' | cut -d: -f1 | while IFS= read -r file ; do
-          sed -r '/-DPyObjC_BUILD_RELEASE=%02d%02d/{s/%02d%02d/${
-          lib.concatMapStrings (lib.fixedWidthString 2 "0") (
-            lib.splitString "." newestSDK.stdenv.targetPlatform.darwinMinVersion
-          )
-        }/;n;d;}' -i "$file"
+          sed -r '/-DPyObjC_BUILD_RELEASE=%02d%02d/{s/%02d%02d/'"$PyObjC_BUILD_RELEASE"'/;n;d;}' -i "$file"
         done
 
         # impurities:
@@ -296,11 +292,7 @@ in
           inherit pname version;
           hash = "sha256-1zS5KR/skf9OOuOLnGg53r8Ct5wHMUR26H2o6QssaMM=";
         };
-        nativeBuildInputs = [newestSDK.xcodebuild pkgs.darwin.cctools];
-        buildInputs =
-          (with pkgs; [darwin.libffi])
-          ++ [newestSDK.objc4 newestSDK.libs.simd]
-          ++ (with newestSDK.frameworks; [Foundation GameplayKit MetalPerformanceShaders]);
+        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0") darwin.libffi];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type"];
         preBuild =
@@ -316,7 +308,6 @@ in
               sed -r "s+"sw_vers"+"/usr/bin/sw_vers"+g" -i "$file"
             done
           '';
-
         # XXX: We’re turning tests off, because they’re mostly working (0.54% failures among 4,600 tests),
         # and I don’t have any more time to investigate now (maybe in a Nixpkgs contribution in the future):
         #
@@ -335,8 +326,7 @@ in
           inherit pname version;
           hash = "sha256-79eAgIctjI3mwrl+Dk6smdYgOl0WN6oTXQcdRk6y21M=";
         };
-        nativeBuildInputs = [newestSDK.xcodebuild pkgs.darwin.cctools];
-        buildInputs = with newestSDK.frameworks; [Foundation AppKit];
+        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
         propagatedBuildInputs = [core];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         preBuild = commonPreBuild;
@@ -350,14 +340,47 @@ in
           inherit pname version;
           hash = "sha256-9YYYO5ue9/Fl8ERKe3FO2WXXn26SYXyq+GkVDc/Vpys=";
         };
-        nativeBuildInputs = [newestSDK.xcodebuild pkgs.darwin.cctools];
-        buildInputs = with newestSDK.frameworks; [Foundation CoreVideo Quartz];
+        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
         propagatedBuildInputs = [framework-Cocoa];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         preBuild = commonPreBuild;
         dontUseSetuptoolsCheck = true; # XXX: majority is passing
       };
     };
+
+    CLTools_Executables = let
+      mkSusDerivation = args:
+        pkgs.stdenvNoCC.mkDerivation (args
+          // {
+            dontBuild = true;
+            darwinDontCodeSign = true;
+            nativeBuildInputs = with pkgs; [cpio pbzx];
+            outputs = ["out"];
+            unpackPhase = ''
+              pbzx $src | cpio -idm
+            '';
+            passthru = {
+              inherit (args) version;
+            };
+          });
+    in
+      mkSusDerivation {
+        pname = "CLTools_Executables";
+        version = "11.0.0";
+        src = pkgs.fetchurl {
+          url = "http://swcdn.apple.com/content/downloads/46/21/001-89745-A_56FM390IW5/v1um2qppgfdnam2e9cdqcqu2r6k8aa3lis/CLTools_Executables.pkg";
+          sha256 = "0nvb1qx7l81l2wcl8wvgbpsg5rcn51ylhivqmlfr2hrrv3zrrpl0";
+        };
+        installPhase = ''
+          mv Library/Developer/CommandLineTools $out
+        '';
+      };
+
+    # How to get it in a saner way?
+    SetFile = pkgs.runCommand "SetFile" {} ''
+      mkdir -p $out/bin
+      cp ${CLTools_Executables}/usr/bin/SetFile $out/bin/
+    '';
 
     # dmgbuild doesn’t rely on Finder to customize appearance of the mounted DMT directory
     # Finder is unreliable and requires graphical environment
@@ -372,9 +395,10 @@ in
         hash = "sha256-QkVEECnUmEROZNzczKHLYTjSyoLz3V8v2uhuJWntgog=";
       };
       patches = [./dmgbuild--force-badge.diff];
+      buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
       propagatedBuildInputs = (with pythonPackages; [setuptools]) ++ [ds_store pyobjc.framework-Quartz];
       format = "pyproject";
-      preBuild = ''sed -r 's+/usr/bin/SetFile+${lib.getExe pkgs.darwin.stubs.setfile}+g' -i src/dmgbuild/core.py''; # impure
+      preBuild = ''sed -r 's+/usr/bin/SetFile+${lib.getExe SetFile}+g' -i src/dmgbuild/core.py''; # impure
     };
 
     mkBadge =
