@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use std::{
-    collections::HashMap,
-    fmt::{self},
-};
+use std::fmt::{self};
 
 use pallas_addresses::Address;
 use pallas_codec::minicbor::{self, Decode};
@@ -11,11 +8,13 @@ use pallas_codec::utils::Bytes;
 use pallas_primitives::{
     byron::Blake2b256,
     conway::{
-        Certificate, DRep, DatumHash, ExUnits, GovAction, GovActionId, Language, ProposalProcedure,
-        ScriptHash, Voter, VotingProcedures,
+        Anchor, Certificate, CommitteeColdCredential, Constitution, DRep, DRepVotingThresholds,
+        DatumHash, ExUnitPrices, ExUnits, GovActionId, Language, PoolVotingThresholds,
+        ProposalProcedure, ScriptHash, Voter, VotingProcedures,
     },
-    AddrKeyhash, AssetName, BoundedBytes, Coin, PolicyId, PoolKeyhash, ProtocolVersion,
-    StakeCredential, TransactionInput,
+    AddrKeyhash, AssetName, BoundedBytes, Coin, CostModel, Epoch, KeyValuePairs, Nullable,
+    PolicyId, PoolKeyhash, ProtocolVersion, RationalNumber, RewardAccount, Set, StakeCredential,
+    TransactionInput, UnitInterval,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -231,6 +230,107 @@ pub enum ConwayUtxosPredFailure {
     CollectErrors(Array<CollectError>),
 }
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/libs/cardano-ledger-core/src/Cardano/Ledger/Plutus/CostModels.hs#L107
+#[derive(Decode, Debug, PartialEq, Eq, Clone)]
+#[cbor(transparent)]
+pub struct DisplayCostModels(#[n(0)] pub OHashMap<i64, CostModel>);
+
+#[derive(Decode, Debug, PartialEq, Eq, Clone)]
+#[cbor(map)]
+pub struct DisplayProtocolParamUpdate {
+    #[n(0)]
+    pub minfee_a: Option<u64>,
+    #[n(1)]
+    pub minfee_b: Option<u64>,
+    #[n(2)]
+    pub max_block_body_size: Option<u64>,
+    #[n(3)]
+    pub max_transaction_size: Option<u64>,
+    #[n(4)]
+    pub max_block_header_size: Option<u64>,
+    #[n(5)]
+    pub key_deposit: Option<Coin>,
+    #[n(6)]
+    pub pool_deposit: Option<Coin>,
+    #[n(7)]
+    pub maximum_epoch: Option<Epoch>,
+    #[n(8)]
+    pub desired_number_of_stake_pools: Option<u64>,
+    #[n(9)]
+    pub pool_pledge_influence: Option<RationalNumber>,
+    #[n(10)]
+    pub expansion_rate: Option<UnitInterval>,
+    #[n(11)]
+    pub treasury_growth_rate: Option<UnitInterval>,
+
+    #[n(16)]
+    pub min_pool_cost: Option<Coin>,
+    #[n(17)]
+    pub ada_per_utxo_byte: Option<Coin>,
+    #[n(18)]
+    pub cost_models_for_script_languages: Option<DisplayCostModels>,
+    #[n(19)]
+    pub execution_costs: Option<ExUnitPrices>,
+    #[n(20)]
+    pub max_tx_ex_units: Option<ExUnits>,
+    #[n(21)]
+    pub max_block_ex_units: Option<ExUnits>,
+    #[n(22)]
+    pub max_value_size: Option<u64>,
+    #[n(23)]
+    pub collateral_percentage: Option<u64>,
+    #[n(24)]
+    pub max_collateral_inputs: Option<u64>,
+
+    #[n(25)]
+    pub pool_voting_thresholds: Option<PoolVotingThresholds>,
+    #[n(26)]
+    pub drep_voting_thresholds: Option<DRepVotingThresholds>,
+    #[n(27)]
+    pub min_committee_size: Option<u64>,
+    #[n(28)]
+    pub committee_term_limit: Option<Epoch>,
+    #[n(29)]
+    pub governance_action_validity_period: Option<Epoch>,
+    #[n(30)]
+    pub governance_action_deposit: Option<Coin>,
+    #[n(31)]
+    pub drep_deposit: Option<Coin>,
+    #[n(32)]
+    pub drep_inactivity_period: Option<Epoch>,
+    #[n(33)]
+    pub minfee_refscript_cost_per_byte: Option<UnitInterval>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DisplayGovAction {
+    ParameterChange(
+        Nullable<GovActionId>,
+        Box<DisplayProtocolParamUpdate>,
+        Nullable<ScriptHash>,
+    ),
+    HardForkInitiation(Nullable<GovActionId>, ProtocolVersion),
+    TreasuryWithdrawals(KeyValuePairs<RewardAccount, Coin>, Nullable<ScriptHash>),
+    NoConfidence(Nullable<GovActionId>),
+    UpdateCommittee(
+        Nullable<GovActionId>,
+        Set<CommitteeColdCredential>,
+        KeyValuePairs<CommitteeColdCredential, Epoch>,
+        UnitInterval,
+    ),
+    NewConstitution(Nullable<GovActionId>, Constitution),
+    Information,
+}
+
+// https://github.com/IntersectMBO/cardano-ledger/blob/09dc3774a434677ece12910b2c1c409de4cc2656/eras/conway/impl/src/Cardano/Ledger/Conway/Governance/Procedures.hs#L487
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct DisplayProposalProcedure {
+    pub deposit: Coin,
+    pub reward_account: RewardAccount,
+    pub gov_action: DisplayGovAction,
+    pub anchor: Anchor,
+}
+
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L365
 #[derive(Debug)]
 pub enum TagMismatchDescription {
@@ -244,7 +344,6 @@ pub enum FailureDescription {
     PlutusFailure(String, Bytes),
 }
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Plutus/Evaluate.hs#L77
 /* #[derive(Debug, Decode)]
 pub enum CollectError{
     #[n(0)] NoRedeemer(#[n(0)] ConwayPlutusPurpose),
@@ -254,6 +353,9 @@ pub enum CollectError{
 }
 
  */
+
+// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Plutus/Evaluate.hs#L77
+
 #[derive(Debug)]
 pub enum CollectError {
     NoRedeemer(ConwayPlutusPurpose),
@@ -269,46 +371,30 @@ pub enum ConwayContextError {
     CertificateNotSupported(ConwayTxCert),
     PlutusPurposeNotSupported(ConwayPlutusPurpose),
     CurrentTreasuryFieldNotSupported(DisplayCoin),
-    VotingProceduresFieldNotSupported(VotingProcedures),
-    ProposalProceduresFieldNotSupported(Vec<ProposalProcedure>), // is Vec == OSet ?
+    VotingProceduresFieldNotSupported(DisplayVotingProcedures),
+    ProposalProceduresFieldNotSupported(DisplayOSet<DisplayProposalProcedure>), // is Vec == OSet ?
     TreasuryDonationFieldNotSupported(DisplayCoin),
 }
-/* #[derive(Debug, Decode)]
-#[cbor(array)]
-pub enum ConwayContextError {
-    #[n(8)] BabbageContextError(  #[n(0)]BabbageContextError),
-    #[n(9)] CertificateNotSupported(  #[n(0)]ConwayTxCert) ,
-    #[n(10)]  PlutusPurposeNotSupported (#[n(0)] ConwayPlutusPurpose),
-    #[n(11)] CurrentTreasuryFieldNotSupported (  #[n(0)]DisplayCoin),
-    #[n(12)] VotingProceduresFieldNotSupported (  #[n(0)]VotingProcedures ),
-    #[n(13)] ProposalProceduresFieldNotSupported (  #[n(0)]Vec<ProposalProcedure>), // is Vec == OSet ?
-    #[n(14)] TreasuryDonationFieldNotSupported(  #[n(0)]DisplayCoin)
-} */
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxInfo.hs#L241
+// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Plutus/TxInfo.hs#L175
 // Flattened AlonzoContextError error into n1 and n7
-#[derive(Debug, Decode)]
+#[derive(Debug)]
 pub enum BabbageContextError {
-    #[n(0)]
-    ByronTxOutInContext(#[n(0)] String),
-    #[n(1)]
-    AlonzoMissingInput(#[n(0)] TransactionInput),
-    #[n(2)]
-    RedeemerPointerPointsToNothing(#[n(0)] String),
-    #[n(4)]
-    InlineDatumsNotSupported(#[n(0)] String),
-    #[n(5)]
-    ReferenceScriptsNotSupported(#[n(0)] String),
-    #[n(6)]
-    ReferenceInputsNotSupported(#[n(0)] String),
-    #[n(7)]
-    AlonzoTimeTranslationPastHorizon(#[n(0)] String),
+    ByronTxOutInContext(TxOutSource),
+    AlonzoMissingInput(TransactionInput),
+    RedeemerPointerPointsToNothing(PlutusPurpose),
+    InlineDatumsNotSupported(TxOutSource),
+    ReferenceScriptsNotSupported(TxOutSource),
+    ReferenceInputsNotSupported(CustomSet258<TransactionInput>),
+    AlonzoTimeTranslationPastHorizon(String),
 }
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Plutus/TxInfo.hs#L175
-pub enum AlonzoContextError {
-    TranslationLogicMissingInput(String),
-    TimeTranslationPastHorizon(String),
+// https://github.com/IntersectMBO/cardano-ledger/blob/09dc3774a434677ece12910b2c1c409de4cc2656/libs/cardano-ledger-core/src/Cardano/Ledger/Plutus/TxInfo.hs#L91
+#[derive(Debug)]
+pub enum TxOutSource {
+    TxOutFromInput(TransactionInput),
+    TxOutFromOutput(TxIx),
 }
 
 impl fmt::Display for ConwayUtxoPredFailure {
@@ -434,24 +520,24 @@ impl fmt::Display for ConwayUtxoPredFailure {
 #[derive(Debug)]
 pub enum ConwayGovPredFailure {
     GovActionsDoNotExist(Vec<GovActionId>), //  (NonEmpty (GovActionId (EraCrypto era)))
-    MalformedProposal(GovAction),           // GovAction era
+    MalformedProposal(DisplayGovAction),    // GovAction era
     ProposalProcedureNetworkIdMismatch(RewardAccountFielded, Network), // (RewardAccount (EraCrypto era)) Network
     TreasuryWithdrawalsNetworkIdMismatch(CustomSet258<RewardAccountFielded>, Network), // (Set.Set (RewardAccount (EraCrypto era))) Network
     ProposalDepositIncorrect(DisplayCoin, DisplayCoin), // !(Mismatch 'RelEQ Coin)
     DisallowedVoters(Vec<(Voter, GovActionId)>), // !(NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
     ConflictingCommitteeUpdate(CustomSet258<Credential>), // (Set.Set (Credential 'ColdCommitteeRole (EraCrypto era)))
-    ExpirationEpochTooSmall(HashMap<StakeCredential, EpochNo>), // Probably wrong credintial type!, epochno
-    InvalidPrevGovActionId(ProposalProcedure),                  // (ProposalProcedure era)
+    ExpirationEpochTooSmall(OHashMap<StakeCredential, EpochNo>), // Probably wrong credintial type!, epochno
+    InvalidPrevGovActionId(DisplayProposalProcedure),            // (ProposalProcedure era)
     VotingOnExpiredGovAction(Vec<(Voter, GovActionId)>), // (NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
     ProposalCantFollow(StrictMaybe<GovActionId>, ProtocolVersion, ProtocolVersion), //        (StrictMaybe (GovPurposeId 'HardForkPurpose era)) |
     InvalidPolicyHash(
         StrictMaybe<DisplayScriptHash>,
         StrictMaybe<DisplayScriptHash>,
     ), //        (StrictMaybe (ScriptHash (EraCrypto era)))    (StrictMaybe (ScriptHash (EraCrypto era)))
-    DisallowedProposalDuringBootstrap(ProposalProcedure), // (ProposalProcedure era)
+    DisallowedProposalDuringBootstrap(DisplayProposalProcedure), // (ProposalProcedure era)
     DisallowedVotesDuringBootstrap(Vec<(Voter, GovActionId)>), //        (NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
     VotersDoNotExist(Vec<Voter>),                              // (NonEmpty (Voter (EraCrypto era)))
-    ZeroTreasuryWithdrawals(GovAction),                        // (GovAction era)
+    ZeroTreasuryWithdrawals(DisplayGovAction),                 // (GovAction era)
     ProposalReturnAccountDoesNotExist(RewardAccountFielded),   // (RewardAccount (EraCrypto era))
     TreasuryWithdrawalReturnAccountsDoNotExist(Vec<RewardAccountFielded>), //(NonEmpty (RewardAccount (EraCrypto era)))
 }
@@ -459,9 +545,13 @@ pub enum ConwayGovPredFailure {
 // https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Certs.hs#L113
 #[derive(Debug)]
 pub enum ConwayCertsPredFailure {
-    WithdrawalsNotInRewardsCERTS(HashMap<RewardAccountFielded, DisplayCoin>),
+    WithdrawalsNotInRewardsCERTS(OHashMap<RewardAccountFielded, DisplayCoin>),
     CertFailure(ConwayCertPredFailure),
 }
+
+// HashMap loses the CBOR ordering when decoded
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct OHashMap<K, V>(pub Vec<(K, V)>);
 
 impl fmt::Display for ConwayCertsPredFailure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -469,7 +559,7 @@ impl fmt::Display for ConwayCertsPredFailure {
 
         match self {
             WithdrawalsNotInRewardsCERTS(m) => {
-                write!(f, "WithdrawalsNotInRewardsCERTS ({})", display_hashmap(m))
+                write!(f, "WithdrawalsNotInRewardsCERTS ({})", m.to_haskell_str())
             }
             CertFailure(e) => write!(f, "CertFailure ({})", e),
         }
@@ -556,7 +646,7 @@ pub enum ConwayPlutusPurpose {
     ConwayCertifying(AsItem<ConwayTxCert>),        // 2
     ConwayRewarding(AsItem<RewardAccountFielded>), // 3
     ConwayVoting(AsItem<Voter>),
-    ConwayProposing(AsItem<ProposalProcedure>),
+    ConwayProposing(AsItem<DisplayProposalProcedure>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L587
@@ -566,10 +656,18 @@ pub enum ConwayTxCert {
     ConwayTxCertPool(Certificate),
     ConwayTxCertGov(Certificate),
 }
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct DisplayVotingProcedures(#[n(0)] pub VotingProcedures);
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct AsIx(#[n(0)] pub u64);
+
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct TxIx(#[n(0)] pub u64);
+
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L357
 #[derive(Debug)]
 pub enum Delegatee {
@@ -619,7 +717,7 @@ pub struct ValidityInterval {
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/libs/cardano-ledger-core/src/Cardano/Ledger/UTxO.hs#L83
 #[derive(Debug)]
-pub struct Utxo(pub HashMap<TransactionInput, BabbageTxOut>);
+pub struct Utxo(pub OHashMap<TransactionInput, BabbageTxOut>);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L383C9-L383C20
 #[derive(Debug)]
@@ -667,7 +765,9 @@ pub enum ConwayTxOut {}
 // https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/mary/impl/src/Cardano/Ledger/Mary/Value.hs#L162C9-L162C19
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
-pub struct DisplayMultiAsset(#[n(0)] pub HashMap<DisplayPolicyId, HashMap<DisplayAssetName, u64>>);
+pub struct DisplayMultiAsset(
+    #[n(0)] pub OHashMap<DisplayPolicyId, OHashMap<DisplayAssetName, u64>>,
+);
 
 #[derive(Debug, Decode, Hash, PartialEq, Eq)]
 #[cbor(transparent)]
@@ -950,6 +1050,11 @@ pub struct MaryValue(#[n(0)] pub DisplayCoin);
 #[derive(Debug)]
 pub struct CustomSet258<T>(pub Vec<T>);
 
+// https://github.com/IntersectMBO/cardano-ledger/blob/3dd7401424e8d50cc9f19feef1589f1ce0d83ed6/libs/cardano-data/src/Data/OSet/Strict.hs#L67
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct DisplayOSet<T>(#[n(0)] pub CustomSet258<T>);
+
 /*
 **Helper functions for Display'ing the types.
 */
@@ -983,11 +1088,6 @@ fn display_option<T: Display>(opt: &Option<T>) -> String {
         Some(x) => format!("{}", x),
         None => "None".to_string(),
     }
-}
-
-fn display_hashmap<K: Display, V: Display>(map: &HashMap<K, V>) -> String {
-    let entries: Vec<String> = map.iter().map(|t| display_tuple(&t)).collect();
-    format!("fromList [{}]", entries.join(" "))
 }
 
 fn display_bytes_as_key_hash(b: &Bytes) -> String {

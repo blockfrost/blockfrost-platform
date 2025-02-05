@@ -3,7 +3,7 @@ use super::*;
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_01() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 1, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000000, 1, None)
 }
 
 #[test]
@@ -15,7 +15,7 @@ fn proptest_ApplyTxErr_Conway_1000_size_02() {
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_03() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 3, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 100000, 3, None)
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn proptest_ApplyTxErr_Conway_1000_size_09() {
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_10() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 10, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 10, None)
 }
 
 #[test]
