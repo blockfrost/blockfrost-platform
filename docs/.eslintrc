@@ -1,5 +1,5 @@
 {
-  "extends": ["eslint:recommended", "next", "prettier"]
+  "extends": ["eslint:recommended", "next", "prettier"],
   "rules": {
     "no-dupe-keys": "off"
   }
