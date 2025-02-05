@@ -319,13 +319,9 @@ impl<'b, C, K: pallas_codec::minicbor::Decode<'b, C>, V: pallas_codec::minicbor:
     Decode<'b, C> for OHashMap<K, V>
 {
     fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        let v: Vec<(K, V)> = d
-            .map_iter_with::<C, K, V>(ctx)
-            .unwrap()
-            .map(|item| item.unwrap())
-            .collect();
+        let v: Result<Vec<(K, V)>, _> = d.map_iter_with::<C, K, V>(ctx)?.collect();
 
-        Ok(OHashMap(v))
+        Ok(OHashMap(v?))
     }
 }
 
