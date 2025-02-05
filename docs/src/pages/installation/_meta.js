@@ -1,6 +1,6 @@
 let config = {
+  installers: "Official installers ⚙️",
   source: "From source code",
-  homebrew: "Using Homebrew",
   nix: "Using Nix",
   docker: "Using Docker",
 };
