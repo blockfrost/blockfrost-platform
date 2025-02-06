@@ -698,6 +698,9 @@ impl<'b, C> Decode<'b, C> for PurposeAs {
 
         match d.probe().datatype()? {
             Type::U8 => Ok(Ix(d.decode_with(ctx)?)),
+            Type::U16 => Ok(Ix(d.decode_with(ctx)?)),
+            Type::U32 => Ok(Ix(d.decode_with(ctx)?)),
+            Type::U64 => Ok(Ix(d.decode_with(ctx)?)),
             Type::Bytes => Ok(Item(d.decode_with(ctx)?)),
             _ => Err(decode::Error::message(format!(
                 "unknown datatype while decoding PurposeAs: {:?}",
