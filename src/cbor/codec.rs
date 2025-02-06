@@ -732,6 +732,7 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
             d.map()?;
 
             // key 0
+            d.u8()?;
             let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
 
             // key 1
