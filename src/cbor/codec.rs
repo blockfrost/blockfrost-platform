@@ -759,10 +759,12 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
 
             // key 3
             // inner cbor
+            let pos = d.position();
             let script = if d.datatype().unwrap_or(Type::Null) == Type::U8 && d.u8()? == 3 {
                 let wrapped: CborWrap<EraScript> = d.decode()?;
                 Some(wrapped.0)
             } else {
+                d.set_position(pos);
                 None
             };
 
