@@ -9,7 +9,7 @@ fn proptest_ApplyTxErr_Conway_1000_size_01() {
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_02() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 2, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 100000, 2, None)
 }
 
 #[test]
@@ -27,31 +27,31 @@ fn proptest_ApplyTxErr_Conway_1000_size_04() {
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_05() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 5, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 5, None)
 }
 
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_06() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 6, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 6, None)
 }
 
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_07() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 7, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 7, None)
 }
 
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_08() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 8, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 8, None)
 }
 
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_09() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 9, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 9, None)
 }
 
 #[test]
@@ -62,14 +62,68 @@ fn proptest_ApplyTxErr_Conway_1000_size_10() {
 
 #[test]
 #[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_12() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 12, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_15() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 15, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_16() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 16, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_17() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 17, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_18() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 18, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_19() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 19, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_20() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 20, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 20, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_25() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 25, None)
 }
 
 #[test]
 #[allow(non_snake_case)]
 fn proptest_ApplyTxErr_Conway_1000_size_30() {
-    proptest_with_params(CaseType::ApplyTxErr_Conway, 1000, 30, None)
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 30, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_35() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 35, None)
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_1000_size_40() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 10000, 40, None)
 }
 
 /// Tests the native Rust deserializer with the given params.
@@ -126,10 +180,7 @@ fn proptest_with_params(
 
         // How many failing examples to show verbatim in test output:
         let show_max = match generator_size {
-            1 => 5,
-            s if s < 5 => 3,
-            s if s < 10 => 1,
-            _ => 0,
+            _ => 5,
         };
 
         if show_max > 0 {
