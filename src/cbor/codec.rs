@@ -9,16 +9,15 @@ use pallas_primitives::conway::Certificate;
 use super::{
     haskell_display::HaskellDisplay,
     haskell_types::{
-        ApplyConwayTxPredError, ApplyTxError, BabbageContextError, BabbageTxOut, CborBytes,
-        CollectError, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError,
-        ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure,
-        ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure,
-        ConwayUtxosPredFailure, Credential, DatumEnum, DisplayAddress, DisplayGovAction,
-        DisplayHash, DisplayProposalProcedure, DisplayTransactionOutput, DisplayValue, EpochNo,
-        EraScript, FailureDescription, Mismatch, Network, OHashMap, PlutusDataBytes, PlutusPurpose,
-        PurposeAs, RewardAccountFielded, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo,
-        StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxOutSource, TxValidationError,
-        Utxo, ValidityInterval,
+        ApplyConwayTxPredError, ApplyTxError, BabbageContextError, BabbageTxOut, CollectError,
+        ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError, ConwayDelegPredFailure,
+        ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
+        ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
+        DatumEnum, DisplayAddress, DisplayGovAction, DisplayHash, DisplayProposalProcedure,
+        DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, OHashMap,
+        PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra,
+        ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
+        TxOutSource, TxValidationError, Utxo, ValidityInterval,
     },
 };
 
@@ -777,23 +776,6 @@ impl<'b, C> Decode<'b, C> for PurposeAs {
     }
 }
 
-impl<'b, C> Decode<'b, C> for DisplayTransactionOutput {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        use pallas_codec::minicbor::data::Type;
-        match d.datatype()? {
-            Type::Array | Type::ArrayIndef => {
-                Ok(DisplayTransactionOutput::Legacy(d.decode_with(ctx)?))
-            }
-            Type::Map | Type::MapIndef => {
-                Ok(DisplayTransactionOutput::PostAlonzo(d.decode_with(ctx)?))
-            }
-            _ => Err(minicbor::decode::Error::message(
-                "invalid type for DisplayTransactionOutput",
-            )),
-        }
-    }
-}
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L484
 // This is replaced by TransactionOutput from pallas
 impl<'b, C> Decode<'b, C> for BabbageTxOut {
@@ -950,26 +932,6 @@ impl<'b, C> Decode<'b, C> for Utxo {
     }
 }
 
-impl<'b, T, C> Decode<'b, C> for CborBytes<T>
-where
-    T: Decode<'b, C>,
-{
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        let tag = d.tag()?;
-        if tag.as_u64() != 24 {
-            return Err(decode::Error::message(format!(
-                "unexpected tag while decoding tag 24: {}",
-                tag
-            )));
-        }
-
-        let cbor = d.bytes()?;
-        let wrapped = pallas_codec::minicbor::decode_with(cbor, ctx)?;
-
-        Ok(CborBytes(wrapped))
-    }
-}
-
 impl<'b, C> Decode<'b, C> for PlutusDataBytes {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let tag = d.tag()?;
@@ -979,8 +941,6 @@ impl<'b, C> Decode<'b, C> for PlutusDataBytes {
                 tag
             )));
         }
-
-        //let cbor = d.bytes()?;
 
         Ok(PlutusDataBytes(d.decode_with(ctx)?))
     }
