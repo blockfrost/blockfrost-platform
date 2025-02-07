@@ -30,16 +30,17 @@ use pallas_primitives::{
 use pallas_traverse::ComputeHash;
 
 use super::haskell_types::{
-    Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CollectError, ConwayCertPredFailure,
-    ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure,
-    ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
-    DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin,
-    DisplayCostModels, DisplayDatumHash, DisplayGovAction, DisplayHash, DisplayMultiAsset,
-    DisplayOSet, DisplayPolicyId, DisplayProposalProcedure, DisplayProtocolParamUpdate,
-    DisplayScriptHash, DisplayValue, DisplayVotingProcedures, EpochNo, EraScript,
-    FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes, PlutusPurpose,
-    PurposeAs, RewardAccountFielded, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
-    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
+    ApplyConwayTxPredError, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CollectError,
+    ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure,
+    ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure,
+    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DatumEnum, Delegatee, DeltaCoin,
+    DisplayAddress, DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash,
+    DisplayGovAction, DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId,
+    DisplayProposalProcedure, DisplayProtocolParamUpdate, DisplayScriptHash, DisplayValue,
+    DisplayVotingProcedures, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch,
+    OHashMap, PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash,
+    ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
+    TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -48,6 +49,40 @@ pub trait HaskellDisplay {
     fn to_haskell_str(&self) -> String;
     fn to_haskell_str_p(&self) -> String {
         format!("({})", self.to_haskell_str())
+    }
+}
+
+impl fmt::Display for ApplyConwayTxPredError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ApplyConwayTxPredError::*;
+
+        match self {
+            ConwayUtxowFailure(e) => write!(f, "ConwayUtxowFailure {}", e),
+            ConwayCertsFailure(e) => write!(f, "ConwayCertsFailure ({})", e),
+            ConwayGovFailure(e) => write!(f, "ConwayGovFailure ({})", e),
+            ConwayWdrlNotDelegatedToDRep(v) => {
+                write!(f, "ConwayWdrlNotDelegatedToDRep ({})", v.to_haskell_str())
+            }
+            ConwayTreasuryValueMismatch(c1, c2) => {
+                write!(
+                    f,
+                    "ConwayTreasuryValueMismatch ({}) ({})",
+                    c1.to_haskell_str(),
+                    c2.to_haskell_str()
+                )
+            }
+            ConwayTxRefScriptsSizeTooBig(s1, s2) => {
+                write!(
+                    f,
+                    "ConwayTxRefScriptsSizeTooBig {} {}",
+                    s1.to_haskell_str_p(),
+                    s2.to_haskell_str_p()
+                )
+            }
+            ConwayMempoolFailure(e) => {
+                write!(f, "ConwayMempoolFailure {}", e.to_haskell_str())
+            }
+        }
     }
 }
 
@@ -286,6 +321,124 @@ impl fmt::Display for ConwayGovPredFailure {
                     f,
                     "TreasuryWithdrawalReturnAccountsDoNotExist ({})",
                     s.to_haskell_str()
+                )
+            }
+        }
+    }
+}
+
+impl fmt::Display for ConwayUtxoPredFailure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ConwayUtxoPredFailure::*;
+
+        match self {
+            UtxosFailure(e) => write!(f, "(UtxosFailure {})", e.to_haskell_str_p()),
+            BadInputsUTxO(e) => write!(f, "(BadInputsUTxO ({}))", e.to_haskell_str()),
+            OutsideValidityIntervalUTxO(vi, slot) => {
+                write!(
+                    f,
+                    "(OutsideValidityIntervalUTxO {} {})",
+                    vi.to_haskell_str(),
+                    slot.to_haskell_str_p()
+                )
+            }
+            MaxTxSizeUTxO(n1, n2) => write!(
+                f,
+                "(MaxTxSizeUTxO {} {})",
+                n1.to_haskell_str(),
+                n2.to_haskell_str()
+            ),
+            InputSetEmptyUTxO() => write!(f, "InputSetEmptyUTxO"),
+            FeeTooSmallUTxO(expected, supplied) => {
+                write!(
+                    f,
+                    "(FeeTooSmallUTxO ({}) ({}))",
+                    expected.to_haskell_str(),
+                    supplied.to_haskell_str()
+                )
+            }
+            ValueNotConservedUTxO(expected, supplied) => {
+                write!(
+                    f,
+                    "(ValueNotConservedUTxO ({}) ({}))",
+                    expected.to_haskell_str(),
+                    supplied.to_haskell_str()
+                )
+            }
+            WrongNetwork(network, addrs) => {
+                write!(
+                    f,
+                    "(WrongNetwork {} {})",
+                    network.to_haskell_str(),
+                    addrs.to_haskell_str_p()
+                )
+            }
+            WrongNetworkWithdrawal(network, accounts) => write!(
+                f,
+                "(WrongNetworkWithdrawal {} {})",
+                network.to_haskell_str(),
+                accounts.to_haskell_str_p()
+            ),
+            OutputTooSmallUTxO(tx_outs) => {
+                write!(f, "(OutputTooSmallUTxO {})", tx_outs.to_haskell_str_p())
+            }
+            OutputBootAddrAttrsTooBig(outputs) => {
+                write!(
+                    f,
+                    "(OutputBootAddrAttrsTooBig {})",
+                    outputs.to_haskell_str_p()
+                )
+            }
+            OutputTooBigUTxO(outputs) => {
+                write!(f, "(OutputTooBigUTxO {})", outputs.to_haskell_str())
+            }
+            InsufficientCollateral(balance, required) => {
+                write!(
+                    f,
+                    "(InsufficientCollateral ({}) ({}))",
+                    balance.to_haskell_str(),
+                    required.to_haskell_str()
+                )
+            }
+            ScriptsNotPaidUTxO(utxo) => {
+                write!(f, "(ScriptsNotPaidUTxO {})", utxo.to_haskell_str_p())
+            }
+            ExUnitsTooBigUTxO(u1, u2) => write!(
+                f,
+                "(ExUnitsTooBigUTxO {} {})",
+                u1.to_haskell_str_p(),
+                u2.to_haskell_str_p()
+            ),
+            CollateralContainsNonADA(value) => {
+                write!(f, "(CollateralContainsNonADA ({}))", value.to_haskell_str())
+            }
+            WrongNetworkInTxBody(n1, n2) => write!(
+                f,
+                "(WrongNetworkInTxBody {} {})",
+                n1.to_haskell_str(),
+                n2.to_haskell_str()
+            ),
+            OutsideForecast(slot) => write!(f, "(OutsideForecast ({}))", slot.to_haskell_str()),
+            TooManyCollateralInputs(i1, i2) => write!(f, "(TooManyCollateralInputs {} {})", i1, i2),
+            NoCollateralInputs() => write!(f, "NoCollateralInputs"),
+            IncorrectTotalCollateralField(provided, declared) => write!(
+                f,
+                "(IncorrectTotalCollateralField {} {})",
+                provided.to_haskell_str_p(),
+                declared.to_haskell_str_p()
+            ),
+            BabbageOutputTooSmallUTxO(outputs) => {
+                write!(
+                    f,
+                    "(BabbageOutputTooSmallUTxO {})",
+                    outputs.to_haskell_str_p()
+                )
+            }
+            BabbageNonDisjointRefInputs(inputs) => {
+                write!(
+                    f,
+                    "(BabbageNonDisjointRefInputs ({}))",
+                    inputs.to_haskell_str()
                 )
             }
         }
