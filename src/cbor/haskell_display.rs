@@ -35,7 +35,7 @@ use super::haskell_types::{
     Addr28Extra, AddressBytes, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CborBytes,
     CollectError, CompactForm, ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure,
     ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
-    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, CustomSet258, DataHash32,
+    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DataHash32,
     DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin,
     DisplayCostModels, DisplayDatumHash, DisplayGovAction, DisplayHash, DisplayMultiAsset,
     DisplayOSet, DisplayPolicyId, DisplayProposalProcedure, DisplayProtocolParamUpdate,
@@ -1029,15 +1029,6 @@ impl HaskellDisplay for Voter {
                 format!("StakePoolVoter ({})", addr.as_key_hash())
             }
         }
-    }
-}
-
-impl<T> HaskellDisplay for CustomSet258<T>
-where
-    T: HaskellDisplay,
-{
-    fn to_haskell_str(&self) -> String {
-        self.0.as_from_list()
     }
 }
 
@@ -2461,8 +2452,8 @@ where
 
 impl HaskellDisplay for DisplayOSet<DisplayProposalProcedure> {
     fn to_haskell_str(&self) -> String {
-        let seq = self.0 .0.as_strict_seq();
-        let mut sorted_vec = self.0 .0.clone();
+        let seq = self.0.deref().as_strict_seq();
+        let mut sorted_vec = self.0.deref().clone();
         sorted_vec.sort_by(|a, b| a.deposit.cmp(&b.deposit));
         format!(
             "OSet {{osSSeq = {}, osSet = {}}}",

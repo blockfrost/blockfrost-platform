@@ -13,7 +13,7 @@ use super::{
         CollectError, ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError,
         ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure,
         ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure, ConwayUtxoWPredFailure,
-        ConwayUtxosPredFailure, Credential, CustomSet258, DatumEnum, DisplayAddress,
+        ConwayUtxosPredFailure, Credential, DatumEnum, DisplayAddress,
         DisplayGovAction, DisplayHash, DisplayProposalProcedure, DisplayTransactionOutput,
         DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, OHashMap,
         PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra,
@@ -880,22 +880,6 @@ impl<'b> Decode<'b, ()> for Utxo {
     fn decode(d: &mut Decoder<'b>, _ctx: &mut ()) -> Result<Self, decode::Error> {
         let tx_vec = d.decode()?;
         Ok(Utxo(tx_vec))
-    }
-}
-
-impl<'b, T, C> Decode<'b, C> for CustomSet258<T>
-where
-    T: Decode<'b, C>,
-{
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        let tag = d.tag()?;
-        if tag.as_u64() != 258 {
-            return Err(decode::Error::message(format!(
-                "unexpected tag while decoding CustomSet258: {}",
-                tag
-            )));
-        }
-        Ok(Self(d.decode_with(ctx)?))
     }
 }
 
