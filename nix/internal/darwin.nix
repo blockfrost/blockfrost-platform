@@ -165,74 +165,211 @@ in
         /usr/bin/iconutil --convert icns --output $out iconset.iconset
       '';
 
-    installer = dmg-image;
+    installer = unsigned-dmg;
 
-    dmg-image = let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
-      # See <https://dmgbuild.readthedocs.io/en/latest/settings.html>:
-      settingsPy = let
-        s = lib.escapeShellArg;
-      in
-        pkgs.writeText "settings.py" ''
-          import os.path
-
-          app_path = defines.get("app_path", "/non-existent.app")
-          icon_path = defines.get("icon_path", "/non-existent.icns")
-          app_name = os.path.basename(app_path)
-
-          # UDBZ (bzip2) is 154 MiB, while UDZO (gzip) is 204 MiB
-          format = "UDBZ"
-          size = None
-          files = [app_path]
-          symlinks = {"Applications": "/Applications"}
-          hide_extension = [ app_name ]
-
-          icon = icon_path
-
-          icon_locations = {app_name: (140, 120), "Applications": (500, 120)}
-          background = "builtin-arrow"
-
-          show_status_bar = False
-          show_tab_view = False
-          show_toolbar = False
-          show_pathbar = False
-          show_sidebar = False
-          sidebar_width = 180
-
-          window_rect = ((200, 200), (640, 320))
-          default_view = "icon-view"
-          show_icon_preview = False
-
-          include_icon_view_settings = "auto"
-          include_list_view_settings = "auto"
-
-          arrange_by = None
-          grid_offset = (0, 0)
-          grid_spacing = 100
-          scroll_position = (0, 0)
-          label_pos = "bottom"  # or 'right'
-          text_size = 16
-          icon_size = 128
-
-          # license = { … }
-        '';
+    # See <https://dmgbuild.readthedocs.io/en/latest/settings.html>:
+    dmgbuildSettingsPy = let
+      s = lib.escapeShellArg;
     in
-      pkgs.runCommand "blockfrost-platform-dmg" {
-        passthru = {inherit outFileName;};
-      } ''
-        mkdir -p $out
-        target=$out/${outFileName}
+      pkgs.writeText "settings.py" ''
+        import os.path
 
-        ${dmgbuild}/bin/dmgbuild \
-          -D app_path="$(echo ${app-bundle}/Applications/*.app)" \
-          -D icon_path=${badgeIcon} \
-          -s ${settingsPy} \
-          ${lib.escapeShellArg prettyName} $target
+        app_path = defines.get("app_path", "/non-existent.app")
+        icon_path = defines.get("icon_path", "/non-existent.icns")
+        app_name = os.path.basename(app_path)
+
+        # UDBZ (bzip2) is 154 MiB, while UDZO (gzip) is 204 MiB
+        format = "UDBZ"
+        size = None
+        files = [app_path]
+        symlinks = {"Applications": "/Applications"}
+        hide_extension = [ app_name ]
+
+        icon = icon_path
+
+        icon_locations = {app_name: (140, 120), "Applications": (500, 120)}
+        background = "builtin-arrow"
+
+        show_status_bar = False
+        show_tab_view = False
+        show_toolbar = False
+        show_pathbar = False
+        show_sidebar = False
+        sidebar_width = 180
+
+        window_rect = ((200, 200), (640, 320))
+        default_view = "icon-view"
+        show_icon_preview = False
+
+        include_icon_view_settings = "auto"
+        include_list_view_settings = "auto"
+
+        arrange_by = None
+        grid_offset = (0, 0)
+        grid_spacing = 100
+        scroll_position = (0, 0)
+        label_pos = "bottom"  # or 'right'
+        text_size = 16
+        icon_size = 128
+
+        # license = { … }
+      '';
+
+    # XXX: this needs to be `nix run` on `iog-mac-studio-arm-2-signing` or a similar machine.
+    # It can’t be a pure derivation because it needs to impurely access the Apple signing machinery.
+    make-signed-dmg = make-dmg {doSign = true;};
+
+    unsigned-dmg = pkgs.stdenv.mkDerivation {
+      name = "dmg-image";
+      dontUnpack = true;
+      buildPhase = ''
+        ${make-dmg {doSign = false;}}/bin/* | tee make-installer.log
+      '';
+      installPhase = ''
+        mkdir -p $out
+        cp $(tail -n 1 make-installer.log) $out/
 
         # Make it downloadable from Hydra:
         mkdir -p $out/nix-support
-        echo "file binary-dist \"$target\"" >$out/nix-support/hydra-build-products
+        echo "file binary-dist \"$(echo $out/*.dmg)\"" >$out/nix-support/hydra-build-products
       '';
+    };
+
+    make-dmg = {doSign ? false}: let
+      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
+      credentials = "/var/lib/buildkite-agent/signing.sh";
+      codeSigningConfig = "/var/lib/buildkite-agent/code-signing-config.json";
+      signingConfig = "/var/lib/buildkite-agent/signing-config.json";
+      packAndSign = pkgs.writeShellApplication {
+        name = "pack-and-sign";
+        runtimeInputs = with pkgs; [bash coreutils jq];
+        text = ''
+          set -euo pipefail
+
+          ${
+            if doSign
+            then ''
+              codeSigningIdentity=$(jq -r .codeSigningIdentity ${codeSigningConfig})
+              codeSigningKeyChain=$(jq -r .codeSigningKeyChain ${codeSigningConfig})
+              # unused: signingIdentity=$(jq -r .signingIdentity ${signingConfig})
+              # unused: signingKeyChain=$(jq -r .signingKeyChain ${signingConfig})
+
+              echo "Checking if notarization credentials are defined..."
+              if [ -z "''${NOTARY_USER:-}" ] || [ -z "''${NOTARY_PASSWORD:-}" ] || [ -z "''${NOTARY_TEAM_ID:-}" ] ; then
+                echo >&2 "Fatal: please set \$NOTARY_USER, \$NOTARY_PASSWORD, and \$NOTARY_TEAM_ID"
+                exit 1
+              fi
+            ''
+            else ''
+              echo >&2 "Warning: the DMG will be unsigned"
+            ''
+          }
+
+          workDir=$(mktemp -d)
+          appName=${lib.escapeShellArg prettyName}.app
+          appDir=${app-bundle}/Applications/"$appName"
+
+          echo "Info: workDir = $workDir"
+          cd "$workDir"
+
+          echo "Copying..."
+          cp -r "$appDir" ./.
+          chmod -R +w .
+
+          bundlePath="$workDir/$appName"
+
+          ${
+            if doSign
+            then ''
+              echo
+              echo "Signing code..."
+
+              # Ensure the code signing identity is found and set the keychain search path:
+              security show-keychain-info "$codeSigningKeyChain"
+              security find-identity -v -p codesigning "$codeSigningKeyChain"
+              security list-keychains -d user -s "$codeSigningKeyChain"
+
+              # Sign the whole component deeply
+              codesign \
+                --force --verbose=4 --deep --strict --timestamp --options=runtime \
+                --entitlements ${./darwin-entitlements.xml} \
+                --sign "$codeSigningIdentity" \
+                "$bundlePath"
+
+              # Verify the signing
+              codesign --verbose=4 --verify --deep --strict "$bundlePath"
+              codesign --verbose=4 --verify --deep --strict --display -r- "$bundlePath"
+              codesign -d --entitlements :- "$bundlePath"
+            ''
+            else ""
+          }
+
+          echo
+          echo "Making the DMG..."
+          ${dmgbuild}/bin/dmgbuild \
+            -D app_path="$bundlePath" \
+            -D icon_path=${badgeIcon} \
+            -s ${dmgbuildSettingsPy} \
+            ${lib.escapeShellArg prettyName} ${outFileName}
+
+          ${
+            if doSign
+            then ''
+              # FIXME: this doesn’t work outside of `buildkite-agent`, it seems:
+              #(
+              #  source ${credentials}
+              #  security unlock-keychain -p "$SIGNING" "$signingKeyChain"
+              #)
+
+              echo
+              echo "Signing the DMG..."
+              codesign \
+                --force --verbose=4 --timestamp --options=runtime \
+                --sign "$codeSigningIdentity" \
+                ${outFileName}
+
+              echo
+              echo "Submitting for notarization..."
+              xcrun notarytool submit \
+                --apple-id "$NOTARY_USER" \
+                --password "$NOTARY_PASSWORD" \
+                --team-id "$NOTARY_TEAM_ID" \
+                --wait ${outFileName}
+
+              echo
+              echo "Stapling the notarization ticket..."
+              xcrun stapler staple ${outFileName}
+            ''
+            else ""
+          }
+
+          echo
+          echo "Done, you can upload it to GitHub releases:"
+          echo "$workDir"/${outFileName}
+        '';
+      };
+    in
+      pkgs.writeShellApplication {
+        name = "make-dmg";
+        runtimeInputs = with pkgs; [bash coreutils jq];
+        text = ''
+          set -euo pipefail
+          cd /
+          ${
+            if doSign
+            then ''
+              exec sudo -u buildkite-agent \
+                "NOTARY_USER=''${NOTARY_USER:-}" \
+                "NOTARY_PASSWORD=''${NOTARY_PASSWORD:-}" \
+                "NOTARY_TEAM_ID=''${NOTARY_TEAM_ID:-}" \
+                ${lib.getExe packAndSign}
+            ''
+            else ''
+              exec ${lib.getExe packAndSign}
+            ''
+          }
+        '';
+      };
 
     pythonPackages = pkgs.python3Packages;
 
@@ -377,10 +514,13 @@ in
       };
 
     # How to get it in a saner way?
-    SetFile = pkgs.runCommand "SetFile" {} ''
-      mkdir -p $out/bin
-      cp ${CLTools_Executables}/usr/bin/SetFile $out/bin/
-    '';
+    SetFile =
+      pkgs.runCommand "SetFile" {
+        meta.mainProgram = "SetFile";
+      } ''
+        mkdir -p $out/bin
+        cp ${CLTools_Executables}/usr/bin/SetFile $out/bin/
+      '';
 
     # dmgbuild doesn’t rely on Finder to customize appearance of the mounted DMT directory
     # Finder is unreliable and requires graphical environment
