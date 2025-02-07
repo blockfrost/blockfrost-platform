@@ -328,15 +328,11 @@ impl<'b, C> Decode<'b, C> for ConwayGovPredFailure {
 
             9 => Ok(VotingOnExpiredGovAction(d.decode_with(ctx)?)),
 
-            10 => {
-                // d.array()?;
-                let a = d.decode_with(ctx)?;
-                Ok(ProposalCantFollow(
-                    a,
-                    d.decode_with(ctx)?,
-                    d.decode_with(ctx)?,
-                ))
-            }
+            10 => Ok(ProposalCantFollow(
+                d.decode_with(ctx)?,
+                d.decode_with(ctx)?,
+                d.decode_with(ctx)?,
+            )),
             11 => Ok(InvalidPolicyHash(d.decode_with(ctx)?, d.decode_with(ctx)?)),
             12 => Ok(DisallowedProposalDuringBootstrap(d.decode_with(ctx)?)),
             13 => Ok(DisallowedVotesDuringBootstrap(d.decode_with(ctx)?)),
@@ -869,7 +865,6 @@ impl<'b, C> Decode<'b, C> for EraScript {
     }
 }
 
-// not tested yet
 impl<'b, C> Decode<'b, C> for TimelockRaw {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
@@ -891,7 +886,6 @@ impl<'b, C> Decode<'b, C> for TimelockRaw {
     }
 }
 
-// not tested yet
 impl<'b, C> Decode<'b, C> for Timelock {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let first = d.position();
