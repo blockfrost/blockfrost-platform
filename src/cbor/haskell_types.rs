@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fmt::{self};
 
 use pallas_addresses::Address;
@@ -9,8 +7,8 @@ use pallas_primitives::{
     byron::Blake2b256,
     conway::{
         Anchor, Certificate, CommitteeColdCredential, Constitution, DRep, DRepVotingThresholds,
-        DatumHash, ExUnitPrices, ExUnits, GovActionId, Language, PoolVotingThresholds,
-        ProposalProcedure, ScriptHash, Voter, VotingProcedures,
+        DatumHash, ExUnitPrices, ExUnits, GovActionId, Language, PoolVotingThresholds, ScriptHash,
+        Voter, VotingProcedures,
     },
     AddrKeyhash, AssetName, BoundedBytes, Coin, CostModel, Epoch, KeyValuePairs, Nullable,
     PolicyId, PoolKeyhash, ProtocolVersion, RationalNumber, RewardAccount, Set, StakeCredential,
@@ -18,7 +16,6 @@ use pallas_primitives::{
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
-use std::fmt::Display;
 
 use super::haskell_display::HaskellDisplay;
 
@@ -720,16 +717,6 @@ pub struct ValidityInterval {
 pub struct Utxo(pub OHashMap<TransactionInput, BabbageTxOut>);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L383C9-L383C20
-#[derive(Debug)]
-pub struct CompactAddr();
-
-#[derive(Debug)]
-pub struct CompactForm();
-#[derive(Debug)]
-pub struct Addr28Extra(u64, u64, u64, u64);
-#[derive(Debug)]
-
-pub struct DataHash32(u64, u64, u64, u64);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/master/eras/conway/impl/src/Cardano/Ledger/Conway/TxOut.hs
 /*// https://github.com/IntersectMBO/cardano-ledger/blob/0d20d716fc15dc0b7648c448cbd735bebb7521b8/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L130
@@ -855,12 +842,16 @@ pub struct EpochNo(#[n(0)] pub u64);
 pub struct DeltaCoin(#[n(0)] pub i32);
 
 #[derive(Debug)]
-//#[cbor(transparent)]
 pub struct Mismatch<T>(pub T, pub T)
-// supplied, expecte
 where
     T: HaskellDisplay;
 
+/// Represents an optional value that can either be present (`Just`) or absent (`Nothing`).
+///
+/// This enum is used to handle cases where a value might or might not be available, similar to `Option` in Rust.
+/// It provides a way to explicitly represent the absence of a value.
+///
+/// In CBOR, this value comes in an array, so Rust's Option doesn't handle it.
 #[derive(Debug)]
 pub enum StrictMaybe<T: HaskellDisplay> {
     Just(T),
@@ -883,8 +874,6 @@ impl From<&[u8]> for StrictMaybe<ScriptHash> {
         }
     }
 }
-
-pub struct InvalidPrevGovActionId(ProposalProcedure);
 
 // RewardAcount is serialized into bytes: https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L135
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -1029,64 +1018,6 @@ pub struct MaryValue(#[n(0)] pub DisplayCoin);
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct DisplayOSet<T>(#[n(0)] pub Set<T>);
-
-/*
-**Helper functions for Display'ing the types.
-*/
-fn display_tuple<T: Display, U: Display>(t: &(T, U)) -> String {
-    format!("({},{})", t.0, t.1)
-}
-
-fn display_tuple_vec<T: Display, U: Display>(vec: &[(T, U)]) -> String {
-    vec.iter()
-        .map(|x| display_tuple(x))
-        .collect::<Vec<String>>()
-        .join(" ")
-}
-
-fn display_triple<T: Display, U: Display, V: Display>(t: &(T, U, V)) -> String {
-    format!("({} {} {})", t.0, t.1, t.2)
-}
-fn display_triple_vec<T: Display, U: Display, V: Display>(vec: &[(T, U, V)]) -> String {
-    if vec.is_empty() {
-        return "[]".to_string();
-    }
-
-    vec.iter()
-        .map(|x| display_triple(x))
-        .collect::<Vec<String>>()
-        .join(" ")
-}
-
-fn display_option<T: Display>(opt: &Option<T>) -> String {
-    match opt {
-        Some(x) => format!("{}", x),
-        None => "None".to_string(),
-    }
-}
-
-fn display_bytes_as_key_hash(b: &Bytes) -> String {
-    format!("KeyHash {{unKeyHash = \"{}\"}}", b)
-}
-
-fn display_bytes_vector_as_key_hash(v: &Vec<Bytes>) -> String {
-    let mut result = String::new();
-    for b in v {
-        result.push_str(&format!("KeyHash {{unKeyHash = \"{}\"}}", b));
-        result.push_str(" :| []");
-    }
-    result.pop();
-    result
-}
-
-fn display_strict_maybe<T: HaskellDisplay>(maybe: &StrictMaybe<T>) -> String {
-    use StrictMaybe::*;
-
-    match maybe {
-        Just(t) => format!("SJust ({})", t.to_haskell_str()),
-        Nothing => "SNothing".to_string(),
-    }
-}
 
 /**
  * Instead of this function, we can use Address type directly from pallas and decorate it with HaskellDisplay implementations
