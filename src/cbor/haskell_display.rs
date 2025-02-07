@@ -32,17 +32,17 @@ use pallas_traverse::ComputeHash;
 use crate::cbor::haskell_types::get_network_and_credentials;
 
 use super::haskell_types::{
-    Addr28Extra, AddressBytes, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CborBytes,
-    CollectError, CompactForm, ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure,
-    ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
-    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DataHash32, DatumEnum, Delegatee,
-    DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash,
-    DisplayGovAction, DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId,
-    DisplayProposalProcedure, DisplayProtocolParamUpdate, DisplayScriptHash,
-    DisplayTransactionOutput, DisplayValue, DisplayVotingProcedures, EpochNo, EraScript,
-    FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes, PlutusPurpose,
-    PurposeAs, RewardAccountFielded, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
-    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
+    AddressBytes, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CborBytes, CollectError,
+    ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure,
+    ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure,
+    ConwayUtxosPredFailure, Credential, DatumEnum, Delegatee, DeltaCoin, DisplayAddress,
+    DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash, DisplayGovAction,
+    DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId, DisplayProposalProcedure,
+    DisplayProtocolParamUpdate, DisplayScriptHash, DisplayTransactionOutput, DisplayValue,
+    DisplayVotingProcedures, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch,
+    OHashMap, PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash,
+    ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
+    TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -1534,26 +1534,6 @@ trait AsIs {
 impl AsIs for String {
     fn as_is(&self) -> DisplayAsIs {
         DisplayAsIs(self.to_string())
-    }
-}
-
-// todo is this temp?
-impl HaskellDisplay for CompactForm {
-    fn to_haskell_str(&self) -> String {
-        "compact form".to_string()
-    }
-}
-
-// todo is this temp?
-impl HaskellDisplay for DataHash32 {
-    fn to_haskell_str(&self) -> String {
-        "DataHash32".to_string()
-    }
-}
-// todo is this temp?
-impl HaskellDisplay for Addr28Extra {
-    fn to_haskell_str(&self) -> String {
-        "Addr28Extra".to_string()
     }
 }
 
