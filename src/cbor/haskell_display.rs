@@ -29,20 +29,17 @@ use pallas_primitives::{
 };
 use pallas_traverse::ComputeHash;
 
-use crate::cbor::haskell_types::get_network_and_credentials;
-
 use super::haskell_types::{
-    AddressBytes, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CborBytes, CollectError,
-    ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure,
-    ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure,
-    ConwayUtxosPredFailure, Credential, DatumEnum, Delegatee, DeltaCoin, DisplayAddress,
-    DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash, DisplayGovAction,
-    DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId, DisplayProposalProcedure,
-    DisplayProtocolParamUpdate, DisplayScriptHash, DisplayTransactionOutput, DisplayValue,
-    DisplayVotingProcedures, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch,
-    OHashMap, PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash,
-    ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
-    TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
+    Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CollectError, ConwayCertPredFailure,
+    ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure, ConwayGovPredFailure,
+    ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
+    DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin,
+    DisplayCostModels, DisplayDatumHash, DisplayGovAction, DisplayHash, DisplayMultiAsset,
+    DisplayOSet, DisplayPolicyId, DisplayProposalProcedure, DisplayProtocolParamUpdate,
+    DisplayScriptHash, DisplayValue, DisplayVotingProcedures, EpochNo, EraScript,
+    FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes, PlutusPurpose,
+    PurposeAs, RewardAccountFielded, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -64,13 +61,23 @@ impl fmt::Display for ConwayGovCertPredFailure {
             }
             ConwayDRepNotRegistered(cred) => write!(f, "ConwayDRepNotRegistered ({})", cred),
             ConwayDRepIncorrectDeposit(expected, actual) => {
-                write!(f, "ConwayDRepIncorrectDeposit ({}) ({})", expected, actual)
+                write!(
+                    f,
+                    "ConwayDRepIncorrectDeposit {} {}",
+                    expected.to_haskell_str_p(),
+                    actual.to_haskell_str_p()
+                )
             }
             ConwayCommitteeHasPreviouslyResigned(cred) => {
                 write!(f, "ConwayCommitteeHasPreviouslyResigned ({})", cred)
             }
             ConwayDRepIncorrectRefund(expected, actual) => {
-                write!(f, "ConwayDRepIncorrectRefund ({}) ({})", expected, actual)
+                write!(
+                    f,
+                    "ConwayDRepIncorrectRefund {} {}",
+                    expected.to_haskell_str_p(),
+                    actual.to_haskell_str_p()
+                )
             }
             ConwayCommitteeIsUnknown(cred) => write!(f, "ConwayCommitteeIsUnknown ({})", cred),
         }
@@ -224,7 +231,12 @@ impl fmt::Display for ConwayGovPredFailure {
                 )
             }
             ProposalDepositIncorrect(c1, c2) => {
-                write!(f, "ProposalDepositIncorrect ({}) ({})", c1, c2)
+                write!(
+                    f,
+                    "ProposalDepositIncorrect {} {}",
+                    c1.to_haskell_str_p(),
+                    c2.to_haskell_str_p()
+                )
             }
             DisallowedVoters(v) => write!(f, "DisallowedVoters ({})", v.to_haskell_str()),
             ConflictingCommitteeUpdate(set) => {
@@ -1565,14 +1577,6 @@ impl HaskellDisplay for BabbageTxOut {
         )
     }
 }
-impl HaskellDisplay for DisplayTransactionOutput {
-    fn to_haskell_str(&self) -> String {
-        match self {
-            DisplayTransactionOutput::Legacy(babbage_tx_out) => babbage_tx_out.to_haskell_str_p(),
-            DisplayTransactionOutput::PostAlonzo(babbage_tx_out) => babbage_tx_out.to_haskell_str(),
-        }
-    }
-}
 
 impl HaskellDisplay for TransactionOutput {
     fn to_haskell_str(&self) -> String {
@@ -1858,7 +1862,7 @@ impl HaskellDisplay for PositiveCoin {
 
 impl HaskellDisplay for MaryValue {
     fn to_haskell_str(&self) -> String {
-        format!("MaryValue ({})", self.0)
+        format!("MaryValue {}", self.0.to_haskell_str_p())
     }
 }
 
@@ -1951,17 +1955,6 @@ impl HaskellDisplay for Address {
     }
 }
 
-impl HaskellDisplay for AddressBytes {
-    fn to_haskell_str(&self) -> String {
-        let (network, credential) = get_network_and_credentials(&self.0);
-
-        format!(
-            "Addr {} ({})",
-            network.to_haskell_str(),
-            credential.to_haskell_str()
-        )
-    }
-}
 impl HaskellDisplay for DatumEnum {
     fn to_haskell_str(&self) -> String {
         use DatumEnum::*;
@@ -2103,15 +2096,6 @@ where
 impl HaskellDisplay for Int {
     fn to_haskell_str(&self) -> String {
         format!("Int {}", self.0)
-    }
-}
-
-impl<T> HaskellDisplay for CborBytes<T>
-where
-    T: HaskellDisplay,
-{
-    fn to_haskell_str(&self) -> String {
-        self.0.to_haskell_str()
     }
 }
 

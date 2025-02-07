@@ -341,16 +341,6 @@ pub enum FailureDescription {
     PlutusFailure(String, Bytes),
 }
 
-/* #[derive(Debug, Decode)]
-pub enum CollectError{
-    #[n(0)] NoRedeemer(#[n(0)] ConwayPlutusPurpose),
-    #[n(1)] NoWitness(#[n(0)] DisplayScriptHash),
-    #[n(2)] NoCostModel(#[n(0)] Language),
-    #[n(3)] BadTranslation(#[n(0)] ConwayContextError),
-}
-
- */
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Plutus/Evaluate.hs#L77
 
 #[derive(Debug)]
@@ -513,7 +503,6 @@ impl fmt::Display for ConwayUtxoPredFailure {
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Gov.hs#L164
-// the ones with string are not worked out
 #[derive(Debug)]
 pub enum ConwayGovPredFailure {
     GovActionsDoNotExist(Vec<GovActionId>), //  (NonEmpty (GovActionId (EraCrypto era)))
@@ -546,7 +535,7 @@ pub enum ConwayCertsPredFailure {
     CertFailure(ConwayCertPredFailure),
 }
 
-// HashMap loses the CBOR ordering when decoded
+/// HashMap loses the CBOR ordering when decoded
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct OHashMap<K, V>(pub Vec<(K, V)>);
 
@@ -618,30 +607,24 @@ impl DisplayAddress {
     }
 }
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/f54489071f4faa4b6209e1ba5288507c824cca50/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs
-// the bytes are not decoded
-pub type Addr = Bytes;
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/5fda7bbf778fb110bd28b306147da3e287ace124/eras/conway/impl/src/Cardano/Ledger/Conway/Scripts.hs#L200
-// not tested yet
 #[derive(Debug)]
 pub enum PlutusPurpose {
-    Spending(AsIx),       // 0
-    Minting(AsIx),        // 1
-    Certifying(AsIx),     // 2
-    Rewarding(PurposeAs), // 3
+    Spending(AsIx),
+    Minting(AsIx),
+    Certifying(AsIx),
+    Rewarding(PurposeAs),
     Voting(PurposeAs),
     Proposing(AsIx),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/5fda7bbf778fb110bd28b306147da3e287ace124/eras/conway/impl/src/Cardano/Ledger/Conway/Scripts.hs#L200
-// not tested yet
 #[derive(Debug)]
 pub enum ConwayPlutusPurpose {
-    ConwaySpending(AsItem<TransactionInput>),      // 0
-    ConwayMinting(AsItem<DisplayPolicyId>),        // 1
-    ConwayCertifying(AsItem<ConwayTxCert>),        // 2
-    ConwayRewarding(AsItem<RewardAccountFielded>), // 3
+    ConwaySpending(AsItem<TransactionInput>),
+    ConwayMinting(AsItem<DisplayPolicyId>),
+    ConwayCertifying(AsItem<ConwayTxCert>),
+    ConwayRewarding(AsItem<RewardAccountFielded>),
     ConwayVoting(AsItem<Voter>),
     ConwayProposing(AsItem<DisplayProposalProcedure>),
 }
@@ -716,25 +699,8 @@ pub struct ValidityInterval {
 #[derive(Debug)]
 pub struct Utxo(pub OHashMap<TransactionInput, BabbageTxOut>);
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L383C9-L383C20
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/master/eras/conway/impl/src/Cardano/Ledger/Conway/TxOut.hs
-/*// https://github.com/IntersectMBO/cardano-ledger/blob/0d20d716fc15dc0b7648c448cbd735bebb7521b8/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L130
-#[derive(Debug, Decode)]
-#[cbor(map)]
-// PseudoPostAlonzoTransactionOutput in pallas
-pub struct BabbageTxOut {
-    #[n(0)] pub address: DisplayAddress,
-    #[n(1)] pub value: Option<DisplayValue>,
-    #[n(2)] pub datum: Option<DatumEnum>,
-    #[n(3)] pub script: Option<CborWrap<EraScript>>
-}*/
-#[derive(Debug)]
-pub enum DisplayTransactionOutput {
-    Legacy(BabbageTxOut),
-    PostAlonzo(BabbageTxOut),
-}
-
+// https://github.com/IntersectMBO/cardano-ledger/blob/0d20d716fc15dc0b7648c448cbd735bebb7521b8/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L130
 #[derive(Debug)]
 pub struct BabbageTxOut {
     pub address: DisplayAddress,
@@ -742,13 +708,7 @@ pub struct BabbageTxOut {
     pub datum: Option<DatumEnum>,
     pub script: Option<EraScript>,
 }
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct AddressBytes(#[n(0)] pub Bytes);
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/conway/impl/src/Cardano/Ledger/Conway/TxOut.hs#L34
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L130
-pub enum ConwayTxOut {}
 // https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/mary/impl/src/Cardano/Ledger/Mary/Value.hs#L162C9-L162C19
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
@@ -811,12 +771,6 @@ pub enum DatumEnum {
 #[derive(Debug, Clone, Decode)]
 #[cbor(transparent)]
 pub struct DisplayDatumHash(#[n(0)] pub DatumHash);
-
-impl fmt::Display for DisplayCoin {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Coin {}", self.0)
-    }
-}
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
@@ -916,16 +870,6 @@ impl From<&u64> for DisplayCoin {
     }
 }
 
-#[derive(Debug, Decode, Hash, Eq, PartialEq)]
-#[cbor(transparent)]
-pub struct DisplayStakeCredential(#[n(0)] pub StakeCredential);
-
-impl fmt::Display for DisplayStakeCredential {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "StakeCredential({:?})", self.0)
-    }
-}
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/libs/cardano-ledger-core/src/Cardano/Ledger/Credential.hs#L82
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Credential {
@@ -944,11 +888,6 @@ pub struct VKey(#[n(0)] pub Bytes);
 #[derive(Debug, Decode, Hash, PartialEq, Eq, Clone)]
 #[cbor(transparent)]
 pub struct SafeHash(#[n(0)] pub Bytes);
-
-/*
-** cardano-submit-api types
-** These types are used to mimick cardano-submit-api error responses.
-*/
 
 // https://github.com/IntersectMBO/cardano-node/blob/9dbf0b141e67ec2dfd677c77c63b1673cf9c5f3e/cardano-submit-api/src/Cardano/TxSubmit/Types.hs#L54
 #[derive(Serialize)]
@@ -986,26 +925,12 @@ pub enum TxValidationErrorInCardanoMode {
 #[cbor(transparent)]
 pub struct DisplayExUnits(#[n(0)] pub ExUnits);
 
-impl fmt::Display for DisplayExUnits {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ExUnits {{ mem: {}, steps: {} }}",
-            self.0.mem, self.0.steps
-        )
-    }
-}
-
 // todo: This can be replaced by pallas Value
 #[derive(Debug)]
 pub enum DisplayValue {
     Coin(u64),
     Multiasset(MaryValue, DisplayMultiAsset),
 }
-
-// todo CborWrap in pallas
-#[derive(Debug)]
-pub struct CborBytes<T>(pub T);
 
 #[derive(Debug, Clone)]
 pub struct PlutusDataBytes(pub BoundedBytes);
