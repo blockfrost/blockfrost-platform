@@ -190,7 +190,7 @@ pub enum ConwayUtxoWPredFailure {
     NotAllowedSupplementalDatums(Set<SafeHash>, Set<SafeHash>), // set of unallowed data hashes, set of acceptable data hashes
     PPViewHashesDontMatch(StrictMaybe<SafeHash>, StrictMaybe<SafeHash>),
     UnspendableUTxONoDatumHash(Set<TransactionInput>), //  Set of transaction inputs that are TwoPhase scripts, and should have a DataHash but don't
-    ExtraRedeemers(Array<PlutusPurpose>),                       // List of redeemers not needed
+    ExtraRedeemers(Array<PlutusPurpose>),              // List of redeemers not needed
     MalformedScriptWitnesses(Set<ScriptHash>),
     MalformedReferenceScripts(Set<ScriptHash>),
 }

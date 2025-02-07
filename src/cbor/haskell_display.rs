@@ -35,15 +35,14 @@ use super::haskell_types::{
     Addr28Extra, AddressBytes, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CborBytes,
     CollectError, CompactForm, ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure,
     ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
-    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DataHash32,
-    DatumEnum, Delegatee, DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin,
-    DisplayCostModels, DisplayDatumHash, DisplayGovAction, DisplayHash, DisplayMultiAsset,
-    DisplayOSet, DisplayPolicyId, DisplayProposalProcedure, DisplayProtocolParamUpdate,
-    DisplayScriptHash, DisplayTransactionOutput, DisplayValue, DisplayVotingProcedures, EpochNo,
-    EraScript, FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes,
-    PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash, ShelleyPoolPredFailure, SlotNo,
-    StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey,
-    ValidityInterval,
+    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DataHash32, DatumEnum, Delegatee,
+    DeltaCoin, DisplayAddress, DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash,
+    DisplayGovAction, DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId,
+    DisplayProposalProcedure, DisplayProtocolParamUpdate, DisplayScriptHash,
+    DisplayTransactionOutput, DisplayValue, DisplayVotingProcedures, EpochNo, EraScript,
+    FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes, PlutusPurpose,
+    PurposeAs, RewardAccountFielded, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
