@@ -177,36 +177,36 @@ impl fmt::Display for ApplyConwayTxPredError {
 pub enum ConwayUtxoWPredFailure {
     UtxoFailure(ConwayUtxoPredFailure),
     InvalidWitnessesUTXOW(Array<VKey>),
-    MissingVKeyWitnessesUTXOW(CustomSet258<KeyHash>),
-    MissingScriptWitnessesUTXOW(CustomSet258<ScriptHash>),
-    ScriptWitnessNotValidatingUTXOW(CustomSet258<ScriptHash>),
+    MissingVKeyWitnessesUTXOW(Set<KeyHash>),
+    MissingScriptWitnessesUTXOW(Set<ScriptHash>),
+    ScriptWitnessNotValidatingUTXOW(Set<ScriptHash>),
     MissingTxBodyMetadataHash(Bytes),      // auxDataHash
     MissingTxMetadata(Bytes),              // auxDataHash
     ConflictingMetadataHash(Bytes, Bytes), // Mismatch auxDataHash
     InvalidMetadata(),                     // empty
-    ExtraneousScriptWitnessesUTXOW(CustomSet258<ScriptHash>),
+    ExtraneousScriptWitnessesUTXOW(Set<ScriptHash>),
     MissingRedeemers(Array<(ConwayPlutusPurpose, ScriptHash)>),
-    MissingRequiredDatums(CustomSet258<SafeHash>, CustomSet258<SafeHash>), // set of missing data hashes, set of recieved data hashes
-    NotAllowedSupplementalDatums(CustomSet258<SafeHash>, CustomSet258<SafeHash>), // set of unallowed data hashes, set of acceptable data hashes
+    MissingRequiredDatums(Set<SafeHash>, Set<SafeHash>), // set of missing data hashes, set of recieved data hashes
+    NotAllowedSupplementalDatums(Set<SafeHash>, Set<SafeHash>), // set of unallowed data hashes, set of acceptable data hashes
     PPViewHashesDontMatch(StrictMaybe<SafeHash>, StrictMaybe<SafeHash>),
-    UnspendableUTxONoDatumHash(CustomSet258<TransactionInput>), //  Set of transaction inputs that are TwoPhase scripts, and should have a DataHash but don't
+    UnspendableUTxONoDatumHash(Set<TransactionInput>), //  Set of transaction inputs that are TwoPhase scripts, and should have a DataHash but don't
     ExtraRedeemers(Array<PlutusPurpose>),                       // List of redeemers not needed
-    MalformedScriptWitnesses(CustomSet258<ScriptHash>),
-    MalformedReferenceScripts(CustomSet258<ScriptHash>),
+    MalformedScriptWitnesses(Set<ScriptHash>),
+    MalformedReferenceScripts(Set<ScriptHash>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/7683b73971a800b36ca7317601552685fa0701ed/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Utxo.hs#L315
 #[derive(Debug)]
 pub enum ConwayUtxoPredFailure {
     UtxosFailure(ConwayUtxosPredFailure),
-    BadInputsUTxO(CustomSet258<TransactionInput>),
+    BadInputsUTxO(Set<TransactionInput>),
     OutsideValidityIntervalUTxO(ValidityInterval, SlotNo), // validity interval, current slot
     MaxTxSizeUTxO(i64, i64),                               // less than or equal
     InputSetEmptyUTxO(),                                   // empty
     FeeTooSmallUTxO(DisplayCoin, DisplayCoin),             // Mismatch expected, supplied
     ValueNotConservedUTxO(DisplayValue, DisplayValue),
-    WrongNetwork(Network, CustomSet258<DisplayAddress>), // the expaected network id,  the set of addresses with incorrect network IDs
-    WrongNetworkWithdrawal(Network, CustomSet258<RewardAccountFielded>), // the expected network id ,  the set of reward addresses with incorrect network IDs
+    WrongNetwork(Network, Set<DisplayAddress>), // the expaected network id,  the set of addresses with incorrect network IDs
+    WrongNetworkWithdrawal(Network, Set<RewardAccountFielded>), // the expected network id ,  the set of reward addresses with incorrect network IDs
     OutputTooSmallUTxO(Array<BabbageTxOut>),
     OutputBootAddrAttrsTooBig(Array<BabbageTxOut>),
     OutputTooBigUTxO(Array<(i8, i8, BabbageTxOut)>), //  list of supplied bad transaction output triples (actualSize,PParameterMaxValue,TxOut)
@@ -386,7 +386,7 @@ pub enum BabbageContextError {
     RedeemerPointerPointsToNothing(PlutusPurpose),
     InlineDatumsNotSupported(TxOutSource),
     ReferenceScriptsNotSupported(TxOutSource),
-    ReferenceInputsNotSupported(CustomSet258<TransactionInput>),
+    ReferenceInputsNotSupported(Set<TransactionInput>),
     AlonzoTimeTranslationPastHorizon(String),
 }
 
@@ -522,10 +522,10 @@ pub enum ConwayGovPredFailure {
     GovActionsDoNotExist(Vec<GovActionId>), //  (NonEmpty (GovActionId (EraCrypto era)))
     MalformedProposal(DisplayGovAction),    // GovAction era
     ProposalProcedureNetworkIdMismatch(RewardAccountFielded, Network), // (RewardAccount (EraCrypto era)) Network
-    TreasuryWithdrawalsNetworkIdMismatch(CustomSet258<RewardAccountFielded>, Network), // (Set.Set (RewardAccount (EraCrypto era))) Network
+    TreasuryWithdrawalsNetworkIdMismatch(Set<RewardAccountFielded>, Network), // (Set.Set (RewardAccount (EraCrypto era))) Network
     ProposalDepositIncorrect(DisplayCoin, DisplayCoin), // !(Mismatch 'RelEQ Coin)
     DisallowedVoters(Vec<(Voter, GovActionId)>), // !(NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
-    ConflictingCommitteeUpdate(CustomSet258<Credential>), // (Set.Set (Credential 'ColdCommitteeRole (EraCrypto era)))
+    ConflictingCommitteeUpdate(Set<Credential>), // (Set.Set (Credential 'ColdCommitteeRole (EraCrypto era)))
     ExpirationEpochTooSmall(OHashMap<StakeCredential, EpochNo>), // Probably wrong credintial type!, epochno
     InvalidPrevGovActionId(DisplayProposalProcedure),            // (ProposalProcedure era)
     VotingOnExpiredGovAction(Vec<(Voter, GovActionId)>), // (NonEmpty (Voter (EraCrypto era), GovActionId (EraCrypto era)))
@@ -809,10 +809,6 @@ pub enum EraScript {
 #[cbor(transparent)]
 pub struct DisplayHash(#[n(0)] pub Blake2b256); // Hashing algorithm used for hashing everything, except addresses
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/master/libs/cardano-ledger-core/src/Cardano/Ledger/MemoBytes/Internal.hs
-#[derive(Debug)]
-pub struct MemoBytes(Bytes);
-
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct StrictSeq<T>(#[n(0)] pub Vec<T>);
@@ -824,6 +820,7 @@ pub enum DatumEnum {
     Datum(PlutusDataBytes),
     NoDatum,
 }
+
 #[derive(Debug, Clone, Decode)]
 #[cbor(transparent)]
 pub struct DisplayDatumHash(#[n(0)] pub DatumHash);
@@ -889,18 +886,6 @@ impl From<&[u8]> for StrictMaybe<ScriptHash> {
 
 pub struct InvalidPrevGovActionId(ProposalProcedure);
 
-/*
-// https://github.com/IntersectMBO/cardano-ledger/blob/730c811b7a0ee0301d013555091e7394c77c3b19/eras/conway/impl/src/Cardano/Ledger/Conway/Governance/Procedures.hs#L476
-#[derive(Debug)]
-pub struct ProposalProcedure {
-    p_proc_deposit: DisplayCoin,
-    p_proc_return_addr: RewardAccountFielded,
-    p_proc_gov_action: GovAction,
-    pProcAnchor: Anchor
-
-}
- */
-
 // RewardAcount is serialized into bytes: https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L135
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RewardAccountFielded {
@@ -910,12 +895,6 @@ pub struct RewardAccountFielded {
 
 impl RewardAccountFielded {
     pub fn new(hex: String) -> Self {
-        /*  let ra_network = if hex.starts_with("e0") {
-                    Network::Testnet
-                } else {
-                    Network::Mainnet
-                };
-        */
         let bytes = hex::decode(&hex).expect("Invalid hex string");
 
         let (ra_network, ra_credential) = get_network_and_credentials(&bytes);
@@ -1046,14 +1025,10 @@ pub struct PlutusDataBytes(pub BoundedBytes);
 #[cbor(transparent)]
 pub struct MaryValue(#[n(0)] pub DisplayCoin);
 
-// this handles the custom type with tag 258: https://github.com/input-output-hk/cbor-sets-spec/blob/master/CBOR_SETS.md
-#[derive(Debug)]
-pub struct CustomSet258<T>(pub Vec<T>);
-
 // https://github.com/IntersectMBO/cardano-ledger/blob/3dd7401424e8d50cc9f19feef1589f1ce0d83ed6/libs/cardano-data/src/Data/OSet/Strict.hs#L67
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
-pub struct DisplayOSet<T>(#[n(0)] pub CustomSet258<T>);
+pub struct DisplayOSet<T>(#[n(0)] pub Set<T>);
 
 /*
 **Helper functions for Display'ing the types.
