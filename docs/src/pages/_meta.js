@@ -1,10 +1,7 @@
 let config = {
   index: "Introduction",
-<<<<<<< HEAD
-  icebreakers: "Icebreakers 🧊",
-=======
   usecases: "Use cases",
->>>>>>> 684ae85 (docs: split the introduction and use cases)
+  icebreakers: "Icebreakers 🧊",
   "---": {
     type: "separator",
   },
