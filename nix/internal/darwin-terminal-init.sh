@@ -23,6 +23,8 @@ cat <<EOF
    For setup: ${color_bold}blockfrost-platform --init${color_reset}
    For help:  ${color_bold}blockfrost-platform --help${color_reset}
 
+   If you have already set it up, just run ${color_bold}blockfrost-platform${color_reset}.
+
   … and press <${color_bold}ENTER${color_reset}>.
 
   For more information, visit: ${color_underline}https://platform.blockfrost.io${color_reset}
