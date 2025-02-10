@@ -1,18 +1,17 @@
 use std::fmt::{self};
 
-use pallas_addresses::Address;
 use pallas_codec::minicbor::{self, Decode};
 use pallas_codec::utils::Bytes;
+use pallas_primitives::conway::{GovAction, ProposalProcedure, Value};
+use pallas_primitives::NetworkId;
 use pallas_primitives::{
     byron::Blake2b256,
     conway::{
-        Anchor, Certificate, CommitteeColdCredential, Constitution, DRep, DRepVotingThresholds,
-        DatumHash, ExUnitPrices, ExUnits, GovActionId, Language, PoolVotingThresholds, ScriptHash,
-        Voter, VotingProcedures,
+        Certificate, DRep, DatumHash, ExUnits, GovActionId, Language, ScriptHash, Voter,
+        VotingProcedures,
     },
-    AddrKeyhash, AssetName, BoundedBytes, Coin, CostModel, Epoch, KeyValuePairs, Nullable,
-    PolicyId, PoolKeyhash, ProtocolVersion, RationalNumber, RewardAccount, Set, StakeCredential,
-    TransactionInput, UnitInterval,
+    AddrKeyhash, AssetName, BoundedBytes, Coin, PolicyId, PoolKeyhash, ProtocolVersion, Set,
+    StakeCredential, TransactionInput,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -167,17 +166,17 @@ pub enum ConwayUtxoPredFailure {
     MaxTxSizeUTxO(i64, i64),
     InputSetEmptyUTxO(),
     FeeTooSmallUTxO(DisplayCoin, DisplayCoin),
-    ValueNotConservedUTxO(DisplayValue, DisplayValue),
-    WrongNetwork(Network, Set<DisplayAddress>),
-    WrongNetworkWithdrawal(Network, Set<RewardAccountFielded>),
+    ValueNotConservedUTxO(Value, Value),
+    WrongNetwork(NetworkId, Set<DisplayAddress>),
+    WrongNetworkWithdrawal(NetworkId, Set<DisplayRewardAccount>),
     OutputTooSmallUTxO(Array<BabbageTxOut>),
     OutputBootAddrAttrsTooBig(Array<BabbageTxOut>),
     OutputTooBigUTxO(Array<(i8, i8, BabbageTxOut)>),
     InsufficientCollateral(DeltaCoin, DisplayCoin),
     ScriptsNotPaidUTxO(Utxo),
     ExUnitsTooBigUTxO(ExUnits, ExUnits),
-    CollateralContainsNonADA(DisplayValue),
-    WrongNetworkInTxBody(Network, Network),
+    CollateralContainsNonADA(Value),
+    WrongNetworkInTxBody(NetworkId, NetworkId),
     OutsideForecast(SlotNo),
     TooManyCollateralInputs(u64, u64),
     NoCollateralInputs(),
@@ -191,107 +190,6 @@ pub enum ConwayUtxoPredFailure {
 pub enum ConwayUtxosPredFailure {
     ValidationTagMismatch(bool, TagMismatchDescription),
     CollectErrors(Array<CollectError>),
-}
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/bc10beb0038319354eefae31baf381193c5f4e32/libs/cardano-ledger-core/src/Cardano/Ledger/Plutus/CostModels.hs#L107
-#[derive(Decode, Debug, PartialEq, Eq, Clone)]
-#[cbor(transparent)]
-pub struct DisplayCostModels(#[n(0)] pub OHashMap<i64, CostModel>);
-
-#[derive(Decode, Debug, PartialEq, Eq, Clone)]
-#[cbor(map)]
-pub struct DisplayProtocolParamUpdate {
-    #[n(0)]
-    pub minfee_a: Option<u64>,
-    #[n(1)]
-    pub minfee_b: Option<u64>,
-    #[n(2)]
-    pub max_block_body_size: Option<u64>,
-    #[n(3)]
-    pub max_transaction_size: Option<u64>,
-    #[n(4)]
-    pub max_block_header_size: Option<u64>,
-    #[n(5)]
-    pub key_deposit: Option<Coin>,
-    #[n(6)]
-    pub pool_deposit: Option<Coin>,
-    #[n(7)]
-    pub maximum_epoch: Option<Epoch>,
-    #[n(8)]
-    pub desired_number_of_stake_pools: Option<u64>,
-    #[n(9)]
-    pub pool_pledge_influence: Option<RationalNumber>,
-    #[n(10)]
-    pub expansion_rate: Option<UnitInterval>,
-    #[n(11)]
-    pub treasury_growth_rate: Option<UnitInterval>,
-
-    #[n(16)]
-    pub min_pool_cost: Option<Coin>,
-    #[n(17)]
-    pub ada_per_utxo_byte: Option<Coin>,
-    #[n(18)]
-    pub cost_models_for_script_languages: Option<DisplayCostModels>,
-    #[n(19)]
-    pub execution_costs: Option<ExUnitPrices>,
-    #[n(20)]
-    pub max_tx_ex_units: Option<ExUnits>,
-    #[n(21)]
-    pub max_block_ex_units: Option<ExUnits>,
-    #[n(22)]
-    pub max_value_size: Option<u64>,
-    #[n(23)]
-    pub collateral_percentage: Option<u64>,
-    #[n(24)]
-    pub max_collateral_inputs: Option<u64>,
-
-    #[n(25)]
-    pub pool_voting_thresholds: Option<PoolVotingThresholds>,
-    #[n(26)]
-    pub drep_voting_thresholds: Option<DRepVotingThresholds>,
-    #[n(27)]
-    pub min_committee_size: Option<u64>,
-    #[n(28)]
-    pub committee_term_limit: Option<Epoch>,
-    #[n(29)]
-    pub governance_action_validity_period: Option<Epoch>,
-    #[n(30)]
-    pub governance_action_deposit: Option<Coin>,
-    #[n(31)]
-    pub drep_deposit: Option<Coin>,
-    #[n(32)]
-    pub drep_inactivity_period: Option<Epoch>,
-    #[n(33)]
-    pub minfee_refscript_cost_per_byte: Option<UnitInterval>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum DisplayGovAction {
-    ParameterChange(
-        Nullable<GovActionId>,
-        Box<DisplayProtocolParamUpdate>,
-        Nullable<ScriptHash>,
-    ),
-    HardForkInitiation(Nullable<GovActionId>, ProtocolVersion),
-    TreasuryWithdrawals(KeyValuePairs<RewardAccount, Coin>, Nullable<ScriptHash>),
-    NoConfidence(Nullable<GovActionId>),
-    UpdateCommittee(
-        Nullable<GovActionId>,
-        Set<CommitteeColdCredential>,
-        KeyValuePairs<CommitteeColdCredential, Epoch>,
-        UnitInterval,
-    ),
-    NewConstitution(Nullable<GovActionId>, Constitution),
-    Information,
-}
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/09dc3774a434677ece12910b2c1c409de4cc2656/eras/conway/impl/src/Cardano/Ledger/Conway/Governance/Procedures.hs#L487
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct DisplayProposalProcedure {
-    pub deposit: Coin,
-    pub reward_account: RewardAccount,
-    pub gov_action: DisplayGovAction,
-    pub anchor: Anchor,
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/alonzo/impl/src/Cardano/Ledger/Alonzo/Rules/Utxos.hs#L365
@@ -325,7 +223,7 @@ pub enum ConwayContextError {
     PlutusPurposeNotSupported(ConwayPlutusPurpose),
     CurrentTreasuryFieldNotSupported(DisplayCoin),
     VotingProceduresFieldNotSupported(DisplayVotingProcedures),
-    ProposalProceduresFieldNotSupported(DisplayOSet<DisplayProposalProcedure>),
+    ProposalProceduresFieldNotSupported(DisplayOSet<ProposalProcedure>),
     TreasuryDonationFieldNotSupported(DisplayCoin),
 }
 
@@ -354,32 +252,32 @@ pub enum TxOutSource {
 #[derive(Debug)]
 pub enum ConwayGovPredFailure {
     GovActionsDoNotExist(Vec<GovActionId>),
-    MalformedProposal(DisplayGovAction),
-    ProposalProcedureNetworkIdMismatch(RewardAccountFielded, Network),
-    TreasuryWithdrawalsNetworkIdMismatch(Set<RewardAccountFielded>, Network),
+    MalformedProposal(GovAction),
+    ProposalProcedureNetworkIdMismatch(DisplayRewardAccount, NetworkId),
+    TreasuryWithdrawalsNetworkIdMismatch(Set<DisplayRewardAccount>, NetworkId),
     ProposalDepositIncorrect(DisplayCoin, DisplayCoin),
     DisallowedVoters(Vec<(Voter, GovActionId)>),
     ConflictingCommitteeUpdate(Set<Credential>),
     ExpirationEpochTooSmall(OHashMap<StakeCredential, EpochNo>),
-    InvalidPrevGovActionId(DisplayProposalProcedure),
+    InvalidPrevGovActionId(ProposalProcedure),
     VotingOnExpiredGovAction(Vec<(Voter, GovActionId)>),
     ProposalCantFollow(StrictMaybe<GovActionId>, ProtocolVersion, ProtocolVersion),
     InvalidPolicyHash(
         StrictMaybe<DisplayScriptHash>,
         StrictMaybe<DisplayScriptHash>,
     ),
-    DisallowedProposalDuringBootstrap(DisplayProposalProcedure),
+    DisallowedProposalDuringBootstrap(ProposalProcedure),
     DisallowedVotesDuringBootstrap(Vec<(Voter, GovActionId)>),
     VotersDoNotExist(Vec<Voter>),
-    ZeroTreasuryWithdrawals(DisplayGovAction),
-    ProposalReturnAccountDoesNotExist(RewardAccountFielded),
-    TreasuryWithdrawalReturnAccountsDoNotExist(Vec<RewardAccountFielded>),
+    ZeroTreasuryWithdrawals(GovAction),
+    ProposalReturnAccountDoesNotExist(DisplayRewardAccount),
+    TreasuryWithdrawalReturnAccountsDoNotExist(Vec<DisplayRewardAccount>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/Certs.hs#L113
 #[derive(Debug)]
 pub enum ConwayCertsPredFailure {
-    WithdrawalsNotInRewardsCERTS(OHashMap<RewardAccountFielded, DisplayCoin>),
+    WithdrawalsNotInRewardsCERTS(OHashMap<DisplayRewardAccount, DisplayCoin>),
     CertFailure(ConwayCertPredFailure),
 }
 
@@ -414,7 +312,7 @@ pub enum ShelleyPoolPredFailure {
     StakePoolNotRegisteredOnKeyPOOL(KeyHash),
     StakePoolRetirementWrongEpochPOOL(Mismatch<EpochNo>, Mismatch<EpochNo>),
     StakePoolCostTooLowPOOL(Mismatch<DisplayCoin>),
-    WrongNetworkPOOL(Mismatch<Network>, KeyHash),
+    WrongNetworkPOOL(Mismatch<NetworkId>, KeyHash),
     PoolMedataHashTooBig(KeyHash, i8),
 }
 
@@ -446,14 +344,9 @@ pub enum ConwayDelegPredFailure {
 pub struct DisplayScriptHash(#[n(0)] pub ScriptHash);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L148
-#[derive(Debug)]
-pub struct DisplayAddress(pub Address);
-
-impl DisplayAddress {
-    pub fn from_bytes(bytes: &Bytes) -> Self {
-        Self(Address::from_bytes(bytes).unwrap())
-    }
-}
+#[derive(Debug, Decode)]
+#[cbor(transparent)]
+pub struct DisplayAddress(#[n(0)] pub Bytes);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/5fda7bbf778fb110bd28b306147da3e287ace124/eras/conway/impl/src/Cardano/Ledger/Conway/Scripts.hs#L200
 #[derive(Debug)]
@@ -472,9 +365,9 @@ pub enum ConwayPlutusPurpose {
     ConwaySpending(AsItem<TransactionInput>),
     ConwayMinting(AsItem<DisplayPolicyId>),
     ConwayCertifying(AsItem<ConwayTxCert>),
-    ConwayRewarding(AsItem<RewardAccountFielded>),
+    ConwayRewarding(AsItem<DisplayRewardAccount>),
     ConwayVoting(AsItem<Voter>),
-    ConwayProposing(AsItem<DisplayProposalProcedure>),
+    ConwayProposing(AsItem<ProposalProcedure>),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/562ee0869bd40e2386e481b42602fc64121f6a01/eras/conway/impl/src/Cardano/Ledger/Conway/TxCert.hs#L587
@@ -513,28 +406,12 @@ where
 #[derive(Debug)]
 pub enum PurposeAs {
     Ix(AsIx),
-    Item(AsItem<RewardAccountFielded>),
+    Item(AsItem<DisplayRewardAccount>),
 }
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct Array<T>(#[n(0)] pub Vec<T>);
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/78b20b6301b2703aa1fe1806ae3c129846708a10/libs/cardano-ledger-core/src/Cardano/Ledger/BaseTypes.hs#L779
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
-pub enum Network {
-    Mainnet,
-    Testnet,
-}
-
-impl HaskellDisplay for Network {
-    fn to_haskell_str(&self) -> String {
-        match self {
-            Self::Mainnet => "Mainnet".to_string(),
-            Self::Testnet => "Testnet".to_string(),
-        }
-    }
-}
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs#L109
 #[derive(Debug)]
@@ -552,17 +429,10 @@ pub struct Utxo(pub OHashMap<TransactionInput, BabbageTxOut>);
 #[derive(Debug)]
 pub struct BabbageTxOut {
     pub address: DisplayAddress,
-    pub value: Option<DisplayValue>,
+    pub value: Option<Value>,
     pub datum: Option<DatumEnum>,
     pub script: Option<EraScript>,
 }
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/mary/impl/src/Cardano/Ledger/Mary/Value.hs#L162C9-L162C19
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct DisplayMultiAsset(
-    #[n(0)] pub OHashMap<DisplayPolicyId, OHashMap<DisplayAssetName, u64>>,
-);
 
 #[derive(Debug, Decode, Hash, PartialEq, Eq)]
 #[cbor(transparent)]
@@ -677,38 +547,13 @@ impl From<&[u8]> for StrictMaybe<ScriptHash> {
     }
 }
 
-// RewardAcount is serialized into bytes: https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/libs/cardano-ledger-core/src/Cardano/Ledger/Address.hs#L135
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct RewardAccountFielded {
-    pub ra_network: Network,
-    pub ra_credential: StakeCredential,
-}
+#[derive(Debug, Decode, Clone)]
+#[cbor(transparent)]
+pub struct DisplayRewardAccount(#[n(0)] pub Bytes);
 
-impl RewardAccountFielded {
-    pub fn new(hex: String) -> Self {
-        let bytes = hex::decode(&hex).expect("Invalid hex string");
-
-        let (ra_network, ra_credential) = get_network_and_credentials(&bytes);
-        Self {
-            ra_network,
-            ra_credential,
-        }
-    }
-}
-
-impl From<&Bytes> for RewardAccountFielded {
+impl From<&Bytes> for DisplayRewardAccount {
     fn from(bytes: &Bytes) -> Self {
-        let (ra_network, ra_credential) = get_network_and_credentials(bytes);
-        Self {
-            ra_network,
-            ra_credential,
-        }
-    }
-}
-
-impl std::hash::Hash for RewardAccountFielded {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.ra_credential.hash(state);
+        DisplayRewardAccount(bytes.to_owned())
     }
 }
 
@@ -773,13 +618,6 @@ pub enum TxValidationErrorInCardanoMode {
 #[cbor(transparent)]
 pub struct DisplayExUnits(#[n(0)] pub ExUnits);
 
-// todo: This can be replaced by pallas Value
-#[derive(Debug)]
-pub enum DisplayValue {
-    Coin(u64),
-    Multiasset(MaryValue, DisplayMultiAsset),
-}
-
 #[derive(Debug, Clone)]
 pub struct PlutusDataBytes(pub BoundedBytes);
 
@@ -795,12 +633,12 @@ pub struct DisplayOSet<T>(#[n(0)] pub Set<T>);
 /**
  * Instead of this function, we can use Address type directly from pallas and decorate it with HaskellDisplay implementations
  */
-pub fn get_network_and_credentials(bytes: &[u8]) -> (Network, StakeCredential) {
+pub fn get_network_and_credentials(bytes: &[u8]) -> (NetworkId, StakeCredential) {
     let network = if bytes[0] & 0b00000001 != 0 {
         // Is Mainnet Address
-        Network::Mainnet
+        NetworkId::Mainnet
     } else {
-        Network::Testnet
+        NetworkId::Testnet
     };
 
     let mut hash = [0; 28];

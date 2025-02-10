@@ -1,10 +1,12 @@
-use pallas_addresses::Address;
 use pallas_codec::{
     minicbor::{self, data::Type, decode, Decode, Decoder},
     utils::CborWrap,
 };
 use pallas_crypto::hash::Hasher;
-use pallas_primitives::conway::Certificate;
+use pallas_primitives::{
+    conway::{Certificate, Value},
+    NetworkId,
+};
 
 use super::{
     haskell_display::HaskellDisplay,
@@ -13,11 +15,10 @@ use super::{
         ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError, ConwayDelegPredFailure,
         ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
         ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
-        DatumEnum, DisplayAddress, DisplayGovAction, DisplayHash, DisplayProposalProcedure,
-        DisplayValue, EpochNo, EraScript, FailureDescription, Mismatch, Network, OHashMap,
-        PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, ShelleyBasedEra,
-        ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
-        TxOutSource, TxValidationError, Utxo, ValidityInterval,
+        DatumEnum, DisplayHash, EpochNo, EraScript, FailureDescription, Mismatch, OHashMap,
+        PlutusDataBytes, PlutusPurpose, PurposeAs, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo,
+        StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxOutSource, TxValidationError,
+        Utxo, ValidityInterval,
     },
 };
 
@@ -136,8 +137,8 @@ impl<'b, C> Decode<'b, C> for ShelleyPoolPredFailure {
             }
             3 => Ok(StakePoolCostTooLowPOOL(d.decode_with(ctx)?)),
             4 => {
-                let expected: Network = d.decode_with(ctx)?;
-                let supplied: Network = d.decode_with(ctx)?;
+                let expected: NetworkId = d.decode_with(ctx)?;
+                let supplied: NetworkId = d.decode_with(ctx)?;
 
                 Ok(WrongNetworkPOOL(
                     Mismatch(supplied, expected),
@@ -379,26 +380,6 @@ impl<'b, C, K: pallas_codec::minicbor::Decode<'b, C>, V: pallas_codec::minicbor:
     }
 }
 
-impl<'b, C> Decode<'b, C> for DisplayProposalProcedure {
-    fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
-        d.array()?;
-
-        Ok(Self {
-            deposit: d.decode_with(ctx)?,
-            reward_account: d.decode_with(ctx)?,
-            gov_action: d.decode_with(ctx)?,
-            anchor: d.decode_with(ctx)?,
-        })
-    }
-}
-
-impl<'b, C> Decode<'b, C> for DisplayAddress {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
-        let address_bytes = d.bytes()?;
-        Ok(DisplayAddress(Address::from_bytes(address_bytes).unwrap()))
-    }
-}
-
 impl<'b, C> Decode<'b, C> for CollectError {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
@@ -602,25 +583,6 @@ impl<'b, C> Decode<'b, C> for ConwayTxCert {
     }
 }
 
-impl<'b, C> Decode<'b, C> for DisplayValue {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        match d.datatype()? {
-            Type::U16 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
-            Type::U32 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
-            Type::U64 => Ok(DisplayValue::Coin(d.decode_with(ctx)?)),
-            Type::Array => {
-                d.array()?;
-                let coin = d.decode_with(ctx)?;
-                let multiasset = d.decode_with(ctx)?;
-                Ok(DisplayValue::Multiasset(coin, multiasset))
-            }
-            _ => Err(minicbor::decode::Error::message(
-                "unknown cbor data type for Alonzo Value enum",
-            )),
-        }
-    }
-}
-
 impl<'b, C> Decode<'b, C> for TagMismatchDescription {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         d.array()?;
@@ -655,21 +617,6 @@ impl<'b, C> Decode<'b, C> for FailureDescription {
     }
 }
 
-impl<'b, C> Decode<'b, C> for Network {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
-        let error = d.u16()?;
-
-        match error {
-            0 => Ok(Network::Testnet),
-            1 => Ok(Network::Mainnet),
-            _ => Err(decode::Error::message(format!(
-                "unknown network while decoding Network: {}",
-                error
-            ))),
-        }
-    }
-}
-
 impl<'b, T, C> Decode<'b, C> for StrictMaybe<T>
 where
     T: Decode<'b, C> + HaskellDisplay,
@@ -698,13 +645,6 @@ impl<'b, C> Decode<'b, C> for Credential {
                 tag
             ))),
         }
-    }
-}
-
-impl<'b, C> Decode<'b, C> for RewardAccountFielded {
-    fn decode(d: &mut Decoder<'b>, _ctx: &mut C) -> Result<Self, decode::Error> {
-        let b = d.bytes()?;
-        Ok(RewardAccountFielded::new(hex::encode(b)))
     }
 }
 
@@ -781,11 +721,11 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
 
             // key 0
             d.u8()?;
-            let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
+            let address = d.decode_with(ctx)?;
 
             // key 1
             let pos = d.position();
-            let value: Option<DisplayValue> = if d.datatype()? == Type::U8 && d.u8()? == 1 {
+            let value: Option<Value> = if d.datatype()? == Type::U8 && d.u8()? == 1 {
                 d.decode_with(ctx)?
             } else {
                 d.set_position(pos);
@@ -821,8 +761,8 @@ impl<'b, C> Decode<'b, C> for BabbageTxOut {
             })
         } else if d.datatype()? == Type::Array {
             let size = d.array()?.unwrap();
-            let address: DisplayAddress = DisplayAddress(Address::from_bytes(d.bytes()?).unwrap());
-            let value: Option<DisplayValue> = if size > 1 { d.decode_with(ctx)? } else { None };
+            let address = d.decode_with(ctx)?;
+            let value: Option<Value> = if size > 1 { d.decode_with(ctx)? } else { None };
             let datum: Option<DatumEnum> = if size > 2 { d.decode_with(ctx)? } else { None };
             Ok(BabbageTxOut {
                 address,
@@ -937,53 +877,5 @@ impl<'b, C> Decode<'b, C> for PlutusDataBytes {
         }
 
         Ok(PlutusDataBytes(d.decode_with(ctx)?))
-    }
-}
-
-impl<'b, C> Decode<'b, C> for DisplayGovAction {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        d.array()?;
-        let variant = d.u16()?;
-
-        use DisplayGovAction::*;
-
-        match variant {
-            0 => {
-                let a = d.decode_with(ctx)?;
-                let b = d.decode_with(ctx)?;
-                let c = d.decode_with(ctx)?;
-                Ok(ParameterChange(a, b, c))
-            }
-            1 => {
-                let a = d.decode_with(ctx)?;
-                let b = d.decode_with(ctx)?;
-                Ok(HardForkInitiation(a, b))
-            }
-            2 => {
-                let a = d.decode_with(ctx)?;
-                let b = d.decode_with(ctx)?;
-                Ok(TreasuryWithdrawals(a, b))
-            }
-            3 => {
-                let a = d.decode_with(ctx)?;
-                Ok(NoConfidence(a))
-            }
-            4 => {
-                let a = d.decode_with(ctx)?;
-                let b = d.decode_with(ctx)?;
-                let c = d.decode_with(ctx)?;
-                let d = d.decode_with(ctx)?;
-                Ok(UpdateCommittee(a, b, c, d))
-            }
-            5 => {
-                let a = d.decode_with(ctx)?;
-                let b = d.decode_with(ctx)?;
-                Ok(NewConstitution(a, b))
-            }
-            6 => Ok(Information),
-            _ => Err(minicbor::decode::Error::message(
-                "unknown variant id for certificate",
-            )),
-        }
     }
 }
