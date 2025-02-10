@@ -1,6 +1,5 @@
 use crate::{
     api::{metrics::setup_metrics_recorder, root, tx_submit},
-    cbor::fallback_decoder::FallbackDecoder,
     cli::Config,
     errors::{AppError, BlockfrostError},
     icebreakers_api::IcebreakersAPI,
@@ -30,13 +29,6 @@ pub async fn build(
     ),
     AppError,
 > {
-    // Set up fallback decoder
-    let fallback_decoder = FallbackDecoder::spawn()?;
-
-    fallback_decoder
-        .startup_sanity_test()
-        .await
-        .map_err(AppError::Server)?;
 
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
