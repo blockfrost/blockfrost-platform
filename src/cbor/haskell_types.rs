@@ -130,7 +130,7 @@ pub enum ApplyConwayTxPredError {
     ConwayGovFailure(ConwayGovPredFailure),
     ConwayWdrlNotDelegatedToDRep(Vec<KeyHash>),
     ConwayTreasuryValueMismatch(DisplayCoin, DisplayCoin),
-    ConwayTxRefScriptsSizeTooBig(i8, i8),
+    ConwayTxRefScriptsSizeTooBig(i64, i64),
     ConwayMempoolFailure(String),
 }
 
@@ -171,7 +171,7 @@ pub enum ConwayUtxoPredFailure {
     WrongNetworkWithdrawal(NetworkId, Set<DisplayRewardAccount>),
     OutputTooSmallUTxO(Array<BabbageTxOut>),
     OutputBootAddrAttrsTooBig(Array<BabbageTxOut>),
-    OutputTooBigUTxO(Array<(i8, i8, BabbageTxOut)>),
+    OutputTooBigUTxO(Array<(i64, i64, BabbageTxOut)>),
     InsufficientCollateral(DeltaCoin, DisplayCoin),
     ScriptsNotPaidUTxO(Utxo),
     ExUnitsTooBigUTxO(ExUnits, ExUnits),
@@ -313,7 +313,7 @@ pub enum ShelleyPoolPredFailure {
     StakePoolRetirementWrongEpochPOOL(Mismatch<EpochNo>, Mismatch<EpochNo>),
     StakePoolCostTooLowPOOL(Mismatch<DisplayCoin>),
     WrongNetworkPOOL(Mismatch<NetworkId>, KeyHash),
-    PoolMedataHashTooBig(KeyHash, i8),
+    PoolMedataHashTooBig(KeyHash, i64),
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/33e90ea03447b44a389985ca2b158568e5f4ad65/eras/conway/impl/src/Cardano/Ledger/Conway/Rules/GovCert.hs#L118C6-L118C30
