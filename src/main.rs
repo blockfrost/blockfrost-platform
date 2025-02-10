@@ -1,83 +1,62 @@
-use axum::{
-    extract::Request,
-    middleware::from_fn,
-    routing::{get, post},
-    Extension, Router, ServiceExt,
-};
+use axum::extract::Request;
+use axum::ServiceExt;
 use blockfrost_platform::{
-    api::{self, metrics::setup_metrics_recorder, root, tx_submit},
-    background_tasks::node_health_check_task,
-    cli::{Args, Config},
-    errors::{AppError, BlockfrostError},
-    icebreakers_api::IcebreakersAPI,
-    logging::setup_tracing,
-    middlewares::{errors::error_middleware, metrics::track_http_metrics},
-    node::pool::NodePool,
+    background_tasks::node_health_check_task, cli::Args, errors::AppError, logging::setup_tracing,
+    server::build,
 };
-use clap::Parser;
-use tower::ServiceBuilder;
-use tower_http::normalize_path::NormalizePathLayer;
+use dotenvy::dotenv;
+use tokio::{signal, sync::oneshot};
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    let arguments = Args::parse();
-    let config = Config::from_args(arguments)?;
+    dotenv().ok();
+    let config = Args::init().unwrap_or_else(|e| {
+        eprintln!("\n{}", e);
+        std::process::exit(1);
+    });
 
-    // Setup logging
-    setup_tracing(&config);
+    // Logging
+    setup_tracing(config.log_level);
 
-    let node_conn_pool = NodePool::new(&config)?;
-    let icebreakers_api = IcebreakersAPI::new(&config).await?;
-    let prometheus_handle = setup_metrics_recorder();
-
-    // Get the API prefix from the Icebreakers API
-    let api_prefix = if let Some(api) = &icebreakers_api {
-        api.api_prefix.clone()
-    } else {
-        "/".to_string()
-    };
-
-    let api_routes = Router::new()
-        .route("/", get(root::route))
-        .route("/tx/submit", post(tx_submit::route))
-        .route("/metrics", get(api::metrics::route))
-        .layer(Extension(prometheus_handle))
-        .layer(Extension(node_conn_pool.clone()))
-        .layer(Extension(icebreakers_api))
-        .layer(from_fn(error_middleware))
-        .fallback(BlockfrostError::not_found())
-        .route_layer(from_fn(track_http_metrics));
-
-    // Decide whether to nest routes based on api_prefix
-    let app = if api_prefix == "/" || api_prefix.is_empty() {
-        Router::new().merge(api_routes)
-    } else {
-        Router::new().nest(&api_prefix, api_routes)
-    };
-
-    let app = ServiceBuilder::new()
-        .layer(NormalizePathLayer::trim_trailing_slash())
-        .service(app);
-
+    let (app, node_conn_pool, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
+    let (ready_tx, ready_rx) = oneshot::channel();
+    let shutdown_signal = async {
+        let _ = signal::ctrl_c().await;
+        info!("Received shutdown signal");
+    };
 
-    info!(
-        "Server is listening on {}",
-        format!("http://{}{}/", address, api_prefix)
-    );
-    info!("Log level {}", config.log_level);
-    info!("Mode {}", config.mode);
+    // Spawn the server in its own task
+    let spawn_task = tokio::spawn({
+        let app = app;
+        async move {
+            let server_future =
+                axum::serve(listener, ServiceExt::<Request>::into_make_service(app))
+                    .with_graceful_shutdown(shutdown_signal);
 
-    tokio::spawn(node_health_check_task(node_conn_pool));
+            // Notify that the server has reached the listening stage
+            let _ = ready_tx.send(());
 
-    axum::serve(listener, ServiceExt::<Request>::into_make_service(app)).await?;
+            server_future.await
+        }
+    });
+
+    if let Ok(()) = ready_rx.await {
+        info!("Server is listening on http://{}{}", address, api_prefix);
+
+        if let Some(icebreakers_api) = &icebreakers_api {
+            icebreakers_api.register().await?;
+        }
+
+        // Spawn background tasks
+        tokio::spawn(node_health_check_task(node_conn_pool));
+    }
+
+    spawn_task
+        .await
+        .map_err(|err| AppError::Server(err.to_string()))??;
 
     Ok(())
 }
-
-// This is a workaround for the malloc performance issues under heavy multi-threaded load for builds targetting musl, i.e. Alpine Linux
-#[cfg(target_env = "musl")]
-#[global_allocator]
-static GLOBAL: jemalloc::Jemalloc = jemalloc::Jemalloc;

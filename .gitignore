@@ -28,6 +28,9 @@ result-*
 
 /cardano-node-configs
 
+testgen-hs
+testgen-hs.exe
+
 # Ignore IDE specific files
 # Visual Studio Code
 .vscode/
@@ -36,3 +39,6 @@ result-*
 # JetBrains IDEs (IntelliJ, CLion, etc.)
 .idea/
 *.iml
+
+.DS_Store
+testgen-hs

@@ -41,7 +41,7 @@ pub fn generate_cases(
     generator_size: u16,
     seed: Option<u64>,
 ) -> Result<CborTestCases, String> {
-    let child_exe = super::fallback_decoder::FallbackDecoder::find_testgen_hs(&[]).unwrap();
+    let child_exe = super::fallback_decoder::FallbackDecoder::find_testgen_hs().unwrap();
 
     let output = Command::new(&child_exe)
         .arg("generate")

@@ -3,20 +3,21 @@ use crate::BlockfrostError;
 use chrono::{Duration, TimeZone, Utc};
 use pallas_network::{miniprotocols, miniprotocols::localstate};
 use pallas_traverse::wellknown;
+use serde::{Deserialize, Serialize};
 use std::boxed::Box;
 
-#[derive(serde::Serialize)]
-pub struct SyncProgress {
-    percentage: f64,
-    era: u16,
-    epoch: u32,
-    slot: u64,
-    block: String,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NodeInfo {
+    pub block: String,
+    pub epoch: u32,
+    pub era: u16,
+    pub slot: u64,
+    pub sync_progress: f64,
 }
 
 impl NodeClient {
     /// Reports the sync progress of the node.
-    pub async fn sync_progress(&mut self) -> Result<SyncProgress, BlockfrostError> {
+    pub async fn sync_progress(&mut self) -> Result<NodeInfo, BlockfrostError> {
         self.with_statequery(|generic_client: &mut localstate::GenericClient| {
             Box::pin(async {
                 let current_era = localstate::queries_v16::get_current_era(generic_client).await?;
@@ -102,11 +103,13 @@ impl NodeClient {
 
                 let tolerance = 60; // [s]
                 let percentage = if (utc_now - utc_slot_capped).num_seconds() < tolerance {
-                    1.0
+                    100.00
                 } else {
                     let network_duration = (utc_now - utc_start).num_seconds() as f64;
                     let duration_up_to_slot = (utc_slot_capped - utc_start).num_seconds() as f64;
-                    duration_up_to_slot / network_duration
+                    // Multiply by 100 to get a percentage, then multiply by 100 again, round, and divide by 100
+                    // to limit the result to two decimal places.
+                    ((duration_up_to_slot / network_duration) * 100.0 * 100.0).round() / 100.0
                 };
 
                 let block = match chain_point {
@@ -114,8 +117,8 @@ impl NodeClient {
                     miniprotocols::Point::Specific(_, block) => hex::encode(&block),
                 };
 
-                Ok(SyncProgress {
-                    percentage,
+                Ok(NodeInfo {
+                    sync_progress: percentage,
                     era: current_era,
                     epoch,
                     slot,

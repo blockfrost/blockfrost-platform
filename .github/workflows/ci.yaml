@@ -1,4 +1,5 @@
 name: Continuous Integration
+
 on:
   push:
   workflow_dispatch:
@@ -8,43 +9,84 @@ on:
         type: boolean
         required: true
         default: true
+
 env:
   CARGO_TERM_COLOR: always
+
 jobs:
+  lint_docker:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Hadolint
+        run: |
+          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
+          chmod +x hadolint
+          sudo mv hadolint /usr/local/bin/hadolint
+
+      - name: Lint Dockerfile
+        run: hadolint Dockerfile
+
   build_and_test:
-    name: CI
+    name: Build and Test
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust: [stable]
       fail-fast: true
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
+
       - name: Build
         run: cargo build --release --verbose
+
       - name: Test
-        run: cargo test --verbose
+        run: cargo test --lib --verbose
         timeout-minutes: 10
+
       - name: Check formatting
         run: cargo fmt --all -- --check
+
       - name: Lint with Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         run: |
           mkdir -p artifacts
           cp target/release/blockfrost-platform* artifacts/
           cp -r testgen-hs artifacts/
+
       - name: Upload artifacts
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binary
           path: artifacts/
+
+  integration_tests:
+    name: Integration Tests
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: build_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Query Tip
+        run: nix develop .# --command cardano-cli query tip --socket-path /run/cardano-node/node.socket --testnet-magic 2
+
+      - name: Run Integration Tests
+        run: nix develop .# --command cargo test --verbose --test endpoints_test

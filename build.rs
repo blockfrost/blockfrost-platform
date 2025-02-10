@@ -60,11 +60,12 @@ fn main() {
     let cargo_manifest_dir =
         env::var("CARGO_MANIFEST_DIR").expect("Unable to find CARGO_MANIFEST_DIR");
 
-    let testgen_dir = PathBuf::from(&cargo_manifest_dir)
-        .join("target")
-        .join("testgen-hs");
+    let cargo_target_dir = PathBuf::from(&cargo_manifest_dir)
+        .join(env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into()));
 
-    create_dir_all(&testgen_dir).expect("Unable to create testgen directory");
+    let download_dir = cargo_target_dir.join("testgen-hs");
+
+    create_dir_all(&download_dir).expect("Unable to create testgen directory");
 
     let archive_name = if target_os == "windows" {
         format!("{}.zip", file_name)
@@ -72,7 +73,7 @@ fn main() {
         format!("{}.tar.bz2", file_name)
     };
 
-    let archive_path = testgen_dir.join(&archive_name);
+    let archive_path = download_dir.join(&archive_name);
 
     // Download the artifact if not already in the target directory.
     if !archive_path.exists() {
@@ -90,8 +91,11 @@ fn main() {
         println!("Using existing archive at: {}", archive_path.display());
     }
 
+    // Either `debug` or `release`:
+    let cargo_profile = env::var("PROFILE").expect("Could not read PROFILE");
+
     // Extraction path inside the target directory.
-    let extract_dir = testgen_dir.join("extracted");
+    let extract_dir = cargo_target_dir.join(cargo_profile);
     create_dir_all(&extract_dir).expect("Unable to create extraction directory");
 
     let testgen_hs_dir = extract_dir.join("testgen-hs");

@@ -1,13 +1,13 @@
-use crate::{node::sync_progress::SyncProgress, BlockfrostError, NodePool};
+use crate::{node::sync_progress::NodeInfo, BlockfrostError, NodePool};
 use axum::{response::IntoResponse, Extension, Json};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
-pub struct Response {
+#[derive(Serialize, Deserialize)]
+pub struct RootResponse {
     pub name: String,
     pub version: String,
-    pub sync_progress: SyncProgress,
     pub healthy: bool,
+    pub node_info: NodeInfo,
     pub errors: Vec<String>,
 }
 
@@ -16,12 +16,12 @@ pub async fn route(
 ) -> Result<impl IntoResponse, BlockfrostError> {
     let errors = vec![];
     let mut node = node.get().await?;
-    let sync_progress = node.sync_progress().await?;
+    let node_info = node.sync_progress().await?;
 
-    let response = Response {
-        name: "blockfrost-platform".to_string(),
+    let response = RootResponse {
+        name: env!("CARGO_PKG_NAME").to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        sync_progress,
+        node_info,
         healthy: errors.is_empty(),
         errors,
     };

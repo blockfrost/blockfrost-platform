@@ -1,0 +1,17 @@
+[advisories]
+ignore = [
+  "RUSTSEC-2022-0004", # Solution:  No fixed upgrade is available!
+  "RUSTSEC-2024-0421", # FIXME: upgrade to idna >=1.0.0 (transitive dependency of `url`)
+]
+informational_warnings = ["unmaintained"]
+severity_threshold = "low"
+
+[output]
+deny = ["unmaintained"]
+format = "terminal"
+quiet = false
+show_tree = true
+
+[yanked]
+enabled = true
+update_index = true

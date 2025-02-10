@@ -29,10 +29,9 @@ pub enum AppError {
 /// - message: a longer description of the error
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlockfrostError {
-    pub status_code: u16,
     pub error: String,
     pub message: String,
-    pub details: Option<serde_json::Value>,
+    pub status_code: u16,
 }
 
 impl From<std::num::TryFromIntError> for BlockfrostError {
@@ -113,7 +112,6 @@ impl BlockfrostError {
             error: "Not Found".to_string(),
             message: "The requested component has not been found.".to_string(),
             status_code: 404,
-            details: None,
         }
     }
 
@@ -123,17 +121,6 @@ impl BlockfrostError {
             error: "Bad Request".to_string(),
             message,
             status_code: 400,
-            details: None,
-        }
-    }
-
-    /// Our custom 400 error
-    pub fn custom_400_details(message: String, details: serde_json::Value) -> Self {
-        Self {
-            error: "Bad Request".to_string(),
-            message,
-            status_code: 400,
-            details: Some(details),
         }
     }
 
@@ -143,7 +130,6 @@ impl BlockfrostError {
             error: "Internal Server Error".to_string(),
             message: error,
             status_code: 500,
-            details: None,
         }
     }
 
@@ -153,7 +139,6 @@ impl BlockfrostError {
             error: "Internal Server Error".to_string(),
             message: "An unexpected response was received from the backend.".to_string(),
             status_code: 500,
-            details: None,
         }
     }
 

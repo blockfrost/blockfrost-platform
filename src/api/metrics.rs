@@ -1,4 +1,4 @@
-use crate::BlockfrostError;
+use crate::{cli::Config, BlockfrostError};
 use axum::response::{Extension, IntoResponse};
 use metrics::{describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
@@ -7,7 +7,12 @@ use tokio::sync::RwLock;
 
 pub async fn route(
     Extension(prometheus_handle): Extension<Arc<RwLock<PrometheusHandle>>>,
+    Extension(config): Extension<Arc<Config>>,
 ) -> Result<impl IntoResponse, BlockfrostError> {
+    if !config.metrics {
+        return Err(BlockfrostError::not_found());
+    }
+
     let handle = prometheus_handle.write().await;
 
     Ok(handle.render().into_response())
