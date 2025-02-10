@@ -7,7 +7,7 @@ use std::{
 
 use pallas_addresses::{
     byron::{AddrAttrProperty, AddrType, AddressPayload},
-    Address, ByronAddress, Pointer, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart,
+    ByronAddress, Pointer, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart,
 };
 use pallas_codec::{
     minicbor::bytes::ByteVec,
@@ -17,15 +17,16 @@ use pallas_crypto::hash::Hasher;
 use pallas_network::miniprotocols::handshake::NetworkMagic;
 use pallas_primitives::{
     conway::{
-        Anchor, Certificate, CommitteeColdCredential, Constitution, DRep, DRepVotingThresholds,
-        ExUnitPrices, GovActionId, Language, Multiasset, NativeScript, PoolVotingThresholds,
+        Anchor, Certificate, CommitteeColdCredential, Constitution, CostModels, DRep,
+        DRepVotingThresholds, ExUnitPrices, GovAction, GovActionId, Language, Multiasset,
+        NativeScript, PoolVotingThresholds, ProposalProcedure, ProtocolParamUpdate,
         PseudoDatumOption, PseudoScript, TransactionOutput, VKeyWitness, Value, Vote, Voter,
         VotingProcedure,
     },
     AssetName, BoundedBytes, Bytes, Coin, CostModel, DatumHash, ExUnits, Hash, Int, KeyValuePairs,
-    MaybeIndefArray, NonEmptyKeyValuePairs, Nullable, PlutusData, PoolKeyhash, PoolMetadata,
-    PositiveCoin, ProtocolVersion, RationalNumber, Relay, RewardAccount, ScriptHash, Set,
-    StakeCredential, TransactionInput,
+    MaybeIndefArray, NetworkId, NonEmptyKeyValuePairs, Nullable, PlutusData, PoolKeyhash,
+    PoolMetadata, PositiveCoin, ProtocolVersion, RationalNumber, Relay, RewardAccount, ScriptHash,
+    Set, StakeCredential, TransactionInput,
 };
 use pallas_traverse::ComputeHash;
 
@@ -34,13 +35,11 @@ use super::haskell_types::{
     ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure,
     ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure,
     ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DatumEnum, Delegatee, DeltaCoin,
-    DisplayAddress, DisplayAssetName, DisplayCoin, DisplayCostModels, DisplayDatumHash,
-    DisplayGovAction, DisplayHash, DisplayMultiAsset, DisplayOSet, DisplayPolicyId,
-    DisplayProposalProcedure, DisplayProtocolParamUpdate, DisplayScriptHash, DisplayValue,
-    DisplayVotingProcedures, EpochNo, EraScript, FailureDescription, KeyHash, MaryValue, Mismatch,
-    OHashMap, PlutusDataBytes, PlutusPurpose, PurposeAs, RewardAccountFielded, SafeHash,
-    ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw,
-    TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
+    DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatumHash, DisplayHash, DisplayOSet,
+    DisplayPolicyId, DisplayRewardAccount, DisplayScriptHash, DisplayVotingProcedures, EpochNo,
+    EraScript, FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes,
+    PlutusPurpose, PurposeAs, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -252,8 +251,8 @@ impl fmt::Display for ConwayGovPredFailure {
             ProposalProcedureNetworkIdMismatch(ra, n) => {
                 write!(
                     f,
-                    "ProposalProcedureNetworkIdMismatch ({}) {}",
-                    ra,
+                    "ProposalProcedureNetworkIdMismatch {} {}",
+                    ra.to_haskell_str_p(),
                     n.to_haskell_str()
                 )
             }
@@ -314,7 +313,11 @@ impl fmt::Display for ConwayGovPredFailure {
                 write!(f, "ZeroTreasuryWithdrawals {}", s.to_haskell_str_p())
             }
             ProposalReturnAccountDoesNotExist(s) => {
-                write!(f, "ProposalReturnAccountDoesNotExist ({})", s)
+                write!(
+                    f,
+                    "ProposalReturnAccountDoesNotExist {}",
+                    s.to_haskell_str_p()
+                )
             }
             TreasuryWithdrawalReturnAccountsDoNotExist(s) => {
                 write!(
@@ -650,19 +653,28 @@ where
         )
     }
 }
-impl HaskellDisplay for RewardAccountFielded {
+
+impl HaskellDisplay for DisplayRewardAccount {
     fn to_haskell_str(&self) -> String {
+        let network = if self.0[0] & 0b00000001 != 0 {
+            NetworkId::Mainnet
+        } else {
+            NetworkId::Testnet
+        };
+
+        let mut hash = [0; 28];
+        hash.copy_from_slice(&self.0[1..29]);
+        let credential = if &self.0[0] & 0b00010000 != 0 {
+            StakeCredential::ScriptHash(hash.into())
+        } else {
+            StakeCredential::AddrKeyhash(hash.into())
+        };
+
         format!(
             "RewardAccount {{raNetwork = {}, raCredential = {}}}",
-            self.ra_network.to_haskell_str(),
-            self.ra_credential.to_haskell_str()
+            network.to_haskell_str(),
+            credential.to_haskell_str()
         )
-    }
-}
-
-impl fmt::Display for RewardAccountFielded {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_haskell_str())
     }
 }
 
@@ -789,9 +801,9 @@ impl HaskellDisplay for DRep {
     }
 }
 
-impl HaskellDisplay for DisplayGovAction {
+impl HaskellDisplay for GovAction {
     fn to_haskell_str(&self) -> String {
-        use DisplayGovAction::*;
+        use GovAction::*;
 
         match self {
             ParameterChange(a, b, c) => {
@@ -810,7 +822,7 @@ impl HaskellDisplay for DisplayGovAction {
                 )
             }
             TreasuryWithdrawals(a, b) => {
-                let data: KeyValuePairs<RewardAccountFielded, DisplayCoin> =
+                let data: KeyValuePairs<DisplayRewardAccount, DisplayCoin> =
                     a.iter().map(|(k, v)| (k.into(), v.into())).collect();
 
                 format!(
@@ -858,7 +870,7 @@ impl HaskellDisplay for DisplayGovAction {
 }
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/7683b73971a800b36ca7317601552685fa0701ed/eras/conway/impl/src/Cardano/Ledger/Conway/PParams.hs#L511
-impl HaskellDisplay for DisplayProtocolParamUpdate {
+impl HaskellDisplay for ProtocolParamUpdate {
     fn to_haskell_str(&self) -> String {
         format!(
             "PParamsUpdate (ConwayPParams {{cppMinFeeA = {}, cppMinFeeB = {}, cppMaxBBSize = {}, cppMaxTxSize = {}, cppMaxBHSize = {}, cppKeyDeposit = {}, cppPoolDeposit = {}, \
@@ -897,17 +909,12 @@ impl HaskellDisplay for DisplayProtocolParamUpdate {
             self.drep_deposit.as_display_coin(),
             self.drep_inactivity_period.as_epoch_interval(),
             self.minfee_refscript_cost_per_byte.to_haskell_str_p()
-
-
-
-
         )
     }
 }
 
 impl HaskellDisplay for PoolVotingThresholds {
     fn to_haskell_str(&self) -> String {
-        // Implement your display logic here
         format!("PoolVotingThresholds {{pvtMotionNoConfidence = {}, pvtCommitteeNormal = {}, pvtCommitteeNoConfidence = {}, pvtHardForkInitiation = {}, pvtPPSecurityGroup = {}}}",
         self.motion_no_confidence.to_haskell_str(),
         self.committee_normal.to_haskell_str(),
@@ -920,7 +927,6 @@ impl HaskellDisplay for PoolVotingThresholds {
 
 impl HaskellDisplay for DRepVotingThresholds {
     fn to_haskell_str(&self) -> String {
-        // Implement your display logic here
         format!("DRepVotingThresholds {{dvtMotionNoConfidence = {}, dvtCommitteeNormal = {}, dvtCommitteeNoConfidence = {}, \
      dvtUpdateToConstitution = {}, dvtHardForkInitiation = {}, dvtPPNetworkGroup = {}, dvtPPEconomicGroup = {}, dvtPPTechnicalGroup = {}, dvtPPGovGroup = {}, dvtTreasuryWithdrawal = {}}}",
         self.motion_no_confidence.to_haskell_str(),
@@ -979,11 +985,11 @@ impl HaskellDisplay for Anchor {
     }
 }
 
-impl HaskellDisplay for DisplayProposalProcedure {
+impl HaskellDisplay for ProposalProcedure {
     fn to_haskell_str(&self) -> String {
         format!(
             "ProposalProcedure {{pProcDeposit = {}, pProcReturnAddr = {}, pProcGovAction = {}, pProcAnchor = {}}}",
-            self.deposit.as_display_coin(), self.reward_account.as_reward_account_fielded(), self.gov_action.to_haskell_str(), self.anchor.to_haskell_str()
+            self.deposit.as_display_coin(), self.reward_account.as_reward_account(), self.gov_action.to_haskell_str(), self.anchor.to_haskell_str()
         )
     }
 }
@@ -1387,14 +1393,13 @@ impl AsProtocolVersion for ProtocolVersion {
     }
 }
 
-trait AsRewardAccountFielded {
-    fn as_reward_account_fielded(&self) -> String;
+trait AsRewardAccount {
+    fn as_reward_account(&self) -> String;
 }
 
-impl AsRewardAccountFielded for RewardAccount {
-    fn as_reward_account_fielded(&self) -> String {
-        let hex = hex::encode(self.as_ref() as &[u8]);
-        RewardAccountFielded::new(hex).to_haskell_str()
+impl AsRewardAccount for RewardAccount {
+    fn as_reward_account(&self) -> String {
+        DisplayRewardAccount(self.clone()).to_haskell_str()
     }
 }
 
@@ -1484,7 +1489,7 @@ impl AsDisplayCoin for Option<&u64> {
         }
     }
 }
-// This trait is used to present values coming from a Map, but we don't use Map
+
 trait AsInMap {
     fn as_in_map(&self) -> String;
 }
@@ -1600,11 +1605,6 @@ impl HaskellDisplay for Bytes {
         self.as_text()
     }
 }
-impl HaskellDisplay for DisplayMultiAsset {
-    fn to_haskell_str(&self) -> String {
-        format!("MultiAsset ({})", self.0.to_haskell_str())
-    }
-}
 
 impl<K, V> HaskellDisplay for KeyValuePairs<K, V>
 where
@@ -1684,6 +1684,7 @@ impl HaskellDisplay for DisplayCoin {
 }
 
 // This type is used to escape showing strings as Haskell strings.
+#[derive(Debug, Clone)]
 pub struct DisplayAsIs(String);
 
 impl HaskellDisplay for DisplayAsIs {
@@ -1736,7 +1737,6 @@ impl HaskellDisplay for TransactionOutput {
         match self {
             pallas_primitives::conway::PseudoTransactionOutput::Legacy(txo) => {
                 let address = txo.address.as_address();
-                // DisplayAddress::from_bytes(&txo.address).to_haskell_str();
                 let value = txo.amount.to_haskell_str();
                 let datum = match txo.datum_hash {
                     Some(hash) => hash.as_datum_hash(),
@@ -1811,11 +1811,8 @@ impl HaskellDisplay for NativeScript {
         let mut payload: Vec<u8> = vec![];
         pallas_codec::minicbor::encode(self, &mut payload).unwrap();
 
-        // let hash = Hasher::<256>::hash( &payload  ).as_blake2b256();
-
         let mut hasher = Hasher::<256>::new();
 
-        //hasher.input(&[tag]);
         hasher.input(&payload);
         let str = match self {
             ScriptPubkey(key_hash) => {
@@ -1949,27 +1946,8 @@ impl HaskellDisplay for DisplayVotingProcedures {
     }
 }
 
-impl HaskellDisplay for DisplayValue {
-    fn to_haskell_str(&self) -> String {
-        // format!("Value {}", self.0.to_haskell_str())
-
-        use DisplayValue::*;
-
-        match self {
-            Coin(c) => format!("Value {}", c),
-            Multiasset(mary_value, multi_asset) => format!(
-                "{} {}",
-                mary_value.to_haskell_str(),
-                multi_asset.to_haskell_str_p()
-            ),
-        }
-    }
-}
-
 impl HaskellDisplay for Value {
     fn to_haskell_str(&self) -> String {
-        // format!("Value {}", self.0.to_haskell_str())
-
         use Value::*;
 
         match self {
@@ -1985,8 +1963,6 @@ impl HaskellDisplay for Value {
 
 impl HaskellDisplay for pallas_primitives::alonzo::Value {
     fn to_haskell_str(&self) -> String {
-        // format!("Value {}", self.0.to_haskell_str())
-
         match self {
             pallas_primitives::alonzo::Value::Coin(c) => format!("Value {}", c),
             pallas_primitives::alonzo::Value::Multiasset(mary_value, multi_asset) => format!(
@@ -2096,15 +2072,25 @@ impl HaskellDisplay for Pointer {
     }
 }
 
-impl HaskellDisplay for Address {
+impl HaskellDisplay for pallas_addresses::Address {
     fn to_haskell_str(&self) -> String {
-        let str = match self {
-            Address::Byron(addr) => format!("AddrBootstrap {}", addr.to_haskell_str_p()),
-            Address::Shelley(addr) => addr.to_haskell_str(),
-            Address::Stake(addr) => addr.to_hex(),
-        };
+        use pallas_addresses::Address::*;
+        match self {
+            Byron(addr) => format!("AddrBootstrap {}", addr.to_haskell_str_p()),
+            Shelley(addr) => addr.to_haskell_str(),
+            Stake(addr) => addr.to_hex(),
+        }
+    }
+}
 
-        str.to_string()
+impl HaskellDisplay for DisplayAddress {
+    fn to_haskell_str(&self) -> String {
+        use pallas_addresses::Address::*;
+        match pallas_addresses::Address::from_bytes(&self.0).unwrap() {
+            Byron(addr) => format!("AddrBootstrap {}", addr.to_haskell_str_p()),
+            Shelley(addr) => addr.to_haskell_str(),
+            Stake(addr) => addr.to_hex(),
+        }
     }
 }
 
@@ -2228,7 +2214,6 @@ impl HaskellDisplay for BoundedBytes {
         let str = arr.iter().map(|&c| c as char).collect::<String>();
 
         haskell_show_string(&str)
-        // format!("BoundedBytes {}", self.deref().to_haskell_str())
     }
 }
 
@@ -2438,7 +2423,7 @@ impl HaskellDisplay for Certificate {
             } =>
                format!("RegPool (PoolParams {{ppId = {}, ppVrf = {}, ppPledge = {}, ppCost = {}, ppMargin = {}, ppRewardAccount = {}, ppOwners = {}, ppRelays = {}, ppMetadata = {}}})", 
                 operator.as_key_hash(), vrf_keyhash.to_string().to_haskell_str(), pledge.as_display_coin(),cost.as_display_coin(),
-                margin.to_haskell_str(), reward_account.as_reward_account_fielded(), pool_owners.as_key_hash(),
+                margin.to_haskell_str(), reward_account.as_reward_account(), pool_owners.as_key_hash(),
                 relays.as_strict_seq(), pool_metadata.to_haskell_str()
              ),
             PoolRetirement(hash, epoch) => format!(
@@ -2534,12 +2519,6 @@ where
     }
 }
 
-impl HaskellDisplay for DisplayAddress {
-    fn to_haskell_str(&self) -> String {
-        self.0.to_haskell_str()
-    }
-}
-
 impl<T> HaskellDisplay for StrictMaybe<T>
 where
     T: HaskellDisplay + 'static,
@@ -2566,7 +2545,7 @@ where
     }
 }
 
-impl HaskellDisplay for DisplayOSet<DisplayProposalProcedure> {
+impl HaskellDisplay for DisplayOSet<ProposalProcedure> {
     fn to_haskell_str(&self) -> String {
         let seq = self.0.deref().as_strict_seq();
         let mut sorted_vec = self.0.deref().clone();
@@ -2652,7 +2631,9 @@ trait AsAddress {
 
 impl AsAddress for Bytes {
     fn as_address(&self) -> String {
-        Address::from_bytes(self).unwrap().to_haskell_str()
+        pallas_addresses::Address::from_bytes(self)
+            .unwrap()
+            .to_haskell_str()
     }
 }
 trait AsAuxDataHash {
@@ -2763,42 +2744,65 @@ impl AsPort for Nullable<u32> {
     }
 }
 
-impl HaskellDisplay for DisplayCostModels {
+impl HaskellDisplay for CostModels {
     fn to_haskell_str(&self) -> String {
-        fn display_cost_model(cost_model: &CostModel) -> String {
-            cost_model
-                .iter()
-                .map(|cost| cost.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
+        fn display_cost_model(version: u64, model_opt: &Option<CostModel>) -> Option<DisplayAsIs> {
+            match model_opt {
+                Some(model) => {
+                    let model_str = model
+                        .iter()
+                        .map(|cost| cost.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    let str = format!(
+                        "(PlutusV{},CostModel PlutusV{} [{}])",
+                        version, version, model_str,
+                    );
+                    Some(str.as_is())
+                }
+                _ => None,
+            }
         }
 
-        let mut known = vec![];
-        let mut unknown = vec![];
+        fn display_unknown(kv: &(u64, CostModel)) -> DisplayAsIs {
+            let model_str =
+                kv.1.iter()
+                    .map(|cost| cost.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
 
-        let mut models: Vec<_> = self.0 .0.iter().collect();
-        models.sort_by_key(|kv| kv.0);
+            format!("({},[{}])", kv.0, model_str).as_is()
+        }
 
-        for kv in models {
-            if kv.0 == 0 || kv.0 == 1 || kv.0 == 2 {
-                known.push(
-                    format!(
-                        "(PlutusV{},CostModel PlutusV{} [{}])",
-                        kv.0 + 1,
-                        kv.0 + 1,
-                        display_cost_model(&kv.1)
-                    )
-                    .as_is(),
-                );
-            } else {
-                unknown.push(format!("({},[{}])", kv.0, display_cost_model(&kv.1)).as_is());
-            }
+        let known_str: Vec<DisplayAsIs> = [
+            display_cost_model(1, &self.plutus_v1),
+            display_cost_model(2, &self.plutus_v2),
+            display_cost_model(3, &self.plutus_v3),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        let mut unknown_str = vec![];
+
+        for kv in self.unknown.iter() {
+            unknown_str.push(display_unknown(kv));
         }
 
         format!(
             "CostModels {{_costModelsValid = {}, _costModelsUnknown = {}}}",
-            known.as_from_list(),
-            unknown.as_from_list()
+            known_str.as_from_list(),
+            unknown_str.as_from_list()
         )
+    }
+}
+
+impl HaskellDisplay for NetworkId {
+    fn to_haskell_str(&self) -> String {
+        match self {
+            Self::Mainnet => "Mainnet".to_string(),
+            Self::Testnet => "Testnet".to_string(),
+        }
     }
 }
