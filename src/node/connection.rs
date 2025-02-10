@@ -1,4 +1,4 @@
-use crate::{cbor::fallback_decoder::FallbackDecoder, BlockfrostError};
+use crate::BlockfrostError;
 use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
 use std::{boxed::Box, pin::Pin};
 use tracing::warn;
@@ -10,7 +10,6 @@ pub struct NodeClient {
     /// *always* [`Some`]. See [`<super::pool_manager::NodePoolManager as
     /// deadpool::managed::Manager>>::recycle`] for an explanation.
     pub(in crate::node) client: Option<NodeClientFacade>,
-    pub(in crate::node) fallback_decoder: FallbackDecoder,
 }
 
 impl NodeClient {

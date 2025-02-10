@@ -105,9 +105,6 @@ async fn verify_one(cbor: &str) {
         serde_json::to_string_pretty(&reference_json).unwrap().replace("\n", "\n    ")
     ));
 
-    let our_json = serde_json::to_value(NodeClient::_unused_i_i_i_i_i_i_i_generate_error_response(
-        our_decoding,
-    ))
-    .unwrap();
+    let our_json = serde_json::to_value(our_decoding).unwrap();
     assert_json_eq!(reference_json, our_json)
 }

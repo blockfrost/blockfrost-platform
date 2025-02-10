@@ -1,5 +1,8 @@
 use super::connection::NodeClient;
-use crate::{cbor::haskell_types::TxValidationError, BlockfrostError};
+use crate::{
+    cbor::haskell_types::{TxSubmitFail, TxValidationError},
+    BlockfrostError,
+};
 use pallas_codec::minicbor::Decoder;
 use pallas_crypto::hash::Hasher;
 use pallas_network::{
@@ -41,36 +44,22 @@ impl NodeClient {
                 info!("Transaction accepted by the node {}", txid);
                 Ok(txid)
             }
-            Ok(Response::Rejected(reason)) => {
-                // The [2..] is a Pallas bug, cf. <https://github.com/txpipe/pallas/pull/548>.
-                let reason = &reason.0[2..];
-
-                match self.fallback_decoder.decode(reason).await {
-                    Ok(submit_api_json) => {
-                        let error_message = "TxSubmitFail".to_string();
-                        warn!(
-                            "{}: {} ~ {:?}",
-                            error_message,
-                            hex::encode(reason),
-                            submit_api_json
-                        );
-
-                        Err(BlockfrostError::custom_400_details(
-                            error_message,
-                            submit_api_json,
-                        ))
-                    }
-
-                    Err(e) => {
-                        warn!("Failed to decode error reason: {:?}", e);
-
-                        Err(BlockfrostError::custom_400(format!(
-                            "Failed to decode error reason: {:?}",
-                            e
-                        )))
-                    }
+            Ok(Response::Rejected(reason)) => match NodeClient::try_decode_error(&reason.0) {
+                Ok(error) => {
+                    let haskell_display = serde_json::to_string(&error).unwrap();
+                    warn!("{}: {:?}", "TxSubmitFail", haskell_display);
+                    Err(BlockfrostError::custom_400(haskell_display))
                 }
-            }
+
+                Err(e) => {
+                    warn!("Failed to decode error reason: {:?}", e);
+
+                    Err(BlockfrostError::custom_400(format!(
+                        "Failed to decode error reason: {:?}",
+                        e
+                    )))
+                }
+            },
             Err(e) => {
                 let error_message = format!("Error during transaction submission: {:?}", e);
 
@@ -79,11 +68,11 @@ impl NodeClient {
         }
     }
 
-    pub fn try_decode_error(buffer: &[u8]) -> Result<TxValidationError, Error> {
+    pub fn try_decode_error(buffer: &[u8]) -> Result<TxSubmitFail, Error> {
         let maybe_error = Decoder::new(buffer).decode();
 
         match maybe_error {
-            Ok(error) => Ok(error),
+            Ok(error) => Ok(NodeClient::wrap_error_response(error)),
             Err(err) => {
                 warn!(
                     "Failed to decode error: {:?}, buffer: {}",
@@ -99,10 +88,8 @@ impl NodeClient {
         }
     }
 
-    #[cfg(test)]
     /// Mimicks the data structure of the error response from the cardano-submit-api
-    /// This fucntion will be used by the native error serializer once it's ready.
-    pub fn _unused_i_i_i_i_i_i_i_generate_error_response(
+    pub fn wrap_error_response(
         error: TxValidationError,
     ) -> crate::cbor::haskell_types::TxSubmitFail {
         use crate::cbor::haskell_types::{
