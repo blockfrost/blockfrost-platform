@@ -348,8 +348,8 @@ impl fmt::Display for ConwayUtxoPredFailure {
             MaxTxSizeUTxO(n1, n2) => write!(
                 f,
                 "(MaxTxSizeUTxO {} {})",
-                n1.to_haskell_str(),
-                n2.to_haskell_str()
+                n1.to_haskell_str_p(),
+                n2.to_haskell_str_p()
             ),
             InputSetEmptyUTxO() => write!(f, "InputSetEmptyUTxO"),
             FeeTooSmallUTxO(expected, supplied) => {
@@ -1061,28 +1061,20 @@ impl HaskellDisplay for EpochNo {
     }
 }
 
-impl HaskellDisplay for i8 {
+impl HaskellDisplay for i64 {
     fn to_haskell_str(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn to_haskell_str_p(&self) -> String {
         if *self >= 0 {
-            format!("{}", self)
+            self.to_string()
         } else {
             format!("({})", self)
         }
     }
 }
-impl HaskellDisplay for i64 {
-    fn to_haskell_str(&self) -> String {
-        if *self >= 0 {
-            format!("{}", self)
-        } else {
-            format!("({})", self)
-        }
-    }
-}
+
 impl HaskellDisplay for u8 {
     fn to_haskell_str(&self) -> String {
         format!("{}", self)
@@ -2548,8 +2540,15 @@ where
 impl HaskellDisplay for DisplayOSet<ProposalProcedure> {
     fn to_haskell_str(&self) -> String {
         let seq = self.0.deref().as_strict_seq();
+
         let mut sorted_vec = self.0.deref().clone();
-        sorted_vec.sort_by(|a, b| a.deposit.cmp(&b.deposit));
+
+        sorted_vec.sort_by(|a, b| {
+            a.deposit
+                .cmp(&b.deposit)
+                .then_with(|| b.reward_account.cmp(&a.reward_account))
+        });
+
         format!(
             "OSet {{osSSeq = {}, osSet = {}}}",
             seq,

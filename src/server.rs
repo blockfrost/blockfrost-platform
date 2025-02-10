@@ -29,7 +29,6 @@ pub async fn build(
     ),
     AppError,
 > {
-
     // Create node pool
     let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
 
