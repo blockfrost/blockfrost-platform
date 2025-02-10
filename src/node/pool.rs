@@ -1,5 +1,5 @@
 use super::pool_manager::NodePoolManager;
-use crate::{cbor::fallback_decoder::FallbackDecoder, cli::Config, AppError};
+use crate::{cli::Config, AppError};
 use deadpool::managed::{Object, Pool};
 
 /// This represents a pool of `NodeToClient` connections to a single `cardano-node`.
@@ -13,11 +13,10 @@ pub struct NodePool {
 
 impl NodePool {
     /// Creates a new pool of [`super::connection::NodeClient`] connections.
-    pub fn new(config: &Config, fallback_decoder: FallbackDecoder) -> Result<Self, AppError> {
+    pub fn new(config: &Config) -> Result<Self, AppError> {
         let manager = NodePoolManager {
             network_magic: config.network_magic,
             socket_path: config.node_socket_path.to_string(),
-            fallback_decoder,
         };
         let pool_manager = deadpool::managed::Pool::builder(manager)
             .max_size(config.max_pool_connections)

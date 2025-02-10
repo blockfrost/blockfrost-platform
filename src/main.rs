@@ -7,7 +7,6 @@ use axum::{
 use blockfrost_platform::{
     api::{self, metrics::setup_metrics_recorder, root, tx_submit},
     background_tasks::node_health_check_task,
-    cbor::fallback_decoder::FallbackDecoder,
     cli::{Args, Config},
     errors::{AppError, BlockfrostError},
     icebreakers_api::IcebreakersAPI,
@@ -28,10 +27,7 @@ async fn main() -> Result<(), AppError> {
     // Setup logging
     setup_tracing(&config);
 
-    // Set up FallbackDecoder
-    let fallback_decoder = FallbackDecoder::spawn()?;
-
-    let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
+    let node_conn_pool = NodePool::new(&config)?;
     let icebreakers_api = IcebreakersAPI::new(&config).await?;
     let prometheus_handle = setup_metrics_recorder();
 

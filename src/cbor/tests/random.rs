@@ -156,11 +156,10 @@ fn proptest_with_params(
 
         let test_one = move || {
             let cbor = hex::decode(case.cbor).map_err(|e| e.to_string())?;
-            let our_json =
-                serde_json::to_value(NodeClient::_unused_i_i_i_i_i_i_i_generate_error_response(
-                    NodeClient::try_decode_error(&cbor).map_err(|e| e.to_string())?,
-                ))
-                .map_err(|e| e.to_string())?;
+            let our_json = serde_json::to_value(
+                NodeClient::try_decode_error(&cbor).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
             if our_json == case.json {
                 Ok(())
             } else {
@@ -179,9 +178,7 @@ fn proptest_with_params(
         let mut details = "".to_string();
 
         // How many failing examples to show verbatim in test output:
-        let show_max = match generator_size {
-            _ => 5,
-        };
+        let show_max = 5;
 
         if show_max > 0 {
             details.push_str(&format!(
