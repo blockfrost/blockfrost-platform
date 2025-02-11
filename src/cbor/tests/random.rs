@@ -138,6 +138,12 @@ fn proptest_ApplyTxErr_Conway_size_200() {
     proptest_with_params(CaseType::ApplyTxErr_Conway, 10, 200, None)
 }
 
+#[test]
+#[allow(non_snake_case)]
+fn proptest_ApplyTxErr_Conway_size_300() {
+    proptest_with_params(CaseType::ApplyTxErr_Conway, 3, 300, None)
+}
+
 /// Tests the native Rust deserializer with the given params.
 ///
 /// To generate data for [the
