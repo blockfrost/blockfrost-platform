@@ -58,7 +58,7 @@ in rec {
     pkgs.fetchzip {
       name = "testgen-hs-${version}";
       url = "https://github.com/input-output-hk/testgen-hs/releases/download/${version}/testgen-hs-${version}-${targetSystem}.zip";
-      hash = "sha256-a5/S7hQw5tIupJFbPG/5Pgb6l9Bw5nJX+jvt2WOqML0=";
+      hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
 
   nsis = import ./windows-nsis.nix {nsisNixpkgs = inputs.nixpkgs-nsis;};
