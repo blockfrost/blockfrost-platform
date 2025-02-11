@@ -92,7 +92,7 @@ pub fn check_generated_cases<F>(
                     let outcome = match parsed {
                         Ok(test_case) => match std::panic::catch_unwind(|| check_one(test_case)) {
                             Ok(a) => a,
-                            Err(_) => Err(format!("panic! (see above for details)")),
+                            Err(_) => Err("panic! (see above for details)".to_string()),
                         },
                         Err(e) => Err(format!("CborTestCase JSON parse error: {}", e)),
                     };
@@ -121,22 +121,22 @@ pub fn check_generated_cases<F>(
         let mut first_n_failures: Vec<String> = vec![];
         for result in result_rx {
             num_total += 1;
-            match result {
-                Err(e) => {
-                    num_failed += 1;
-                    if first_n_failures.len() < show_n_failures as usize {
-                        first_n_failures.push(e);
-                    }
+            if let Err(e) = result {
+                num_failed += 1;
+                if first_n_failures.len() < show_n_failures as usize {
+                    first_n_failures.push(e);
                 }
-                Ok(()) => (),
             }
         }
+
+        // Reaping a potential zombie:
+        child.wait().unwrap();
 
         if num_failed > 0 {
             let percent = num_failed as f64 / num_total as f64 * 100.0;
             let mut details = "".to_string();
 
-            if first_n_failures.len() > 0 {
+            if !first_n_failures.is_empty() {
                 details.push_str(&format!(
                     " Failing CBORs{}:",
                     if num_failed <= show_n_failures {
