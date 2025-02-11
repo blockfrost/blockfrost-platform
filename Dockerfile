@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     ls -l ; cargo chef prepare --recipe-path recipe.json
 
 FROM base AS downloader
-ADD https://github.com/input-output-hk/testgen-hs/releases/download/10.1.4.1/testgen-hs-10.1.4.1-x86_64-linux.tar.bz2 /app/
+ADD https://github.com/input-output-hk/testgen-hs/releases/download/10.1.4.2/testgen-hs-10.1.4.2-x86_64-linux.tar.bz2 /app/
 RUN tar -xjf testgen-hs-*.tar.* && /app/testgen-hs/testgen-hs --version
 
 FROM base AS builder
