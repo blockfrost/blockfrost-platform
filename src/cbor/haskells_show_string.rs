@@ -98,20 +98,21 @@ pub(crate) fn haskell_show_string(s: &str) -> String {
 }
 
 #[cfg(test)]
-use super::tests::{generate_cases, CaseType};
+use super::tests::{check_generated_cases, CaseType};
 
 #[test]
-fn proptest_data_text_1000_large() {
-    let cases = generate_cases(CaseType::DataText, 1000, 1000, None).unwrap();
-
-    for case in cases.test_cases {
+fn proptest_data_text_10000_large() {
+    check_generated_cases(CaseType::DataText, 10000, 1000, 5, None, |case| {
         let json_encoding: String = serde_json::to_string(&case.json).unwrap();
         let normal_string: String = serde_json::from_value(case.json).unwrap();
         let rust_emulation = haskell_show_string(&normal_string);
-        assert_eq!(
-            case.haskell_repr, rust_emulation,
-            "\n\n   JSON encoding: {}\n    Haskell Show: {}\n  Rust emulation: {}\n",
-            json_encoding, case.haskell_repr, rust_emulation
-        );
-    }
+        if case.haskell_repr == rust_emulation {
+            Ok(())
+        } else {
+            Err(format!(
+                " JSON encoding: {}\n    Haskell Show: {}\n  Rust emulation: {}",
+                json_encoding, case.haskell_repr, rust_emulation
+            ))
+        }
+    });
 }

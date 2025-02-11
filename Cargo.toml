@@ -8,6 +8,7 @@ build = "build.rs"
 [dependencies]
 axum = "0.8.1"
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+crossbeam = "0.8"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 serde = { version = "1.0.217", features = ["derive"] }
@@ -20,6 +21,7 @@ toml = "0.8.19"
 thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
+num_cpus = "1"
 pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
 pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }

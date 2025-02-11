@@ -42,3 +42,5 @@ testgen-hs.exe
 
 .DS_Store
 testgen-hs
+
+*.log
