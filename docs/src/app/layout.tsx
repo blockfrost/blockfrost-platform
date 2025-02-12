@@ -7,7 +7,7 @@ import Image from "next/image";
 export const metadata = {
   metadataBase: new URL("https://nextra.site"),
   title: {
-    template: "%s - Nextra",
+    template: "%s - Documentation",
   },
   description: "Nextra: the Next.js site builder",
   applicationName: "Nextra",
