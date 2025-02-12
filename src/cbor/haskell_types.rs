@@ -2,16 +2,14 @@ use std::fmt::{self};
 
 use pallas_codec::minicbor::{self, Decode};
 use pallas_codec::utils::Bytes;
-use pallas_primitives::conway::{GovAction, ProposalProcedure, Value};
+use pallas_primitives::conway::{GovAction, ProposalProcedure, TransactionOutput, Value};
 use pallas_primitives::NetworkId;
 use pallas_primitives::{
-    byron::Blake2b256,
     conway::{
-        Certificate, DRep, DatumHash, ExUnits, GovActionId, Language, ScriptHash, Voter,
-        VotingProcedures,
+        Certificate, DRep, ExUnits, GovActionId, Language, ScriptHash, Voter, VotingProcedures,
     },
-    AddrKeyhash, AssetName, BoundedBytes, Coin, PolicyId, PoolKeyhash, ProtocolVersion, Set,
-    StakeCredential, TransactionInput,
+    AddrKeyhash, Coin, PolicyId, PoolKeyhash, ProtocolVersion, Set, StakeCredential,
+    TransactionInput,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -169,9 +167,9 @@ pub enum ConwayUtxoPredFailure {
     ValueNotConservedUTxO(Value, Value),
     WrongNetwork(NetworkId, Set<DisplayAddress>),
     WrongNetworkWithdrawal(NetworkId, Set<DisplayRewardAccount>),
-    OutputTooSmallUTxO(Array<BabbageTxOut>),
-    OutputBootAddrAttrsTooBig(Array<BabbageTxOut>),
-    OutputTooBigUTxO(Array<(i64, i64, BabbageTxOut)>),
+    OutputTooSmallUTxO(Array<TransactionOutput>),
+    OutputBootAddrAttrsTooBig(Array<TransactionOutput>),
+    OutputTooBigUTxO(Array<(i64, i64, TransactionOutput)>),
     InsufficientCollateral(DeltaCoin, DisplayCoin),
     ScriptsNotPaidUTxO(Utxo),
     ExUnitsTooBigUTxO(ExUnits, ExUnits),
@@ -181,7 +179,7 @@ pub enum ConwayUtxoPredFailure {
     TooManyCollateralInputs(u64, u64),
     NoCollateralInputs(),
     IncorrectTotalCollateralField(DeltaCoin, DisplayCoin),
-    BabbageOutputTooSmallUTxO(Array<(BabbageTxOut, DisplayCoin)>),
+    BabbageOutputTooSmallUTxO(Array<(TransactionOutput, DisplayCoin)>),
     BabbageNonDisjointRefInputs(Vec<TransactionInput>),
 }
 
@@ -422,73 +420,15 @@ pub struct ValidityInterval {
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/aed1dc28b98c25ea73bc692e7e6c6d3a22381ff5/libs/cardano-ledger-core/src/Cardano/Ledger/UTxO.hs#L83
 #[derive(Debug)]
-pub struct Utxo(pub OHashMap<TransactionInput, BabbageTxOut>);
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/master/eras/conway/impl/src/Cardano/Ledger/Conway/TxOut.hs
-// https://github.com/IntersectMBO/cardano-ledger/blob/0d20d716fc15dc0b7648c448cbd735bebb7521b8/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L130
-#[derive(Debug)]
-pub struct BabbageTxOut {
-    pub address: DisplayAddress,
-    pub value: Option<Value>,
-    pub datum: Option<DatumEnum>,
-    pub script: Option<EraScript>,
-}
+pub struct Utxo(pub OHashMap<TransactionInput, TransactionOutput>);
 
 #[derive(Debug, Decode, Hash, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct DisplayPolicyId(#[n(0)] pub PolicyId);
 
-#[derive(Debug, Decode, Hash, PartialEq, Eq)]
-#[cbor(transparent)]
-pub struct DisplayAssetName(#[n(0)] pub AssetName);
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs#L135
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs#L210
-// We can ignore MemoBytes datatype
-#[derive(Debug)]
-pub enum TimelockRaw {
-    Signature(KeyHash),
-    AllOf(Vec<Timelock>),
-    AnyOf(Vec<Timelock>),
-    MOfN(u8, Vec<Timelock>),
-    TimeStart(SlotNo),
-    TimeExpire(SlotNo),
-}
-
-#[derive(Debug)]
-pub struct Timelock {
-    pub raw: TimelockRaw,
-    pub memo: DisplayHash,
-}
-
-#[derive(Debug)]
-pub enum EraScript {
-    Native(Timelock),
-    PlutusV1(ScriptHash),
-    PlutusV2(ScriptHash),
-    PlutusV3(ScriptHash),
-}
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/7683b73971a800b36ca7317601552685fa0701ed/libs/cardano-ledger-core/src/Cardano/Ledger/Hashes.hs#L113
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct DisplayHash(#[n(0)] pub Blake2b256); // Hashing algorithm used for hashing everything, except addresses
-
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
 pub struct StrictSeq<T>(#[n(0)] pub Vec<T>);
-
-// https://github.com/IntersectMBO/cardano-ledger/blob/5aed6e50d9efc9443ec2c17197671cc4c0de5498/libs/cardano-ledger-core/src/Cardano/Ledger/Plutus/Data.hs#L206
-#[derive(Debug, Clone)]
-pub enum DatumEnum {
-    DatumHash(DisplayDatumHash),
-    Datum(PlutusDataBytes),
-    NoDatum,
-}
-
-#[derive(Debug, Clone, Decode)]
-#[cbor(transparent)]
-pub struct DisplayDatumHash(#[n(0)] pub DatumHash);
 
 #[derive(Debug, Decode)]
 #[cbor(transparent)]
@@ -613,17 +553,6 @@ pub enum TxValidationErrorInCardanoMode {
     TxValidationErrorInCardanoMode(TxValidationError),
     EraMismatch(EraMismatch),
 }
-
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct DisplayExUnits(#[n(0)] pub ExUnits);
-
-#[derive(Debug, Clone)]
-pub struct PlutusDataBytes(pub BoundedBytes);
-
-#[derive(Debug, Decode)]
-#[cbor(transparent)]
-pub struct MaryValue(#[n(0)] pub DisplayCoin);
 
 // https://github.com/IntersectMBO/cardano-ledger/blob/3dd7401424e8d50cc9f19feef1589f1ce0d83ed6/libs/cardano-data/src/Data/OSet/Strict.hs#L67
 #[derive(Debug, Decode)]
