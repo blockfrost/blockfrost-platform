@@ -3,21 +3,18 @@ import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
 import Image from "next/image";
+import "../styles.css";
 
 export const metadata = {
   metadataBase: new URL("https://platform.blockfrost.io"),
   title: {
     template: "%s - Documentation",
   },
-  description: "Nextra: the Next.js site builder",
+  description: "Blockfrost Platform Documentation",
   applicationName: "Blockfrost Platform",
   generator: "Next.js",
   appleWebApp: {
     title: "Blockfrost Platform",
-  },
-  other: {
-    "msapplication-TileImage": "/ms-icon-144x144.png",
-    "msapplication-TileColor": "#fff",
   },
   discord: {
     site: "https://discord.gg/inputoutput",

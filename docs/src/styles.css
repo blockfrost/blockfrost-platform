@@ -1,0 +1,13 @@
+body {
+  background: #000212;
+}
+
+.nextra-navbar-blur {
+  background-color: rgba(0, 2, 18, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+footer {
+  background-color: #000212;
+}
