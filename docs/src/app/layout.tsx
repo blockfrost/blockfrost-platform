@@ -5,15 +5,15 @@ import "nextra-theme-docs/style.css";
 import Image from "next/image";
 
 export const metadata = {
-  metadataBase: new URL("https://nextra.site"),
+  metadataBase: new URL("https://platform.blockfrost.io"),
   title: {
     template: "%s - Documentation",
   },
   description: "Nextra: the Next.js site builder",
-  applicationName: "Nextra",
+  applicationName: "Blockfrost Platform",
   generator: "Next.js",
   appleWebApp: {
-    title: "Nextra",
+    title: "Blockfrost Platform",
   },
   other: {
     "msapplication-TileImage": "/ms-icon-144x144.png",
@@ -49,7 +49,7 @@ export default async function RootLayout({ children }) {
       <body>
         <Layout
           navbar={navbar}
-          footer={<Footer>MIT {new Date().getFullYear()} © Nextra.</Footer>}
+          footer={<Footer>MIT {new Date().getFullYear()} © Blockfrost.</Footer>}
           editLink="https://github.com/blockfrost/blockfrost-platform"
           docsRepositoryBase="https://github.com/blockfrost/blockfrost-platform/docs"
           sidebar={{ defaultMenuCollapseLevel: 1 }}
