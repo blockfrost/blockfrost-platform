@@ -22,13 +22,13 @@ thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
 num_cpus = "1"
-pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "c04acee09ff9901d65cc8e79c7ef8d41f9bb8bb9" }
+pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
 reqwest = "0.12.12"
 hex = "0.4.3"
 cbor = "0.4.1"

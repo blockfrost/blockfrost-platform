@@ -27,6 +27,7 @@ result-*
 .envrc.local
 
 /cardano-node-configs
+/cardano-node
 
 testgen-hs
 testgen-hs.exe

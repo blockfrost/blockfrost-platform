@@ -1,24 +1,16 @@
-use pallas_codec::{
-    minicbor::{self, data::Type, decode, Decode, Decoder},
-    utils::CborWrap,
-};
-use pallas_crypto::hash::Hasher;
-use pallas_primitives::{
-    conway::{Certificate, Value},
-    NetworkId,
-};
+use pallas_codec::minicbor::{self, data::Type, decode, Decode, Decoder};
+use pallas_primitives::{conway::Certificate, NetworkId};
 
 use super::{
     haskell_display::HaskellDisplay,
     haskell_types::{
-        ApplyConwayTxPredError, ApplyTxError, BabbageContextError, BabbageTxOut, CollectError,
+        ApplyConwayTxPredError, ApplyTxError, BabbageContextError, CollectError,
         ConwayCertPredFailure, ConwayCertsPredFailure, ConwayContextError, ConwayDelegPredFailure,
         ConwayGovCertPredFailure, ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert,
-        ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential,
-        DatumEnum, DisplayHash, EpochNo, EraScript, FailureDescription, Mismatch, OHashMap,
-        PlutusDataBytes, PlutusPurpose, PurposeAs, ShelleyBasedEra, ShelleyPoolPredFailure, SlotNo,
-        StrictMaybe, TagMismatchDescription, Timelock, TimelockRaw, TxOutSource, TxValidationError,
-        Utxo, ValidityInterval,
+        ConwayUtxoPredFailure, ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, EpochNo,
+        FailureDescription, Mismatch, OHashMap, PlutusPurpose, PurposeAs, ShelleyBasedEra,
+        ShelleyPoolPredFailure, SlotNo, StrictMaybe, TagMismatchDescription, TxOutSource,
+        TxValidationError, Utxo, ValidityInterval,
     },
 };
 
@@ -79,23 +71,6 @@ impl<'b, C> Decode<'b, C> for ApplyConwayTxPredError {
         }
     }
 }
-
-/*
-impl<'b, C> Decode<'b, C> Network {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        let error = d.u16()?;
-
-        match error {
-            0 => Ok(Network::Testnet),
-            1 => Ok(Network::Mainnet),
-            _ => Err(decode::Error::message(format!(
-                "unknown network while decoding Network: {}",
-                error
-            ))),
-        }
-    }
-}
-*/
 
 impl<'b, C> Decode<'b, C> for ValidityInterval {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
@@ -712,170 +687,9 @@ impl<'b, C> Decode<'b, C> for PurposeAs {
     }
 }
 
-// https://github.com/IntersectMBO/cardano-ledger/blob/ea1d4362226d29ce7e42f4ba83ffeecedd9f0565/eras/babbage/impl/src/Cardano/Ledger/Babbage/TxOut.hs#L484
-// This is replaced by TransactionOutput from pallas
-impl<'b, C> Decode<'b, C> for BabbageTxOut {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        if d.datatype()? == Type::Map {
-            d.map()?;
-
-            // key 0
-            d.u8()?;
-            let address = d.decode_with(ctx)?;
-
-            // key 1
-            let pos = d.position();
-            let value: Option<Value> = if d.datatype()? == Type::U8 && d.u8()? == 1 {
-                d.decode_with(ctx)?
-            } else {
-                d.set_position(pos);
-                None
-            };
-
-            // key 2
-            // datum enum
-            let pos = d.position();
-            let datum: Option<DatumEnum> = if d.datatype()? == Type::U8 && d.u8()? == 2 {
-                d.decode_with(ctx)?
-            } else {
-                d.set_position(pos);
-                None
-            };
-
-            // key 3
-            // inner cbor
-            let pos = d.position();
-            let script = if d.datatype().unwrap_or(Type::Null) == Type::U8 && d.u8()? == 3 {
-                let wrapped: CborWrap<EraScript> = d.decode_with(ctx)?;
-                Some(wrapped.0)
-            } else {
-                d.set_position(pos);
-                None
-            };
-
-            Ok(BabbageTxOut {
-                address,
-                value,
-                datum,
-                script,
-            })
-        } else if d.datatype()? == Type::Array {
-            let size = d.array()?.unwrap();
-            let address = d.decode_with(ctx)?;
-            let value: Option<Value> = if size > 1 { d.decode_with(ctx)? } else { None };
-            let datum: Option<DatumEnum> = if size > 2 { d.decode_with(ctx)? } else { None };
-            Ok(BabbageTxOut {
-                address,
-                value,
-                datum,
-                script: None,
-            })
-        } else {
-            Err(minicbor::decode::Error::message(
-                "invalid type for BabbageTxOut",
-            ))
-        }
-    }
-}
-
-impl<'b, C> Decode<'b, C> for EraScript {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        d.array()?;
-        let version = d.u16()?;
-
-        match version {
-            0 => Ok(EraScript::Native(d.decode_with(ctx)?)),
-            1 => {
-                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 1);
-                Ok(EraScript::PlutusV1(hash))
-            }
-            2 => {
-                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 2);
-                Ok(EraScript::PlutusV2(hash))
-            }
-            3 => {
-                let hash = Hasher::<224>::hash_tagged(d.bytes()?, 3);
-                Ok(EraScript::PlutusV3(hash))
-            }
-            _ => Err(decode::Error::message(format!(
-                "unknown version while decoding EraScript: {}",
-                version
-            ))),
-        }
-    }
-}
-
-impl<'b, C> Decode<'b, C> for TimelockRaw {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        d.array()?;
-        let tag = d.u16()?;
-
-        use TimelockRaw::*;
-        match tag {
-            0 => Ok(Signature(d.decode_with(ctx)?)),
-            1 => Ok(AllOf(d.decode_with(ctx)?)),
-            2 => Ok(AnyOf(d.decode_with(ctx)?)),
-            3 => Ok(MOfN(d.decode_with(ctx)?, d.decode_with(ctx)?)),
-            4 => Ok(TimeStart(d.decode_with(ctx)?)),
-            5 => Ok(TimeExpire(d.decode_with(ctx)?)),
-            _ => Err(decode::Error::message(format!(
-                "unknown index while decoding Timelock: {}",
-                tag
-            ))),
-        }
-    }
-}
-
-impl<'b, C> Decode<'b, C> for Timelock {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        let first = d.position();
-
-        let raw: TimelockRaw = d.decode_with(ctx)?;
-        let last = d.position();
-        let input = d.input();
-        let raw_bytes = &input[first..last];
-
-        let mut hasher = Hasher::<256>::new();
-        hasher.input(raw_bytes);
-        let memo = DisplayHash(hasher.finalize());
-        Ok(Timelock { raw, memo })
-    }
-}
-
-impl<'b, C> Decode<'b, C> for DatumEnum {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        if d.datatype()? == Type::Array {
-            d.array()?;
-            let tag = d.u16()?;
-
-            match tag {
-                0 => Ok(DatumEnum::DatumHash(d.decode_with(ctx)?)),
-                1 => Ok(DatumEnum::Datum(d.decode_with(ctx)?)),
-                _ => Ok(DatumEnum::NoDatum),
-            }
-        } else {
-            Ok(DatumEnum::DatumHash(d.decode_with(ctx)?))
-        }
-    }
-}
-
 impl<'b, C> Decode<'b, C> for Utxo {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         let tx_vec = d.decode_with(ctx)?;
         Ok(Utxo(tx_vec))
-    }
-}
-
-impl<'b, C> Decode<'b, C> for PlutusDataBytes {
-    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
-        let tag = d.tag()?;
-        if tag.as_u64() != 24 {
-            return Err(decode::Error::message(format!(
-                "unexpected tag while decoding tag 24: {}",
-                tag
-            )));
-        }
-
-        Ok(PlutusDataBytes(d.decode_with(ctx)?))
     }
 }

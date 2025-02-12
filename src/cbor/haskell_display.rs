@@ -31,15 +31,14 @@ use pallas_primitives::{
 use pallas_traverse::ComputeHash;
 
 use super::haskell_types::{
-    ApplyConwayTxPredError, Array, AsItem, AsIx, BabbageContextError, BabbageTxOut, CollectError,
+    ApplyConwayTxPredError, Array, AsItem, AsIx, BabbageContextError, CollectError,
     ConwayCertPredFailure, ConwayContextError, ConwayDelegPredFailure, ConwayGovCertPredFailure,
     ConwayGovPredFailure, ConwayPlutusPurpose, ConwayTxCert, ConwayUtxoPredFailure,
-    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, DatumEnum, Delegatee, DeltaCoin,
-    DisplayAddress, DisplayAssetName, DisplayCoin, DisplayDatumHash, DisplayHash, DisplayOSet,
-    DisplayPolicyId, DisplayRewardAccount, DisplayScriptHash, DisplayVotingProcedures, EpochNo,
-    EraScript, FailureDescription, KeyHash, MaryValue, Mismatch, OHashMap, PlutusDataBytes,
-    PlutusPurpose, PurposeAs, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
-    TagMismatchDescription, Timelock, TimelockRaw, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
+    ConwayUtxoWPredFailure, ConwayUtxosPredFailure, Credential, Delegatee, DeltaCoin,
+    DisplayAddress, DisplayCoin, DisplayOSet, DisplayPolicyId, DisplayRewardAccount,
+    DisplayScriptHash, DisplayVotingProcedures, EpochNo, FailureDescription, KeyHash, Mismatch,
+    OHashMap, PlutusPurpose, PurposeAs, SafeHash, ShelleyPoolPredFailure, SlotNo, StrictMaybe,
+    TagMismatchDescription, TxIx, TxOutSource, Utxo, VKey, ValidityInterval,
 };
 
 use super::haskells_show_string::haskell_show_string;
@@ -1482,33 +1481,6 @@ impl AsDisplayCoin for Option<&u64> {
     }
 }
 
-trait AsInMap {
-    fn as_in_map(&self) -> String;
-}
-
-impl<T> AsInMap for StrictMaybe<T>
-where
-    T: HaskellDisplay + 'static,
-{
-    fn as_in_map(&self) -> String {
-        match self {
-            StrictMaybe::Just(v) => format!("SJust {}", v.to_haskell_str()),
-            StrictMaybe::Nothing => "SNothing".to_string(),
-        }
-    }
-}
-impl<T> AsInMap for Option<T>
-where
-    T: HaskellDisplay + 'static,
-{
-    fn as_in_map(&self) -> String {
-        match self {
-            Option::Some(v) => format!("SJust {}", v.to_haskell_str()),
-            Option::None => "SNothing".to_string(),
-        }
-    }
-}
-
 impl HaskellDisplay for AsIx {
     fn to_haskell_str(&self) -> String {
         format!("AsIx {{unAsIx = {}}}", self.0)
@@ -1653,12 +1625,6 @@ impl HaskellDisplay for DisplayPolicyId {
     }
 }
 
-impl HaskellDisplay for DisplayAssetName {
-    fn to_haskell_str(&self) -> String {
-        format!("\"{}\"", self.0)
-    }
-}
-
 trait AsAssetName {
     fn as_asset_name(&self) -> String;
 }
@@ -1695,35 +1661,6 @@ impl AsIs for String {
     }
 }
 
-impl HaskellDisplay for BabbageTxOut {
-    fn to_haskell_str(&self) -> String {
-        let BabbageTxOut {
-            address,
-            value,
-            datum,
-            script,
-        } = self;
-
-        let value = match value {
-            Some(v) => v.to_haskell_str(),
-            None => "Coin 0".to_string(),
-        };
-
-        let datum = match datum {
-            Some(de) => de.to_haskell_str(),
-            None => "NoDatum".to_string(),
-        };
-
-        format!(
-            "{},{},{},{}",
-            address.to_haskell_str(),
-            value,
-            datum,
-            script.as_in_map()
-        )
-    }
-}
-
 impl HaskellDisplay for TransactionOutput {
     fn to_haskell_str(&self) -> String {
         match self {
@@ -1735,7 +1672,7 @@ impl HaskellDisplay for TransactionOutput {
                     None => "NoDatum".to_string(),
                 };
 
-                format!("({},{},{},SNothing)", address, value, datum)
+                format!("{},{},{},SNothing", address, value, datum)
             }
             pallas_primitives::conway::PseudoTransactionOutput::PostAlonzo(txo) => {
                 let address = txo.address.as_address();
@@ -1756,18 +1693,9 @@ impl HaskellDisplay for TransactionOutput {
 
                 let script = txo.script_ref.to_haskell_str();
 
-                format!("({},{},{},{})", address, value, datum, script)
+                format!("{},{},{},{}", address, value, datum, script)
             }
         }
-
-        /*
-        format!(
-            "{},{},{},{}",
-            address.to_haskell_str(),
-            value_new,
-            datum,
-            script.as_in_map()
-        )*/
     }
 }
 
@@ -1775,11 +1703,7 @@ impl HaskellDisplay for PseudoScript<NativeScript> {
     fn to_haskell_str(&self) -> String {
         use PseudoScript::*;
         match self {
-            NativeScript(ns) => format!(
-                "TimelockScript {} {}",
-                ns.to_haskell_str(),
-                ns.compute_hash().as_blake2b256()
-            ),
+            NativeScript(ns) => format!("TimelockScript {}", ns.to_haskell_str()),
             PlutusV1Script(ps) => format!(
                 "PlutusScript PlutusV1 {}",
                 ps.compute_hash().as_script_hash()
@@ -1800,32 +1724,22 @@ impl HaskellDisplay for NativeScript {
     fn to_haskell_str(&self) -> String {
         use NativeScript::*;
 
-        let mut payload: Vec<u8> = vec![];
-        pallas_codec::minicbor::encode(self, &mut payload).unwrap();
-
-        let mut hasher = Hasher::<256>::new();
-
-        hasher.input(&payload);
         let str = match self {
             ScriptPubkey(key_hash) => {
                 format!("Signature ({})", key_hash.as_key_hash())
             }
             ScriptAll(vec) => format!("AllOf ({})", vec.as_strict_seq()),
             ScriptAny(vec) => format!("AnyOf ({})", vec.as_strict_seq()),
-            ScriptNOfK(m, vec) => {
-                let mut payload2: Vec<u8> = vec![];
-                pallas_codec::minicbor::encode(vec, &mut payload2).unwrap();
-                let mut hasher = Hasher::<256>::new();
-
-                hasher.input(&payload2);
-                let hash3: String = hasher.finalize().as_blake2b256();
-
-                format!("MOfN {} ({}) {}", m, vec.as_strict_seq(), hash3)
-            }
+            ScriptNOfK(m, vec) => format!("MOfN {} ({})", m, vec.as_strict_seq()),
             InvalidBefore(slot_no) => format!("TimeStart ({})", slot_no.as_slot_no()),
             InvalidHereafter(slot_no) => format!("TimeExpire ({})", slot_no.as_slot_no()),
         };
-        format!("TimelockConstr {}", str,)
+
+        format!(
+            "TimelockConstr {} ({})",
+            str,
+            Hasher::<256>::hash_cbor(self).as_blake2b256()
+        )
     }
 }
 
@@ -1981,12 +1895,6 @@ impl HaskellDisplay for PositiveCoin {
     }
 }
 
-impl HaskellDisplay for MaryValue {
-    fn to_haskell_str(&self) -> String {
-        format!("MaryValue {}", self.0.to_haskell_str_p())
-    }
-}
-
 trait AsMaryValue {
     fn as_mary_value(&self) -> String;
 }
@@ -2083,30 +1991,6 @@ impl HaskellDisplay for DisplayAddress {
             Shelley(addr) => addr.to_haskell_str(),
             Stake(addr) => addr.to_hex(),
         }
-    }
-}
-
-impl HaskellDisplay for DatumEnum {
-    fn to_haskell_str(&self) -> String {
-        use DatumEnum::*;
-
-        match self {
-            DatumHash(datum_hash) => datum_hash.to_haskell_str(),
-            Datum(datum) => format!("Datum {}", datum.to_haskell_str()),
-            NoDatum => "NoDatum".to_string(),
-        }
-    }
-}
-
-impl HaskellDisplay for PlutusDataBytes {
-    fn to_haskell_str(&self) -> String {
-        self.0.to_haskell_str()
-    }
-}
-
-impl HaskellDisplay for DisplayDatumHash {
-    fn to_haskell_str(&self) -> String {
-        self.0.as_datum_hash()
     }
 }
 
@@ -2229,41 +2113,6 @@ impl HaskellDisplay for Int {
     }
 }
 
-impl HaskellDisplay for EraScript {
-    fn to_haskell_str(&self) -> String {
-        use EraScript::*;
-
-        match self {
-            Native(timelock) => format!("TimelockScript {}", timelock.to_haskell_str()),
-            PlutusV1(hash) => format!("PlutusScript PlutusV1 {}", hash.to_haskell_str()),
-            PlutusV2(hash) => format!("PlutusScript PlutusV2 {}", hash.to_haskell_str()),
-            PlutusV3(hash) => format!("PlutusScript PlutusV3 {}", hash.to_haskell_str()),
-        }
-    }
-}
-
-impl HaskellDisplay for TimelockRaw {
-    fn to_haskell_str(&self) -> String {
-        use TimelockRaw::*;
-
-        match self {
-            Signature(key_hash) => format!("Signature ({})", key_hash.to_haskell_str()),
-            AllOf(vec) => format!("AllOf ({})", vec.as_strict_seq()),
-            AnyOf(vec) => format!("AnyOf ({})", vec.as_strict_seq()),
-            MOfN(m, vec) => format!("MOfN {} ({})", m, vec.as_strict_seq()),
-            TimeStart(slot_no) => format!("TimeStart ({})", slot_no.to_haskell_str()),
-            TimeExpire(slot_no) => format!("TimeExpire ({})", slot_no.to_haskell_str()),
-        }
-    }
-}
-
-impl HaskellDisplay for Timelock {
-    fn to_haskell_str(&self) -> String {
-        let raw = self.raw.to_haskell_str();
-        let memo = self.memo.to_haskell_str();
-        format!("TimelockConstr {} {}", raw, memo)
-    }
-}
 impl HaskellDisplay for SlotNo {
     fn to_haskell_str(&self) -> String {
         self.0.as_slot_no()
@@ -2280,11 +2129,6 @@ impl AsSlotNo for u64 {
     }
 }
 
-impl HaskellDisplay for DisplayHash {
-    fn to_haskell_str(&self) -> String {
-        format!("(blake2b_256: SafeHash \"{}\")", hex::encode(self.0))
-    }
-}
 trait AsBlake2b256 {
     fn as_blake2b256(&self) -> String;
 }
