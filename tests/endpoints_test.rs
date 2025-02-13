@@ -2,6 +2,7 @@
 mod common;
 
 mod tests {
+
     use crate::common::{build_app, initialize_logging};
     use axum::{
         body::{to_bytes, Body},
@@ -10,6 +11,8 @@ mod tests {
     use blockfrost_platform::api::root::RootResponse;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
+    use serde_json::Value;
+
     use tower::ServiceExt;
 
     // Test: `/` route correct response
@@ -68,7 +71,7 @@ mod tests {
             .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
             .header("Content-Type", "application/cbor")
             .header("project_id", "previewWrlEvs2PlZUw8hEN5usP5wG4DK4L46A3")
-            .body(tx)
+            .body(hex::decode(tx).unwrap())
             .send()
             .await
             .expect("Blockfrost request failed");
@@ -78,20 +81,45 @@ mod tests {
             .await
             .expect("Failed to read Blockfrost response");
 
-        // TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
-        // assert_eq!(local_body_bytes, bf_body_bytes);
-        // This should be uncommented when the issue is resolved
-        println!("bf response {:?}", bf_body_bytes);
-        println!("local response {:?}", local_body_bytes);
+        self::assert_responses(&bf_body_bytes, &local_body_bytes);
+    }
 
-        let local_body_str = String::from_utf8_lossy(&local_body_bytes);
+    /// This workaround exists because the final error is a Haskell string
+    /// which we don't want to bother de-serializing from string.
+    pub fn assert_responses(bf_response: &[u8], local_response: &[u8]) {
+        #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
+        #[serde(untagged)]
+        pub enum TestData {
+            Wrapper {
+                contents: Box<TestData>,
+                tag: String,
+            },
+            Data {
+                contents: Value,
+            },
+        }
 
-        // Uncomment this to see the difference between the blockfrost response and platform response
-        // assert_eq!(bf_body_bytes, local_body_bytes,);
+        #[derive(Debug, PartialEq, Eq)]
+        pub struct TestResponse {
+            message: TestData,
+            error: String,
+            status_code: u64,
+        }
 
-        assert!(
-            local_body_str.contains("BadInputsUTxO"),
-            "Expected 'BadInputsUTxO' in the local response, but it was not found."
+        fn get_response_struct(response: &[u8]) -> TestResponse {
+            let as_value = serde_json::from_slice::<serde_json::Value>(response).unwrap();
+
+            TestResponse {
+                message: serde_json::from_str(as_value.get("message").unwrap().as_str().unwrap())
+                    .unwrap(),
+                error: as_value.get("error").unwrap().to_string(),
+                status_code: as_value.get("status_code").unwrap().as_u64().unwrap(),
+            }
+        }
+
+        assert_eq!(
+            get_response_struct(bf_response),
+            get_response_struct(local_response)
         );
     }
 }
