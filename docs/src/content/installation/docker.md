@@ -14,7 +14,7 @@ git checkout main
 
 # To build a release version (recommended)
 # NOTE: this option will be available after the first release
-# git checkout v0.1
+# git checkout 0.0.1
 
 # Build the docker image
 docker build -t blockfrost-platform .
@@ -28,7 +28,7 @@ docker pull ghcr.io/blockfrost/blockfrost-platform
 
 # Pulling a specific version (recommended)
 # NOTE: this option will be available after the first release
-# docker pull ghcr.io/blockfrost/blockfrost-platform:v0.1
+# docker pull ghcr.io/blockfrost/blockfrost-platform:0.0.1
 ```
 
 After you have your Docker image on your machine, you can proceed with the "Usage -> Docker" section of this documentation.
