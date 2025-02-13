@@ -79,19 +79,10 @@ mod tests {
             .expect("Failed to read Blockfrost response");
 
         // TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
-        // assert_eq!(local_body_bytes, bf_body_bytes);
         // This should be uncommented when the issue is resolved
         println!("bf response {:?}", bf_body_bytes);
         println!("local response {:?}", local_body_bytes);
 
-        let local_body_str = String::from_utf8_lossy(&local_body_bytes);
-
-        // Uncomment this to see the difference between the blockfrost response and platform response
-        // assert_eq!(bf_body_bytes, local_body_bytes,);
-
-        assert!(
-            local_body_str.contains("BadInputsUTxO"),
-            "Expected 'BadInputsUTxO' in the local response, but it was not found."
-        );
+        assert_eq!(bf_body_bytes, local_body_bytes);
     }
 }
