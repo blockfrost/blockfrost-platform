@@ -43,28 +43,36 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head faviconGlyph="✦" />
-      <meta property="og:title" content="Blockfrost Platform Documentation" />
+      <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Blockfrost Platform</title>
+      <meta name="title" content=" Blockfrost Platform" />
       <meta
-        property="og:description"
-        content="Blockfrost Platform Documentation"
+        name="description"
+        content="Documentation for Blockfrost Platform"
       />
-      <meta property="og:url" content="https://platform.blockfrost.io" />
       <meta
-        property="og:image"
-        content="https://platform.blockfrost.io/logo-black.svg"
+        name="keywords"
+        content="Cardano, IPFS, API, Cardano API, SDK, Developers, Ethereum killer, Proof of Stake, NFT, ADA, Lovelace, Shelley, Goguen, Byron, Blockchain, Typescript, Going for #1"
       />
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Blockfrost Platform" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content="@blockfrost_io" />
-      <meta name="twitter:title" content="Blockfrost Platform Documentation" />
+      <meta property="og:url" content="https://platfrom.blockfrost.io/" />
+      <meta property="og:title" content="Blockfrost.io - Cardano API" />
       <meta
-        name="twitter:description"
-        content="Blockfrost Platform Documentation"
+        property="og:description"
+        content="We provide an instant and scalable Cardano API for free."
+      />
+      <meta property="og:image" content="https://blockfrost.io/images/og.png" />
+      <meta property="twitter:card" content="summary_large_image" />
+      <meta property="twitter:url" content="https://platfrom.blockfrost.io/" />
+      <meta property="twitter:title" content="Blockfrost Platform" />
+      <meta
+        property="twitter:description"
+        content="We provide an instant and scalable Cardano API for free."
       />
       <meta
-        name="twitter:image"
-        content="https://platform.blockfrost.io/logo-black.svg"
+        property="twitter:image"
+        content="https://blockfrost.io/images/og.png"
       />
 
       <body>
