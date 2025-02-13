@@ -31,3 +31,14 @@ footer {
 .dark .nextra-sidebar-footer {
   background-color: #000212;
 }
+
+.flare {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% -20%,
+    rgba(120, 119, 198, 0.3),
+    transparent
+  );
+  width: 100vw;
+  height: 100vw;
+  position: fixed;
+}

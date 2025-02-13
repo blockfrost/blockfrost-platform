@@ -20,7 +20,7 @@ export const metadata = {
     site: "https://discord.gg/inputoutput",
   },
   twitter: {
-    site: "https://nextra.site",
+    site: "https://x.com/blockfrost_io",
   },
 };
 
@@ -50,6 +50,7 @@ export default async function RootLayout({ children }) {
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head faviconGlyph="✦" />
       <body>
+        <div className="flare"></div>
         <Layout
           navbar={navbar}
           footer={<Footer>{new Date().getFullYear()} © Blockfrost.</Footer>}
