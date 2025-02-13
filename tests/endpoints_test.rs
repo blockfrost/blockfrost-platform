@@ -68,7 +68,7 @@ mod tests {
             .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
             .header("Content-Type", "application/cbor")
             .header("project_id", "previewWrlEvs2PlZUw8hEN5usP5wG4DK4L46A3")
-            .body(tx)
+            .body(hex::decode(tx).unwrap())
             .send()
             .await
             .expect("Blockfrost request failed");
