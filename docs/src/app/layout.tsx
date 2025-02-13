@@ -38,7 +38,7 @@ export default async function RootLayout({ children }) {
           width={180}
           height={30}
           alt="Blockfrost Logo"
-          src="https://blockfrost.dev/img/logo.svg"
+          src="/logo-white.svg"
         />
       }
       projectLink="https://github.com/blockfrost/blockfrost-platform"
