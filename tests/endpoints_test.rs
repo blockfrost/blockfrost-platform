@@ -2,6 +2,7 @@
 mod common;
 
 mod tests {
+
     use crate::common::{build_app, initialize_logging};
     use axum::{
         body::{to_bytes, Body},
@@ -10,6 +11,8 @@ mod tests {
     use blockfrost_platform::api::root::RootResponse;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
+    use serde_json::Value;
+
     use tower::ServiceExt;
 
     // Test: `/` route correct response
@@ -83,6 +86,45 @@ mod tests {
         println!("bf response {:?}", bf_body_bytes);
         println!("local response {:?}", local_body_bytes);
 
-        assert_eq!(bf_body_bytes, local_body_bytes);
+        self::assert_responses(&bf_body_bytes, &local_body_bytes);
+    }
+
+    /// This workaround exists because the final error is a Haskell string
+    /// which we don't want to bother de-serializing from string.
+    pub fn assert_responses(bf_response: &[u8], local_response: &[u8]) {
+        #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
+        #[serde(untagged)]
+        pub enum TestData {
+            Wrapper {
+                contents: Box<TestData>,
+                tag: String,
+            },
+            Data {
+                contents: Value,
+            },
+        }
+
+        #[derive(Debug, PartialEq, Eq)]
+        pub struct TestResponse {
+            message: TestData,
+            error: String,
+            status_code: u64,
+        }
+
+        fn get_response_struct(response: &[u8]) -> TestResponse {
+            let as_value = serde_json::from_slice::<serde_json::Value>(response).unwrap();
+
+            TestResponse {
+                message: serde_json::from_str(as_value.get("message").unwrap().as_str().unwrap())
+                    .unwrap(),
+                error: as_value.get("error").unwrap().to_string(),
+                status_code: as_value.get("status_code").unwrap().as_u64().unwrap(),
+            }
+        }
+
+        assert_eq!(
+            get_response_struct(bf_response),
+            get_response_struct(local_response)
+        );
     }
 }

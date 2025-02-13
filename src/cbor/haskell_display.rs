@@ -1857,7 +1857,7 @@ impl HaskellDisplay for Value {
         use Value::*;
 
         match self {
-            Coin(c) => format!("Value {}", c),
+            Coin(c) => format!("{} (MultiAsset (fromList []))", c.as_mary_value()),
             Multiasset(mary_value, multi_asset) => format!(
                 "{} {}",
                 mary_value.as_mary_value(),
