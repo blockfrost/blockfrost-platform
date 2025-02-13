@@ -17,3 +17,17 @@
 .dark footer {
   background-color: #000212;
 }
+
+.dark .bg-gray-100 {
+  background-color: #000212;
+}
+
+footer {
+  margin: 0 auto;
+  text-align: center;
+  padding: 2rem;
+}
+
+.dark .nextra-sidebar-footer {
+  background-color: #000212;
+}
