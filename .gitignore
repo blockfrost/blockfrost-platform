@@ -32,6 +32,9 @@ result-*
 testgen-hs
 testgen-hs.exe
 
+testgen-hs
+testgen-hs.exe
+
 # Ignore IDE specific files
 # Visual Studio Code
 .vscode/
