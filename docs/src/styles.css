@@ -41,4 +41,6 @@ footer {
   width: 100vw;
   height: 100vw;
   position: fixed;
+  pointer-events: none;
+  z-index: -1;
 }
