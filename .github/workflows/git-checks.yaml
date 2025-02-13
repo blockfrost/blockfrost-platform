@@ -1,9 +1,32 @@
 name: Git Checks
-on: [pull_request]
+
+on:
+  - pull_request
+
 jobs:
   block-fixup:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Block Fixup Commit Merge
         uses: 13rac1/block-fixup-merge-action@v2.0.0
+
+  unsigned-commits:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject unsigned commits
+        run: |
+          set -euo pipefail
+
+          unsigned_commits="$(curl -fsSL \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"\
+            "${{ github.event.pull_request.commits_url }}" \
+            | jq '.[] | select(.commit.verification.verified == false) | .sha')"
+
+          if [[ -n "$unsigned_commits" ]]; then
+            echo "Unsigned commits found, please sign them with GPG:"
+            echo
+            echo "$unsigned_commits"
+            exit 1
+          fi
