@@ -1,19 +1,15 @@
 import nextra from "nextra";
 
-/**
- * @type {import('next').NextConfig}
- */
-const nextConfig = {
-  output: "export",
-  images: {
-    unoptimized: true, // mandatory, otherwise won't export
-  },
-  // Optional: Change the output directory `out` -> `dist`
-  // distDir: "build"
-};
 const withNextra = nextra({
-  theme: "nextra-theme-docs",
-  themeConfig: "./theme.config.tsx",
+  latex: true,
+  search: {
+    codeblocks: false,
+  },
+  contentDirBasePath: "/",
 });
 
-export default withNextra(nextConfig);
+export default withNextra({
+  reactStrictMode: true,
+  output: "export",
+  images: { unoptimized: true },
+});
