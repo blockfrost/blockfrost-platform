@@ -2,8 +2,8 @@ import { Layout, Navbar } from "nextra-theme-docs";
 import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
-import Image from "next/image";
 import "../styles.css";
+import ThemedLogo from "../components/Logo";
 
 export const metadata = {
   metadataBase: new URL("https://platform.blockfrost.io"),
@@ -33,14 +33,7 @@ const Footer = ({ children }) => (
 export default async function RootLayout({ children }) {
   const navbar = (
     <Navbar
-      logo={
-        <Image
-          width={180}
-          height={30}
-          alt="Blockfrost Logo"
-          src="/logo-white.svg"
-        />
-      }
+      logo={<ThemedLogo />}
       projectLink="https://github.com/blockfrost/blockfrost-platform"
       chatLink="https://discord.gg/inputoutput"
     />
