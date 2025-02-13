@@ -1,13 +1,19 @@
-body {
-  background: #000212;
+.dark {
+  background: rgb(0, 2, 18);
+  box-shadow: 1px 5px 10px rgba(255, 255, 255, 0.7);
+  color: white;
 }
 
-.nextra-navbar-blur {
+.dark .nextra-navbar-blur {
   background-color: rgba(0, 2, 18, 0.7);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-footer {
+.dark a {
+  color: #f0f0f0;
+}
+
+.dark footer {
   background-color: #000212;
 }

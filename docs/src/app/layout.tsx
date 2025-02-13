@@ -46,7 +46,7 @@ export default async function RootLayout({ children }) {
       <body>
         <Layout
           navbar={navbar}
-          footer={<Footer>MIT {new Date().getFullYear()} © Blockfrost.</Footer>}
+          footer={<Footer>{new Date().getFullYear()} © Blockfrost.</Footer>}
           editLink="https://github.com/blockfrost/blockfrost-platform"
           docsRepositoryBase="https://github.com/blockfrost/blockfrost-platform/docs"
           sidebar={{ defaultMenuCollapseLevel: 1 }}
