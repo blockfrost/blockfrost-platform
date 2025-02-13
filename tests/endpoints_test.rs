@@ -83,8 +83,6 @@ mod tests {
         println!("bf response {:?}", bf_body_bytes);
         println!("local response {:?}", local_body_bytes);
 
-        let local_body_str = String::from_utf8_lossy(&local_body_bytes);
-
         assert_eq!(bf_body_bytes, local_body_bytes);
     }
 }
