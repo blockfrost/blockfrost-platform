@@ -51,7 +51,7 @@ mod tests {
             .method(Method::POST)
             .uri("/tx/submit")
             .header("Content-Type", "application/cbor")
-            .body(Body::from(tx))
+            .body(tx.to_vec())
             .unwrap();
 
         let local_response = app
