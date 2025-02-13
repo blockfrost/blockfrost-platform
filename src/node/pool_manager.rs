@@ -1,5 +1,5 @@
 use super::connection::NodeClient;
-use crate::{cbor::fallback_decoder::FallbackDecoder, AppError};
+use crate::AppError;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
 use metrics::gauge;
 use pallas_network::facades::NodeClient as NodeClientFacade;
@@ -8,7 +8,6 @@ use tracing::{error, info};
 pub struct NodePoolManager {
     pub network_magic: u64,
     pub socket_path: String,
-    pub fallback_decoder: FallbackDecoder,
 }
 
 impl Manager for NodePoolManager {
@@ -28,7 +27,6 @@ impl Manager for NodePoolManager {
 
                 Ok(NodeClient {
                     client: Some(connection),
-                    fallback_decoder: self.fallback_decoder.clone(),
                 })
             }
             Err(err) => {

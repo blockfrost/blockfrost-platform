@@ -8,6 +8,7 @@ build = "build.rs"
 [dependencies]
 axum = "0.8.1"
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+crossbeam = "0.8"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 serde = { version = "1.0.217", features = ["derive"] }
@@ -20,15 +21,17 @@ toml = "0.8.19"
 thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
-pallas-network = "0.32.0"
-pallas-crypto = "0.32.0"
-pallas-traverse = "0.32.0"
-pallas-codec = "0.32.0"
+num_cpus = "1"
+pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "f9e5695246d14c53a6c555d4e8624e055b87b0d8" }
 reqwest = "0.12.12"
-pallas = "0.32.0"
 hex = "0.4.3"
 cbor = "0.4.1"
-pallas-primitives = "0.32.0"
 metrics = { version = "0.24.1", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 chrono = "0.4"
