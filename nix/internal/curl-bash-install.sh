@@ -48,6 +48,11 @@ install_dir_expr="${opt_dir_expr}/${project_name}"
 bin_dir="${install_dir}/bin"
 bin_dir_expr="${install_dir_expr}/bin"
 
+if ! command -v bzip2 >/dev/null 2>&1; then
+  echo >&2 "fatal: bzip2 not found, please install it, and try again"
+  exit 1
+fi
+
 echo >&2 "info: downloading ${color_bold}${archive_url}${color_reset}"
 echo >&2 "info: saving to ${color_bold}${download_path}${color_reset}"
 
