@@ -39,9 +39,34 @@ export default async function RootLayout({ children }) {
     />
   );
   const pageMap = await getPageMap();
+
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head faviconGlyph="✦" />
+      <meta property="og:title" content="Blockfrost Platform Documentation" />
+      <meta
+        property="og:description"
+        content="Blockfrost Platform Documentation"
+      />
+      <meta property="og:url" content="https://platform.blockfrost.io" />
+      <meta
+        property="og:image"
+        content="https://platform.blockfrost.io/logo-black.svg"
+      />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Blockfrost Platform" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:site" content="@blockfrost_io" />
+      <meta name="twitter:title" content="Blockfrost Platform Documentation" />
+      <meta
+        name="twitter:description"
+        content="Blockfrost Platform Documentation"
+      />
+      <meta
+        name="twitter:image"
+        content="https://platform.blockfrost.io/logo-black.svg"
+      />
+
       <body>
         <div className="flare"></div>
         <Layout
