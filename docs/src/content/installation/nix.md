@@ -3,21 +3,20 @@
 If you are using Nix, building `blockfrost-platform` is straightforward.
 
 ```bash
-# Clone the repository
-git clone https://github.com/blockfrost/blockfrost-platform
-
-# Navigate to the project directory
-cd blockfrost-platform
-
 # To build the latest main version (experimental)
-git checkout main
+nix build github:blockfrost/blockfrost-platform
 
 # To build a release version (recommended)
 # NOTE: this option will be available after the first release
-# git checkout v0.1
+nix build github:blockfrost/blockfrost-platform/v0.1
+```
 
-# Build the project using nix
-nix build
+To make the builds much faster, it’s worth adding the IOG binary cache to your Nix configuration (`/etc/nix/nix.conf`):
+
+```
+substituters = https://cache.nixos.org https://cache.iog.io
+
+trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 ```
 
 After the build is complete, you should see the binary file and can move on to the
