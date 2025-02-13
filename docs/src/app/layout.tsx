@@ -10,7 +10,7 @@ export const metadata = {
   title: {
     template: "%s - Documentation",
   },
-  description: "Blockfrost Platform Documentation",
+  description: "Documentation for Blockfrost Platform",
   applicationName: "Blockfrost Platform",
   generator: "Next.js",
   appleWebApp: {
@@ -38,43 +38,51 @@ export default async function RootLayout({ children }) {
       chatLink="https://discord.gg/inputoutput"
     />
   );
+
   const pageMap = await getPageMap();
 
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
-      <Head faviconGlyph="✦" />
-      <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>Blockfrost Platform</title>
-      <meta name="title" content=" Blockfrost Platform" />
-      <meta
-        name="description"
-        content="Documentation for Blockfrost Platform"
-      />
-      <meta
-        name="keywords"
-        content="Cardano, IPFS, API, Cardano API, SDK, Developers, Ethereum killer, Proof of Stake, NFT, ADA, Lovelace, Shelley, Goguen, Byron, Blockchain, Typescript, Going for #1"
-      />
-      <meta property="og:type" content="website" />
-      <meta property="og:url" content="https://platfrom.blockfrost.io/" />
-      <meta property="og:title" content="Blockfrost.io - Cardano API" />
-      <meta
-        property="og:description"
-        content="We provide an instant and scalable Cardano API for free."
-      />
-      <meta property="og:image" content="https://blockfrost.io/images/og.png" />
-      <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content="https://platfrom.blockfrost.io/" />
-      <meta property="twitter:title" content="Blockfrost Platform" />
-      <meta
-        property="twitter:description"
-        content="We provide an instant and scalable Cardano API for free."
-      />
-      <meta
-        property="twitter:image"
-        content="https://blockfrost.io/images/og.png"
-      />
-
+      <Head faviconGlyph="✦">
+        <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Blockfrost Platform Documentation</title>
+        <meta name="title" content="Blockfrost Platform Documentation" />
+        <meta
+          name="description"
+          content="Documentation for Blockfrost Platform. The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint, offering deployment options to join the fleet or run independently."
+        />
+        <meta
+          name="keywords"
+          content="Blockfrost, Cardano, Documentation, JSON API, Stake Pool Operator, Node Operator, decentralized, API"
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://platform.blockfrost.io/" />
+        <meta property="og:title" content="Blockfrost Platform Documentation" />
+        <meta
+          property="og:description"
+          content="Transform your Cardano node infrastructure into a high-performance JSON API endpoint with Blockfrost. Learn about deployment options to join the fleet or run independently."
+        />
+        <meta
+          property="og:image"
+          content="https://blockfrost.io/images/og.png"
+        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://platform.blockfrost.io/" />
+        <meta
+          name="twitter:title"
+          content="Blockfrost Platform Documentation"
+        />
+        <meta
+          name="twitter:description"
+          content="Transform your Cardano node infrastructure into a high-performance JSON API endpoint with Blockfrost. Learn about deployment options to join the fleet or run independently."
+        />
+        <meta
+          name="twitter:image"
+          content="https://blockfrost.io/images/og.png"
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       <body>
         <div className="flare"></div>
         <Layout
