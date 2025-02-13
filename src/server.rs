@@ -30,7 +30,7 @@ pub async fn build(
     AppError,
 > {
     // Create node pool
-    let node_conn_pool = NodePool::new(&config, fallback_decoder)?;
+    let node_conn_pool = NodePool::new(&config)?;
 
     // Build a prefix
     let api_prefix = if config.icebreakers_config.is_some() {

@@ -3,10 +3,14 @@ use crate::{
     cbor::haskell_types::{TxSubmitFail, TxValidationError},
     BlockfrostError,
 };
+use pallas_codec::minicbor::Decoder;
 use pallas_crypto::hash::Hasher;
-use pallas_network::miniprotocols::{
-    localstate,
-    localtxsubmission::{EraTx, Response},
+use pallas_network::{
+    miniprotocols::{
+        localstate,
+        localtxsubmission::{EraTx, Response},
+    },
+    multiplexer::Error,
 };
 use tracing::{info, warn};
 
@@ -40,33 +44,22 @@ impl NodeClient {
                 info!("Transaction accepted by the node {}", txid);
                 Ok(txid)
             }
-            Ok(Response::Rejected(reason)) => {
-                // The [2..] is a Pallas bug, cf. <https://github.com/txpipe/pallas/pull/548>.
-                let reason = &reason.0[2..];
-
-                match self.fallback_decoder.decode(reason).await {
-                    Ok(submit_api_json) => {
-                        let error_message = "TxSubmitFail".to_string();
-                        warn!(
-                            "{}: {} ~ {:?}",
-                            error_message,
-                            hex::encode(reason),
-                            submit_api_json
-                        );
-
-                        Err(BlockfrostError::custom_400(submit_api_json.to_string()))
-                    }
-
-                    Err(e) => {
-                        warn!("Failed to decode error reason: {:?}", e);
-
-                        Err(BlockfrostError::custom_400(format!(
-                            "Failed to decode error reason: {:?}",
-                            e
-                        )))
-                    }
+            Ok(Response::Rejected(reason)) => match NodeClient::try_decode_error(&reason.0) {
+                Ok(error) => {
+                    let haskell_display = serde_json::to_string(&error).unwrap();
+                    warn!("{}: {:?}", "TxSubmitFail", haskell_display);
+                    Err(BlockfrostError::custom_400(haskell_display))
                 }
-            }
+
+                Err(e) => {
+                    warn!("Failed to decode error reason: {:?}", e);
+
+                    Err(BlockfrostError::custom_400(format!(
+                        "Failed to decode error reason: {:?}",
+                        e
+                    )))
+                }
+            },
             Err(e) => {
                 let error_message = format!("Error during transaction submission: {:?}", e);
 
@@ -75,43 +68,37 @@ impl NodeClient {
         }
     }
 
+    pub fn try_decode_error(buffer: &[u8]) -> Result<TxSubmitFail, Error> {
+        let maybe_error = Decoder::new(buffer).decode();
+
+        match maybe_error {
+            Ok(error) => Ok(NodeClient::wrap_error_response(error)),
+            Err(err) => {
+                warn!(
+                    "Failed to decode error: {:?}, buffer: {}",
+                    err,
+                    hex::encode(buffer)
+                );
+
+                // Decoding failures are not errors, but some missing implementation or mis-implementations on our side.
+                // A decoding failure is a bug in our code, not a bug in the node.
+                // It should not effect the program flow, but should be logged and reported.
+                Err(Error::Decoding(err.to_string()))
+            }
+        }
+    }
+
     /// Mimicks the data structure of the error response from the cardano-submit-api
-    fn _unused_i_i_i_i_i_i_i_generate_error_response(error: TxValidationError) -> TxSubmitFail {
+    pub fn wrap_error_response(
+        error: TxValidationError,
+    ) -> crate::cbor::haskell_types::TxSubmitFail {
         use crate::cbor::haskell_types::{
-            TxCmdError::TxCmdTxSubmitValidationError, TxSubmitFail::TxSubmitFail,
+            TxCmdError::TxCmdTxSubmitValidationError, TxSubmitFail,
             TxValidationErrorInCardanoMode::TxValidationErrorInCardanoMode,
         };
 
-        TxSubmitFail(TxCmdTxSubmitValidationError(
+        TxSubmitFail::TxSubmitFail(TxCmdTxSubmitValidationError(
             TxValidationErrorInCardanoMode(error),
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::cbor::haskell_types::{
-        ApplyConwayTxPredError::*, ApplyTxErr, ShelleyBasedEra::*, TxValidationError::*,
-    };
-
-    use super::*;
-
-    #[test]
-    fn test_generate_error_response_with_multiple_errors() {
-        let validation_error = ShelleyTxValidationError {
-            error: ApplyTxErr(vec![
-                MempoolFailure("error1".to_string()),
-                MempoolFailure("error2".to_string()),
-            ]),
-            era: ShelleyBasedEraConway,
-        };
-
-        let error_string = serde_json::to_string(
-            &NodeClient::_unused_i_i_i_i_i_i_i_generate_error_response(validation_error),
-        )
-        .expect("Failed to convert error to JSON");
-        let expected_error_string = r#"{"tag":"TxSubmitFail","contents":{"tag":"TxCmdTxSubmitValidationError","contents":{"tag":"TxValidationErrorInCardanoMode","contents":{"kind":"ShelleyTxValidationError","error":["MempoolFailure (error1)","MempoolFailure (error2)"],"era":"ShelleyBasedEraConway"}}}}"#;
-
-        assert_eq!(error_string, expected_error_string);
     }
 }
