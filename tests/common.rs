@@ -5,7 +5,6 @@ use blockfrost_platform::{
     server::build,
     AppError, NodePool,
 };
-// use pretty_assertions::assert_eq;;
 use std::{
     env,
     sync::{Arc, LazyLock},
@@ -55,19 +54,3 @@ pub async fn build_app() -> Result<
 
     build(config).await
 }
-
-// TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
-// fn prettify_json(s: &[u8]) -> String {
-//     let json_value: Value = from_slice(s).expect("Invalid JSON data");
-
-//     serde_json::to_string_pretty(&json_value).expect("Failed to serialize JSON")
-// }
-
-// TODO: https://github.com/blockfrost/blockfrost-platform/issues/19
-// pub fn _compare_pretty_jsons(s1: Bytes, s2: Bytes) {
-//     assert_eq!(
-//         prettify_json(&s1),
-//         prettify_json(&s2),
-//         "JSON strings are not equal"
-//     );
-// }
