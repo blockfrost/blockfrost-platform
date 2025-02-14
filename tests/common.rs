@@ -5,7 +5,6 @@ use blockfrost_platform::{
     server::build,
     AppError, NodePool,
 };
-// use pretty_assertions::assert_eq;;
 use std::{
     env,
     sync::{Arc, LazyLock},
