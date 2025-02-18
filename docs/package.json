@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "next --turbopack",
-    "build": "next build",
+    "build": "next build && pagefind --site .next/server/app --output-path out/_pagefind",
+    "pagefind-local": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint --dir ."
   },
   "repository": {
     "type": "git",
@@ -29,6 +30,7 @@
     "eslint": "^8",
     "eslint-config-next": "^15.0.3",
     "eslint-config-prettier": "^9.1.0",
+    "pagefind": "^1.3.0",
     "typescript": "5.6.3"
   },
   "packageManager": "yarn@4.6.0"
