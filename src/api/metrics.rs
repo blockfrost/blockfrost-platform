@@ -6,15 +6,11 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn route(
-    Extension(prometheus_handle): Extension<Option<Arc<RwLock<PrometheusHandle>>>>,
+    Extension(prometheus_handle): Extension<Arc<RwLock<PrometheusHandle>>>,
 ) -> Result<impl IntoResponse, BlockfrostError> {
-    match prometheus_handle {
-        None => Err(BlockfrostError::not_found()),
-        Some(handle) => {
-            let handle = handle.write().await;
-            Ok(handle.render().into_response())
-        }
-    }
+    let handle = prometheus_handle.write().await;
+
+    Ok(handle.render().into_response())
 }
 
 pub fn setup_metrics_recorder() -> Arc<RwLock<PrometheusHandle>> {

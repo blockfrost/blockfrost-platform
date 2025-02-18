@@ -41,6 +41,34 @@ mod tests {
         assert_eq!(root_response.node_info.sync_progress, 100.0);
     }
 
+    // Test: `/metrics` route sanity check
+    #[tokio::test]
+    async fn test_metrics_route() {
+        initialize_logging();
+
+        let (app, _, _, _) = build_app().await.expect("Failed to build the application");
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/metrics")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("Request to /metrics route failed");
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+
+        assert!(body_str.contains("cardano_node_connections"));
+    }
+
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
     async fn test_submit_route_error() {

@@ -62,8 +62,8 @@ pub struct Args {
     #[arg(long)]
     reward_address: Option<String>,
 
-    #[arg(long, default_value = "true", required = false)]
-    metrics: bool,
+    #[arg(long)]
+    no_metrics: bool,
 }
 
 fn get_config_path() -> PathBuf {
@@ -206,7 +206,7 @@ impl Args {
             config: None,
             solitary: is_solitary,
             network: Some(network),
-            metrics,
+            no_metrics: !metrics,
             mode,
             log_level,
             server_address,
@@ -293,7 +293,7 @@ pub struct Config {
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
     pub network: Network,
-    pub metrics: bool,
+    pub no_metrics: bool,
 }
 
 #[derive(Clone)]
@@ -337,7 +337,7 @@ impl Config {
             mode: args.mode,
             icebreakers_config,
             max_pool_connections: 10,
-            metrics: args.metrics,
+            no_metrics: args.no_metrics,
             network,
         })
     }
