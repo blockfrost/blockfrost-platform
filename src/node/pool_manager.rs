@@ -61,6 +61,8 @@ impl Manager for NodePoolManager {
                 // I should not be used again.
                 let owned = node.client.take().unwrap();
 
+                gauge!("cardano_node_connections").decrement(1);
+
                 // Now call `abort` to clean up their resources:
                 owned.abort().await;
 
