@@ -8,7 +8,7 @@
     "build": "next build",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint --dir ."
   },
   "repository": {
     "type": "git",
