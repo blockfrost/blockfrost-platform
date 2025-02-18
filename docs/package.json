@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next --turbopack",
     "build": "next build & pagefind --site .next/server/app --output-path out/_pagefind",
+    "pagefind-local": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
     "lint": "next lint --dir ."
   },
