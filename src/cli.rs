@@ -120,7 +120,11 @@ impl Args {
         }
     }
 
-    fn enum_prompt<T: std::fmt::Debug>(message: &str, enum_values: &[T]) -> Result<String> {
+    fn enum_prompt<T: std::fmt::Debug>(
+        message: &str,
+        enum_values: &[T],
+        starting_cursor: usize,
+    ) -> Result<String> {
         Select::new(
             message,
             enum_values
@@ -128,6 +132,7 @@ impl Args {
                 .map(|it| format!("{:?}", it))
                 .collect::<Vec<_>>(),
         )
+        .with_starting_cursor(starting_cursor)
         .prompt()
         .map_err(|e| anyhow!(e))
     }
@@ -153,15 +158,19 @@ impl Args {
         let network = Args::enum_prompt(
             "Which network are you connecting to?",
             Network::value_variants(),
+            0,
         )
         .and_then(|it| Network::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
-        let mode = Args::enum_prompt("Mode?", Mode::value_variants())
+        let mode = Args::enum_prompt("Mode?", Mode::value_variants(), 0)
             .and_then(|it| Mode::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
-        let log_level =
-            Args::enum_prompt("What should be the log level?", LogLevel::value_variants())
-                .and_then(|it| LogLevel::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
+        let log_level = Args::enum_prompt(
+            "What should be the log level?",
+            LogLevel::value_variants(),
+            1,
+        )
+        .and_then(|it| LogLevel::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
         let server_address = Text::new("Enter the server IP address:")
             .with_default("0.0.0.0")
