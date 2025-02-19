@@ -44,6 +44,8 @@ in
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
+    packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
+
     package = craneLib.buildPackage (commonArgs
       // {
         inherit cargoArtifacts;
@@ -53,7 +55,7 @@ in
           mv $out/bin $out/libexec
           ln -sf ${testgen-hs}/bin $out/libexec/testgen-hs
           mkdir -p $out/bin
-          ln -sf $out/libexec/blockfrost-platform $out/bin/
+          ln -sf $out/libexec/${packageName} $out/bin/
         '';
       });
 
@@ -127,8 +129,8 @@ in
 
     stateDir =
       if pkgs.stdenv.isDarwin
-      then "Library/Application Support/blockfrost-platform"
-      else ".local/share/blockfrost-platform";
+      then "Library/Application Support/${packageName}"
+      else ".local/share/${packageName}";
 
     runNode = network:
       pkgs.writeShellScriptBin "run-node-${network}" ''
@@ -208,7 +210,7 @@ in
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
         nativeBuildInputs = with pkgs; [shellcheck];
-        projectName = package.pname;
+        projectName = packageName;
         projectVersion = package.version;
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;

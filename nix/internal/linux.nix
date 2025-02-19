@@ -33,15 +33,15 @@ in
         bin_dir = "bin";
         exe_dir = "exe";
         lib_dir = "lib";
-      } "${unix.package}/libexec/blockfrost-platform")
+      } "${unix.package}/libexec/${unix.packageName}")
       .overrideAttrs (drv: {
-        name = "blockfrost-platform";
+        name = unix.packageName;
         buildCommand =
           drv.buildCommand
           + ''
             mkdir -p $out/lib/testgen-hs
             cp ${lib.getExe unix.testgen-hs} $out/lib/testgen-hs/
-            ( cd $out ; ln -s bin/blockfrost-platform . ; )
+            ( cd $out ; ln -s bin/${unix.packageName} . ; )
           '';
       });
   }

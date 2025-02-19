@@ -42,6 +42,8 @@ in rec {
   # For better caching:
   cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
+  packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
+
   package = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts;
@@ -125,9 +127,9 @@ in rec {
       buildInputs = with pkgs; [zip];
       outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
-      cp -r ${bundle} blockfrost-platform
+      cp -r ${bundle} ${packageName}
       mkdir -p $out
-      zip -q -r $out/$outFileName blockfrost-platform/
+      zip -q -r $out/$outFileName ${packageName}/
 
       # Make it downloadable from Hydra:
       mkdir -p $out/nix-support
@@ -189,6 +191,6 @@ in rec {
         fi
       ''}
       mkdir -p $out
-      mv with-icon.exe $out/blockfrost-platform.exe
+      mv with-icon.exe $out/${packageName}.exe
     '';
 }
