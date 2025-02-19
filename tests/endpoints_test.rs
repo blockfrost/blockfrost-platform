@@ -1,11 +1,11 @@
 mod asserts;
 mod common;
-mod transactions;
+mod transaction_builder;
 
 mod tests {
     use crate::asserts;
-    use crate::common::{build_app, initialize_logging};
-    use crate::transactions::builder::build_tx;
+    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
+    use crate::transaction_builder::build_tx;
     use axum::{
         body::{to_bytes, Body},
         http::Request,
@@ -75,7 +75,7 @@ mod tests {
     async fn test_route_submit() {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
-
+        let blockfrost = get_blockfrost_client();
         let tx = "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
 
         // Local (Platform)
@@ -95,22 +95,12 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        // Blockfrost API
-        let bf_response = reqwest::Client::new()
-            .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
-            .header("Content-Type", "application/cbor")
-            .header("project_id", "previewWrlEvs2PlZUw8hEN5usP5wG4DK4L46A3")
-            .body(hex::decode(tx).unwrap())
-            .send()
+        let blockfrost_response = blockfrost
+            .transactions_submit(hex::decode(tx).unwrap())
             .await
-            .expect("Blockfrost request failed");
+            .unwrap();
 
-        let bf_body_bytes = bf_response
-            .bytes()
-            .await
-            .expect("Failed to read Blockfrost response");
-
-        asserts::assert_submit_error_responses(&bf_body_bytes, &local_body_bytes);
+        asserts::assert_submit_error_responses(&blockfrost_response, &local_body_bytes);
     }
 
     // Test: build `/tx/submit` success
@@ -118,8 +108,9 @@ mod tests {
     async fn test_submit_route_success() {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
+        let blockfrost_client = get_blockfrost_client();
 
-        let tx = build_tx().await;
+        let tx = build_tx(&blockfrost_client, "preview").await;
 
         let local_request = Request::builder()
             .method(Method::POST)
@@ -137,6 +128,6 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        self::assert_responses("local_body_bytes", &local_body_bytes);
+        asserts::assert_submit_error_responses("local_body_bytes", &local_body_bytes);
     }
 }

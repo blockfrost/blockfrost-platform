@@ -20,10 +20,10 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
-pub fn initialize_blockfrost_client() -> BlockfrostAPI {
+pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
-    BlockfrostAPI::new("project_id", settings)
+    BlockfrostAPI::new("previewTjUg7ty9Har2JdaRYlzsGs7Wsy6wp8G6", settings)
 }
 
 pub fn test_config() -> Arc<Config> {
