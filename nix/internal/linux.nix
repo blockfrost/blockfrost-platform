@@ -39,8 +39,6 @@ in
         buildCommand =
           drv.buildCommand
           + ''
-            mkdir -p $out/lib/testgen-hs
-            cp ${lib.getExe unix.testgen-hs} $out/lib/testgen-hs/
             ( cd $out ; ln -s bin/${unix.packageName} . ; )
           '';
       });

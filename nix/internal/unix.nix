@@ -26,7 +26,6 @@ in
       strictDeps = true;
       nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
-        #testgen-hs
       ];
       TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
       buildInputs =
@@ -55,7 +54,6 @@ in
         postInstall = ''
           chmod -R +w $out
           mv $out/bin $out/libexec
-          ln -sf ${testgen-hs}/bin $out/libexec/testgen-hs
           mkdir -p $out/bin
           ln -sf $out/libexec/${packageName} $out/bin/
         '';

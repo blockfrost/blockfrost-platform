@@ -12,10 +12,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     ls -l ; cargo chef prepare --recipe-path recipe.json
 
-FROM base AS downloader
-ADD https://github.com/input-output-hk/testgen-hs/releases/download/10.1.4.2/testgen-hs-10.1.4.2-x86_64-linux.tar.bz2 /app/
-RUN tar -xjf testgen-hs-*.tar.* && /app/testgen-hs/testgen-hs --version
-
 FROM base AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -31,10 +27,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM gcr.io/distroless/cc-debian12:dca9008b864a381b5ce97196a4d8399ac3c2fa65 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
-COPY --from=downloader /app/testgen-hs /app/testgen-hs
-
-# Set the environment variable to the path of the testgen-hs binary
-ENV TESTGEN_HS_PATH=/app/testgen-hs/testgen-hs
 
 EXPOSE 3000/tcp
 STOPSIGNAL SIGINT

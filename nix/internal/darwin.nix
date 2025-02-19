@@ -51,7 +51,6 @@ in
             mv $out/{${unix.packageName},lib} $out/libexec
             mkdir -p $out/bin
             ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
-            cp -r ${bundle-testgen-hs} $out/libexec/testgen-hs
           '';
       });
 
