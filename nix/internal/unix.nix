@@ -57,6 +57,7 @@ in
           mkdir -p $out/bin
           ln -sf $out/libexec/${packageName} $out/bin/
         '';
+        meta.mainProgram = packageName;
       });
 
     cargoChecks = {
