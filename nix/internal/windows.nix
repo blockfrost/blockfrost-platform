@@ -120,7 +120,6 @@ in rec {
 
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
-    cp -r ${testgen-hs}/. $out/testgen-hs
     cp -r ${packageWithIcon}/. $out/.
   '';
 
