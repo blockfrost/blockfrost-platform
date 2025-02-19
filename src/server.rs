@@ -42,28 +42,36 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
-    // Metrics recorder
-    let prometheus_handle = if config.metrics {
-        Some(setup_metrics_recorder())
-    } else {
-        None
-    };
+    // Router
+    let mut api_routes = Router::new();
 
-    // Routes
-    let api_routes = Router::new()
+    // Add routes
+    api_routes = api_routes
         .route("/", get(root::route))
-        .route("/tx/submit", post(tx_submit::route))
-        .route("/metrics", get(crate::api::metrics::route))
-        .layer(Extension(prometheus_handle))
+        .route("/tx/submit", post(tx_submit::route));
+
+    let metrics_enabled = !config.no_metrics;
+
+    if metrics_enabled {
+        api_routes = api_routes.route("/metrics", get(crate::api::metrics::route));
+    }
+
+    // Add layers
+    api_routes = api_routes
         .layer(Extension(config))
         .layer(Extension(node_conn_pool.clone()))
         .layer(from_fn(error_middleware))
-        .fallback(BlockfrostError::not_found())
-        .route_layer(from_fn(track_http_metrics));
+        .fallback(BlockfrostError::not_found());
+
+    if metrics_enabled {
+        api_routes = api_routes
+            .route_layer(from_fn(track_http_metrics))
+            .layer(Extension(setup_metrics_recorder()));
+    }
 
     // Nest prefix
     let app = if api_prefix == "/" || api_prefix.is_empty() {
-        Router::new().merge(api_routes)
+        api_routes
     } else {
         Router::new().nest(&api_prefix, api_routes)
     };
