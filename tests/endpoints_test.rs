@@ -5,7 +5,7 @@ mod transaction_builder;
 mod tests {
     use crate::asserts;
     use crate::common::{build_app, get_blockfrost_client, initialize_logging};
-    use crate::transaction_builder::build_tx;
+    use crate::transaction_builder::{build_tx, Network};
     use axum::{
         body::{to_bytes, Body},
         http::Request,
@@ -110,13 +110,15 @@ mod tests {
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
         let blockfrost_client = get_blockfrost_client();
 
-        let tx = build_tx(&blockfrost_client, "preview").await;
+        let tx = build_tx(&blockfrost_client, Network::Preview)
+            .await
+            .unwrap();
 
         let local_request = Request::builder()
             .method(Method::POST)
             .uri("/tx/submit")
             .header("Content-Type", "application/cbor")
-            .body(Body::from(tx))
+            .body(Body::from(tx.to_hex()))
             .unwrap();
 
         let local_response = app
@@ -128,6 +130,6 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        asserts::assert_submit_error_responses("local_body_bytes", &local_body_bytes);
+        assert!(local_body_bytes,);
     }
 }

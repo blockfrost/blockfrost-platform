@@ -369,6 +369,7 @@ dependencies = [
  "bip39",
  "blake2",
  "blockfrost",
+ "blockfrost-openapi",
  "bzip2",
  "cardano-serialization-lib",
  "cbor",
