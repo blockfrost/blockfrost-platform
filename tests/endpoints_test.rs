@@ -17,7 +17,7 @@ mod tests {
 
     // Test: `/` route correct response
     #[tokio::test]
-    async fn test_root_route() {
+    async fn test_route_root() {
         initialize_logging();
 
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -43,7 +43,7 @@ mod tests {
 
     // Test: `/metrics` route sanity check
     #[tokio::test]
-    async fn test_metrics_route() {
+    async fn test_route_metrics() {
         initialize_logging();
 
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -71,7 +71,7 @@ mod tests {
 
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
-    async fn test_submit_route_error() {
+    async fn test_route_submit() {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 

@@ -2,7 +2,7 @@ use crate::BlockfrostError;
 use axum::response::{Extension, IntoResponse};
 use metrics::{describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
 
 pub async fn route(
@@ -13,7 +13,14 @@ pub async fn route(
     Ok(handle.render().into_response())
 }
 
+// to prevent multiple initialization of the metrics recorder, happens in tests
+static HANDLER: OnceLock<Arc<RwLock<PrometheusHandle>>> = OnceLock::new();
+
 pub fn setup_metrics_recorder() -> Arc<RwLock<PrometheusHandle>> {
+    HANDLER.get_or_init(internal_setup).clone()
+}
+
+fn internal_setup() -> Arc<RwLock<PrometheusHandle>> {
     let builder = PrometheusBuilder::new()
         .install_recorder()
         .expect("failed to install Prometheus recorder");
