@@ -46,9 +46,11 @@ in
 
     packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
 
+    GIT_REVISION = inputs.self.rev or "dirty";
+
     package = craneLib.buildPackage (commonArgs
       // {
-        inherit cargoArtifacts;
+        inherit cargoArtifacts GIT_REVISION;
         doCheck = false; # we run tests with `cargo-nextest` below
         postInstall = ''
           chmod -R +w $out
@@ -63,15 +65,15 @@ in
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {
-          inherit cargoArtifacts;
+          inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
           cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
         });
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
+          inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-          inherit cargoArtifacts;
         });
 
       cargo-audit = craneLib.cargoAudit {
@@ -85,7 +87,7 @@ in
 
       cargo-test = craneLib.cargoNextest (commonArgs
         // {
-          inherit cargoArtifacts;
+          inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--lib";
         });
     };

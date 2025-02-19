@@ -44,9 +44,11 @@ in rec {
 
   packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
 
+  GIT_REVISION = inputs.self.rev or "dirty";
+
   package = craneLib.buildPackage (commonArgs
     // {
-      inherit cargoArtifacts;
+      inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
       postPatch = ''
         sed -r '/^build = .*/d' -i Cargo.toml

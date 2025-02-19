@@ -22,7 +22,10 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
 }
 
 #[derive(Parser, Debug, Serialize)]
-#[command(author, version, about, long_about = None)]
+#[command(author,
+          version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_REVISION"), ")"),
+          about,
+          long_about = None)]
 #[config]
 pub struct Args {
     #[arg(long, default_value = "0.0.0.0")]

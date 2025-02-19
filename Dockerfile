@@ -23,6 +23,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo chef cook --release --workspace --recipe-path recipe.json
 COPY ./src	./src
 COPY Cargo.toml	Cargo.lock	./
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo build --release
