@@ -146,7 +146,7 @@ impl Args {
             .prompt()?;
 
         let metrics = Confirm::new("Enable metrics?")
-            .with_default(false)
+            .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
 
