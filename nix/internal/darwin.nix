@@ -41,17 +41,16 @@ in
 
     # Portable directory that can be run on any modern Darwin:
     bundle =
-      (nix-bundle-exe-lib-subdir "${unix.package}/libexec/blockfrost-platform")
+      (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
       .overrideAttrs (drv: {
-        name = "blockfrost-platform";
+        name = unix.packageName;
         buildCommand =
           drv.buildCommand
           + ''
             mkdir -p $out/libexec
-            mv $out/{blockfrost-platform,lib} $out/libexec
+            mv $out/{${unix.packageName},lib} $out/libexec
             mkdir -p $out/bin
-            ( cd $out/bin ; ln -s ../libexec/blockfrost-platform ./ ; )
-            cp -r ${bundle-testgen-hs} $out/libexec/testgen-hs
+            ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
           '';
       });
 

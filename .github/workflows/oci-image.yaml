@@ -15,7 +15,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: 🚀 Build the image
         run: |
-          docker compose build
+          docker compose build --build-arg GIT_REVISION=$(git rev-parse @)
       - name: 📤 Push the image
         if: github.ref == 'refs/heads/main'
         run: |

@@ -25,6 +25,8 @@ services:
     build:
       context: ./
       target: runtime
+      args:
+        - GIT_REVISION
     develop:
       watch:
         - action: rebuild

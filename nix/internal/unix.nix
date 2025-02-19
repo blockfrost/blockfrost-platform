@@ -26,7 +26,6 @@ in
       strictDeps = true;
       nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
-        #testgen-hs
       ];
       TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
       buildInputs =
@@ -44,31 +43,35 @@ in
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
+    packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
+
+    GIT_REVISION = inputs.self.rev or "dirty";
+
     package = craneLib.buildPackage (commonArgs
       // {
-        inherit cargoArtifacts;
+        inherit cargoArtifacts GIT_REVISION;
         doCheck = false; # we run tests with `cargo-nextest` below
         postInstall = ''
           chmod -R +w $out
           mv $out/bin $out/libexec
-          ln -sf ${testgen-hs}/bin $out/libexec/testgen-hs
           mkdir -p $out/bin
-          ln -sf $out/libexec/blockfrost-platform $out/bin/
+          ln -sf $out/libexec/${packageName} $out/bin/
         '';
+        meta.mainProgram = packageName;
       });
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {
-          inherit cargoArtifacts;
+          inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
           cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
         });
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
+          inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-          inherit cargoArtifacts;
         });
 
       cargo-audit = craneLib.cargoAudit {
@@ -82,7 +85,7 @@ in
 
       cargo-test = craneLib.cargoNextest (commonArgs
         // {
-          inherit cargoArtifacts;
+          inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--lib";
         });
     };
@@ -127,8 +130,8 @@ in
 
     stateDir =
       if pkgs.stdenv.isDarwin
-      then "Library/Application Support/blockfrost-platform"
-      else ".local/share/blockfrost-platform";
+      then "Library/Application Support/${packageName}"
+      else ".local/share/${packageName}";
 
     runNode = network:
       pkgs.writeShellScriptBin "run-node-${network}" ''
@@ -208,7 +211,7 @@ in
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
         nativeBuildInputs = with pkgs; [shellcheck];
-        projectName = package.pname;
+        projectName = packageName;
         projectVersion = package.version;
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;
