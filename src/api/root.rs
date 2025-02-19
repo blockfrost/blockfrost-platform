@@ -15,8 +15,14 @@ pub async fn route(
     Extension(node): Extension<NodePool>,
 ) -> Result<impl IntoResponse, BlockfrostError> {
     let errors = vec![];
-    let mut node = node.get().await?;
-    let node_info = node.sync_progress().await?;
+
+    // XXX: Axum must not abort Ouroboros protocols in the middle, hence a separate Tokio task:
+    let node_info: NodeInfo = tokio::spawn(async move {
+        let mut node = node.get().await?;
+        node.sync_progress().await
+    })
+    .await
+    .expect("sync_progress panic!")?;
 
     let response = RootResponse {
         name: env!("CARGO_PKG_NAME").to_string(),

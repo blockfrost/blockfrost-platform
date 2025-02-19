@@ -1,7 +1,7 @@
 use crate::BlockfrostError;
 use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
 use std::{boxed::Box, pin::Pin};
-use tracing::warn;
+use tracing::error;
 
 /// Our wrapper around [`pallas_network::facades::NodeClient`]. If you only use
 /// this, you won’t get any deadlocks, inconsistencies, etc.
@@ -25,15 +25,20 @@ impl NodeClient {
     {
         // Acquire the client
         let client = self.client.as_mut().unwrap().statequery();
-        client.acquire(None).await?;
+
+        client
+            .acquire(None)
+            .await
+            .inspect_err(|e| error!("Failed to acquire a statequery client: {:?}", e))?;
 
         // Run the action and ensure the client is released afterwards
         let result = action(client).await;
 
         // Always release the client, even if action fails
-        if let Err(e) = client.send_release().await {
-            warn!("Failed to release client: {:?}", e);
-        }
+        client
+            .send_release()
+            .await
+            .inspect_err(|e| error!("Failed to release on a statequery client: {:?}", e))?;
 
         result
     }
