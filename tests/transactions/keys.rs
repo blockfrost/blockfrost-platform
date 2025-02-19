@@ -1,11 +1,6 @@
-use cardano_serialization_lib::{BaseAddress, Bip32PrivateKey, Credential, NetworkId, PrivateKey};
-use bip39::{ Language, Mnemonic};
-
-#[derive(PartialEq, Eq)]
-enum Network {
-    Mainnet,
-    Preview,
-}
+use bip39::Mnemonic;
+use cardano_serialization_lib::{BaseAddress, Bip32PrivateKey, Credential, PrivateKey};
+use crate::tests::build_tx;
 
 fn harden(number: u32) -> u32 {
     0x80_00_00_00 + number
@@ -46,7 +41,7 @@ fn derive_address_private_key(
 }
 
 fn mnemonic_to_bip32_private_key(mnemonic: &str) -> Bip32PrivateKey {
-    let mnemonic = Mnemonic::from_entropy(mnemonic, Language::English)
+    let mnemonic = Mnemonic::from_entropy(mnemonic)
         .expect("Invalid mnemonic phrase");
     let entropy = mnemonic.entropy();
 

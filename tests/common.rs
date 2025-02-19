@@ -1,4 +1,5 @@
 use axum::Router;
+use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     cli::{Config, LogLevel, Mode, Network},
     icebreakers_api::IcebreakersAPI,
@@ -17,6 +18,12 @@ static INIT_LOGGING: LazyLock<()> = LazyLock::new(|| {
 
 pub fn initialize_logging() {
     let _ = INIT_LOGGING;
+}
+
+pub fn initialize_blockfrost_client() -> BlockfrostAPI {
+    let settings = BlockFrostSettings::default();
+
+    BlockfrostAPI::new("project_id", settings)
 }
 
 pub fn test_config() -> Arc<Config> {
