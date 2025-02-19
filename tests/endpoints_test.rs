@@ -1,9 +1,11 @@
-#[path = "common.rs"]
+mod asserts;
 mod common;
+mod transactions;
 
 mod tests {
-
+    use crate::asserts;
     use crate::common::{build_app, initialize_logging};
+    use crate::transactions::builder::build_tx;
     use axum::{
         body::{to_bytes, Body},
         http::Request,
@@ -11,7 +13,6 @@ mod tests {
     use blockfrost_platform::api::root::RootResponse;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
-    use serde_json::Value;
 
     use tower::ServiceExt;
 
@@ -75,7 +76,7 @@ mod tests {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 
-        let tx =    "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
+        let tx = "84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6";
 
         // Local (Platform)
         let local_request = Request::builder()
@@ -109,45 +110,33 @@ mod tests {
             .await
             .expect("Failed to read Blockfrost response");
 
-        self::assert_responses(&bf_body_bytes, &local_body_bytes);
+        asserts::assert_submit_error_responses(&bf_body_bytes, &local_body_bytes);
     }
 
-    /// This workaround exists because the final error is a Haskell string
-    /// which we don't want to bother de-serializing from string.
-    pub fn assert_responses(bf_response: &[u8], local_response: &[u8]) {
-        #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
-        #[serde(untagged)]
-        pub enum TestData {
-            Wrapper {
-                contents: Box<TestData>,
-                tag: String,
-            },
-            Data {
-                contents: Value,
-            },
-        }
+    // Test: build `/tx/submit` success
+    #[tokio::test]
+    async fn test_submit_route_success() {
+        initialize_logging();
+        let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 
-        #[derive(Debug, PartialEq, Eq)]
-        pub struct TestResponse {
-            message: TestData,
-            error: String,
-            status_code: u64,
-        }
+        let tx = build_tx().await;
 
-        fn get_response_struct(response: &[u8]) -> TestResponse {
-            let as_value = serde_json::from_slice::<serde_json::Value>(response).unwrap();
+        let local_request = Request::builder()
+            .method(Method::POST)
+            .uri("/tx/submit")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx))
+            .unwrap();
 
-            TestResponse {
-                message: serde_json::from_str(as_value.get("message").unwrap().as_str().unwrap())
-                    .unwrap(),
-                error: as_value.get("error").unwrap().to_string(),
-                status_code: as_value.get("status_code").unwrap().as_u64().unwrap(),
-            }
-        }
+        let local_response = app
+            .oneshot(local_request)
+            .await
+            .expect("Request to /tx/submit failed");
 
-        assert_eq!(
-            get_response_struct(bf_response),
-            get_response_struct(local_response)
-        );
+        let local_body_bytes = to_bytes(local_response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        self::assert_responses("local_body_bytes", &local_body_bytes);
     }
 }
