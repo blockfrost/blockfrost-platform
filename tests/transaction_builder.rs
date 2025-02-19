@@ -1,15 +1,18 @@
-use bip39::{Language, Mnemonic};
+use bip39::Mnemonic;
+use blockfrost::BlockfrostAPI;
+use cardano_serialization_lib::PrivateKey;
 use cardano_serialization_lib::{
-    hash_transaction, Address, BigNum, CoinSelectionStrategyCIP2, LinearFee, Transaction,
+    Address, BigNum, CoinSelectionStrategyCIP2, LinearFee, Transaction, TransactionBody,
     TransactionBuilder, TransactionBuilderConfigBuilder, TransactionHash, TransactionInput,
-    TransactionOutput, TransactionUnspentOutput, TransactionUnspentOutputs, Value,
+    TransactionOutput, TransactionUnspentOutput, TransactionUnspentOutputs, TransactionWitnessSet,
+    Value, Vkeywitnesses,
 };
-use cardano_serialization_lib::{BaseAddress, Bip32PrivateKey, Credential, NetworkId, PrivateKey};
+use cardano_serialization_lib::{BaseAddress, Bip32PrivateKey, Credential, NetworkId};
 use hex;
 use std::str::FromStr;
 
 #[derive(PartialEq, Eq)]
-enum Network {
+pub enum Network {
     Mainnet,
     Preview,
 }
@@ -56,7 +59,7 @@ pub struct TransactionParams {
 }
 
 pub async fn build_tx(
-    blockfrost_client: &BlockFrostAPI,
+    blockfrost_client: &BlockfrostAPI,
     network: Network,
 ) -> Result<Transaction, Box<dyn Error>> {
     let bip32_prv_key = mnemonic_to_private_key(MNEMONIC)?;
@@ -73,24 +76,10 @@ pub async fn build_tx(
         Environment::Dev => 1,
     };
 
-    let (sign_key, address) = derive_address_prv_key(bip32_prv_key, network_str, index)?;
+    let (sign_key, address) = derive_address_private_key(bip32_prv_key, network_str, index)?;
 
-    let protocol_parameters: ProtocolParameters =
-        blockfrost_client.epochs_latest_parameters().await?;
-    let utxos: Vec<Utxo> = match blockfrost_client.addresses_utxos_all(&address).await {
-        Ok(u) => u,
-        Err(e) => {
-            if let Some(server_error) = e.downcast_ref::<BlockFrostServerError>() {
-                if server_error.status_code == 404 {
-                    Vec::new()
-                } else {
-                    return Err(e);
-                }
-            } else {
-                return Err(e);
-            }
-        }
-    };
+    let protocol_parameters: ProtocolParams = blockfrost_client.epochs_latest_parameters().await?;
+    let utxos: Vec<Utxo> = blockfrost_client.addresses_utxos_all(&address).await?;
 
     let has_low_balance = utxos.len() == 1 && {
         let lovelace_amount = utxos[0]
@@ -143,13 +132,13 @@ pub fn compose_transaction(
 
     // Build transaction configuration
     let config = TransactionBuilderConfigBuilder::new()
-        .fee_algo(LinearFee::new(
-            BigNum::from_str(&params.protocol_params.min_fee_a)?,
-            BigNum::from_str(&params.protocol_params.min_fee_b)?,
+        .fee_algo(&LinearFee::new(
+            &BigNum::from_str(&params.protocol_params.min_fee_a)?,
+            &BigNum::from_str(&params.protocol_params.min_fee_b)?,
         ))
-        .pool_deposit(BigNum::from_str(&params.protocol_params.pool_deposit)?)
-        .key_deposit(BigNum::from_str(&params.protocol_params.key_deposit)?)
-        .coins_per_utxo_byte(BigNum::from_str(
+        .pool_deposit(&BigNum::from_str(&params.protocol_params.pool_deposit)?)
+        .key_deposit(&BigNum::from_str(&params.protocol_params.key_deposit)?)
+        .coins_per_utxo_byte(&BigNum::from_str(
             &params.protocol_params.coins_per_utxo_size,
         )?)
         .max_value_size(params.protocol_params.max_val_size.parse()?)
@@ -167,7 +156,7 @@ pub fn compose_transaction(
     tx_builder.set_ttl(ttl);
 
     // Add output to the transaction
-    let output_value = Value::new(BigNum::from_str(output_amount)?);
+    let output_value = Value::new(&BigNum::from_str(output_amount)?);
     let tx_output = TransactionOutput::new(&output_addr, &output_value);
     tx_builder.add_output(&tx_output)?;
 
@@ -182,7 +171,7 @@ pub fn compose_transaction(
     // Create TransactionUnspentOutputs from the filtered UTXOs.
     for utxo in lovelace_utxos {
         if let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace") {
-            let input_value = Value::new(BigNum::from_str(&token.quantity)?);
+            let input_value = Value::new(&BigNum::from_str(&token.quantity)?);
             let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
             let tx_hash = TransactionHash::from_bytes(tx_hash_bytes.as_slice())?;
             let input = TransactionInput::new(&tx_hash, utxo.output_index);
@@ -205,4 +194,49 @@ pub fn compose_transaction(
     let tx_hash = hex::encode(hash_transaction(&tx_body).to_bytes());
 
     Ok((tx_hash, tx_body))
+}
+
+fn harden(number: u32) -> u32 {
+    0x80_00_00_00 + number
+}
+
+fn derive_address_private_key(
+    bip_prv_key: Bip32PrivateKey,
+    network: Network,
+    address_index: u32,
+) -> (PrivateKey, String) {
+    let account_index = 0;
+
+    let network_id: u8 = if network == Network::Mainnet {
+        NetworkId::mainnet().to_bytes()[0]
+    } else {
+        NetworkId::testnet().to_bytes()[0]
+    };
+
+    let account_key = bip_prv_key
+        .derive(harden(1852))
+        .derive(harden(1815))
+        .derive(harden(account_index));
+
+    let utxo_key = account_key.derive(0).derive(address_index);
+    let stake_key = account_key.derive(2).derive(0).to_public();
+
+    let utxo_pub = utxo_key.to_public();
+    let utxo_raw = utxo_pub.to_raw_key();
+    let stake_raw = stake_key.to_raw_key();
+
+    let utxo_cred = Credential::from_keyhash(&utxo_raw.hash());
+    let stake_cred = Credential::from_keyhash(&stake_raw.hash());
+
+    let base_address = BaseAddress::new(network_id, &utxo_cred, &stake_cred);
+    let address = base_address.to_address().to_bech32(None).unwrap();
+
+    (utxo_pub, address)
+}
+
+fn mnemonic_to_bip32_private_key(mnemonic: &str) -> Bip32PrivateKey {
+    let mnemonic = Mnemonic::from_entropy(mnemonic).expect("Invalid mnemonic phrase");
+    let entropy = mnemonic.entropy();
+
+    Bip32PrivateKey::from_bip39_entropy(entropy, &[])
 }
