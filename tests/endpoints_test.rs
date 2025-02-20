@@ -1,11 +1,11 @@
 mod asserts;
 mod common;
-mod transaction_builder;
+mod tx_builder;
 
 mod tests {
     use crate::asserts;
     use crate::common::{build_app, get_blockfrost_client, initialize_logging};
-    use crate::transaction_builder::build_tx;
+    use crate::tx_builder::build_tx;
     use axum::{
         body::{to_bytes, Body},
         http::Request,
@@ -113,7 +113,7 @@ mod tests {
         asserts::assert_submit_error_responses(&bf_body_bytes, &local_body_bytes);
     }
 
-    // Test: build `/tx/submit` success
+    // Test: build `/tx/submit` success - tx is accepted by the node
     #[tokio::test]
     async fn test_submit_route_success() {
         initialize_logging();

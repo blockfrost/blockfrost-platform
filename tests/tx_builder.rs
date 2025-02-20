@@ -127,6 +127,7 @@ pub fn compose_transaction(
             let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into().unwrap());
             let output = TransactionOutput::new(&change_addr, &input_value);
             let unspent = TransactionUnspentOutput::new(&input, &output);
+
             unspent_outputs.add(&unspent);
         }
     }
@@ -135,14 +136,9 @@ pub fn compose_transaction(
     tx_builder.add_change_if_needed(&change_addr)?;
 
     let tx_body = tx_builder.build()?;
-
     let tx_hash = hex::encode(hash_transaction(&tx_body).to_bytes());
 
     Ok((tx_hash, tx_body))
-}
-
-fn hash_transaction(tx_body: &TransactionBody) -> TransactionHash {
-    tx_body.to_hex()
 }
 
 fn harden(number: u32) -> u32 {
