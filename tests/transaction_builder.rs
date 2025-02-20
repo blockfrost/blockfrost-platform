@@ -9,29 +9,20 @@ use cardano_serialization_lib::{
     TransactionUnspentOutput, TransactionUnspentOutputs, TransactionWitnessSet, Vkeywitnesses,
 };
 
-/// Simple enum for network selection.
 #[derive(PartialEq, Eq)]
 pub enum Network {
     Mainnet,
     Preview,
 }
 
-pub async fn build_tx(
-    blockfrost_client: &BlockfrostAPI,
-    network: Network,
-) -> Result<Transaction, Error> {
-    // Derive the private key from a mnemonic.
+pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, Error> {
     let bip32_prv_key = mnemonic_to_bip32_private_key(
         "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early",
     );
 
-    // Use index 0 for derivation.
-    let (sign_key, address) = derive_address_private_key(bip32_prv_key, network, 0);
-
-    // Fetch the protocol parameters.
+    let (sign_key, address) = derive_address_private_key(bip32_prv_key, Network::Preview, 0);
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
 
-    // Fetch UTXOs for the address.
     let utxos = blockfrost_client
         .addresses_utxos(&address, Pagination::all())
         .await?;
@@ -53,11 +44,9 @@ pub async fn build_tx(
         ));
     }
 
-    // Get the current slot from the latest block.
     let latest_block = blockfrost_client.blocks_latest().await?;
-    let current_slot = latest_block.slot;
+    let current_slot = latest_block.slot.unwrap() as u64;
 
-    // Compose the transaction using the fetched parameters.
     let (_tx_hash, tx_body) = compose_transaction(
         &address,
         &address,
@@ -65,15 +54,14 @@ pub async fn build_tx(
         &utxos,
         &protocol_parameters,
         current_slot,
-    )?;
+    )
+    .unwrap();
 
-    // Sign the transaction.
     let transaction = sign_transaction(&tx_body, &sign_key);
 
     Ok(transaction)
 }
 
-/// Compose a transaction given source/destination addresses, UTXOs, protocol parameters, and current slot.
 pub fn compose_transaction(
     address: &str,
     output_address: &str,
@@ -86,51 +74,56 @@ pub fn compose_transaction(
         return Err(format!("No UTXO on address {}", address).into());
     }
 
-    // Build the transaction configuration.
     let config = TransactionBuilderConfigBuilder::new()
         .fee_algo(&LinearFee::new(
-            BigNum::from_bytes(params.min_fee_a),
-            params.min_fee_b,
+            &BigNum::from_str(&params.min_fee_a.to_string())?,
+            &BigNum::from_str(&params.min_fee_b.to_string())?,
         ))
-        .pool_deposit(&BigNum::from_str(&params.protocol_params.pool_deposit)?)
-        .key_deposit(&BigNum::from_str(&params.protocol_params.key_deposit)?)
+        .pool_deposit(&BigNum::from_str(&params.pool_deposit)?)
+        .key_deposit(&BigNum::from_str(&params.key_deposit)?)
         .coins_per_utxo_byte(&BigNum::from_str(
-            &params.protocol_params.coins_per_utxo_size,
+            params
+                .coins_per_utxo_size
+                .as_ref()
+                .ok_or("coins_per_utxo_size missing")?,
         )?)
-        .max_value_size(params.protocol_params.max_val_size.parse()?)
-        .max_tx_size(params.protocol_params.max_tx_size)
-        .build();
+        .max_value_size(
+            params
+                .max_val_size
+                .as_ref()
+                .ok_or("max_val_size missing")?
+                .parse::<u32>()?,
+        )
+        .max_tx_size(params.max_tx_size.try_into().unwrap())
+        .build()
+        .unwrap();
 
     let mut tx_builder = TransactionBuilder::new(&config);
 
-    // Convert bech32 addresses.
     let output_addr = Address::from_bech32(output_address)?;
     let change_addr = Address::from_bech32(address)?;
 
-    // Set the transaction TTL (+2 hours from the current slot).
     let ttl = current_slot + 7200;
     tx_builder.set_ttl_bignum(&BigNum::from_str(&ttl.to_string())?);
 
-    // Add the desired output.
     let output_value = cardano_serialization_lib::Value::new(&BigNum::from_str(output_amount)?);
     let tx_output = TransactionOutput::new(&output_addr, &output_value);
+
     tx_builder.add_output(&tx_output)?;
 
-    // Filter UTXOs: keep only those containing only lovelace.
-    let lovelace_utxos: Vec<&Utxo> = utxos
+    let lovelace_utxos = utxos
         .iter()
         .filter(|u| u.amount.iter().all(|a| a.unit == "lovelace"))
         .collect();
 
     let mut unspent_outputs = TransactionUnspentOutputs::new();
 
-    // Create TransactionUnspentOutputs from the filtered UTXOs.
     for utxo in lovelace_utxos {
         if let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace") {
             let input_value =
                 cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
             let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
-            let tx_hash = TransactionHash::from_bytes(tx_hash_bytes.as_slice())?;
+            let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
             let input = TransactionInput::new(&tx_hash, utxo.output_index);
             let output = TransactionOutput::new(&change_addr, &input_value);
             let unspent = TransactionUnspentOutput::new(&input, &output);
@@ -138,14 +131,11 @@ pub fn compose_transaction(
         }
     }
 
-    // Select inputs using a largest-first strategy.
     tx_builder.add_inputs_from(&unspent_outputs, CoinSelectionStrategyCIP2::LargestFirst)?;
-    // Add a change output if needed.
     tx_builder.add_change_if_needed(&change_addr)?;
 
-    // Build the transaction body.
     let tx_body = tx_builder.build()?;
-    // Calculate the transaction hash.
+
     let tx_hash = hex::encode(hash_transaction(&tx_body).to_bytes());
 
     Ok((tx_hash, tx_body))
@@ -153,7 +143,7 @@ pub fn compose_transaction(
 
 /// Helper to hash a transaction body.
 fn hash_transaction(tx_body: &TransactionBody) -> TransactionHash {
-    tx_body
+    tx_body.to_hex()
 }
 
 /// Helper for hardened derivation.
