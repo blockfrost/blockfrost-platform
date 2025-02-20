@@ -141,17 +141,14 @@ pub fn compose_transaction(
     Ok((tx_hash, tx_body))
 }
 
-/// Helper to hash a transaction body.
 fn hash_transaction(tx_body: &TransactionBody) -> TransactionHash {
     tx_body.to_hex()
 }
 
-/// Helper for hardened derivation.
 fn harden(number: u32) -> u32 {
     0x80_00_00_00 + number
 }
 
-/// Derives a signing key and address from a bip32 private key.
 fn derive_address_private_key(
     bip_prv_key: Bip32PrivateKey,
     network: Network,
@@ -181,7 +178,9 @@ fn derive_address_private_key(
     let base_address = BaseAddress::new(network_id, &utxo_cred, &stake_cred);
     let address = base_address.to_address().to_bech32(None).unwrap();
 
-    (utxo_pub, address)
+    let sign_key = utxo_key.to_raw_key();
+
+    (sign_key, address)
 }
 
 pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey, bip39::Error> {
@@ -191,7 +190,6 @@ pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey, bi
     Ok(Bip32PrivateKey::from_bip39_entropy(&entropy, &[]))
 }
 
-/// Signs a transaction body with the provided signing key.
 pub fn sign_transaction(tx_body: &TransactionBody, sign_key: &PrivateKey) -> Transaction {
     let tx_hash = hash_transaction(tx_body);
     let mut witnesses = TransactionWitnessSet::new();
