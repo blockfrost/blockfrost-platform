@@ -137,6 +137,6 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        assert_eq!(64, local_body_bytes.len());
+        assert_eq!(66, local_body_bytes.len());
     }
 }
