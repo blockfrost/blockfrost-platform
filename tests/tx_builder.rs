@@ -10,18 +10,12 @@ use cardano_serialization_lib::{
     TransactionWitnessSet, Vkeywitnesses,
 };
 
-#[derive(PartialEq, Eq)]
-pub enum Network {
-    Mainnet,
-    Preview,
-}
-
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, Error> {
     let bip32_prv_key = mnemonic_to_private_key(
         "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early",
     ).unwrap();
 
-    let (sign_key, address) = derive_address_private_key(bip32_prv_key, Network::Preview, 0);
+    let (sign_key, address) = derive_address_private_key(bip32_prv_key, 0);
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
 
     let utxos = blockfrost_client
@@ -148,15 +142,10 @@ fn harden(number: u32) -> u32 {
 
 fn derive_address_private_key(
     bip_prv_key: Bip32PrivateKey,
-    network: Network,
     address_index: u32,
 ) -> (PrivateKey, String) {
     let account_index = 0;
-    let network_id: u8 = match network {
-        Network::Mainnet => NetworkId::mainnet().to_bytes()[0],
-        Network::Preview => NetworkId::testnet().to_bytes()[0],
-    };
-
+    let network_id: u8 = NetworkId::testnet().to_bytes()[0];
     let account_key = bip_prv_key
         .derive(harden(1852))
         .derive(harden(1815))
@@ -195,5 +184,5 @@ pub fn sign_transaction(tx_body: &TransactionBody, sign_key: &PrivateKey) -> Tra
     vkey_witnesses.add(&make_vkey_witness(&tx_hash, sign_key));
     witnesses.set_vkeys(&vkey_witnesses);
 
-    Transaction::new(tx_body, &witnesses)
+    Transaction::new(tx_body, &witnesses, None)
 }

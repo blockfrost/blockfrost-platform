@@ -121,6 +121,8 @@ mod tests {
         let blockfrost_client = get_blockfrost_client();
         let tx = build_tx(&blockfrost_client).await.unwrap();
 
+        println!("tx {:?}", tx);
+
         let request = Request::builder()
             .method(Method::POST)
             .uri("/tx/submit")
