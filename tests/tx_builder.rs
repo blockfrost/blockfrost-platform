@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{anyhow, Result};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
 use blockfrost_openapi::models::{AddressUtxoContentInner, EpochParamContent};
@@ -10,10 +10,10 @@ use cardano_serialization_lib::{
     TransactionWitnessSet, Vkeywitnesses,
 };
 
-pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, Error> {
+pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> {
     let bip32_prv_key = mnemonic_to_private_key(
         "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early",
-    ).unwrap();
+    )?;
 
     let (sign_key, address) = derive_address_private_key(bip32_prv_key, 0);
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
@@ -33,14 +33,17 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, 
     };
 
     if utxos.is_empty() || has_low_balance {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "You should send ADA to {} to have enough funds to send a transaction",
             address
         ));
     }
 
     let latest_block = blockfrost_client.blocks_latest().await?;
-    let current_slot = latest_block.slot.unwrap() as u64;
+    let current_slot = latest_block
+        .slot
+        .ok_or_else(|| anyhow!("Latest block is missing a slot value"))?
+        as u64;
 
     let (_tx_hash, tx_body) = compose_transaction(
         &address,
@@ -49,11 +52,9 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, 
         &utxos,
         &protocol_parameters,
         current_slot,
-    )
-    .unwrap();
+    )?;
 
     let transaction = sign_transaction(&tx_body, &sign_key);
-
     Ok(transaction)
 }
 
@@ -64,9 +65,9 @@ pub fn compose_transaction(
     utxos: &[AddressUtxoContentInner],
     params: &EpochParamContent,
     current_slot: u64,
-) -> Result<(String, TransactionBody), Box<dyn std::error::Error>> {
+) -> Result<(String, TransactionBody)> {
     if utxos.is_empty() {
-        return Err(format!("No UTXO on address {}", address).into());
+        return Err(anyhow!("No UTXO on address {}", address));
     }
 
     let config = TransactionBuilderConfigBuilder::new()
@@ -80,18 +81,17 @@ pub fn compose_transaction(
             params
                 .coins_per_utxo_size
                 .as_ref()
-                .ok_or("coins_per_utxo_size missing")?,
+                .ok_or_else(|| anyhow!("coins_per_utxo_size missing"))?,
         )?)
         .max_value_size(
             params
                 .max_val_size
                 .as_ref()
-                .ok_or("max_val_size missing")?
+                .ok_or_else(|| anyhow!("max_val_size missing"))?
                 .parse::<u32>()?,
         )
-        .max_tx_size(params.max_tx_size.try_into().unwrap())
-        .build()
-        .unwrap();
+        .max_tx_size(params.max_tx_size.try_into()?)
+        .build()?;
 
     let mut tx_builder = TransactionBuilder::new(&config);
 
@@ -103,7 +103,6 @@ pub fn compose_transaction(
 
     let output_value = cardano_serialization_lib::Value::new(&BigNum::from_str(output_amount)?);
     let tx_output = TransactionOutput::new(&output_addr, &output_value);
-
     tx_builder.add_output(&tx_output)?;
 
     let lovelace_utxos: Vec<&AddressUtxoContentInner> = utxos
@@ -112,17 +111,15 @@ pub fn compose_transaction(
         .collect();
 
     let mut unspent_outputs = TransactionUnspentOutputs::new();
-
     for utxo in lovelace_utxos {
         if let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace") {
             let input_value =
                 cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
             let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
             let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
-            let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into().unwrap());
+            let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into()?);
             let output = TransactionOutput::new(&change_addr, &input_value);
             let unspent = TransactionUnspentOutput::new(&input, &output);
-
             unspent_outputs.add(&unspent);
         }
     }
@@ -132,7 +129,6 @@ pub fn compose_transaction(
 
     let tx_body = tx_builder.build()?;
     let tx_hash = hex::encode(hash_transaction(&tx_body).to_bytes());
-
     Ok((tx_hash, tx_body))
 }
 
@@ -165,11 +161,10 @@ fn derive_address_private_key(
     let address = base_address.to_address().to_bech32(None).unwrap();
 
     let sign_key = utxo_key.to_raw_key();
-
     (sign_key, address)
 }
 
-pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey, bip39::Error> {
+pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey> {
     let mnemonic = Mnemonic::parse_normalized(mnemonic_str)?;
     let entropy = mnemonic.to_entropy();
 
@@ -178,6 +173,7 @@ pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey, bi
 
 pub fn sign_transaction(tx_body: &TransactionBody, sign_key: &PrivateKey) -> Transaction {
     let tx_hash = hash_transaction(tx_body);
+
     let mut witnesses = TransactionWitnessSet::new();
     let mut vkey_witnesses = Vkeywitnesses::new();
 
