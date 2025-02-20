@@ -1,5 +1,5 @@
 use anyhow::Error;
-use bip39::{Language, Mnemonic};
+use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
 use blockfrost_openapi::models::{AddressUtxoContentInner, EpochParamContent};
 use cardano_serialization_lib::{
@@ -16,9 +16,9 @@ pub enum Network {
 }
 
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction, Error> {
-    let bip32_prv_key = mnemonic_to_bip32_private_key(
+    let bip32_prv_key = mnemonic_to_private_key(
         "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early",
-    );
+    ).unwrap();
 
     let (sign_key, address) = derive_address_private_key(bip32_prv_key, Network::Preview, 0);
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
@@ -111,7 +111,7 @@ pub fn compose_transaction(
 
     tx_builder.add_output(&tx_output)?;
 
-    let lovelace_utxos = utxos
+    let lovelace_utxos: Vec<&AddressUtxoContentInner> = utxos
         .iter()
         .filter(|u| u.amount.iter().all(|a| a.unit == "lovelace"))
         .collect();
@@ -124,7 +124,7 @@ pub fn compose_transaction(
                 cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
             let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
             let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
-            let input = TransactionInput::new(&tx_hash, utxo.output_index);
+            let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into().unwrap());
             let output = TransactionOutput::new(&change_addr, &input_value);
             let unspent = TransactionUnspentOutput::new(&input, &output);
             unspent_outputs.add(&unspent);
@@ -184,13 +184,11 @@ fn derive_address_private_key(
     (utxo_pub, address)
 }
 
-/// Converts a mnemonic phrase into a Bip32PrivateKey.
-fn mnemonic_to_bip32_private_key(mnemonic: &str) -> Bip32PrivateKey {
-    // Here we parse the mnemonic phrase using the English wordlist.
-    let mnemonic =
-        Mnemonic::from_phrase(mnemonic, Language::English).expect("Invalid mnemonic phrase");
-    let entropy = mnemonic.entropy();
-    Bip32PrivateKey::from_bip39_entropy(entropy, &[])
+pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey, bip39::Error> {
+    let mnemonic = Mnemonic::parse_normalized(mnemonic_str)?;
+    let entropy = mnemonic.to_entropy();
+
+    Ok(Bip32PrivateKey::from_bip39_entropy(&entropy, &[]))
 }
 
 /// Signs a transaction body with the provided signing key.
