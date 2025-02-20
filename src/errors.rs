@@ -10,7 +10,7 @@ use std::{array::TryFromSliceError, fmt, io};
 use thiserror::Error;
 use tracing::error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum AppError {
     #[error("Node connection error: {0}")]
     Node(String),

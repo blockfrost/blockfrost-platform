@@ -30,8 +30,8 @@ pub async fn error_middleware(request: Request, next: Next) -> Result<Response, 
         return Ok(BlockfrostError::method_not_allowed().into_response());
     }
 
-    // Transform server errors to internal server error for user
-    if response.status().is_server_error() {
+    // Transform server errors to internal server error for user – except for 503 from the root route
+    if response.status().is_server_error() && response.status() != StatusCode::SERVICE_UNAVAILABLE {
         handle_server_error(response, &request_path, status_code).await
     } else {
         Ok(response)
