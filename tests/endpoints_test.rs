@@ -121,8 +121,6 @@ mod tests {
         let blockfrost_client = get_blockfrost_client();
         let tx = build_tx(&blockfrost_client).await.unwrap();
 
-        println!("tx {:?}", tx);
-
         let request = Request::builder()
             .method(Method::POST)
             .uri("/tx/submit")
@@ -139,6 +137,6 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        assert_eq!("test", local_body_bytes);
+        assert_eq!(64, local_body_bytes.len());
     }
 }
