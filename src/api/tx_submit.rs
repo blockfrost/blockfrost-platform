@@ -46,7 +46,7 @@ pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
     if !even_length || contains_non_hex {
         xs.to_vec()
     } else {
-        hex::decode(xs).expect("can't happen")
+        hex::decode(xs).unwrap_or_else(|_| unreachable!())
     }
 }
 
