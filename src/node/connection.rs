@@ -38,7 +38,7 @@ impl NodeClient {
         client
             .send_release()
             .await
-            .inspect_err(|e| error!("Failed to release on a statequery client: {:?}", e))?;
+            .inspect_err(|e| error!("Failed to release a statequery client: {:?}", e))?;
 
         result
     }
