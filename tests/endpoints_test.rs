@@ -139,6 +139,6 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        println!("local_body_bytes {:?}", local_body_bytes);
+        assert_eq!("test", local_body_bytes);
     }
 }
