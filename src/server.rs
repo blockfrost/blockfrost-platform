@@ -8,9 +8,9 @@ use crate::{
     node::pool::NodePool,
 };
 use axum::{
+    Extension, Router,
     middleware::from_fn,
     routing::{get, post},
-    Extension, Router,
 };
 use std::sync::Arc;
 use tower::ServiceBuilder;

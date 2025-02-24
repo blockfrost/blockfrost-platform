@@ -1,7 +1,7 @@
 use super::connection::NodeClient;
 use crate::{
-    cbor::haskell_types::{TxSubmitFail, TxValidationError},
     BlockfrostError,
+    cbor::haskell_types::{TxSubmitFail, TxValidationError},
 };
 use pallas_codec::minicbor::Decoder;
 use pallas_crypto::hash::Hasher;
@@ -42,13 +42,13 @@ impl NodeClient {
             Ok(Response::Accepted) => {
                 info!("Transaction accepted by the node {}", txid);
                 Ok(txid)
-            }
+            },
             Ok(Response::Rejected(reason)) => match NodeClient::try_decode_error(&reason.0) {
                 Ok(error) => {
                     let haskell_display = serde_json::to_string(&error).unwrap();
                     warn!("{}: {:?}", "TxSubmitFail", haskell_display);
                     Err(BlockfrostError::custom_400(haskell_display))
-                }
+                },
 
                 Err(e) => {
                     warn!("Failed to decode error reason: {:?}", e);
@@ -57,13 +57,13 @@ impl NodeClient {
                         "Failed to decode error reason: {:?}",
                         e
                     )))
-                }
+                },
             },
             Err(e) => {
                 let error_message = format!("Error during transaction submission: {:?}", e);
 
                 Err(BlockfrostError::custom_400(error_message))
-            }
+            },
         }
     }
 
@@ -83,7 +83,7 @@ impl NodeClient {
                 // A decoding failure is a bug in our code, not a bug in the node.
                 // It should not effect the program flow, but should be logged and reported.
                 Err(Error::Decoding(err.to_string()))
-            }
+            },
         }
     }
     /// Mimicks the data structure of the error response from the cardano-submit-api

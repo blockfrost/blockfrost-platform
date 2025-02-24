@@ -89,7 +89,7 @@ pub(crate) fn haskell_show_string(s: &str) -> String {
                         }
                     }
                 }
-            }
+            },
         }
     }
 
@@ -98,7 +98,7 @@ pub(crate) fn haskell_show_string(s: &str) -> String {
 }
 
 #[cfg(test)]
-use super::tests::{check_generated_cases, CaseType};
+use super::tests::{CaseType, check_generated_cases};
 
 #[test]
 fn proptest_data_text_10000_large() {

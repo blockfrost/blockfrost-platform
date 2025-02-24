@@ -1,4 +1,4 @@
-use crate::{node::sync_progress::NodeInfo, BlockfrostError, NodePool};
+use crate::{BlockfrostError, NodePool, node::sync_progress::NodeInfo};
 use std::sync::Arc;
 use tokio::sync::{Notify, RwLock};
 use tokio::time::{self, Duration};

@@ -2,14 +2,14 @@ use std::fmt::{self};
 
 use pallas_codec::minicbor::{self, Decode};
 use pallas_codec::utils::Bytes;
-use pallas_primitives::conway::{GovAction, ProposalProcedure, TransactionOutput, Value};
 use pallas_primitives::NetworkId;
+use pallas_primitives::conway::{GovAction, ProposalProcedure, TransactionOutput, Value};
 use pallas_primitives::{
+    AddrKeyhash, Coin, PolicyId, PoolKeyhash, ProtocolVersion, Set, StakeCredential,
+    TransactionInput,
     conway::{
         Certificate, DRep, ExUnits, GovActionId, Language, ScriptHash, Voter, VotingProcedures,
     },
-    AddrKeyhash, Coin, PolicyId, PoolKeyhash, ProtocolVersion, Set, StakeCredential,
-    TransactionInput,
 };
 use serde::Serialize;
 use serde_with::SerializeDisplay;
@@ -290,7 +290,7 @@ impl fmt::Display for ConwayCertsPredFailure {
         match self {
             WithdrawalsNotInRewardsCERTS(m) => {
                 write!(f, "WithdrawalsNotInRewardsCERTS ({})", m.to_haskell_str())
-            }
+            },
             CertFailure(e) => write!(f, "CertFailure ({})", e),
         }
     }

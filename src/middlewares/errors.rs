@@ -1,14 +1,14 @@
 use crate::BlockfrostError;
 use axum::{
-    body::{to_bytes, Bytes},
+    body::{Bytes, to_bytes},
     extract::Request,
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use sentry::{
-    protocol::{Event, Exception},
     Breadcrumb, Level,
+    protocol::{Event, Exception},
 };
 use serde_json;
 use std::convert::Infallible;
@@ -49,7 +49,7 @@ async fn handle_server_error(
         Ok(bytes) => parse_and_log_error(bytes, request_path, status_code).await,
         Err(e) => {
             log_and_capture_error("Failed to read body", e, request_path, status_code);
-        }
+        },
     }
 
     Ok(BlockfrostError::internal_server_error_user().into_response())
@@ -64,7 +64,7 @@ async fn parse_and_log_error(bytes: Bytes, request_path: &str, status_code: Stat
                 error_info.message
             );
             log_to_sentry("|", format!("{:?}", error_info), request_path, status_code)
-        }
+        },
         Err(e) => {
             println!("Failed to parse body as JSON: {:?}", e);
             log_to_sentry(
@@ -75,7 +75,7 @@ async fn parse_and_log_error(bytes: Bytes, request_path: &str, status_code: Stat
             );
             let body_str = String::from_utf8_lossy(&bytes);
             println!("Raw Body: {}", body_str);
-        }
+        },
     }
 }
 
@@ -136,11 +136,11 @@ mod tests {
     use super::*;
     use axum::middleware;
     use axum::{
-        body::{to_bytes, Body},
+        Router,
+        body::{Body, to_bytes},
         extract::Extension,
         http::{Request as HttpRequest, StatusCode},
         routing::get,
-        Router,
     };
     use rstest::{fixture, rstest};
     use std::sync::Arc;

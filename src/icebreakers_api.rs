@@ -55,7 +55,7 @@ impl IcebreakersAPI {
                 let icebreakers_api = Arc::new(icebreakers_api);
 
                 Ok(Some(icebreakers_api))
-            }
+            },
             None => {
                 // Logging the solitary mode warning
                 warn!(" __________________________________________ ");
@@ -70,7 +70,7 @@ impl IcebreakersAPI {
                 warn!("                ||     ||");
 
                 Ok(None)
-            }
+            },
         }
     }
 

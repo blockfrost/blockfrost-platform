@@ -1,5 +1,5 @@
-use pallas_codec::minicbor::{self, data::Type, decode, Decode, Decoder};
-use pallas_primitives::{conway::Certificate, NetworkId};
+use pallas_codec::minicbor::{self, Decode, Decoder, data::Type, decode};
+use pallas_primitives::{NetworkId, conway::Certificate};
 
 use super::{
     haskell_display::HaskellDisplay,
@@ -109,7 +109,7 @@ impl<'b, C> Decode<'b, C> for ShelleyPoolPredFailure {
                     Mismatch(lt_supplied.clone(), gt_expected),
                     Mismatch(lt_supplied, lt_expected),
                 ))
-            }
+            },
             3 => Ok(StakePoolCostTooLowPOOL(d.decode_with(ctx)?)),
             4 => {
                 let expected: NetworkId = d.decode_with(ctx)?;
@@ -119,7 +119,7 @@ impl<'b, C> Decode<'b, C> for ShelleyPoolPredFailure {
                     Mismatch(supplied, expected),
                     d.decode_with(ctx)?,
                 ))
-            }
+            },
             5 => Ok(PoolMedataHashTooBig(
                 d.decode_with(ctx)?,
                 d.decode_with(ctx)?,

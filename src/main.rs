@@ -1,4 +1,4 @@
-use axum::{extract::Request, ServiceExt};
+use axum::{ServiceExt, extract::Request};
 use blockfrost_platform::{cli::Args, errors::AppError, logging::setup_tracing, server::build};
 use dotenvy::dotenv;
 use tokio::{signal, sync::oneshot};
