@@ -1,6 +1,11 @@
 name: OCI
+
 on:
   push:
+  release:
+    types:
+      - published
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,7 +21,14 @@ jobs:
       - name: 🚀 Build the image
         run: |
           docker compose build --build-arg GIT_REVISION=$(git rev-parse @)
-      - name: 📤 Push the image
+      - name: 📤 Push the image (latest)
         if: github.ref == 'refs/heads/main'
         run: |
           docker push ghcr.io/blockfrost/blockfrost-platform:latest
+      - name: 📤 Push the image (release)
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          docker push ghcr.io/blockfrost/blockfrost-platform:latest
+          docker tag  ghcr.io/blockfrost/blockfrost-platform:latest \
+                      ghcr.io/blockfrost/blockfrost-platform:${{ github.event.release.tag_name }}
+          docker push ghcr.io/blockfrost/blockfrost-platform:${{ github.event.release.tag_name }}
