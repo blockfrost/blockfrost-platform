@@ -50,6 +50,10 @@ tracing-test = "0.2.5"
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
 proptest = "1.6"
+cardano-serialization-lib = "12.1.1"
+bip39 = "2.1.0"
+blockfrost = "1.0.5"
+blockfrost-openapi = "0.1.69"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

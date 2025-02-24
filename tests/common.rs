@@ -1,11 +1,11 @@
 use axum::Router;
+use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     cli::{Config, LogLevel, Mode, Network},
     icebreakers_api::IcebreakersAPI,
     server::build,
     AppError, NodePool,
 };
-// use pretty_assertions::assert_eq;;
 use std::{
     env,
     sync::{Arc, LazyLock},
@@ -18,6 +18,12 @@ static INIT_LOGGING: LazyLock<()> = LazyLock::new(|| {
 
 pub fn initialize_logging() {
     let _ = INIT_LOGGING;
+}
+
+pub fn get_blockfrost_client() -> BlockfrostAPI {
+    let settings = BlockFrostSettings::default();
+
+    BlockfrostAPI::new("previewTjUg7ty9Har2JdaRYlzsGs7Wsy6wp8G6", settings)
 }
 
 pub fn test_config() -> Arc<Config> {
