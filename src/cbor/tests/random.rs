@@ -170,7 +170,7 @@ fn proptest_with_params(
         let test_one = move || {
             let cbor = hex::decode(case.cbor).map_err(|e| e.to_string())?;
             let our_json = serde_json::to_value(
-                NodeClient::try_decode_error(&cbor).map_err(|e| e.to_string())?,
+                NodeClient::try_decode_error_pallas(&cbor).map_err(|e| e.to_string())?,
             )
             .map_err(|e| e.to_string())?;
             if our_json == case.json {

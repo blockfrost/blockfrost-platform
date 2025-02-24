@@ -186,7 +186,7 @@ async fn verify_one(cbor: &str) {
     let cbor = hex::decode(cbor).unwrap();
     let reference_json = FallbackDecoder::instance().decode(&cbor).await.unwrap();
 
-    let our_decoding = NodeClient::try_decode_error(&cbor).unwrap_or_else(|err| panic!(
+    let our_decoding = NodeClient::try_decode_error_pallas(&cbor).unwrap_or_else(|err| panic!(
         "Rust deserializer failed to decode:\n  CBOR:\n    {}\n  Error:\n    {}\n  Haskell:\n    {}",
         hex::encode(cbor),
         format!("{:?}", err).replace("\n", "\n    "),
