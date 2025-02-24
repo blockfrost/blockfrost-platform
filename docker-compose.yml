@@ -1,6 +1,6 @@
 services:
   init-node:
-    image: ghcr.io/input-output-hk/mithril-client:2450.0-c6c7eba
+    image: ghcr.io/input-output-hk/mithril-client:2506.0-2627f17
     entrypoint: /app/bin/entrypoint.sh
     user: "${UID}:${GID}"
     environment:
@@ -10,7 +10,7 @@ services:
       - ./nix/mithril-entrypoint.sh:/app/bin/entrypoint.sh
       - node-db:/data
   cardano-node:
-    image: ghcr.io/intersectmbo/cardano-node:9.2.0
+    image: ghcr.io/intersectmbo/cardano-node:10.1.4
     environment:
       - NETWORK=$NETWORK
     volumes:
