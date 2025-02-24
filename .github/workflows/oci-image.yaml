@@ -21,14 +21,17 @@ jobs:
       - name: 🚀 Build the image
         run: |
           docker compose build --build-arg GIT_REVISION=$(git rev-parse @)
-      - name: 📤 Push the image (latest)
+      - name: 📤 Push the image (edge)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker push ghcr.io/blockfrost/blockfrost-platform:latest
-      - name: 📤 Push the image (release)
+          image=ghcr.io/blockfrost/blockfrost-platform
+          docker push $image:edge
+      - name: 📤 Push the image (release, latest)
         if: github.event_name == 'release' && github.event.action == 'published'
         run: |
-          docker push ghcr.io/blockfrost/blockfrost-platform:latest
-          docker tag  ghcr.io/blockfrost/blockfrost-platform:latest \
-                      ghcr.io/blockfrost/blockfrost-platform:${{ github.event.release.tag_name }}
-          docker push ghcr.io/blockfrost/blockfrost-platform:${{ github.event.release.tag_name }}
+          image=ghcr.io/blockfrost/blockfrost-platform
+          docker push $image:edge
+          docker tag  $image:edge $image:${{ github.event.release.tag_name }}
+          docker tag  $image:edge $image:latest
+          docker push $image:${{ github.event.release.tag_name }}
+          docker push $image:latest
