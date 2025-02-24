@@ -1,5 +1,5 @@
-use crate::{common::validate_content_type, BlockfrostError, NodePool};
-use axum::{http::HeaderMap, response::IntoResponse, Extension, Json};
+use crate::{BlockfrostError, NodePool, common::validate_content_type};
+use axum::{Extension, Json, http::HeaderMap, response::IntoResponse};
 use metrics::gauge;
 
 pub async fn route(
