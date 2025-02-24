@@ -41,7 +41,7 @@ mod testgen_hs {
     use bzip2::read::BzDecoder;
     use std::{
         env,
-        fs::{create_dir_all, write as fs_write, File},
+        fs::{File, create_dir_all, write as fs_write},
         path::{Path, PathBuf},
         process::Command,
     };
