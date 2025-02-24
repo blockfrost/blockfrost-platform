@@ -11,10 +11,10 @@ use cardano_serialization_lib::{
 };
 
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> {
-    let bip32_prv_key = mnemonic_to_private_key(
-        "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early",
-    )?;
+    let output_amount = BigNum::from_str("1000000");
+    let mnemonic = "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early";
 
+    let bip32_prv_key = mnemonic_to_private_key(mnemonic)?;
     let (sign_key, address) = derive_address_private_key(bip32_prv_key, 0);
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
 
@@ -48,7 +48,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
     let (_tx_hash, tx_body) = compose_transaction(
         &address,
         &address,
-        "1000000",
+        output_amount?,
         &utxos,
         &protocol_parameters,
         current_slot,
@@ -61,7 +61,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
 pub fn compose_transaction(
     address: &str,
     output_address: &str,
-    output_amount: &str,
+    output_amount: BigNum,
     utxos: &[AddressUtxoContentInner],
     params: &EpochParamContent,
     current_slot: u64,
@@ -101,7 +101,7 @@ pub fn compose_transaction(
     let ttl = current_slot + 7200;
     tx_builder.set_ttl_bignum(&BigNum::from_str(&ttl.to_string())?);
 
-    let output_value = cardano_serialization_lib::Value::new(&BigNum::from_str(output_amount)?);
+    let output_value = cardano_serialization_lib::Value::new(&output_amount);
     let tx_output = TransactionOutput::new(&output_addr, &output_value);
     tx_builder.add_output(&tx_output)?;
 
