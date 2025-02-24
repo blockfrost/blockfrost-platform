@@ -21,7 +21,7 @@ services:
       init-node:
         condition: service_completed_successfully
   blockfrost-platform:
-    image: ghcr.io/blockfrost/blockfrost-platform:latest
+    image: ghcr.io/blockfrost/blockfrost-platform:edge
     build:
       context: ./
       target: runtime
@@ -49,7 +49,7 @@ services:
       - --node-socket-path
       - /ipc/node.socket
   blockfrost-platform-solitary:
-    image: ghcr.io/blockfrost/blockfrost-platform:latest
+    image: ghcr.io/blockfrost/blockfrost-platform:edge
     build:
       context: ./
       target: runtime
