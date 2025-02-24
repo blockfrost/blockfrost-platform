@@ -1,9 +1,6 @@
 use axum::extract::Request;
 use axum::ServiceExt;
-use blockfrost_platform::{
-    background_tasks::node_health_check_task, cli::Args, errors::AppError, logging::setup_tracing,
-    server::build,
-};
+use blockfrost_platform::{cli::Args, errors::AppError, logging::setup_tracing, server::build};
 use dotenvy::dotenv;
 use tokio::{signal, sync::oneshot};
 use tracing::info;
@@ -19,7 +16,7 @@ async fn main() -> Result<(), AppError> {
     // Logging
     setup_tracing(config.log_level);
 
-    let (app, node_conn_pool, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
+    let (app, _, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
     let address = format!("{}:{}", config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(&address).await?;
     let (ready_tx, ready_rx) = oneshot::channel();
@@ -49,9 +46,6 @@ async fn main() -> Result<(), AppError> {
         if let Some(icebreakers_api) = &icebreakers_api {
             icebreakers_api.register().await?;
         }
-
-        // Spawn background tasks
-        tokio::spawn(node_health_check_task(node_conn_pool));
     }
 
     spawn_task

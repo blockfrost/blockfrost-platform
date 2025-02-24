@@ -38,7 +38,7 @@ mod tests {
         assert!(root_response.errors.is_empty());
         assert_eq!(root_response.name, "blockfrost-platform");
         assert!(root_response.healthy);
-        assert_eq!(root_response.node_info.sync_progress, 100.0);
+        assert_eq!(root_response.node_info.unwrap().sync_progress, 100.0);
     }
 
     // Test: `/metrics` route sanity check

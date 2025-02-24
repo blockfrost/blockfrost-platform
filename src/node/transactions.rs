@@ -21,8 +21,7 @@ impl NodeClient {
     /// If the transaction was rejected, should return HTTP 400 with a JSON body:
     /// * Swagger: <https://github.com/IntersectMBO/cardano-node/blob/6e969c6bcc0f07bd1a69f4d76b85d6fa9371a90b/cardano-submit-api/swagger.yaml#L52>
     /// * Haskell code: <https://github.com/IntersectMBO/cardano-node/blob/6e969c6bcc0f07bd1a69f4d76b85d6fa9371a90b/cardano-submit-api/src/Cardano/TxSubmit/Web.hs#L158>
-    pub async fn submit_transaction(&mut self, tx: &[u8]) -> Result<String, BlockfrostError> {
-        let tx = Self::binary_or_hex_heuristic(tx);
+    pub async fn submit_transaction(&mut self, tx: Vec<u8>) -> Result<String, BlockfrostError> {
         let txid = hex::encode(Hasher::<256>::hash_cbor(&tx));
 
         let current_era = self
@@ -68,23 +67,6 @@ impl NodeClient {
         }
     }
 
-    /// This function allows us to take both hex-encoded and raw bytes. It has
-    /// to be a heuristic: if there are input bytes that are not `[0-9a-f]`,
-    /// then it must be a binary string. Otherwise, we assume it’s hex encoded.
-    ///
-    /// **Note**: there is a small probability that the user gave us a binary
-    /// string that only _looked_ like a hex-encoded one, but it’s rare enough
-    /// to ignore it.
-    pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
-        let even_length = xs.len() % 2 == 0;
-        let contains_non_hex = xs.iter().any(|&x| !x.is_ascii_hexdigit());
-        if !even_length || contains_non_hex {
-            xs.to_vec()
-        } else {
-            hex::decode(xs).expect("can't happen")
-        }
-    }
-
     pub fn try_decode_error(buffer: &[u8]) -> Result<TxSubmitFail, Error> {
         let maybe_error = Decoder::new(buffer).decode();
 
@@ -116,21 +98,5 @@ impl NodeClient {
         TxSubmitFail::TxSubmitFail(TxCmdTxSubmitValidationError(
             TxValidationErrorInCardanoMode(error),
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_binary_or_hex_heuristic() {
-        let hex_string = "84a300d90102818258203ac521101f8d";
-        assert_eq!(
-            NodeClient::binary_or_hex_heuristic(hex_string.as_bytes()),
-            NodeClient::binary_or_hex_heuristic(
-                &hex::decode("84a300d90102818258203ac521101f8d").unwrap()
-            )
-        )
     }
 }

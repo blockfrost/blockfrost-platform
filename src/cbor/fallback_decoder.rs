@@ -75,12 +75,12 @@ impl FallbackDecoder {
             .await
             .map_err(|err| format!("FallbackDecoder: failed to send request: {:?}", err))?;
 
-        response_rx.await.map_err(|err| {
-            format!(
-                "FallbackDecoder: worker thread dropped (won’t happen): {:?}",
+        response_rx.await.unwrap_or_else(|err| {
+            unreachable!(
+                "FallbackDecoder: worker thread dropped (can’t happen): {:?}",
                 err
             )
-        })?
+        })
     }
 
     /// Searches for `testgen-hs` in multiple directories.
@@ -268,7 +268,10 @@ impl FallbackDecoder {
 
                 // unwrap is safe, the other side would have to drop for a
                 // panic – can’t happen, because we control it:
-                request.response_tx.send(response).unwrap();
+                request
+                    .response_tx
+                    .send(response)
+                    .unwrap_or_else(|_| unreachable!());
             }
 
             // Now break the loop, and restart everything if we failed:

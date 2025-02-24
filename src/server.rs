@@ -2,6 +2,7 @@ use crate::{
     api::{metrics::setup_metrics_recorder, root, tx_submit},
     cli::Config,
     errors::{AppError, BlockfrostError},
+    health_monitor,
     icebreakers_api::IcebreakersAPI,
     middlewares::{errors::error_middleware, metrics::track_http_metrics},
     node::pool::NodePool,
@@ -32,6 +33,8 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
+    let health_monitor = health_monitor::spawn(node_conn_pool.clone()).await;
+
     // Build a prefix
     let api_prefix = if config.icebreakers_config.is_some() {
         format!("/{}", Uuid::new_v4())
@@ -59,6 +62,7 @@ pub async fn build(
     // Add layers
     api_routes = api_routes
         .layer(Extension(config))
+        .layer(Extension(health_monitor))
         .layer(Extension(node_conn_pool.clone()))
         .layer(from_fn(error_middleware))
         .fallback(BlockfrostError::not_found());

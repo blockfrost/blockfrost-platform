@@ -6,7 +6,7 @@ use pallas_traverse::wellknown;
 use serde::{Deserialize, Serialize};
 use std::boxed::Box;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NodeInfo {
     pub block: String,
     pub epoch: u32,
