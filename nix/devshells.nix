@@ -33,6 +33,10 @@ in {
       package = internal.cardano-cli;
     }
     {
+      name = "cardano-submit-api";
+      package = internal.cardano-submit-api;
+    }
+    {
       name = "cardano-address";
       package = internal.cardano-address;
     }

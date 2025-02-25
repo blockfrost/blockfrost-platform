@@ -120,7 +120,7 @@ in
       }
       .${targetSystem};
 
-    inherit (cardano-node-packages) cardano-node cardano-cli;
+    inherit (cardano-node-packages) cardano-node cardano-cli cardano-submit-api;
 
     cardano-node-configs-verbose = builtins.path {
       name = "cardano-playground-configs";
