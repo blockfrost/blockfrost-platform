@@ -64,6 +64,12 @@ in {
     else pkgs.clang;
   language.c.includes = internal.commonArgs.buildInputs;
 
+  language.rust.packageSet =
+    pkgs.rustPackages
+    // {
+      inherit (internal) rustfmt;
+    };
+
   devshell.motd = ''
 
     {202}🔨 Welcome to ${config.name}{reset}
