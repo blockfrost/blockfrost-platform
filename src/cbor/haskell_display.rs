@@ -6,8 +6,8 @@ use std::{
 };
 
 use pallas_addresses::{
-    byron::{AddrAttrProperty, AddrType, AddressPayload},
     ByronAddress, Pointer, ShelleyAddress, ShelleyDelegationPart, ShelleyPaymentPart,
+    byron::{AddrAttrProperty, AddrType, AddressPayload},
 };
 use pallas_codec::{
     minicbor::bytes::ByteVec,
@@ -16,6 +16,10 @@ use pallas_codec::{
 use pallas_crypto::hash::Hasher;
 use pallas_network::miniprotocols::handshake::NetworkMagic;
 use pallas_primitives::{
+    AssetName, BoundedBytes, Bytes, Coin, CostModel, DatumHash, ExUnits, Hash, Int, KeyValuePairs,
+    MaybeIndefArray, NetworkId, NonEmptyKeyValuePairs, Nullable, PlutusData, PoolKeyhash,
+    PoolMetadata, PositiveCoin, ProtocolVersion, RationalNumber, Relay, RewardAccount, ScriptHash,
+    Set, StakeCredential, TransactionInput,
     conway::{
         Anchor, Certificate, CommitteeColdCredential, Constitution, CostModels, DRep,
         DRepVotingThresholds, ExUnitPrices, GovAction, GovActionId, Language, Multiasset,
@@ -23,10 +27,6 @@ use pallas_primitives::{
         PseudoDatumOption, PseudoScript, TransactionOutput, VKeyWitness, Value, Vote, Voter,
         VotingProcedure,
     },
-    AssetName, BoundedBytes, Bytes, Coin, CostModel, DatumHash, ExUnits, Hash, Int, KeyValuePairs,
-    MaybeIndefArray, NetworkId, NonEmptyKeyValuePairs, Nullable, PlutusData, PoolKeyhash,
-    PoolMetadata, PositiveCoin, ProtocolVersion, RationalNumber, Relay, RewardAccount, ScriptHash,
-    Set, StakeCredential, TransactionInput,
 };
 use pallas_traverse::ComputeHash;
 
@@ -60,7 +60,7 @@ impl fmt::Display for ApplyConwayTxPredError {
             ConwayGovFailure(e) => write!(f, "ConwayGovFailure ({})", e),
             ConwayWdrlNotDelegatedToDRep(v) => {
                 write!(f, "ConwayWdrlNotDelegatedToDRep ({})", v.to_haskell_str())
-            }
+            },
             ConwayTreasuryValueMismatch(c1, c2) => {
                 write!(
                     f,
@@ -68,7 +68,7 @@ impl fmt::Display for ApplyConwayTxPredError {
                     c1.to_haskell_str(),
                     c2.to_haskell_str()
                 )
-            }
+            },
             ConwayTxRefScriptsSizeTooBig(s1, s2) => {
                 write!(
                     f,
@@ -76,10 +76,10 @@ impl fmt::Display for ApplyConwayTxPredError {
                     s1.to_haskell_str_p(),
                     s2.to_haskell_str_p()
                 )
-            }
+            },
             ConwayMempoolFailure(e) => {
                 write!(f, "ConwayMempoolFailure {}", e.to_haskell_str())
-            }
+            },
         }
     }
 }
@@ -91,7 +91,7 @@ impl fmt::Display for ConwayGovCertPredFailure {
         match self {
             ConwayDRepAlreadyRegistered(cred) => {
                 write!(f, "ConwayDRepAlreadyRegistered ({})", cred)
-            }
+            },
             ConwayDRepNotRegistered(cred) => write!(f, "ConwayDRepNotRegistered ({})", cred),
             ConwayDRepIncorrectDeposit(expected, actual) => {
                 write!(
@@ -100,10 +100,10 @@ impl fmt::Display for ConwayGovCertPredFailure {
                     expected.to_haskell_str_p(),
                     actual.to_haskell_str_p()
                 )
-            }
+            },
             ConwayCommitteeHasPreviouslyResigned(cred) => {
                 write!(f, "ConwayCommitteeHasPreviouslyResigned ({})", cred)
-            }
+            },
             ConwayDRepIncorrectRefund(expected, actual) => {
                 write!(
                     f,
@@ -111,7 +111,7 @@ impl fmt::Display for ConwayGovCertPredFailure {
                     expected.to_haskell_str_p(),
                     actual.to_haskell_str_p()
                 )
-            }
+            },
             ConwayCommitteeIsUnknown(cred) => write!(f, "ConwayCommitteeIsUnknown ({})", cred),
         }
     }
@@ -135,31 +135,31 @@ impl HaskellDisplay for ShelleyPoolPredFailure {
         match self {
             StakePoolNotRegisteredOnKeyPOOL(kh) => {
                 format!("StakePoolNotRegisteredOnKeyPOOL {}", kh.to_haskell_str_p())
-            }
+            },
             StakePoolRetirementWrongEpochPOOL(mis1, mis2) => {
                 format!(
                     "StakePoolRetirementWrongEpochPOOL {} {}",
                     mis1.to_haskell_str_p(),
                     mis2.to_haskell_str_p()
                 )
-            }
+            },
             StakePoolCostTooLowPOOL(mis1) => {
                 format!("StakePoolCostTooLowPOOL {}", mis1.to_haskell_str_p())
-            }
+            },
             WrongNetworkPOOL(mis1, kh) => {
                 format!(
                     "WrongNetworkPOOL {} {}",
                     mis1.to_haskell_str_p(),
                     kh.to_haskell_str_p()
                 )
-            }
+            },
             PoolMedataHashTooBig(kh, size) => {
                 format!(
                     "PoolMedataHashTooBig {} {}",
                     kh.to_haskell_str_p(),
                     size.to_haskell_str_p()
                 )
-            }
+            },
         }
     }
 }
@@ -172,23 +172,23 @@ impl fmt::Display for ConwayUtxoWPredFailure {
             UtxoFailure(e) => write!(f, "(UtxoFailure {})", e),
             InvalidWitnessesUTXOW(e) => {
                 write!(f, "(InvalidWitnessesUTXOW {})", e.to_haskell_str())
-            }
+            },
             MissingVKeyWitnessesUTXOW(e) => {
                 write!(f, "(MissingVKeyWitnessesUTXOW ({}))", e.to_haskell_str())
-            }
+            },
             MissingScriptWitnessesUTXOW(e) => {
                 write!(f, "(MissingScriptWitnessesUTXOW ({}))", e.to_haskell_str())
-            }
+            },
             ScriptWitnessNotValidatingUTXOW(e) => {
                 write!(
                     f,
                     "(ScriptWitnessNotValidatingUTXOW ({}))",
                     e.to_haskell_str()
                 )
-            }
+            },
             MissingTxBodyMetadataHash(b) => {
                 write!(f, "(MissingTxBodyMetadataHash ({}))", b.as_aux_data_hash())
-            }
+            },
             MissingTxMetadata(e) => write!(f, "(MissingTxMetadata ({}))", e.as_aux_data_hash()),
             ConflictingMetadataHash(e1, e2) => {
                 write!(
@@ -197,7 +197,7 @@ impl fmt::Display for ConwayUtxoWPredFailure {
                     e1.as_aux_data_hash(),
                     e2.as_aux_data_hash()
                 )
-            }
+            },
             InvalidMetadata() => write!(f, "InvalidMetadata"),
             ExtraneousScriptWitnessesUTXOW(vec) => {
                 write!(
@@ -205,7 +205,7 @@ impl fmt::Display for ConwayUtxoWPredFailure {
                     "(ExtraneousScriptWitnessesUTXOW ({}))",
                     vec.to_haskell_str()
                 )
-            }
+            },
             MissingRedeemers(e) => write!(f, "(MissingRedeemers {})", e.to_haskell_str()),
             MissingRequiredDatums(e1, e2) => write!(
                 f,
@@ -227,14 +227,14 @@ impl fmt::Display for ConwayUtxoWPredFailure {
             ),
             UnspendableUTxONoDatumHash(e) => {
                 write!(f, "(UnspendableUTxONoDatumHash ({}))", e.to_haskell_str())
-            }
+            },
             ExtraRedeemers(e) => write!(f, "(ExtraRedeemers {})", e.to_haskell_str()),
             MalformedScriptWitnesses(set) => {
                 write!(f, "(MalformedScriptWitnesses ({}))", set.to_haskell_str())
-            }
+            },
             MalformedReferenceScripts(set) => {
                 write!(f, "(MalformedReferenceScripts ({}))", set.to_haskell_str())
-            }
+            },
         }
     }
 }
@@ -245,7 +245,7 @@ impl fmt::Display for ConwayGovPredFailure {
         match self {
             GovActionsDoNotExist(vec) => {
                 write!(f, "GovActionsDoNotExist ({})", vec.to_haskell_str())
-            }
+            },
             MalformedProposal(act) => write!(f, "MalformedProposal {}", act.to_haskell_str_p()),
             ProposalProcedureNetworkIdMismatch(ra, n) => {
                 write!(
@@ -254,7 +254,7 @@ impl fmt::Display for ConwayGovPredFailure {
                     ra.to_haskell_str_p(),
                     n.to_haskell_str()
                 )
-            }
+            },
             TreasuryWithdrawalsNetworkIdMismatch(set, n) => {
                 write!(
                     f,
@@ -262,7 +262,7 @@ impl fmt::Display for ConwayGovPredFailure {
                     set.to_haskell_str(),
                     n.to_haskell_str()
                 )
-            }
+            },
             ProposalDepositIncorrect(c1, c2) => {
                 write!(
                     f,
@@ -270,20 +270,20 @@ impl fmt::Display for ConwayGovPredFailure {
                     c1.to_haskell_str_p(),
                     c2.to_haskell_str_p()
                 )
-            }
+            },
             DisallowedVoters(v) => write!(f, "DisallowedVoters ({})", v.to_haskell_str()),
             ConflictingCommitteeUpdate(set) => {
                 write!(f, "ConflictingCommitteeUpdate ({})", set.to_haskell_str())
-            }
+            },
             ExpirationEpochTooSmall(map) => {
                 write!(f, "ExpirationEpochTooSmall ({})", map.to_haskell_str())
-            }
+            },
             InvalidPrevGovActionId(s) => {
                 write!(f, "InvalidPrevGovActionId ({})", s.to_haskell_str())
-            }
+            },
             VotingOnExpiredGovAction(vec) => {
                 write!(f, "VotingOnExpiredGovAction ({})", vec.to_haskell_str())
-            }
+            },
             ProposalCantFollow(a, p1, p2) => write!(
                 f,
                 "ProposalCantFollow {} ({}) ({})",
@@ -303,28 +303,28 @@ impl fmt::Display for ConwayGovPredFailure {
                     "DisallowedProposalDuringBootstrap ({})",
                     s.to_haskell_str()
                 )
-            }
+            },
             DisallowedVotesDuringBootstrap(v) => {
                 write!(f, "DisallowedVotesDuringBootstrap ({})", v.to_haskell_str())
-            }
+            },
             VotersDoNotExist(s) => write!(f, "VotersDoNotExist ({})", s.to_haskell_str()),
             ZeroTreasuryWithdrawals(s) => {
                 write!(f, "ZeroTreasuryWithdrawals {}", s.to_haskell_str_p())
-            }
+            },
             ProposalReturnAccountDoesNotExist(s) => {
                 write!(
                     f,
                     "ProposalReturnAccountDoesNotExist {}",
                     s.to_haskell_str_p()
                 )
-            }
+            },
             TreasuryWithdrawalReturnAccountsDoNotExist(s) => {
                 write!(
                     f,
                     "TreasuryWithdrawalReturnAccountsDoNotExist ({})",
                     s.to_haskell_str()
                 )
-            }
+            },
         }
     }
 }
@@ -343,7 +343,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     vi.to_haskell_str(),
                     slot.to_haskell_str_p()
                 )
-            }
+            },
             MaxTxSizeUTxO(n1, n2) => write!(
                 f,
                 "(MaxTxSizeUTxO {} {})",
@@ -358,7 +358,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     expected.to_haskell_str(),
                     supplied.to_haskell_str()
                 )
-            }
+            },
             ValueNotConservedUTxO(expected, supplied) => {
                 write!(
                     f,
@@ -366,7 +366,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     expected.to_haskell_str(),
                     supplied.to_haskell_str()
                 )
-            }
+            },
             WrongNetwork(network, addrs) => {
                 write!(
                     f,
@@ -374,7 +374,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     network.to_haskell_str(),
                     addrs.to_haskell_str_p()
                 )
-            }
+            },
             WrongNetworkWithdrawal(network, accounts) => write!(
                 f,
                 "(WrongNetworkWithdrawal {} {})",
@@ -383,17 +383,17 @@ impl fmt::Display for ConwayUtxoPredFailure {
             ),
             OutputTooSmallUTxO(tx_outs) => {
                 write!(f, "(OutputTooSmallUTxO {})", tx_outs.to_haskell_str_p())
-            }
+            },
             OutputBootAddrAttrsTooBig(outputs) => {
                 write!(
                     f,
                     "(OutputBootAddrAttrsTooBig {})",
                     outputs.to_haskell_str_p()
                 )
-            }
+            },
             OutputTooBigUTxO(outputs) => {
                 write!(f, "(OutputTooBigUTxO {})", outputs.to_haskell_str())
-            }
+            },
             InsufficientCollateral(balance, required) => {
                 write!(
                     f,
@@ -401,10 +401,10 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     balance.to_haskell_str(),
                     required.to_haskell_str()
                 )
-            }
+            },
             ScriptsNotPaidUTxO(utxo) => {
                 write!(f, "(ScriptsNotPaidUTxO {})", utxo.to_haskell_str_p())
-            }
+            },
             ExUnitsTooBigUTxO(u1, u2) => write!(
                 f,
                 "(ExUnitsTooBigUTxO {} {})",
@@ -413,7 +413,7 @@ impl fmt::Display for ConwayUtxoPredFailure {
             ),
             CollateralContainsNonADA(value) => {
                 write!(f, "(CollateralContainsNonADA ({}))", value.to_haskell_str())
-            }
+            },
             WrongNetworkInTxBody(n1, n2) => write!(
                 f,
                 "(WrongNetworkInTxBody {} {})",
@@ -435,14 +435,14 @@ impl fmt::Display for ConwayUtxoPredFailure {
                     "(BabbageOutputTooSmallUTxO {})",
                     outputs.to_haskell_str_p()
                 )
-            }
+            },
             BabbageNonDisjointRefInputs(inputs) => {
                 write!(
                     f,
                     "(BabbageNonDisjointRefInputs ({}))",
                     inputs.to_haskell_str()
                 )
-            }
+            },
         }
     }
 }
@@ -467,16 +467,16 @@ impl HaskellDisplay for CollectError {
         match self {
             CollectError::NoRedeemer(conway_plutus_purpose) => {
                 format!("NoRedeemer {}", conway_plutus_purpose.to_haskell_str_p())
-            }
+            },
             CollectError::NoWitness(display_script_hash) => {
                 format!("NoWitness {}", display_script_hash.to_haskell_str_p())
-            }
+            },
             CollectError::NoCostModel(language) => {
                 format!("NoCostModel {}", language.to_haskell_str())
-            }
+            },
             CollectError::BadTranslation(error) => {
                 format!("BadTranslation ({})", error.to_haskell_str())
-            }
+            },
         }
     }
 }
@@ -525,23 +525,23 @@ impl HaskellDisplay for BabbageContextError {
         match self {
             ByronTxOutInContext(tx_out) => {
                 format!("ByronTxOutInContext ({})", tx_out.to_haskell_str())
-            }
+            },
             AlonzoMissingInput(tx_in) => format!(
                 "AlonzoContextError (TranslationLogicMissingInput {})",
                 tx_in.to_haskell_str_p()
             ),
             RedeemerPointerPointsToNothing(ptr) => {
                 format!("RedeemerPointerPointsToNothing ({})", ptr.to_haskell_str())
-            }
+            },
             InlineDatumsNotSupported(datum) => {
                 format!("InlineDatumsNotSupported ({})", datum.to_haskell_str())
-            }
+            },
             ReferenceScriptsNotSupported(script) => {
                 format!("ReferenceScriptsNotSupported ({})", script.to_haskell_str())
-            }
+            },
             ReferenceInputsNotSupported(input) => {
                 format!("ReferenceInputsNotSupported ({})", input.to_haskell_str())
-            }
+            },
             AlonzoTimeTranslationPastHorizon(time) => format!(
                 "AlonzoContextError (TimeTranslationPastHorizon {})",
                 time.to_haskell_str()
@@ -607,13 +607,13 @@ impl HaskellDisplay for ConwayDelegPredFailure {
         match self {
             IncorrectDepositDELEG(coin) => {
                 format!("IncorrectDepositDELEG ({})", coin.to_haskell_str())
-            }
+            },
             StakeKeyRegisteredDELEG(cred) => {
                 format!("StakeKeyRegisteredDELEG ({})", cred.to_haskell_str())
-            }
+            },
             StakeKeyNotRegisteredDELEG(cred) => {
                 format!("StakeKeyNotRegisteredDELEG ({})", cred.to_haskell_str())
-            }
+            },
             StakeKeyHasNonZeroRewardAccountBalanceDELEG(coin) => format!(
                 "StakeKeyHasNonZeroRewardAccountBalanceDELEG ({})",
                 coin.to_haskell_str()
@@ -729,7 +729,7 @@ where
                 } else {
                     format!("(SJust {})", v.to_haskell_str_p())
                 }
-            }
+            },
             _ => "SNothing".to_string(),
         }
     }
@@ -743,7 +743,7 @@ where
         match self {
             Option::Some(v) => {
                 format!("SJust {}", v.to_haskell_str())
-            }
+            },
             _ => "SNothing".to_string(),
         }
     }
@@ -756,7 +756,7 @@ where
                 } else {
                     format!("SJust ({})", v.to_haskell_str())
                 }
-            }
+            },
             _ => "SNothing".to_string(),
         }
     }
@@ -812,14 +812,14 @@ impl HaskellDisplay for GovAction {
                     b.to_haskell_str_p(),
                     c.to_haskell_str_p(),
                 )
-            }
+            },
             HardForkInitiation(a, b) => {
                 format!(
                     "HardForkInitiation {} ({})",
                     a.to_haskell_str_p(),
                     b.as_protocol_version()
                 )
-            }
+            },
             TreasuryWithdrawals(a, b) => {
                 let data: KeyValuePairs<DisplayRewardAccount, DisplayCoin> =
                     a.iter().map(|(k, v)| (k.into(), v.into())).collect();
@@ -829,10 +829,10 @@ impl HaskellDisplay for GovAction {
                     data.to_haskell_str_p(),
                     b.to_haskell_str_p(),
                 )
-            }
+            },
             NoConfidence(a) => {
                 format!("NoConfidence {}", a.to_haskell_str_p())
-            }
+            },
             UpdateCommittee(a, b, kv, d) => {
                 let kv: KeyValuePairs<CommitteeColdCredential, EpochNo> = kv
                     .iter()
@@ -846,14 +846,14 @@ impl HaskellDisplay for GovAction {
                     kv.to_haskell_str_p(),
                     d.to_haskell_str_p()
                 )
-            }
+            },
             NewConstitution(a, c) => {
                 format!(
                     "NewConstitution {} {}",
                     a.to_haskell_str_p(),
                     c.to_haskell_str_p()
                 )
-            }
+            },
             Information => "InfoAction".to_string(),
         }
     }
@@ -914,31 +914,33 @@ impl HaskellDisplay for ProtocolParamUpdate {
 
 impl HaskellDisplay for PoolVotingThresholds {
     fn to_haskell_str(&self) -> String {
-        format!("PoolVotingThresholds {{pvtMotionNoConfidence = {}, pvtCommitteeNormal = {}, pvtCommitteeNoConfidence = {}, pvtHardForkInitiation = {}, pvtPPSecurityGroup = {}}}",
-        self.motion_no_confidence.to_haskell_str(),
-        self.committee_normal.to_haskell_str(),
-        self.committee_no_confidence.to_haskell_str(),
-        self.hard_fork_initiation.to_haskell_str(),
-        self.security_voting_threshold.to_haskell_str()
-)
+        format!(
+            "PoolVotingThresholds {{pvtMotionNoConfidence = {}, pvtCommitteeNormal = {}, pvtCommitteeNoConfidence = {}, pvtHardForkInitiation = {}, pvtPPSecurityGroup = {}}}",
+            self.motion_no_confidence.to_haskell_str(),
+            self.committee_normal.to_haskell_str(),
+            self.committee_no_confidence.to_haskell_str(),
+            self.hard_fork_initiation.to_haskell_str(),
+            self.security_voting_threshold.to_haskell_str()
+        )
     }
 }
 
 impl HaskellDisplay for DRepVotingThresholds {
     fn to_haskell_str(&self) -> String {
-        format!("DRepVotingThresholds {{dvtMotionNoConfidence = {}, dvtCommitteeNormal = {}, dvtCommitteeNoConfidence = {}, \
+        format!(
+            "DRepVotingThresholds {{dvtMotionNoConfidence = {}, dvtCommitteeNormal = {}, dvtCommitteeNoConfidence = {}, \
      dvtUpdateToConstitution = {}, dvtHardForkInitiation = {}, dvtPPNetworkGroup = {}, dvtPPEconomicGroup = {}, dvtPPTechnicalGroup = {}, dvtPPGovGroup = {}, dvtTreasuryWithdrawal = {}}}",
-        self.motion_no_confidence.to_haskell_str(),
-        self.committee_normal.to_haskell_str(),
-        self.committee_no_confidence.to_haskell_str(),
-        self.update_constitution.to_haskell_str(),
-        self.hard_fork_initiation.to_haskell_str(),
-        self.pp_network_group.to_haskell_str(),
-        self.pp_economic_group.to_haskell_str(),
-        self.pp_technical_group.to_haskell_str(),
-        self.pp_governance_group.to_haskell_str(),
-        self.treasury_withdrawal.to_haskell_str()
-)
+            self.motion_no_confidence.to_haskell_str(),
+            self.committee_normal.to_haskell_str(),
+            self.committee_no_confidence.to_haskell_str(),
+            self.update_constitution.to_haskell_str(),
+            self.hard_fork_initiation.to_haskell_str(),
+            self.pp_network_group.to_haskell_str(),
+            self.pp_economic_group.to_haskell_str(),
+            self.pp_technical_group.to_haskell_str(),
+            self.pp_governance_group.to_haskell_str(),
+            self.treasury_withdrawal.to_haskell_str()
+        )
     }
 }
 
@@ -988,7 +990,10 @@ impl HaskellDisplay for ProposalProcedure {
     fn to_haskell_str(&self) -> String {
         format!(
             "ProposalProcedure {{pProcDeposit = {}, pProcReturnAddr = {}, pProcGovAction = {}, pProcAnchor = {}}}",
-            self.deposit.as_display_coin(), self.reward_account.as_reward_account(), self.gov_action.to_haskell_str(), self.anchor.to_haskell_str()
+            self.deposit.as_display_coin(),
+            self.reward_account.as_reward_account(),
+            self.gov_action.to_haskell_str(),
+            self.anchor.to_haskell_str()
         )
     }
 }
@@ -1176,19 +1181,19 @@ impl HaskellDisplay for Voter {
         match self {
             ConstitutionalCommitteeKey(addr) => {
                 format!("CommitteeVoter ({})", addr.as_key_hash_obj())
-            }
+            },
             ConstitutionalCommitteeScript(scrpt) => {
                 format!("CommitteeVoter ({})", scrpt.as_script_hash_obj())
-            }
+            },
             DRepKey(addr) => {
                 format!("DRepVoter ({})", addr.as_key_hash_obj())
-            }
+            },
             DRepScript(scrpt) => {
                 format!("DRepVoter ({})", scrpt.as_script_hash_obj())
-            }
+            },
             StakePoolKey(addr) => {
                 format!("StakePoolVoter ({})", addr.as_key_hash())
-            }
+            },
         }
     }
 }
@@ -1673,7 +1678,7 @@ impl HaskellDisplay for TransactionOutput {
                 };
 
                 format!("{},{},{},SNothing", address, value, datum)
-            }
+            },
             pallas_primitives::conway::PseudoTransactionOutput::PostAlonzo(txo) => {
                 let address = txo.address.as_address();
                 let value = txo.value.to_haskell_str();
@@ -1686,7 +1691,7 @@ impl HaskellDisplay for TransactionOutput {
                                 .unwrap();
                             let str = payload.iter().map(|&c| c as char).collect::<String>();
                             format!("Datum {}", haskell_show_string(&str))
-                        }
+                        },
                     },
                     None => "NoDatum".to_string(),
                 };
@@ -1694,7 +1699,7 @@ impl HaskellDisplay for TransactionOutput {
                 let script = txo.script_ref.to_haskell_str();
 
                 format!("{},{},{},{}", address, value, datum, script)
-            }
+            },
         }
     }
 }
@@ -1727,7 +1732,7 @@ impl HaskellDisplay for NativeScript {
         let str = match self {
             ScriptPubkey(key_hash) => {
                 format!("Signature ({})", key_hash.as_key_hash())
-            }
+            },
             ScriptAll(vec) => format!("AllOf ({})", vec.as_strict_seq()),
             ScriptAny(vec) => format!("AnyOf ({})", vec.as_strict_seq()),
             ScriptNOfK(m, vec) => format!("MOfN {} ({})", m, vec.as_strict_seq()),
@@ -1752,7 +1757,7 @@ where
             PseudoDatumOption::Hash(hash) => hash.as_datum_hash(),
             PseudoDatumOption::Data(cbor_wrap) => {
                 format!("Datum ({})", cbor_wrap.to_haskell_str())
-            }
+            },
         }
     }
 }
@@ -1806,20 +1811,24 @@ impl HaskellDisplay for OrderPreservingProperties<AddrAttrProperty> {
                         "aaVKDerivationPath",
                         format!("Just ({})", bv.as_deriv_path()),
                     );
-                }
+                },
                 NetworkTag(bv) => {
                     let magic: NetworkMagic = pallas_codec::minicbor::decode(bv.as_ref()).unwrap();
                     att_map.insert("aaNetworkMagic", magic.as_network_magic());
-                }
-                _ => {}
+                },
+                _ => {},
             }
         }
 
-        format!("Attributes {{ data_ = AddrAttributes {{aaVKDerivationPath = {}, aaNetworkMagic = {}}} }}", 
-        att_map.get("aaVKDerivationPath").unwrap_or(&"Nothing".to_string()),
-        att_map.get("aaNetworkMagic").unwrap_or(&"NetworkMainOrStage".to_string())
-
-    )
+        format!(
+            "Attributes {{ data_ = AddrAttributes {{aaVKDerivationPath = {}, aaNetworkMagic = {}}} }}",
+            att_map
+                .get("aaVKDerivationPath")
+                .unwrap_or(&"Nothing".to_string()),
+            att_map
+                .get("aaNetworkMagic")
+                .unwrap_or(&"NetworkMainOrStage".to_string())
+        )
     }
 }
 
@@ -1827,7 +1836,7 @@ impl HaskellDisplay for Utxo {
     fn to_haskell_str(&self) -> String {
         let result = self
             .0
-             .0
+            .0
             .iter()
             .map(|item| {
                 format!(
@@ -1940,13 +1949,13 @@ impl HaskellDisplay for ShelleyDelegationPart {
         match self {
             ShelleyDelegationPart::Key(hash) => {
                 format!("StakeRefBase ({})", hash.as_key_hash_obj())
-            }
+            },
             ShelleyDelegationPart::Script(hash) => {
                 format!("StakeRefBase ({})", hash.as_script_hash_obj())
-            }
+            },
             ShelleyDelegationPart::Pointer(pointer) => {
                 format!("StakeRefPtr ({})", pointer.to_haskell_str())
-            }
+            },
             ShelleyDelegationPart::Null => "StakeRefNull".to_string(),
         }
     }
@@ -2072,10 +2081,10 @@ impl HaskellDisplay for PlutusData {
                 pallas_primitives::BigInt::Int(i) => format!("BigInt Int {}", i.to_haskell_str()),
                 pallas_primitives::BigInt::BigNInt(bb) => {
                     format!("BigNInt {}", bb.to_haskell_str())
-                }
+                },
                 pallas_primitives::BigInt::BigUInt(bb) => {
                     format!("BigUInt {}", bb.to_haskell_str())
-                }
+                },
             },
             BoundedBytes(bb) => bb.to_haskell_str(),
             Array(arr) => format!("Array {}", arr.to_haskell_str()),
@@ -2153,7 +2162,7 @@ impl HaskellDisplay for PlutusPurpose {
             Spending(txin) => format!("ConwaySpending ({})", txin.to_haskell_str()),
             Rewarding(item) => {
                 format!("ConwayRewarding ({})", item.to_haskell_str())
-            }
+            },
             Certifying(cert_index) => format!("ConwayCertifying ({})", cert_index.to_haskell_str()),
             Voting(gov_id) => format!("ConwayVoting ({})", gov_id.to_haskell_str()),
             Proposing(proposal_id) => format!("ConwayProposing ({})", proposal_id.to_haskell_str()),
@@ -2170,11 +2179,11 @@ impl HaskellDisplay for ConwayPlutusPurpose {
             ConwayRewarding(item) => format!("ConwayRewarding ({})", item.to_haskell_str()),
             ConwayCertifying(cert) => {
                 format!("ConwayCertifying ({})", cert.to_haskell_str())
-            }
+            },
             ConwayVoting(gov_id) => format!("ConwayVoting ({})", gov_id.to_haskell_str()),
             ConwayProposing(proposal_id) => {
                 format!("ConwayProposing ({})", proposal_id.to_haskell_str())
-            }
+            },
         }
     }
 }
@@ -2185,13 +2194,13 @@ impl HaskellDisplay for ConwayTxCert {
         match self {
             ConwayTxCertDeleg(cert) => {
                 format!("ConwayTxCertDeleg {}", cert.to_haskell_str_p())
-            }
+            },
             ConwayTxCertPool(cert) => {
                 format!("ConwayTxCertPool {}", cert.to_haskell_str_p())
-            }
+            },
             ConwayTxCertGov(cert) => {
                 format!("ConwayTxCertGov {}", cert.to_haskell_str_p())
-            }
+            },
         }
     }
 }
@@ -2213,10 +2222,10 @@ impl HaskellDisplay for Relay {
                     ipv4.as_ipv4(),
                     ipv6.as_ipv6()
                 )
-            }
+            },
             SingleHostName(port, dns) => {
                 format!("SingleHostName {} ({})", port.as_port(), dns.as_dns_name())
-            }
+            },
             MultiHostName(dns) => format!("MultiHostName ({})", dns.as_dns_name()),
         }
     }
@@ -2237,10 +2246,10 @@ impl HaskellDisplay for Certificate {
         match self {
             StakeRegistration(cred) => {
                 format!("ConwayRegCert {} SNothing", cred.to_haskell_str_p())
-            }
+            },
             StakeDeregistration(cred) => {
                 format!("ConwayUnRegCert {} SNothing", cred.to_haskell_str_p())
-            }
+            },
             StakeDelegation(cred, hash) => format!(
                 "ConwayDelegCert {} ({})",
                 cred.to_haskell_str_p(),
@@ -2256,12 +2265,18 @@ impl HaskellDisplay for Certificate {
                 pool_owners,
                 relays,
                 pool_metadata,
-            } =>
-               format!("RegPool (PoolParams {{ppId = {}, ppVrf = {}, ppPledge = {}, ppCost = {}, ppMargin = {}, ppRewardAccount = {}, ppOwners = {}, ppRelays = {}, ppMetadata = {}}})", 
-                operator.as_key_hash(), vrf_keyhash.to_string().to_haskell_str(), pledge.as_display_coin(),cost.as_display_coin(),
-                margin.to_haskell_str(), reward_account.as_reward_account(), pool_owners.as_key_hash(),
-                relays.as_strict_seq(), pool_metadata.to_haskell_str()
-             ),
+            } => format!(
+                "RegPool (PoolParams {{ppId = {}, ppVrf = {}, ppPledge = {}, ppCost = {}, ppMargin = {}, ppRewardAccount = {}, ppOwners = {}, ppRelays = {}, ppMetadata = {}}})",
+                operator.as_key_hash(),
+                vrf_keyhash.to_string().to_haskell_str(),
+                pledge.as_display_coin(),
+                cost.as_display_coin(),
+                margin.to_haskell_str(),
+                reward_account.as_reward_account(),
+                pool_owners.as_key_hash(),
+                relays.as_strict_seq(),
+                pool_metadata.to_haskell_str()
+            ),
             PoolRetirement(hash, epoch) => format!(
                 "RetirePool ({}) ({})",
                 hash.as_key_hash(),
@@ -2277,7 +2292,11 @@ impl HaskellDisplay for Certificate {
                 cred.to_haskell_str_p(),
                 Some(deposit).as_display_coin()
             ),
-            VoteDeleg(cred, drep) => format!("ConwayDelegCert {} (DelegVote {})", cred.to_haskell_str_p(), drep.to_haskell_str_p()),
+            VoteDeleg(cred, drep) => format!(
+                "ConwayDelegCert {} (DelegVote {})",
+                cred.to_haskell_str_p(),
+                drep.to_haskell_str_p()
+            ),
             StakeVoteDeleg(cred, hash, drep) => format!(
                 "ConwayDelegCert {} ({} {})",
                 cred.to_haskell_str_p(),
@@ -2297,7 +2316,7 @@ impl HaskellDisplay for Certificate {
                     drep.to_haskell_str_p(),
                     coin.as_display_coin()
                 )
-            }
+            },
             StakeVoteRegDeleg(cred, hash, drep, coin) => format!(
                 "ConwayRegDelegCert {} ({} {}) ({})",
                 cred.to_haskell_str_p(),
@@ -2367,7 +2386,7 @@ where
                 } else {
                     format!("SJust ({})", v.to_haskell_str())
                 }
-            }
+            },
             StrictMaybe::Nothing => "SNothing".to_string(),
         }
     }
@@ -2505,7 +2524,7 @@ impl AsIPv4 for Nullable<Bytes> {
                     .collect::<Vec<_>>()
                     .join(".");
                 format!("(SJust {})", str)
-            }
+            },
             _ => "SNothing".to_string(),
         }
     }
@@ -2533,7 +2552,7 @@ impl AsIPv6 for Nullable<Bytes> {
                 let ip = Ipv6Addr::from(data).to_string();
 
                 format!("(SJust {})", ip)
-            }
+            },
             _ => "SNothing".to_string(),
         }
     }
@@ -2603,7 +2622,7 @@ impl HaskellDisplay for CostModels {
                         version, version, model_str,
                     );
                     Some(str.as_is())
-                }
+                },
                 _ => None,
             }
         }

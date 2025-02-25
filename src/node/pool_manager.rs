@@ -30,7 +30,7 @@ impl Manager for NodePoolManager {
                 Ok(NodeClient {
                     client: Some(connection),
                 })
-            }
+            },
             Err(err) => {
                 gauge!("cardano_node_connections_failed").increment(1);
                 error!(
@@ -39,7 +39,7 @@ impl Manager for NodePoolManager {
                     err.to_string()
                 );
                 Err(AppError::Node(err.to_string()))
-            }
+            },
         }
     }
 
@@ -72,7 +72,7 @@ impl Manager for NodePoolManager {
 
                 // And scrap the connection from the pool:
                 Err(RecycleError::Backend(AppError::Node(err.to_string())))
-            }
+            },
         }
     }
 }

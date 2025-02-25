@@ -1,5 +1,5 @@
 use crate::{health_monitor::HealthMonitor, node::sync_progress::NodeInfo};
-use axum::{http::StatusCode, response::IntoResponse, Extension, Json};
+use axum::{Extension, Json, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

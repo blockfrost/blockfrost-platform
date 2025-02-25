@@ -3,8 +3,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};
 use std::sync::{
-    atomic::{self, AtomicU32},
     Arc,
+    atomic::{self, AtomicU32},
 };
 use std::{env, thread};
 use tokio::sync::{mpsc, oneshot};

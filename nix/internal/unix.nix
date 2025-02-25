@@ -60,6 +60,9 @@ in
         meta.mainProgram = packageName;
       });
 
+    # We use a newer `rustfmt`:
+    rustfmt = inputs.fenix.packages.${pkgs.system}.stable.rustfmt;
+
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {

@@ -1,13 +1,13 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
 use blockfrost_openapi::models::{AddressUtxoContentInner, EpochParamContent};
 use cardano_serialization_lib::{
-    hash_transaction, make_vkey_witness, Address, BaseAddress, BigNum, Bip32PrivateKey,
-    CoinSelectionStrategyCIP2, Credential, LinearFee, NetworkId, PrivateKey, Transaction,
-    TransactionBody, TransactionBuilder, TransactionBuilderConfigBuilder, TransactionHash,
-    TransactionInput, TransactionOutput, TransactionUnspentOutput, TransactionUnspentOutputs,
-    TransactionWitnessSet, Vkeywitnesses,
+    Address, BaseAddress, BigNum, Bip32PrivateKey, CoinSelectionStrategyCIP2, Credential,
+    LinearFee, NetworkId, PrivateKey, Transaction, TransactionBody, TransactionBuilder,
+    TransactionBuilderConfigBuilder, TransactionHash, TransactionInput, TransactionOutput,
+    TransactionUnspentOutput, TransactionUnspentOutputs, TransactionWitnessSet, Vkeywitnesses,
+    hash_transaction, make_vkey_witness,
 };
 
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> {

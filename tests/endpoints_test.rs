@@ -7,7 +7,7 @@ mod tests {
     use crate::common::{build_app, get_blockfrost_client, initialize_logging};
     use crate::tx_builder::build_tx;
     use axum::{
-        body::{to_bytes, Body},
+        body::{Body, to_bytes},
         http::Request,
     };
     use blockfrost_platform::api::root::RootResponse;

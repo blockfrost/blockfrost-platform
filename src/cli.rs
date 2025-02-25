@@ -1,7 +1,7 @@
 use crate::AppError;
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result, anyhow};
 use clap::CommandFactory;
-use clap::{arg, command, Parser, ValueEnum};
+use clap::{Parser, ValueEnum, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::Level;
-use twelf::{config, Layer};
+use twelf::{Layer, config};
 
 static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
 
