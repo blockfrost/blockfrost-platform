@@ -44,3 +44,7 @@ footer {
   pointer-events: none;
   z-index: -1;
 }
+
+.nextra-toc div > div {
+  display: none;
+}
