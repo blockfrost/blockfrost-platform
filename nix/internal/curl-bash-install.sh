@@ -14,19 +14,20 @@ kernel="$(uname -s)"
 case "${isa}-${kernel}" in
 "x86_64-Linux")
   target_system="x86_64-linux"
-  ;;
-"aarch64-Linux")
-  target_system="aarch64-linux"
+  expected_sha256="@sha256_x86_64_linux@"
   ;;
 "x86_64-Darwin")
   target_system="x86_64-darwin"
+  expected_sha256="@sha256_x86_64_darwin@"
   ;;
 # Apple Silicon can appear as "arm64-Darwin" rather than "aarch64-Darwin":
 "arm64-Darwin")
   target_system="aarch64-darwin"
+  expected_sha256="@sha256_aarch64_darwin@"
   ;;
 "aarch64-Darwin")
   target_system="aarch64-darwin"
+  expected_sha256="@sha256_aarch64_darwin@"
   ;;
 *)
   echo >&2 "fatal: no matching installer found for ${color_bold}${isa}-${kernel}${color_reset}" >&2
@@ -49,7 +50,16 @@ bin_dir="${install_dir}/bin"
 bin_dir_expr="${install_dir_expr}/bin"
 
 if ! command -v bzip2 >/dev/null 2>&1; then
-  echo >&2 "fatal: bzip2 not found, please install it, and try again"
+  echo >&2 "fatal: ${color_bold}bzip2${color_reset} not found, please install it, and try again"
+  exit 1
+fi
+
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256_cmd="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+  sha256_cmd="shasum -a 256"
+else
+  echo >&2 "fatal: neither ${color_bold}sha256sum${color_reset} nor ${color_bold}shasum${color_reset} were found, please install one, and try again"
   exit 1
 fi
 
@@ -61,7 +71,13 @@ if command -v curl >/dev/null 2>&1; then
 elif command -v wget >/dev/null 2>&1; then
   wget -O "${download_path}" "$archive_url"
 else
-  echo >&2 "fatal: found neither \`curl' nor \`wget'" >&2
+  echo >&2 "fatal: neither ${color_bold}curl${color_reset} nor ${color_bold}wget${color_reset} were found, please install one, and try again"
+  exit 1
+fi
+
+calculated_sha256=$($sha256_cmd "${download_path}" | cut -d' ' -f1)
+if [ "$calculated_sha256" != "$expected_sha256" ]; then
+  echo >&2 "fatal: archive checksum mismatch (network issues?), please restart the installer"
   exit 1
 fi
 
