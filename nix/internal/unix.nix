@@ -120,12 +120,30 @@ in
       }
       .${targetSystem};
 
-    inherit (cardano-node-packages) cardano-node cardano-cli;
+    inherit (cardano-node-packages) cardano-node cardano-cli cardano-submit-api;
 
-    cardano-node-configs = builtins.path {
+    cardano-node-configs-verbose = builtins.path {
       name = "cardano-playground-configs";
       path = inputs.cardano-playground + "/static/book.play.dev.cardano.org/environments";
     };
+
+    cardano-node-configs =
+      pkgs.runCommandNoCC "cardano-node-configs" {
+        buildInputs = with pkgs; [jq];
+      } ''
+        cp -r ${cardano-node-configs-verbose} $out
+        chmod -R +w $out
+        find $out -name 'config.json' | while IFS= read -r configFile ; do
+          jq '.
+            | .TraceConnectionManager = false
+            | .TracePeerSelection = false
+            | .TracePeerSelectionActions = false
+            | .TracePeerSelectionCounters = false
+            | .TraceInboundGovernor = false
+          ' "$configFile" >tmp.json
+          mv tmp.json "$configFile"
+        done
+      '';
 
     testgen-hs-flake = (import inputs.flake-compat {src = inputs.testgen-hs;}).defaultNix;
 
