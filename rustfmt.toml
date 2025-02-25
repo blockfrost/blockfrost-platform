@@ -1,6 +1,5 @@
 hard_tabs = false
 tab_spaces = 4
-newline_style = "Unix"
 max_width = 100
 
 fn_call_width = 60
