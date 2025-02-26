@@ -13,10 +13,7 @@ mod tests {
     use blockfrost_platform::api::root::RootResponse;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
-
-    use serde_json::json;
     use tower::ServiceExt;
-    use uuid::Uuid;
 
     // Test: `/` route correct response
     #[tokio::test]
@@ -146,9 +143,26 @@ mod tests {
     #[tokio::test]
     async fn test_icebreakers_registrations() {
         initialize_logging();
-        let (_, _, icebreakers_api, _) = build_app_non_solitary().await.expect("Failed to build the application");
-
+        let (app, _, icebreakers_api, _) = build_app_non_solitary().await.expect("Failed to build the application");
         let success_response = icebreakers_api.unwrap().register().await.unwrap();
-        assert_eq!(32, success_response.route.len());
+
+        // Call root endpoint with prefix
+        let response = app
+            .oneshot(Request::builder().uri(format!("/{}", success_response.route)).body(Body::empty()).unwrap())
+            .await
+            .expect("Request to root route failed");
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+        let root_response: RootResponse =
+            serde_json::from_slice(&body_bytes).expect("Response body is not valid JSON");
+
+        // Check root endpoint data
+        assert!(root_response.errors.is_empty());
+        assert_eq!(root_response.name, "blockfrost-platform");
+        assert!(root_response.healthy);
     }
 }
