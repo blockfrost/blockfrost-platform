@@ -4,7 +4,9 @@ mod tx_builder;
 
 mod tests {
     use crate::asserts;
-    use crate::common::{build_app, build_app_non_solitary, get_blockfrost_client, initialize_logging};
+    use crate::common::{
+        build_app, build_app_non_solitary, get_blockfrost_client, initialize_logging,
+    };
     use crate::tx_builder::build_tx;
     use axum::{
         body::{Body, to_bytes},
@@ -143,12 +145,19 @@ mod tests {
     #[tokio::test]
     async fn test_icebreakers_registrations() {
         initialize_logging();
-        let (app, _, icebreakers_api, _) = build_app_non_solitary().await.expect("Failed to build the application");
+        let (app, _, icebreakers_api, _) = build_app_non_solitary()
+            .await
+            .expect("Failed to build the application");
         let success_response = icebreakers_api.unwrap().register().await.unwrap();
 
         // Call root endpoint with prefix
         let response = app
-            .oneshot(Request::builder().uri(format!("/{}", success_response.route)).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/{}", success_response.route))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .expect("Request to root route failed");
 

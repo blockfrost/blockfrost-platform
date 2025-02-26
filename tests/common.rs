@@ -1,7 +1,10 @@
 use axum::Router;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
-    cli::{Config, IcebreakersConfig, LogLevel, Mode, Network}, icebreakers_api::IcebreakersAPI, server::build, AppError, NodePool
+    AppError, NodePool,
+    cli::{Config, IcebreakersConfig, LogLevel, Mode, Network},
+    icebreakers_api::IcebreakersAPI,
+    server::build,
 };
 use std::{
     env,
