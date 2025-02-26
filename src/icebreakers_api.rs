@@ -25,9 +25,9 @@ struct ErrorResponse {
     details: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SuccessResponse {
-    route: String,
+    pub route: String,
 }
 
 impl IcebreakersAPI {

@@ -4,7 +4,7 @@ mod tx_builder;
 
 mod tests {
     use crate::asserts;
-    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
+    use crate::common::{build_app, build_app_non_solitary, get_blockfrost_client, initialize_logging};
     use crate::tx_builder::build_tx;
     use axum::{
         body::{Body, to_bytes},
@@ -14,7 +14,9 @@ mod tests {
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
 
+    use serde_json::json;
     use tower::ServiceExt;
+    use uuid::Uuid;
 
     // Test: `/` route correct response
     #[tokio::test]
@@ -138,5 +140,15 @@ mod tests {
             .expect("Failed to read response body");
 
         assert_eq!(66, local_body_bytes.len());
+    }
+
+    // Test: `icebreakers register` success registration
+    #[tokio::test]
+    async fn test_icebreakers_registrations() {
+        initialize_logging();
+        let (_, _, icebreakers_api, _) = build_app_non_solitary().await.expect("Failed to build the application");
+
+        let success_response = icebreakers_api.unwrap().register().await.unwrap();
+        assert_eq!(32, success_response.route.len());
     }
 }

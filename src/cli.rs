@@ -329,9 +329,11 @@ impl Config {
             let reward_address = args
                 .reward_address
                 .ok_or(AppError::Server("--reward-address must be set".into()))?;
+
             let secret = args
                 .secret
                 .ok_or(AppError::Server("--secret must be set".into()))?;
+
             Some(IcebreakersConfig {
                 reward_address,
                 secret,
