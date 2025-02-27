@@ -1,6 +1,8 @@
 [package]
 name = "blockfrost-icebreakers-api"
 version = "1.3.0"
+license-file = "LICENSE"
+publish = false
 edition = "2021"
 
 build = "build.rs"
@@ -11,7 +13,7 @@ tokio = { version = "1.39.2", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
-diesel = { version = "2.2.2", features = ["chrono", "postgres"] }
+diesel = { version = "2.2.3", features = ["chrono", "postgres"] }
 diesel_migrations = "2"
 serde = { version = "1.0.205", features = ["derive"] }
 serde_json = "1.0.122"

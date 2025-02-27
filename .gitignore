@@ -25,3 +25,13 @@ target/
 /target
 .DS_Store
 .env
+
+# Nix
+result
+result-*
+
+# direnv
+.direnv/
+.envrc.local
+
+*.log

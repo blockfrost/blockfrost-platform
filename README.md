@@ -31,7 +31,7 @@ nft_asset = 'b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f6
 This app is hosted on the DigitalOcean App Platform. At the moment, the
 following environments are deployed:
 
-* https://api-dev.icebreakers.blockfrost.io/ from `master`
+- https://api-dev.icebreakers.blockfrost.io/ from `master`
 
 ```cli
 $ doctl apps create --spec=./do-dev.yml
