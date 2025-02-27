@@ -13,7 +13,7 @@ If you are not using the configuration file, simple run as:
 
 ```console
 blockfrost-platform [OPTIONS] --network <NETWORK> \
-                              --node-address <NODE_ADDRESS> \
+                              --node-socket-path <NODE_SOCKET_PATH> \
                               --secret <SECRET> \
                               --reward-address <REWARD_ADDRESS>
 ```
@@ -38,13 +38,12 @@ It won't work if you just copy and paste it.
 #!/usr/bin/env bash
 # You can modify these variables for your specific setup
 # NETWORK=mainnet
-# NODE_ADDR=127.0.0.1
 SECRET=my_icebreaker_secret_i_have_received_from_the_blockfrost_team
 REWARD_ADDR=addr1_rest_of_my_reward_address_that_holds_my_nft_license_provided_by_the_blockfrost_team
-
+NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
 
 /usr/local/bin/blockfrost-platform --network ${NEWORK:=mainnet} \
-                                   --node-address ${NODE_ADDR:=127.0.0.1} \
+                                   --node-socket-path $NODE_SOCKET_PATH \
                                    --secret $SECRET \
                                    --reward-address $REWARD_ADDR
 ```
