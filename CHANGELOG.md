@@ -4,6 +4,10 @@
 
 - Nix devshell, checks, and package definition
 
+### Fixed
+
+- Better IPv6 support
+
 ## [1.3.0] - 2025-01-30
 
 ### Added

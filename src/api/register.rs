@@ -80,7 +80,12 @@ pub async fn route(
 }
 
 async fn is_port_open(ip: &str, port: i32) -> bool {
-    let address = format!("{}:{}", ip, port);
+    // FIXME: this is a hot fix, use std::net::SocketAddr in the future
+    let address = if ip.contains(':') {
+        format!("[{}]:{}", ip, port)
+    } else {
+        format!("{}:{}", ip, port)
+    };
     let connection_future = TcpStream::connect(&address);
     matches!(
         timeout(Duration::from_secs(10), connection_future).await,
