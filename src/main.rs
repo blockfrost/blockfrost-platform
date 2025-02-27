@@ -16,7 +16,13 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(config.log_level);
 
     let (app, _, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
-    let address = format!("{}:{}", config.server_address, config.server_port);
+    let address = if config.server_address.contains(':') {
+        // IPv6 address, wrap in square brackets
+        format!("[{}]:{}", config.server_address, config.server_port)
+    } else {
+        // IPv4 address, no special handling needed
+        format!("{}:{}", config.server_address, config.server_port)
+    };
     let listener = tokio::net::TcpListener::bind(&address).await?;
     let (ready_tx, ready_rx) = oneshot::channel();
     let shutdown_signal = async {
