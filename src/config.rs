@@ -6,7 +6,10 @@ use std::{fs, path::PathBuf};
 use tracing::Level;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author,
+          version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_REVISION"), ")"),
+          about,
+          long_about = None)]
 pub struct Args {
     #[arg(short, long, value_name = "FILE")]
     pub config: PathBuf,
