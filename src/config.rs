@@ -6,7 +6,10 @@ use std::{fs, path::PathBuf};
 use tracing::Level;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author,
+          version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_REVISION"), ")"),
+          about,
+          long_about = None)]
 pub struct Args {
     #[arg(short, long, value_name = "FILE")]
     pub config: PathBuf,
@@ -103,11 +106,11 @@ pub fn load_config(path: PathBuf) -> Config {
 }
 
 fn override_with_env(config: Config) -> Config {
-    let server_address = var("SERVER_ADDRESS").unwrap_or_else(|_| config.server.address);
+    let server_address = var("SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str = var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
-    let db_connection = var("DB_CONNECTION_STRING").unwrap_or_else(|_| config.database.connection_string);
-    let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or_else(|_| config.blockfrost.project_id);
-    let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or_else(|_| config.blockfrost.nft_asset);
+    let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
+    let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
+    let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
         "debug" => Level::DEBUG,

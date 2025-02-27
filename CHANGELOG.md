@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- Nix devshell, checks, and package definition
+
 ## [1.3.0] - 2025-01-30
 
 ### Added

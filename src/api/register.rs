@@ -82,9 +82,8 @@ pub async fn route(
 async fn is_port_open(ip: &str, port: i32) -> bool {
     let address = format!("{}:{}", ip, port);
     let connection_future = TcpStream::connect(&address);
-
-    match timeout(Duration::from_secs(10), connection_future).await {
-        Ok(Ok(_stream)) => true,
-        _ => false,
-    }
+    matches!(
+        timeout(Duration::from_secs(10), connection_future).await,
+        Ok(Ok(_stream))
+    )
 }
