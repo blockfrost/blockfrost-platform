@@ -57,14 +57,21 @@ impl IntoResponse for APIError {
                     details: format!("Address: {} does not contain the license.", address),
                 },
             ),
-            APIError::NotAccessible { ip, port } => (
+            APIError::NotAccessible { ip, port } => {
+                // FIXME: this is a hot fix, use std::net::SocketAddr in the future
+                let ip_port = if ip.contains(':') {
+                    format!("[{}]:{}", ip, port)
+                } else {
+                    format!("{}:{}", ip, port)
+                };
+                (
                 StatusCode::FORBIDDEN,
                 ApiError {
                     status: "failed".to_string(),
                     reason: "not_accessible".to_string(),
-                    details: format!("The server at {}:{} is not publicly accessible.", ip, port),
+                    details: format!("The server at {} is not publicly accessible.", ip_port),
                 },
-            ),
+            )},
             APIError::Unauthorized() => (
                 StatusCode::FORBIDDEN,
                 ApiError {
