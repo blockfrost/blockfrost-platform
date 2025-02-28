@@ -33,7 +33,7 @@ pub fn test_config() -> Arc<Config> {
         env::var("NODE_SOCKET_PATH").unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
 
     let config = Config {
-        server_address: "0.0.0.0".into(),
+        server_address: "0.0.0.0".parse().unwrap(),
         server_port: 8080,
         log_level: LogLevel::Info.into(),
         network_magic: 2,
