@@ -40,6 +40,9 @@
         )
         // lib.genAttrs ["x86_64-windows"] (
           targetSystem: import ./nix/internal/windows.nix {inherit inputs targetSystem;}
+        )
+        // lib.genAttrs ["aarch64-linux"] (
+          targetSystem: import ./nix/internal/linux-cross-arm64.nix {inherit inputs targetSystem;}
         );
 
       systems = [
@@ -63,6 +66,7 @@
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
             default-x86_64-windows = inputs.self.internal.x86_64-windows.package;
+            default-aarch64-linux = inputs.self.internal.aarch64-linux.package;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -97,14 +101,15 @@
       };
 
       flake.hydraJobs = let
+        crossSystems = ["x86_64-windows" "aarch64-linux"];
         allJobs = {
-          blockfrost-platform = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+          blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
             targetSystem: inputs.self.internal.${targetSystem}.package
           );
           devshell = lib.genAttrs config.systems (
             targetSystem: inputs.self.devShells.${targetSystem}.default
           );
-          archive = lib.genAttrs (config.systems ++ ["x86_64-windows"]) (
+          archive = lib.genAttrs (config.systems ++ crossSystems) (
             targetSystem: inputs.self.internal.${targetSystem}.archive
           );
           installer = {

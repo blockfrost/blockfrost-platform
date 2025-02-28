@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Added
+
+- Add `aarch64-linux` builds to release artifacts and installers.
+
 ### Fixed
 
 - Configure local IP address to bind to with `std::net` types.

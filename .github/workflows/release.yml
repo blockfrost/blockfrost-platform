@@ -36,6 +36,7 @@ jobs:
           ref="."
 
           $nixdl  result-archive-x86_64-linux      "$ref"#internal.x86_64-linux.archive
+          $nixdl  result-archive-aarch64-linux     "$ref"#internal.aarch64-linux.archive
           $nixdl  result-archive-x86_64-windows    "$ref"#internal.x86_64-windows.archive
           $nixdl  result-archive-x86_64-darwin     "$ref"#internal.x86_64-darwin.archive
           $nixdl  result-archive-aarch64-darwin    "$ref"#internal.aarch64-darwin.archive
@@ -54,6 +55,7 @@ jobs:
         with:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
+            result-archive-aarch64-linux/*.tar.bz2
             result-archive-x86_64-darwin/*.tar.bz2
             result-archive-x86_64-windows/*.zip
             result-archive-aarch64-darwin/*.tar.bz2

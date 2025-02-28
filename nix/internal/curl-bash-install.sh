@@ -16,6 +16,10 @@ case "${isa}-${kernel}" in
   target_system="x86_64-linux"
   expected_sha256="@sha256_x86_64_linux@"
   ;;
+"aarch64-Linux")
+  target_system="aarch64-linux"
+  expected_sha256="@sha256_aarch64_linux@"
+  ;;
 "x86_64-Darwin")
   target_system="x86_64-darwin"
   expected_sha256="@sha256_x86_64_darwin@"
