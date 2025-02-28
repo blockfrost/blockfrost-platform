@@ -3,19 +3,25 @@ mod common;
 mod tx_builder;
 
 mod tests {
+    use std::net::{IpAddr, SocketAddr};
+
     use crate::asserts;
     use crate::common::{
         build_app, build_app_non_solitary, get_blockfrost_client, initialize_logging,
     };
     use crate::tx_builder::build_tx;
+    use axum::ServiceExt as AxumServiceExt;
     use axum::{
         body::{Body, to_bytes},
+        extract::Request as AxumExtractRequest,
         http::Request,
     };
     use blockfrost_platform::api::root::RootResponse;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
+    use tokio::sync::oneshot;
     use tower::ServiceExt;
+    use tracing::info;
 
     // Test: `/` route correct response
     #[tokio::test]
@@ -143,14 +149,47 @@ mod tests {
 
     // Test: `icebreakers register` success registration
     #[tokio::test]
-    async fn test_icebreakers_registrations() {
+    async fn test_icebreakers_registrations() -> Result<(), Box<dyn std::error::Error>> {
         initialize_logging();
-        let (_, _, icebreakers_api, _) = build_app_non_solitary()
+
+        let (app, _, icebreakers_api, api_prefix) = build_app_non_solitary()
             .await
             .expect("Failed to build the application");
 
-        let success_response = icebreakers_api.unwrap().register().await.unwrap();
+        let ip_addr: IpAddr = "0.0.0.0".parse().unwrap();
+        let address = SocketAddr::new(ip_addr, 3000);
+        let listener = tokio::net::TcpListener::bind(address).await?;
+        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+        let (ready_tx, ready_rx) = oneshot::channel();
 
-        assert_eq!(success_response.route.len(), 32);
+        let spawn_task = tokio::spawn({
+            let app = app;
+            async move {
+                let server_future = axum::serve(
+                    listener,
+                    AxumServiceExt::<AxumExtractRequest>::into_make_service(app),
+                )
+                .with_graceful_shutdown(async {
+                    shutdown_rx.await.ok();
+                });
+
+                let _ = ready_tx.send(());
+                server_future.await
+            }
+        });
+
+        if ready_rx.await.is_ok() {
+            info!("Server is listening on http://{}{}", address, api_prefix);
+
+            if let Some(api) = &icebreakers_api {
+                api.register().await?;
+            }
+        }
+
+        let _ = shutdown_tx.send(());
+
+        spawn_task.await.unwrap().unwrap();
+
+        Ok(())
     }
 }

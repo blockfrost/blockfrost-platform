@@ -238,10 +238,12 @@ in
         baseUrl = releaseBaseUrl;
       } ''
         sha256_x86_64_linux=$(sha256sum ${inputs.self.hydraJobs.archive.x86_64-linux}/*.tar.* | cut -d' ' -f1)
+        sha256_aarch64_linux=$(sha256sum ${inputs.self.hydraJobs.archive.aarch64-linux}/*.tar.* | cut -d' ' -f1)
         sha256_x86_64_darwin=$(sha256sum ${inputs.self.hydraJobs.archive.x86_64-darwin}/*.tar.* | cut -d' ' -f1)
         sha256_aarch64_darwin=$(sha256sum ${inputs.self.hydraJobs.archive.aarch64-darwin}/*.tar.* | cut -d' ' -f1)
 
         export sha256_x86_64_linux
+        export sha256_aarch64_linux
         export sha256_x86_64_darwin
         export sha256_aarch64_darwin
 
