@@ -14,37 +14,37 @@ impl Payload {
     pub fn validate(&self) -> Result<(), APIError> {
         // Validate mode
         if self.mode.is_empty() {
-            return Err(APIError::Validaion("Mode cannot be empty".to_string()));
+            return Err(APIError::Validation("Mode cannot be empty".to_string()));
         }
 
         if !["compact", "light", "full"].contains(&self.mode.as_str()) {
-            return Err(APIError::Validaion(
+            return Err(APIError::Validation(
                 "Mode must be one of 'compact', 'light', or 'full'".to_string(),
             ));
         }
 
         // Validate port
         if self.port <= 0 || self.port > 65535 {
-            return Err(APIError::Validaion(
+            return Err(APIError::Validation(
                 "Port must be between 1 and 65535".to_string(),
             ));
         }
 
         // Validate secret
         if self.secret.len() < 8 {
-            return Err(APIError::Validaion(
+            return Err(APIError::Validation(
                 "Secret must be at least 8 characters long".to_string(),
             ));
         }
 
         // Validate reward_address
         if self.reward_address.is_empty() {
-            return Err(APIError::Validaion("reward_address is empty".to_string()));
+            return Err(APIError::Validation("reward_address is empty".to_string()));
         }
 
         // Validate api_prefix
         if self.api_prefix.is_empty() {
-            return Err(APIError::Validaion("api_prefix is empty".to_string()));
+            return Err(APIError::Validation("api_prefix is empty".to_string()));
         }
 
         Ok(())

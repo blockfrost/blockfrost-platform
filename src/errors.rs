@@ -2,6 +2,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{http, Json};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use thiserror::Error;
 use tracing::error;
 
@@ -15,13 +16,13 @@ pub struct ApiError {
 #[derive(Error, Debug)]
 pub enum APIError {
     #[error("Validation error: {0}")]
-    Validaion(String),
+    Validation(String),
 
     #[error("License error: {0}")]
     License(String),
 
     #[error("Not accessible: {ip}:{port}")]
-    NotAccessible { ip: String, port: i32 },
+    NotAccessible { ip: SocketAddr, port: u16 },
 
     #[error("Unauthorized registration access")]
     Unauthorized(),
@@ -41,7 +42,7 @@ impl IntoResponse for APIError {
         error!("API Error occurred: {}", self);
 
         let (status_code, error_response) = match &self {
-            APIError::Validaion(_) => (
+            APIError::Validation(_) => (
                 StatusCode::BAD_REQUEST,
                 ApiError {
                     status: "failed".to_string(),
@@ -57,21 +58,14 @@ impl IntoResponse for APIError {
                     details: format!("Address: {} does not contain the license.", address),
                 },
             ),
-            APIError::NotAccessible { ip, port } => {
-                // FIXME: this is a hot fix, use std::net::SocketAddr in the future
-                let ip_port = if ip.contains(':') {
-                    format!("[{}]:{}", ip, port)
-                } else {
-                    format!("{}:{}", ip, port)
-                };
-                (
+            APIError::NotAccessible { ip, port } => (
                 StatusCode::FORBIDDEN,
                 ApiError {
                     status: "failed".to_string(),
                     reason: "not_accessible".to_string(),
-                    details: format!("The server at {} is not publicly accessible.", ip_port),
+                    details: format!("The server at {}:{} is not publicly accessible.", ip.ip(), port),
                 },
-            )},
+            ),
             APIError::Unauthorized() => (
                 StatusCode::FORBIDDEN,
                 ApiError {
