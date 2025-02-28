@@ -8,6 +8,7 @@ use axum::body::Bytes;
 use axum::http::HeaderMap;
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
@@ -27,7 +28,7 @@ pub async fn route(
 ) -> Result<Json<ResponseSuccess>, APIError> {
     let payload: Payload = match serde_json::from_slice(&body) {
         Ok(payload) => payload,
-        Err(e) => return Err(APIError::Validaion(e.to_string())),
+        Err(e) => return Err(APIError::Validation(e.to_string())),
     };
 
     // validate POST payload
@@ -43,13 +44,17 @@ pub async fn route(
         .and_then(|val| val.to_str().ok())
         .unwrap_or("unknown");
 
-    let ip_address: &str = ip_header_value.split(',').next().unwrap_or("unknown").trim();
+    let ip_string: &str = ip_header_value.split(',').next().unwrap_or("unknown").trim();
+    let ip_address: IpAddr = ip_string
+        .parse()
+        .map_err(|_| APIError::Validation("Invalid IP address".to_string()))?;
 
-    // check if the server is accessible
-    if !is_port_open(ip_address, payload.port).await {
+    let socket_addr = SocketAddr::new(ip_address, payload.port as u16);
+
+    if !is_port_open(socket_addr).await {
         return Err(APIError::NotAccessible {
-            ip: ip_address.to_string(),
-            port: payload.port,
+            ip: socket_addr,
+            port: socket_addr.port(),
         });
     }
 
@@ -79,16 +84,11 @@ pub async fn route(
     Ok(Json(success_response))
 }
 
-async fn is_port_open(ip: &str, port: i32) -> bool {
-    // FIXME: this is a hot fix, use std::net::SocketAddr in the future
-    let address = if ip.contains(':') {
-        format!("[{}]:{}", ip, port)
-    } else {
-        format!("{}:{}", ip, port)
-    };
-    let connection_future = TcpStream::connect(&address);
+async fn is_port_open(ip: SocketAddr) -> bool {
+    let connection_future = TcpStream::connect(ip);
+
     matches!(
         timeout(Duration::from_secs(10), connection_future).await,
-        Ok(Ok(_stream))
+        Ok(Ok(_))
     )
 }
