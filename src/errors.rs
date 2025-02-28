@@ -63,7 +63,7 @@ impl IntoResponse for APIError {
                 ApiError {
                     status: "failed".to_string(),
                     reason: "not_accessible".to_string(),
-                    details: format!("The server at {}:{} is not publicly accessible.", ip.ip().to_string(), port),
+                    details: format!("The server at {}:{} is not publicly accessible.", ip.ip(), port),
                 },
             ),
             APIError::Unauthorized() => (
