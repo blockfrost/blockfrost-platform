@@ -73,7 +73,7 @@ pub async fn build_app_non_solitary() -> Result<
 > {
     // Dev secrets for testing
     let icebreakers_config = IcebreakersConfig {
-        secret: "123456789".to_string(),
+        secret: "kka0pnx9zqdvh9wl96nsg6sje0f5".to_string(),
         reward_address: "addr_test1qrwlr6uuu2s4v850z45ezjrtj7rnld5kjxgvhjvamjecze3pmjcr2aq4yc35znkn2nfd3agwxy8n7tnaze7tyrjh2snspw9f3g".to_string()
     };
     let config = test_config(Some(icebreakers_config));

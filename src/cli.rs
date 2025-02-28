@@ -11,7 +11,6 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-
 use tracing::Level;
 use twelf::{Layer, config};
 
