@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
 use std::fs;
 use std::io::Write;
+use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -29,7 +30,7 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
 #[config]
 pub struct Args {
     #[arg(long, default_value = "0.0.0.0")]
-    server_address: String,
+    server_address: IpAddr,
 
     #[arg(long, default_value = "3000")]
     server_port: u16,
@@ -175,11 +176,12 @@ impl Args {
         )
         .and_then(|it| LogLevel::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
-        let server_address = Text::new("Enter the server IP address:")
+        // TODO: Maybe use [`inquire::CustomType`]?
+        let server_address: IpAddr = Text::new("Enter the server IP address:")
             .with_default("0.0.0.0")
             .with_validator(|input: &str| {
                 input
-                    .parse::<std::net::IpAddr>()
+                    .parse::<IpAddr>()
                     .map(|_| Validation::Valid)
                     .or_else(|_| {
                         Ok(Validation::Invalid(ErrorMessage::Custom(
@@ -187,7 +189,8 @@ impl Args {
                         )))
                     })
             })
-            .prompt()?;
+            .prompt()?
+            .parse()?;
 
         let server_port = Text::new("Enter the port number:")
             .with_default("3000")
@@ -296,7 +299,7 @@ pub enum LogLevel {
 
 #[derive(Clone)]
 pub struct Config {
-    pub server_address: String,
+    pub server_address: std::net::IpAddr,
     pub server_port: u16,
     pub log_level: Level,
     pub network_magic: u64,
