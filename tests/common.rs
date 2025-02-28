@@ -34,7 +34,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
 
     let config = Config {
         server_address: "0.0.0.0".into(),
-        server_port: 8080,
+        server_port: 3000,
         log_level: LogLevel::Info.into(),
         network_magic: 2,
         mode: Mode::Compact,
