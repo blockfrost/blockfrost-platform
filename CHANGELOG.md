@@ -1,7 +1,12 @@
 ## Unreleased
 
+### Added
+
+- Additional logging when checking IP addresses
+
 ### Changed
 
+- Improved IP address validation and handling, including localhost scenarios.
 - Nix devshell, checks, and package definition
 
 ### Fixed
