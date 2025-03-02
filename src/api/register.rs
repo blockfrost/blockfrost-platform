@@ -5,6 +5,7 @@ use crate::errors::APIError;
 use crate::models::RequestNewItem;
 use crate::payload::Payload;
 use axum::body::Bytes;
+use axum::extract::ConnectInfo;
 use axum::http::HeaderMap;
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+use tracing::info;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseSuccess {
@@ -23,6 +25,7 @@ pub async fn route(
     Extension(db): Extension<DB>,
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Json<ResponseSuccess>, APIError> {
@@ -38,25 +41,46 @@ pub async fn route(
     let authorized_user = db.authorize_user(payload.secret).await?;
 
     // get IP address
-    let ip_header_value = headers
+    let ip_string = if let Some(ip_header_value) = headers
         .get("HTTP_DO_CONNECTING_IP")
+        .or_else(|| headers.get("CF-Connecting-IP"))
         .or_else(|| headers.get("X-Forwarded-For"))
+        .or_else(|| headers.get("X-Real-IP"))
         .and_then(|val| val.to_str().ok())
-        .unwrap_or("unknown");
+    {
+        // multiple ips are provided, take the first.
+        ip_header_value.split(',').next().unwrap_or("").trim().to_string()
+    } else {
+        // fallback to the IP from the connection info (useful for localhost testing)
+        addr.ip().to_string()
+    };
 
-    let ip_string: &str = ip_header_value.split(',').next().unwrap_or("unknown").trim();
     let ip_address: IpAddr = ip_string
         .parse()
-        .map_err(|_| APIError::Validation("Invalid IP address".to_string()))?;
+        .map_err(|_| APIError::Validation(format!("Invalid IP address: {}", ip_string)))?;
+
+    info!(
+        "The server will now check if the IP address {} is reachable on port {}",
+        ip_string, payload.port
+    );
 
     let socket_addr = SocketAddr::new(ip_address, payload.port as u16);
 
     if !is_port_open(socket_addr).await {
+        info!(
+            "Failed to connect to IP {} on port {}",
+            ip_string, payload.port
+        );
         return Err(APIError::NotAccessible {
             ip: socket_addr,
             port: socket_addr.port(),
         });
     }
+
+    info!(
+        "Successfully checked that IP {} is reachable on port {}",
+        ip_string, payload.port
+    );
 
     // check if NFT is at the address
     let asset = blockfrost_api
