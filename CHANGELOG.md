@@ -1,5 +1,7 @@
 ## Unreleased
 
+## [1.3.1] - 2025-03-03
+
 ### Added
 
 - Additional logging when checking IP addresses
