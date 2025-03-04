@@ -157,8 +157,8 @@ in
       } ''
         mkdir -p iconset.iconset
         ${lib.concatMapStringsSep "\n" (dim: ''
-            magick -background none -size ${d2s dim}       ${source} iconset.iconset/icon_${d2s dim}.png
-            magick -background none -size ${d2s (dim * 2)} ${source} iconset.iconset/icon_${d2s dim}@2x.png
+            magick -background none ${source} -resize ${d2s dim}       iconset.iconset/icon_${d2s dim}.png
+            magick -background none ${source} -resize ${d2s (dim * 2)} iconset.iconset/icon_${d2s dim}@2x.png
           '')
           sizes}
         /usr/bin/iconutil --convert icns --output $out iconset.iconset
