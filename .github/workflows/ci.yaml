@@ -63,6 +63,18 @@ jobs:
       - name: Lint with Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage report
+        run: cargo tarpaulin --out Xml --verbose
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: tarpaulin-report.xml
+
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         run: |
