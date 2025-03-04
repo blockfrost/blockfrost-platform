@@ -145,7 +145,7 @@ in rec {
       buildInputs = with pkgs; [imagemagick];
     } ''
       ${lib.concatMapStringsSep "\n" (dim: ''
-          magick -background none -size ${d2s dim} ${source} ${d2s dim}.png
+          magick -background none ${source} -resize ${d2s dim} ${d2s dim}.png
         '')
         sizes}
       magick ${lib.concatMapStringsSep " " (dim: "${d2s dim}.png") sizes} $out
