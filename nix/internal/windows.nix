@@ -92,31 +92,87 @@ in rec {
       mv $HOME/.wine/drive_c/uninstall.exe $out/uninstall.exe
     '';
 
-  installer =
-    pkgs.runCommandNoCC "installer" {
-      buildInputs = [nsis pkgs.wine];
-      projectName = package.pname;
-      projectVersion = package.version;
-      installerIconPath = "icon.ico";
-      lockfileName = "lockfile";
-      outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
-    } ''
-      mkdir home
-      export HOME=$(realpath home)
-      substituteAll ${./windows-installer.nsi} installer.nsi
-      cp -r ${bundle} contents
-      chmod -R +w contents
-      ln -s ${nsis-plugins.EnVar}/Plugins/x86-unicode EnVar
-      cp ${uninstaller}/uninstall.exe contents/
-      cp ${icon} icon.ico
-      makensis installer.nsi -V4
-      mkdir $out
-      mv "$outFileName" $out/
+  make-signed-installer = make-installer {doSign = true;};
+
+  installer = unsigned-installer;
+
+  unsigned-installer = pkgs.stdenv.mkDerivation {
+    name = "unsigned-installer";
+    dontUnpack = true;
+    buildPhase = ''
+      ${make-installer {doSign = false;}}/bin/* | tee make-installer.log
+    '';
+    installPhase = ''
+      mkdir -p $out
+      cp $(tail -n 1 make-installer.log) $out/
 
       # Make it downloadable from Hydra:
       mkdir -p $out/nix-support
-      echo "file binary-dist \"$out/$outFileName\"" >$out/nix-support/hydra-build-products
+      echo "file binary-dist \"$(echo $out/*.exe)\"" >$out/nix-support/hydra-build-products
     '';
+  };
+
+  make-installer = {doSign ? false}: let
+    outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
+    installer-nsi =
+      pkgs.runCommandNoCC "installer.nsi" {
+        inherit outFileName;
+        projectName = package.pname;
+        projectVersion = package.version;
+        installerIconPath = "icon.ico";
+        lockfileName = "lockfile";
+      } ''
+        substituteAll ${./windows-installer.nsi} $out
+      '';
+  in
+    pkgs.writeShellApplication {
+      name = "pack-and-sign";
+      runtimeInputs = with pkgs; [bash coreutils nsis];
+      runtimeEnv = {
+        inherit outFileName;
+      };
+      text = ''
+        set -euo pipefail
+        workDir=$(mktemp -d)
+        cd "$workDir"
+
+        ${
+          if doSign
+          then ''
+            sign_cmd() {
+              echo "Signing: ‘$1’…"
+              ssh HSM <"$1" >"$1".signed
+              mv "$1".signed "$1"
+            }
+          ''
+          else ''
+            sign_cmd() {
+              echo "Would sign: ‘$1’"
+            }
+          ''
+        }
+
+        cp ${installer-nsi} installer.nsi
+        cp -r ${bundle} contents
+        chmod -R +w contents
+        ln -s ${nsis-plugins.EnVar}/Plugins/x86-unicode EnVar
+        cp ${uninstaller}/uninstall.exe contents/
+        cp ${icon} icon.ico
+
+        chmod -R +w contents
+        find contents '(' -iname '*.exe' -o -iname '*.dll' ')' | sort | while IFS= read -r binary_to_sign ; do
+          sign_cmd "$binary_to_sign"
+        done
+
+        makensis installer.nsi -V4
+
+        sign_cmd "$outFileName"
+
+        echo
+        echo "Done, you can upload it to GitHub releases:"
+        echo "$workDir"/"$outFileName"
+      '';
+    };
 
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
