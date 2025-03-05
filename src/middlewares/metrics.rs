@@ -1,14 +1,10 @@
-use axum::extract::{MatchedPath, Request};
+use axum::extract::Request;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use metrics::counter;
 
 pub async fn track_http_metrics(req: Request, next: Next) -> impl IntoResponse {
-    let path = if let Some(matched_path) = req.extensions().get::<MatchedPath>() {
-        matched_path.as_str().to_owned()
-    } else {
-        req.uri().path().to_owned()
-    };
+    let path = req.uri().path().to_owned();
 
     let method = req.method().clone();
     let response = next.run(req).await;

@@ -45,39 +45,49 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
-    // Router
-    let mut api_routes = Router::new();
-
-    // Add routes
-    api_routes = api_routes
-        .route("/", get(root::route))
-        .route("/tx/submit", post(tx_submit::route));
-
     let metrics_enabled = !config.no_metrics;
 
-    if metrics_enabled {
-        api_routes = api_routes.route("/metrics", get(crate::api::metrics::route));
-    }
+    // API routes that are always under / (and also under the UUID prefix, if we use it)
+    let regular_api_routes = {
+        let mut rv = Router::new().route("/", get(root::route));
+        if metrics_enabled {
+            rv = rv
+                .route("/metrics", get(crate::api::metrics::route))
+                .route_layer(from_fn(track_http_metrics));
+        }
+        rv
+    };
+
+    // API routes that are *only* under the UUID prefix
+    let hidden_api_routes = {
+        let mut rv = Router::new().route("/tx/submit", post(tx_submit::route));
+        if metrics_enabled {
+            rv = rv.route_layer(from_fn(track_http_metrics));
+        }
+        rv
+    };
+
+    // Nest under the UUID prefix
+    let api_routes = if api_prefix == "/" || api_prefix.is_empty() {
+        regular_api_routes.merge(hidden_api_routes)
+    } else {
+        regular_api_routes
+            .clone()
+            .nest(&api_prefix, regular_api_routes.merge(hidden_api_routes))
+    };
 
     // Add layers
-    api_routes = api_routes
-        .layer(Extension(config))
-        .layer(Extension(health_monitor))
-        .layer(Extension(node_conn_pool.clone()))
-        .layer(from_fn(error_middleware))
-        .fallback(BlockfrostError::not_found());
-
-    if metrics_enabled {
-        api_routes = api_routes
-            .route_layer(from_fn(track_http_metrics))
-            .layer(Extension(setup_metrics_recorder()));
-    }
-
-    // Nest prefix
-    let app = if api_prefix == "/" || api_prefix.is_empty() {
-        api_routes
-    } else {
-        Router::new().nest(&api_prefix, api_routes)
+    let app = {
+        let mut rv = api_routes
+            .layer(Extension(config))
+            .layer(Extension(health_monitor))
+            .layer(Extension(node_conn_pool.clone()))
+            .layer(from_fn(error_middleware))
+            .fallback(BlockfrostError::not_found());
+        if metrics_enabled {
+            rv = rv.layer(Extension(setup_metrics_recorder()));
+        }
+        rv
     };
 
     // Final layers (e.g., trim trailing slash)
