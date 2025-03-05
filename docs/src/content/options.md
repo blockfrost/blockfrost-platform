@@ -9,7 +9,7 @@ Default: 0.0.0.0
 Default: 3000
 
 `--network <NETWORK> (required)`
-Possible values: mainnet, preprod, preview, sanchonet
+Possible values: mainnet, preprod, preview
 
 `--log-level <LOG_LEVEL>`
 Default: info
