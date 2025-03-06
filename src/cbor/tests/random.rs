@@ -163,16 +163,12 @@ fn proptest_with_params(
     seed: Option<u64>,
 ) {
     check_generated_cases(case_type, num_cases, generator_size, 5, seed, |case| {
-        use crate::node::connection::NodeClient;
-
         let cbor = case.cbor.clone();
 
         let test_one = move || {
             let cbor = hex::decode(case.cbor).map_err(|e| e.to_string())?;
-            let our_json = serde_json::to_value(
-                NodeClient::try_decode_error(&cbor).map_err(|e| e.to_string())?,
-            )
-            .map_err(|e| e.to_string())?;
+            let our_json = serialize_error(decode_error(&cbor));
+
             if our_json == case.json {
                 Ok(())
             } else {
@@ -186,4 +182,11 @@ fn proptest_with_params(
             Ok(())
         }
     })
+}
+
+fn decode_error(bytes: &[u8]) -> TxValidationError {
+    use pallas_codec::minicbor;
+
+    let mut decoder = minicbor::Decoder::new(bytes);
+    decoder.decode().unwrap()
 }

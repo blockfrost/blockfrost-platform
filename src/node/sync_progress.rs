@@ -26,14 +26,9 @@ impl NodeClient {
                     localstate::queries_v16::get_block_epoch_number(generic_client, current_era)
                         .await?;
 
-                let geneses =
+                let genesis =
                     localstate::queries_v16::get_genesis_config(generic_client, current_era)
                         .await?;
-                let genesis = geneses.first().ok_or_else(|| {
-                    BlockfrostError::internal_server_error(
-                        "Expected at least one genesis".to_string(),
-                    )
-                })?;
 
                 let system_start =
                     localstate::queries_v16::get_system_start(generic_client).await?;

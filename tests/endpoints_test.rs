@@ -102,6 +102,8 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
+        let local_body_str = String::from_utf8_lossy(&local_body_bytes);
+        println!("Local response: {}", local_body_str);
         // Blockfrost API
         let bf_response = reqwest::Client::new()
             .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
