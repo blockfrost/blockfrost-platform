@@ -100,7 +100,7 @@ pub(crate) fn haskell_show_string(s: &str) -> String {
 #[cfg(test)]
 use super::tests::{CaseType, check_generated_cases};
 
-#[ignore]
+#[cfg(not(feature = "tarpaulin"))]
 #[test]
 fn proptest_data_text_10000_large() {
     check_generated_cases(CaseType::DataText, 10000, 1000, 5, None, |case| {
