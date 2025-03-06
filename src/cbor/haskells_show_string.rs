@@ -98,6 +98,7 @@ pub(crate) fn haskell_show_string(s: &str) -> String {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "tarpaulin"))]
 use super::tests::{CaseType, check_generated_cases};
 
 #[cfg(not(feature = "tarpaulin"))]
