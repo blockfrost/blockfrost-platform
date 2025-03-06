@@ -1,3 +1,4 @@
+#[cfg(not(feature = "tarpaulin"))]
 use super::*;
 
 #[cfg(not(feature = "tarpaulin"))]
@@ -180,6 +181,7 @@ fn proptest_ApplyTxErr_Conway_size_300() {
 ///     | sed  -r 's/^For size ([0-9]+): ([0-9]+) out of ([0-9]+) .*$/\1\t\2\t\3/g' \
 ///     | sort -n
 /// ```
+#[cfg(not(feature = "tarpaulin"))]
 fn proptest_with_params(
     case_type: CaseType,
     num_cases: u32,

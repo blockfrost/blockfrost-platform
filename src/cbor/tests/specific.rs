@@ -19,6 +19,7 @@ done
 
 */
 
+#[cfg(not(feature = "tarpaulin"))]
 use super::verify_one;
 
 #[cfg(not(feature = "tarpaulin"))]

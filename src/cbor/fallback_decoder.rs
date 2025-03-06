@@ -318,6 +318,7 @@ static GLOBAL_INSTANCE: std::sync::LazyLock<FallbackDecoder> =
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "tarpaulin"))]
     use super::*;
     #[tokio::test]
     #[cfg(not(feature = "tarpaulin"))]
