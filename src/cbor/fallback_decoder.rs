@@ -319,7 +319,6 @@ static GLOBAL_INSTANCE: std::sync::LazyLock<FallbackDecoder> =
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[ignore]
     #[tokio::test]
     //#[tracing_test::traced_test]
     async fn test_fallback_decoder() {
