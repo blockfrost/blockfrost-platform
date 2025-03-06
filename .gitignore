@@ -47,3 +47,4 @@ testgen-hs.exe
 testgen-hs
 
 *.log
+build_rs_cov.profraw
