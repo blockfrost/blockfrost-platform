@@ -1,4 +1,4 @@
-### Building the Docker image
+# Building the Docker image
 
 To build the Docker image containing the project binary, in the root folder of the repository:
 

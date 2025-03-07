@@ -1,24 +1,29 @@
 import { Tabs, Tab } from "nextra/components";
 
-# Blockfrost Platform official installers
+# Blockfrost platform official installers
 
 <Tabs items={['Linux','macOS','Windows']}>
   <Tabs.Tab>
-    Paste this in Linux shell prompt.
+    For Linux, paste the following into your shell prompt:
 
     ```shell
     curl -fsSL \
          https://github.com/blockfrost/blockfrost-platform/releases/latest/download/curl-bash-install.sh \
          | bash
     ```
+
+    This script will download and install the latest version of the Blockfrost platform.
+
     ## Manual installation
 
-    You can also download the pre-build binaries at [github.com/blockfrost/blockfrost-platform](https://github.com/blockfrost/blockfrost-platform/releases).
+    Alternatively, you can download pre-built binaries directly from the [GitHub releases page](https://github.com/blockfrost/blockfrost-platform/releases).
+
+    After downloading, make the binary executable with `chmod +x blockfrost-platform` and move it to your preferred location.
 
   </Tabs.Tab>
   <Tabs.Tab>
   
-    Paste this in a macOS Terminal.
+    For macOS, paste the following into your macOS terminal:
 
     ```shell
     curl -fsSL \
@@ -26,15 +31,13 @@ import { Tabs, Tab } from "nextra/components";
          | bash
     ```
 
-    ### Installing using Apple Disk Image
-    Just download the DMG image from the Github release page and install it by moving the image to your applications.
+    ### Installing using Apple disk image
+    Download the DMG image from the [GitHub releases page](https://github.com/blockfrost/blockfrost-platform/releases) and install it by moving the image to your applications.
 
     ![DMG](/dmg.png)
 
-
     ### Installing using Homebrew
-    If you are using [Homebrew](https://brew.sh/) on your macOS (or Linux), you
-    just need to run:
+    If you are using [Homebrew](https://brew.sh/) on your macOS (or Linux), you just need to run:
 
     ```shell
     brew install blockfrost/tap/blockfrost-platform
@@ -42,6 +45,6 @@ import { Tabs, Tab } from "nextra/components";
 
   </Tabs.Tab>
   <Tabs.Tab>
-  Download `setup.exe` from [github.com/blockfrost/blockfrost-platform](https://github.com/blockfrost/blockfrost-platform/releases) or you can use `.zip` for the manual installation.
+  For Windows, download `setup.exe` from the [GitHub releases page](https://github.com/blockfrost/blockfrost-platform/releases) or you can use `.zip` for the manual installation.
   </Tabs.Tab>
 </Tabs>
