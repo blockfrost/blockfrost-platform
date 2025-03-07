@@ -1,4 +1,4 @@
-## Building from the source code using nix
+# Building from the source code using nix
 
 If you are using Nix, building `blockfrost-platform` is straightforward.
 
