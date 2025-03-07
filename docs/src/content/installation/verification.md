@@ -63,9 +63,9 @@ If you don't see this message or encounter errors, check:
 
 - Node socket path accessibility
 - Network configuration
-- Secret key validity
+- Secret key validity.
 
-### Operational Verification
+### Operational verification
 
 Once the service is running, verify that it is functioning correctly:
 
@@ -80,7 +80,7 @@ INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 Make a note of this UUID as you'll need it for subsequent verification steps.
 Remember that this changes every time you restart the service.
 
-### Metrics Endpoint Verification
+### Metrics endpoint verification
 
 Check if your service is properly reporting metrics:
 
@@ -98,7 +98,7 @@ If functioning properly, this endpoint provides:
 Note: The metrics endpoint may require the latest binary.
 If you receive a 500 error, update your installation.
 
-## Grafana Dashboard Monitoring
+## Grafana dashboard monitoring
 
 For a visual verification of your node's status, access the Blockfrost Grafana dashboard:
 
@@ -106,7 +106,7 @@ For a visual verification of your node's status, access the Blockfrost Grafana d
 https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177
 ```
 
-Your node will appear as "Icebreaker X" where X is your assigned number (visible in your NFT metadata).
+Your node will appear as 'Icebreaker X' where X is your assigned number (visible in your NFT metadata).
 
 This dashboard provides:
 
@@ -114,11 +114,11 @@ This dashboard provides:
 - Performance metrics
 - Comparison with other Icebreaker nodes.
 
-## Troubleshooting Common Issues
+## Troubleshooting common issues
 
 If verification fails, check these common issues:
 
-### Not seeing "Decoding done" message
+### Not seeing 'Decoding done' message
 
 - Ensure your Cardano node is fully synced
 - Check node socket path accessibility.
