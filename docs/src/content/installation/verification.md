@@ -4,7 +4,7 @@
 
 Before verifying your Blockfrost platform operation, make sure that these critical configurations are correct:
 
-## NFT address configuration
+### NFT address configuration
 
 **Important:** You must use the exact address containing your Icebreaker NFT, not your general wallet address.
 
@@ -18,12 +18,12 @@ Your wallet likely contains multiple addresses.
 The platform requires specifically the address where the NFT resides.
 Check your wallet to identify which address holds the Icebreaker NFT.
 
-## Network Port Configuration
+### Network Port Configuration
 
 Make sure that your required ports are properly opened.
 The default Blockfrost platform port is `3000`.
 
-### For cloud hosting
+#### For cloud hosting
 
 - Azure: Create a new outbound rule allowing port 3000 traffic
 
