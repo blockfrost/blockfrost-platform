@@ -75,6 +75,7 @@ The Blockfrost platform generates a new UUID each time it starts.
 This UUID is critical for accessing endpoints:
 
 ### Example log entry showing UUID
+
 INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 
 Make a note of this UUID as you'll need it for subsequent verification steps.
