@@ -1,5 +1,6 @@
 use super::fallback_decoder::FallbackDecoder;
 use num_cpus;
+use pallas_hardano::display::haskell_error::serialize_error;
 use serde::Deserialize;
 use std::process::Command;
 
@@ -181,18 +182,21 @@ pub(crate) use assert_json_eq; // export it
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
 async fn verify_one(cbor: &str) {
-    use crate::node::connection::NodeClient;
-
     let cbor = hex::decode(cbor).unwrap();
     let reference_json = FallbackDecoder::instance().decode(&cbor).await.unwrap();
 
-    let our_decoding = NodeClient::try_decode_error(&cbor).unwrap_or_else(|err| panic!(
-        "Rust deserializer failed to decode:\n  CBOR:\n    {}\n  Error:\n    {}\n  Haskell:\n    {}",
-        hex::encode(cbor),
-        format!("{:?}", err).replace("\n", "\n    "),
-        serde_json::to_string_pretty(&reference_json).unwrap().replace("\n", "\n    ")
-    ));
+    let our_decoding = decode_error(&cbor);
 
-    let our_json = serde_json::to_value(our_decoding).unwrap();
+    let our_json = serialize_error(our_decoding);
     assert_json_eq!(reference_json, our_json)
+}
+
+use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
+
+#[cfg(test)]
+fn decode_error(cbor: &[u8]) -> TxValidationError {
+    use pallas_codec::minicbor;
+
+    let mut decoder = minicbor::Decoder::new(cbor);
+    decoder.decode().unwrap()
 }

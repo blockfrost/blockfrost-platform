@@ -25,7 +25,6 @@ impl NodePool {
 
         Ok(Self { pool_manager })
     }
-
     /// Borrows a single [`super::connection::NodeClient`] connection from the pool.
     pub async fn get(&self) -> Result<Object<NodePoolManager>, AppError> {
         self.pool_manager
