@@ -4,6 +4,10 @@
 
 Before verifying your Blockfrost platform operation, make sure that these critical configurations are correct:
 
+### A running Cardano node
+
+A running mainnet (production) instance of cardano-node with a public IP address.
+
 ### NFT address configuration
 
 **Important:** You must use the exact address containing your Icebreaker NFT, not your general wallet address.
