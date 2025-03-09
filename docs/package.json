@@ -16,7 +16,7 @@
   },
   "author": "Blockfrost",
   "license": "Apache-2.0",
-  "homepage": "https//platform.blockfrost.io",
+  "homepage": "https://platform.blockfrost.io",
   "dependencies": {
     "next": "15.1.7",
     "nextra": "4.2.7",
