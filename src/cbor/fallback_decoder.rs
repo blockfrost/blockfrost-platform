@@ -318,8 +318,10 @@ static GLOBAL_INSTANCE: std::sync::LazyLock<FallbackDecoder> =
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "tarpaulin"))]
     use super::*;
     #[tokio::test]
+    #[cfg(not(feature = "tarpaulin"))]
     //#[tracing_test::traced_test]
     async fn test_fallback_decoder() {
         let decoder = FallbackDecoder::spawn().unwrap();

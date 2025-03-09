@@ -1,3 +1,4 @@
+#[cfg(not(feature = "tarpaulin"))]
 use super::fallback_decoder::FallbackDecoder;
 use num_cpus;
 use serde::Deserialize;
@@ -159,6 +160,7 @@ pub fn check_generated_cases<F>(
     });
 }
 
+#[cfg(not(feature = "tarpaulin"))]
 macro_rules! assert_json_eq {
     ($left:expr, $right:expr) => {
         if $left != $right {
@@ -176,10 +178,12 @@ macro_rules! assert_json_eq {
     };
 }
 
+#[cfg(not(feature = "tarpaulin"))]
 pub(crate) use assert_json_eq; // export it
 
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
+#[cfg(not(feature = "tarpaulin"))]
 async fn verify_one(cbor: &str) {
     use crate::node::connection::NodeClient;
 
