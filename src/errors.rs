@@ -115,6 +115,16 @@ impl BlockfrostError {
         }
     }
 
+    pub async fn not_found_with_uri(method: http::Method, uri: http::Uri) -> Self {
+        Self {
+            error: "Not Found".to_string(),
+            message: format!(
+                "The requested component `{uri}` has not been found for `{method}` method"
+            ),
+            status_code: 404,
+        }
+    }
+
     /// Our custom 400 error
     pub fn custom_400(message: String) -> Self {
         Self {
