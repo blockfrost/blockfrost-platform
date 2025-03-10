@@ -143,6 +143,15 @@ impl BlockfrostError {
         }
     }
 
+    /// Timeout error
+    pub fn timeout(message: String) -> Self {
+        Self {
+            error: "Request Timeout".to_string(),
+            message,
+            status_code: 408,
+        }
+    }
+
     /// This is internal server error for user with generic message
     pub fn internal_server_error_user() -> Self {
         Self {
