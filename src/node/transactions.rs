@@ -1,18 +1,12 @@
 use super::connection::NodeClient;
-use crate::{
-    BlockfrostError,
-    cbor::haskell_types::{TxSubmitFail, TxValidationError},
-};
-use pallas_codec::minicbor::Decoder;
+use crate::BlockfrostError;
 use pallas_crypto::hash::Hasher;
-use pallas_network::{
-    miniprotocols::{
-        localstate,
-        localtxsubmission::{EraTx, Response},
-    },
-    multiplexer::Error,
+use pallas_hardano::display::haskell_error::as_node_submit_error;
+use pallas_network::miniprotocols::{
+    localstate,
+    localtxsubmission::{EraTx, Response},
 };
-use tracing::{info, warn};
+use tracing::info;
 
 impl NodeClient {
     /// Submits a transaction to the connected Cardano node.
@@ -43,21 +37,10 @@ impl NodeClient {
                 info!("Transaction accepted by the node {}", txid);
                 Ok(txid)
             },
-            Ok(Response::Rejected(reason)) => match NodeClient::try_decode_error(&reason.0) {
-                Ok(error) => {
-                    let haskell_display = serde_json::to_string(&error).unwrap();
-                    warn!("{}: {:?}", "TxSubmitFail", haskell_display);
-                    Err(BlockfrostError::custom_400(haskell_display))
-                },
-
-                Err(e) => {
-                    warn!("Failed to decode error reason: {:?}", e);
-
-                    Err(BlockfrostError::custom_400(format!(
-                        "Failed to decode error reason: {:?}",
-                        e
-                    )))
-                },
+            Ok(Response::Rejected(reason)) => {
+                let haskell_display = as_node_submit_error(reason);
+                info!("{}: {:?}", "TxSubmitFail", haskell_display);
+                Err(BlockfrostError::custom_400(haskell_display))
             },
             Err(e) => {
                 let error_message = format!("Error during transaction submission: {:?}", e);
@@ -65,38 +48,5 @@ impl NodeClient {
                 Err(BlockfrostError::custom_400(error_message))
             },
         }
-    }
-
-    pub fn try_decode_error(buffer: &[u8]) -> Result<TxSubmitFail, Error> {
-        let maybe_error = Decoder::new(buffer).decode();
-
-        match maybe_error {
-            Ok(error) => Ok(NodeClient::wrap_error_response(error)),
-            Err(err) => {
-                warn!(
-                    "Failed to decode error: {:?}, buffer: {}",
-                    err,
-                    hex::encode(buffer)
-                );
-
-                // Decoding failures are not errors, but some missing implementation or mis-implementations on our side.
-                // A decoding failure is a bug in our code, not a bug in the node.
-                // It should not effect the program flow, but should be logged and reported.
-                Err(Error::Decoding(err.to_string()))
-            },
-        }
-    }
-    /// Mimicks the data structure of the error response from the cardano-submit-api
-    pub fn wrap_error_response(
-        error: TxValidationError,
-    ) -> crate::cbor::haskell_types::TxSubmitFail {
-        use crate::cbor::haskell_types::{
-            TxCmdError::TxCmdTxSubmitValidationError, TxSubmitFail,
-            TxValidationErrorInCardanoMode::TxValidationErrorInCardanoMode,
-        };
-
-        TxSubmitFail::TxSubmitFail(TxCmdTxSubmitValidationError(
-            TxValidationErrorInCardanoMode(error),
-        ))
     }
 }
