@@ -83,7 +83,7 @@ pub async fn build(
             .layer(Extension(health_monitor))
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
-            .fallback(BlockfrostError::not_found());
+            .fallback(BlockfrostError::not_found_with_uri);
         if metrics_enabled {
             rv = rv.layer(Extension(setup_metrics_recorder()));
         }
