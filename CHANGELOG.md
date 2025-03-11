@@ -2,6 +2,7 @@
 
 ### Added
 
+- Check network and address mismatch
 - Additional logging in registration
 
 ### Fixed

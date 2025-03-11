@@ -128,6 +128,7 @@ fn override_with_env(config: Config) -> Config {
         server: Server {
             address: server_address,
             log_level: final_log_level,
+            is_testnet: config.server.is_testnet,
         },
         database: Db {
             connection_string: db_connection,
