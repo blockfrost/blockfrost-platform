@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Added
+
+- Check network and address mismatch
+- Additional logging in registration
+
 ### Fixed
 
 - Url in root route
