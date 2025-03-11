@@ -37,6 +37,8 @@ pub async fn route(
     // validate POST payload
     Payload::validate(&payload)?;
 
+    info!("Received valid payload for registration: {:?}", payload);
+
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
 
@@ -87,6 +89,8 @@ pub async fn route(
         .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
         .await
         .map_err(|_| APIError::License(payload.reward_address.clone()))?;
+
+    info!("NFT exists at address {}", payload.reward_address);
 
     let new_item_request = RequestNewItem {
         user_id: authorized_user.user_id,

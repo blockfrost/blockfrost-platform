@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Added
+
+- Additional logging in registration
+
 ### Fixed
 
 - Url in root route
