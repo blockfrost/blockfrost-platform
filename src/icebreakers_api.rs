@@ -40,7 +40,10 @@ impl IcebreakersAPI {
 
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
-                let client = Client::new();
+                let client = Client::builder()
+                    .local_address(config.server_address)
+                    .build()
+                    .map_err(|e| AppError::Registration(format!("Registering failed: {}", e)))?;
                 let base_url = api_url.to_string();
                 let icebreakers_api = IcebreakersAPI {
                     client,
