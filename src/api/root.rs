@@ -11,9 +11,7 @@ pub struct Response {
 }
 
 pub async fn route(Extension(config): Extension<Config>) -> Json<Response> {
-    let is_dev = config.blockfrost.project_id.contains("preview");
-
-    let url = if is_dev {
+    let url = if config.server.is_testnet {
         "https://api-dev.icebreakers.blockfrost.io/"
     } else {
         "https://icebreakers-api.blockfrost.io"

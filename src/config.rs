@@ -48,6 +48,7 @@ pub struct Server {
     pub address: String,
     #[serde(deserialize_with = "deserialize_log_level")]
     pub log_level: Level,
+    pub is_testnet: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -78,6 +79,7 @@ pub struct Blockfrost {
 pub fn load_config(path: PathBuf) -> Config {
     let config_file_content = fs::read_to_string(path).expect("Reading config failed");
     let toml_config: ConfigInput = toml::from_str(&config_file_content).expect("Config file is invalid");
+    let is_testnet = toml_config.blockfrost.project_id.contains("preview");
 
     let log_level = match toml_config.server.log_level.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
@@ -92,6 +94,7 @@ pub fn load_config(path: PathBuf) -> Config {
         server: Server {
             address: toml_config.server.address,
             log_level,
+            is_testnet,
         },
         database: Db {
             connection_string: toml_config.database.connection_string,

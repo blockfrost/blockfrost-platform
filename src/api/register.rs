@@ -39,6 +39,20 @@ pub async fn route(
 
     info!("Received valid payload for registration: {:?}", payload);
 
+    let is_testnet_address = payload.reward_address.starts_with("addr_test");
+
+    if config.server.is_testnet {
+        if !is_testnet_address {
+            return Err(APIError::Validation(
+                "Network and address mismatch: mainnet address provided on testnet".to_string(),
+            ));
+        }
+    } else if is_testnet_address {
+        return Err(APIError::Validation(
+            "Network and address mismatch: testnet address provided on mainnet".to_string(),
+        ));
+    }
+
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
 
