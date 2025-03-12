@@ -1,5 +1,7 @@
 ## Unreleased
 
+## [1.3.2] - 2025-03-12
+
 ### Added
 
 - Check network and address mismatch
