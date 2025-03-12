@@ -140,6 +140,13 @@ mod tests {
             .await
             .expect("Request to /tx/submit failed");
 
+        assert!(
+            response
+                .headers()
+                .contains_key("blockfrost-platform-response"),
+            "Response is missing the `blockfrost-platform-response` header"
+        );
+
         let local_body_bytes = to_bytes(response.into_body(), usize::MAX)
             .await
             .expect("Failed to read response body");

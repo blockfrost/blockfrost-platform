@@ -14,7 +14,7 @@ pub async fn route(
     let binary_tx = binary_or_hex_heuristic(body.as_ref());
 
     // XXX: Axum must not abort Ouroboros protocols in the middle, hence a separate Tokio task:
-    let response = tokio::spawn(async move {
+    let response_body = tokio::spawn(async move {
         // Submit transaction
         let mut node = node.get().await?;
         let response = node.submit_transaction(binary_tx).await;
@@ -30,7 +30,15 @@ pub async fn route(
     .await
     .expect("submit_transaction panic!")?;
 
-    Ok(Json(response))
+    let mut response_headers = HeaderMap::new();
+
+    // insert a static header value. Using unwrap is safe here because the literal is known to be a valid header.
+    response_headers.insert(
+        "blockfrost-platform-response",
+        "HeaderValue".parse().unwrap(),
+    );
+
+    Ok((response_headers, Json(response_body)))
 }
 
 /// This function allows us to take both hex-encoded and raw bytes. It has
