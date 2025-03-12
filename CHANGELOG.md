@@ -1,5 +1,9 @@
 ## Unreleased
 
+## [1.3.3] - 2025-03-12
+
+HOTFIX: project_id env override
+
 ## [1.3.2] - 2025-03-12
 
 ### Added
