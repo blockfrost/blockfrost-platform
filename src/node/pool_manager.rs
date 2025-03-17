@@ -1,7 +1,7 @@
 use super::connection::NodeClient;
 use crate::AppError;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
-use metrics::gauge;
+use metrics::{counter, gauge};
 use pallas_network::facades::NodeClient as NodeClientFacade;
 use tracing::{error, info};
 
@@ -17,7 +17,7 @@ impl Manager for NodePoolManager {
     async fn create(&self) -> Result<NodeClient, AppError> {
         // TODO: maybe use `ExponentialBackoff` from `tokio-retry`, to have at
         // least _some_ debouncing between requests, if the node is down?
-        gauge!("cardano_node_connections_initiated").increment(1);
+        counter!("cardano_node_connections_initiated").increment(1);
 
         match NodeClientFacade::connect(&self.socket_path, self.network_magic).await {
             Ok(connection) => {
@@ -32,7 +32,7 @@ impl Manager for NodePoolManager {
                 })
             },
             Err(err) => {
-                gauge!("cardano_node_connections_failed").increment(1);
+                counter!("cardano_node_connections_failed").increment(1);
                 error!(
                     "Failed to connect a node socket: {}: {:?}",
                     self.socket_path,
@@ -64,7 +64,7 @@ impl Manager for NodePoolManager {
                 // I should not be used again.
                 let owned = node.client.take().unwrap();
 
-                gauge!("cardano_node_connections_failed").increment(1);
+                counter!("cardano_node_connections_failed").increment(1);
                 gauge!("cardano_node_connections").decrement(1);
 
                 // Now call `abort` to clean up their resources:
