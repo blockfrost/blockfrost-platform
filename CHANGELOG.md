@@ -2,6 +2,7 @@
 
 ### Added
 
+- Header `blockfrost-platform-response` in `tx_submit` endpoint
 - Add `aarch64-linux` builds to release artifacts and installers.
 
 ### Fixed
