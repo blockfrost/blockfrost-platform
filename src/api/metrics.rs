@@ -1,6 +1,6 @@
 use crate::BlockfrostError;
 use axum::response::{Extension, IntoResponse};
-use metrics::{describe_counter, describe_gauge, gauge};
+use metrics::{counter, describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
@@ -39,29 +39,29 @@ fn internal_setup() -> Arc<RwLock<PrometheusHandle>> {
     );
     gauge!("cardano_node_connections").set(0);
 
-    describe_gauge!(
+    describe_counter!(
         "cardano_node_connections_initiated",
         "Number of Cardano node N2C connections that have ever been initiated"
     );
-    gauge!("cardano_node_connections_initiated").set(0);
+    counter!("cardano_node_connections_initiated").absolute(0);
 
-    describe_gauge!(
+    describe_counter!(
         "cardano_node_connections_failed",
         "Number of Cardano node N2C connections that failed and had to be restarted"
     );
-    gauge!("cardano_node_connections_failed").set(0);
+    counter!("cardano_node_connections_failed").absolute(0);
 
-    describe_gauge!(
+    describe_counter!(
         "tx_submit_success",
         "Number of transactions that were successfully submitted"
     );
-    gauge!("tx_submit_success").set(0);
+    counter!("tx_submit_success").absolute(0);
 
-    describe_gauge!(
+    describe_counter!(
         "tx_submit_failure",
         "Number of transactions that were submitted with an error"
     );
-    gauge!("tx_submit_failure").set(0);
+    counter!("tx_submit_failure").absolute(0);
 
     Arc::new(RwLock::new(builder))
 }

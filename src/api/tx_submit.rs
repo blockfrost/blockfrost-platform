@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, NodePool, common::validate_content_type};
 use axum::{Extension, Json, http::HeaderMap, response::IntoResponse};
-use metrics::gauge;
+use metrics::counter;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,
@@ -20,9 +20,9 @@ pub async fn route(
         let response = node.submit_transaction(binary_tx).await;
 
         if response.is_ok() {
-            gauge!("tx_submit_success").increment(1)
+            counter!("tx_submit_success").increment(1)
         } else {
-            gauge!("tx_submit_failure").increment(1)
+            counter!("tx_submit_failure").increment(1)
         }
 
         response
