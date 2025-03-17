@@ -30,6 +30,14 @@ pub async fn build(
     ),
     AppError,
 > {
+    // Setting up the metrics recorder needs to be the very first step before
+    // doing anything that uses metrics, or the initial data will be lost:
+    let metrics = if !config.no_metrics {
+        Some(setup_metrics_recorder())
+    } else {
+        None
+    };
+
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
@@ -45,12 +53,10 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
-    let metrics_enabled = !config.no_metrics;
-
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = {
         let mut rv = Router::new().route("/", get(root::route));
-        if metrics_enabled {
+        if metrics.is_some() {
             rv = rv
                 .route("/metrics", get(crate::api::metrics::route))
                 .route_layer(from_fn(track_http_metrics));
@@ -61,7 +67,7 @@ pub async fn build(
     // API routes that are *only* under the UUID prefix
     let hidden_api_routes = {
         let mut rv = Router::new().route("/tx/submit", post(tx_submit::route));
-        if metrics_enabled {
+        if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));
         }
         rv
@@ -84,8 +90,8 @@ pub async fn build(
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
-        if metrics_enabled {
-            rv = rv.layer(Extension(setup_metrics_recorder()));
+        if let Some(m) = metrics {
+            rv = rv.layer(Extension(m));
         }
         rv
     };
