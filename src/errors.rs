@@ -99,6 +99,12 @@ impl From<pallas_network::facades::Error> for AppError {
     }
 }
 
+impl From<reqwest::header::InvalidHeaderValue> for BlockfrostError {
+    fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
+        BlockfrostError::internal_server_error(format!("Invalid header value: {}", err))
+    }
+}
+
 impl From<TxSubmissionError> for BlockfrostError {
     fn from(err: TxSubmissionError) -> Self {
         BlockfrostError::internal_server_error(format!("Transaction submission error: {}", err))

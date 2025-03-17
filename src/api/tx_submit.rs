@@ -32,10 +32,9 @@ pub async fn route(
 
     let mut response_headers = HeaderMap::new();
 
-    // insert a static header value. Using unwrap is safe here because the literal is known to be a valid header.
     response_headers.insert(
         "blockfrost-platform-response",
-        "HeaderValue".parse().unwrap(),
+        response_body.to_string().parse()?,
     );
 
     Ok((response_headers, Json(response_body)))
