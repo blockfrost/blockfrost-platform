@@ -22,14 +22,14 @@ thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
 num_cpus = "1"
-pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "35990b2a1dcecf8d45801a9bb8a3514fda1482eb" }
+pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "35c7b4049d22cdeb866d9f208a70622c1b41c16a" }
 
 reqwest = "0.12.12"
 hex = "0.4.3"
