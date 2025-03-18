@@ -19,7 +19,7 @@ done
 ```
 
 */
-
+#[cfg(not(feature = "tarpaulin"))]
 use super::verify_one;
 
 #[tokio::test]

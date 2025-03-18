@@ -1,3 +1,4 @@
+#[cfg(not(feature = "tarpaulin"))]
 use super::*;
 
 #[test]
@@ -180,6 +181,7 @@ fn proptest_ApplyTxErr_Conway_size_300() {
 ///     | sed  -r 's/^For size ([0-9]+): ([0-9]+) out of ([0-9]+) .*$/\1\t\2\t\3/g' \
 ///     | sort -n
 /// ```
+#[cfg(not(feature = "tarpaulin"))]
 fn proptest_with_params(
     case_type: CaseType,
     num_cases: u32,
@@ -208,6 +210,7 @@ fn proptest_with_params(
     })
 }
 
+#[cfg(not(feature = "tarpaulin"))]
 fn decode_error(bytes: &[u8]) -> TxValidationError {
     use pallas_codec::minicbor;
 
