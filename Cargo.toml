@@ -47,6 +47,9 @@ dirs = "5.0"
 inquire = "0.7.5"
 anyhow = "1.0.95"
 
+[features]
+tarpaulin = []
+
 [dev-dependencies]
 tracing-test = "0.2.5"
 rstest = "0.24.0"

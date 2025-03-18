@@ -321,6 +321,7 @@ mod tests {
     use super::*;
     #[tokio::test]
     //#[tracing_test::traced_test]
+    #[cfg(not(feature = "tarpaulin"))]
     async fn test_fallback_decoder() {
         let decoder = FallbackDecoder::spawn().unwrap();
 

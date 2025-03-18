@@ -51,3 +51,4 @@ testgen-hs
 # Ignore coverage files
 build_rs_cov.profraw
 cobertura.xml
+tarpaulin-report.html
