@@ -64,7 +64,13 @@ mod tests {
 
     proptest! {
         #[test]
-        fn proptest_binary_or_hex_heuristic(binary in prop::collection::vec(any::<u8>(), 0..=128)) {
+        fn proptest_binary_or_hex_heuristic(
+            binary in prop::collection::vec(any::<u8>(), 0..=128)
+                .prop_filter("exclude values made up only of hex digits", |xs| {
+                    let contains_non_hex = xs.iter().any(|&x| !x.is_ascii_hexdigit());
+                    contains_non_hex
+                })
+        ) {
             let hex_string = hex::encode(&binary);
             assert_eq!(
                 binary_or_hex_heuristic(hex_string.as_bytes()),
