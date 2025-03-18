@@ -15,6 +15,13 @@ async fn main() -> Result<(), AppError> {
     // Logging
     setup_tracing(config.log_level);
 
+    info!(
+        "Starting {} {} ({})",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        env!("GIT_REVISION")
+    );
+
     let (app, _, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
     let address = std::net::SocketAddr::new(config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(address).await?;
