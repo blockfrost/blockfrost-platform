@@ -79,7 +79,39 @@ mod tests {
 
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
-    async fn test_route_submit() {
+    async fn test_route_submit_cbor_error() {
+        initialize_logging();
+        let (app, _, _, _) = build_app().await.expect("Failed to build the application");
+
+        let tx = "AAAAAA";
+
+        // Local (Platform)
+        let local_request = Request::builder()
+            .method(Method::POST)
+            .uri("/tx/submit")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx))
+            .unwrap();
+
+        let local_response = app
+            .oneshot(local_request)
+            .await
+            .expect("Request to /tx/submit failed");
+
+        let local_body_bytes = to_bytes(local_response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        let local_body_str = String::from_utf8(local_body_bytes.to_vec())
+            .expect("Failed to convert bytes to string");
+
+        let expected = r#"{"error":"Bad Request","message":"{\"tag\":\"TxSubmitFail\",\"contents\":{\"tag\":\"TxCmdTxReadError\",\"contents\":[\"DecoderErrorDeserialiseFailure \\\"Shelley Tx\\\" (DeserialiseFailure 0 (\\\"unexpected type map at position 0: expected array\\\"))\"]}}","status_code":400}"#;
+        assert_eq!(expected, &local_body_str);
+    }
+
+    // Test: `/tx/submit` error has same response as blockfrost API
+    #[tokio::test]
+    async fn test_route_submit_error() {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
 
@@ -122,7 +154,7 @@ mod tests {
 
     // Test: build `/tx/submit` success - tx is accepted by the node
     #[tokio::test]
-    async fn test_submit_route_success() {
+    async fn test_route_submit_success() {
         initialize_logging();
         let (app, _, _, _) = build_app().await.expect("Failed to build the application");
         let blockfrost_client = get_blockfrost_client();
