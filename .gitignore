@@ -47,3 +47,8 @@ testgen-hs.exe
 testgen-hs
 
 *.log
+
+# Ignore coverage files
+build_rs_cov.profraw
+cobertura.xml
+tarpaulin-report.html

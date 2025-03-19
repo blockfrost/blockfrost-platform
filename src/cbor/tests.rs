@@ -1,10 +1,16 @@
+#[cfg(not(feature = "tarpaulin"))]
 use super::fallback_decoder::FallbackDecoder;
+#[cfg(not(feature = "tarpaulin"))]
 use num_cpus;
+
+#[cfg(not(feature = "tarpaulin"))]
 use pallas_hardano::display::haskell_error::serialize_error;
 use serde::Deserialize;
 use std::process::Command;
 
+#[cfg(not(feature = "tarpaulin"))]
 mod random;
+#[cfg(not(feature = "tarpaulin"))]
 mod specific;
 
 #[derive(Deserialize, Debug)]
@@ -159,7 +165,7 @@ pub fn check_generated_cases<F>(
         }
     });
 }
-
+#[cfg(not(feature = "tarpaulin"))]
 macro_rules! assert_json_eq {
     ($left:expr, $right:expr) => {
         if $left != $right {
@@ -176,11 +182,12 @@ macro_rules! assert_json_eq {
         }
     };
 }
-
+#[cfg(not(feature = "tarpaulin"))]
 pub(crate) use assert_json_eq; // export it
 
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
+#[cfg(not(feature = "tarpaulin"))]
 async fn verify_one(cbor: &str) {
     let cbor = hex::decode(cbor).unwrap();
     let reference_json = FallbackDecoder::instance().decode(&cbor).await.unwrap();
@@ -190,10 +197,11 @@ async fn verify_one(cbor: &str) {
     let our_json = serialize_error(our_decoding);
     assert_json_eq!(reference_json, our_json)
 }
-
+#[cfg(not(feature = "tarpaulin"))]
 use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
 
 #[cfg(test)]
+#[cfg(not(feature = "tarpaulin"))]
 fn decode_error(cbor: &[u8]) -> TxValidationError {
     use pallas_codec::minicbor;
 

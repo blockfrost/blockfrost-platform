@@ -42,6 +42,7 @@ in {
     }
     {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
+    {package = pkgs.cargo-tarpaulin;}
     {package = pkgs.rust-analyzer;}
     {
       category = "handy";

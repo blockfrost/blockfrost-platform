@@ -16,7 +16,6 @@ idx=1; for f in *.json ; do
   idx=$((idx + 1))
 done
 ```
-
 */
 
 use super::verify_one;
