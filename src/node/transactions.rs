@@ -37,16 +37,23 @@ impl NodeClient {
         // Submit the transaction
         match submission_client.submit_tx(era_tx).await {
             Ok(Response::Accepted) => {
-                info!("Transaction accepted by the node {}", txid);
+                info!(
+                    "N2C[{}]: Transaction accepted by the node: {}",
+                    self.connection_id, txid
+                );
                 Ok(txid)
             },
             Ok(Response::Rejected(reason)) => {
                 let haskell_display = as_node_submit_error(reason);
-                info!("{}: {:?}", "TxSubmitFail", haskell_display);
+                info!(
+                    "N2C[{}]: {}: {:?}",
+                    self.connection_id, "TxSubmitFail", haskell_display
+                );
                 Err(BlockfrostError::custom_400(haskell_display))
             },
             Err(e) => {
                 let error_message = format!("Error during transaction submission: {:?}", e);
+                self.invalidate_connection(&error_message); // Never use this connection again.
                 Err(BlockfrostError::custom_400(error_message))
             },
         }
