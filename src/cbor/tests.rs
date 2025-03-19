@@ -2,12 +2,15 @@
 use super::fallback_decoder::FallbackDecoder;
 #[cfg(not(feature = "tarpaulin"))]
 use num_cpus;
+
 #[cfg(not(feature = "tarpaulin"))]
 use pallas_hardano::display::haskell_error::serialize_error;
 use serde::Deserialize;
 use std::process::Command;
 
+#[cfg(not(feature = "tarpaulin"))]
 mod random;
+#[cfg(not(feature = "tarpaulin"))]
 mod specific;
 
 #[derive(Deserialize, Debug)]
