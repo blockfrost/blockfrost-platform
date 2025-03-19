@@ -7,7 +7,6 @@
 
 ### Fixed
 
-- Invalidate N2C connections on more serious errors
 - Node connection metrics inconsistency caused by an initialization timing issue.
 - Configure local IP address to bind to with `std::net` types.
 
