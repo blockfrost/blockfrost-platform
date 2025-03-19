@@ -8,8 +8,7 @@ idx=1; for f in *.json ; do
   cbor=$(jq -r '.testCases[0].cbor' "$f")
   numb=$(printf '%04d' "$idx")
   echo '#[tokio::test]'
-  echo '#[allow(non_snake_case)]
-  '
+  echo '#[allow(non_snake_case)]'
   echo 'async fn test_cbor_'"$numb"'_'"$symb"'() {'
   echo '    verify_one("'"$cbor"'").await'
   echo '}'
@@ -17,8 +16,8 @@ idx=1; for f in *.json ; do
   idx=$((idx + 1))
 done
 ```
-
 */
+
 use super::verify_one;
 
 #[tokio::test]
