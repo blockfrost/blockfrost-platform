@@ -7,7 +7,7 @@ use pallas_network::miniprotocols::{
     localtxsubmission::{EraTx, Response},
 };
 use pallas_primitives::conway::Tx;
-use tracing::{debug, info};
+use tracing::{error, info};
 
 impl NodeClient {
     /// Submits a transaction to the connected Cardano node.
@@ -19,8 +19,6 @@ impl NodeClient {
     pub async fn submit_transaction(&mut self, tx: Vec<u8>) -> Result<String, BlockfrostError> {
         Self::assert_valid_tx_cbor(&tx)?;
 
-        let txid = hex::encode(Hasher::<256>::hash_cbor(&tx));
-
         let current_era = self
             .with_statequery(|generic_client: &mut localstate::GenericClient| {
                 Box::pin(async {
@@ -29,7 +27,7 @@ impl NodeClient {
             })
             .await?;
 
-        let era_tx = EraTx(current_era, tx);
+        let era_tx = EraTx(current_era, tx.clone());
 
         // Connect to the node
         let submission_client = self.client.as_mut().unwrap().submission();
@@ -37,6 +35,8 @@ impl NodeClient {
         // Submit the transaction
         match submission_client.submit_tx(era_tx).await {
             Ok(Response::Accepted) => {
+                let txid = hex::encode(Hasher::<256>::hash_cbor(&tx));
+
                 info!(
                     "N2C[{}]: Transaction accepted by the node: {}",
                     self.connection_id, txid
@@ -46,14 +46,28 @@ impl NodeClient {
             Ok(Response::Rejected(reason)) => {
                 let haskell_display = as_node_submit_error(reason);
                 info!(
-                    "N2C[{}]: {}: {:?}",
-                    self.connection_id, "TxSubmitFail", haskell_display
+                    "N2C[{}]: {}: {}, CBOR: {}",
+                    self.connection_id,
+                    "TxSubmitFail",
+                    haskell_display,
+                    hex::encode(&tx)
                 );
                 Err(BlockfrostError::custom_400(haskell_display))
             },
             Err(e) => {
-                let error_message = format!("Error during transaction submission: {:?}", e);
+                let error_message = format!(
+                    "Error during transaction submission: {:?}, CBOR: {}",
+                    e,
+                    hex::encode(&tx)
+                );
                 self.invalidate_connection(&error_message); // Never use this connection again.
+                error!(
+                    "{}: {}, CBOR: {}",
+                    "TxSubmitFail",
+                    error_message,
+                    hex::encode(&tx)
+                );
+
                 Err(BlockfrostError::custom_400(error_message))
             },
         }
@@ -63,7 +77,11 @@ impl NodeClient {
         match pallas_codec::minicbor::decode::<Tx>(tx) {
             Ok(_) => Ok(()),
             Err(e) => {
-                debug!("Invalid TX CBOR submitted: {:?}", e);
+                info!(
+                    "Invalid TX CBOR submitted: {:?}, CBOR: {}",
+                    e,
+                    hex::encode(tx)
+                );
                 Err(BlockfrostError::custom_400(as_cbor_decode_failure(
                     e.to_string(),
                     e.position().unwrap_or(0) as u64,
