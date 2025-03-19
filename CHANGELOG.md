@@ -7,6 +7,7 @@
 
 ### Fixed
 
+- Node connections are now invalidated on unexpected transaction submission errors.
 - Node connection metrics inconsistency caused by an initialization timing issue.
 - Configure local IP address to bind to with `std::net` types.
 
