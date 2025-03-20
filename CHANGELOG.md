@@ -1,5 +1,7 @@
 ## Unreleased
 
+## [0.0.2] - 2025-03-20
+
 ### Added
 
 - Expose process metrics (memory, CPU time, fds, threads)
