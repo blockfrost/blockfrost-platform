@@ -10,11 +10,11 @@ export const metadata = {
   title: {
     template: "%s - Documentation",
   },
-  description: "Documentation for Blockfrost Platform",
-  applicationName: "Blockfrost Platform",
+  description: "Blockfrost platform",
+  applicationName: "Blockfrost platform",
   generator: "Next.js",
   appleWebApp: {
-    title: "Blockfrost Platform",
+    title: "Blockfrost platform",
   },
   discord: {
     site: "https://discord.gg/inputoutput",
@@ -47,10 +47,10 @@ export default async function RootLayout({ children }) {
         <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Blockfrost Platform Documentation</title>
-        <meta name="title" content="Blockfrost Platform Documentation" />
+        <meta name="title" content="Blockfrost platform documentation" />
         <meta
           name="description"
-          content="Documentation for Blockfrost Platform. The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint, offering deployment options to join the fleet or run independently."
+          content="Documentation for Blockfrost platform. The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint, offering deployment options to join the fleet or run independently."
         />
         <meta
           name="keywords"
@@ -61,7 +61,7 @@ export default async function RootLayout({ children }) {
         <meta property="og:title" content="Blockfrost Platform Documentation" />
         <meta
           property="og:description"
-          content="Transform your Cardano node infrastructure into a high-performance JSON API endpoint with Blockfrost. Learn about deployment options to join the fleet or run independently."
+          content="Documentation for Blockfrost platform. The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint, offering deployment options to join the fleet or run independently."
         />
         <meta
           property="og:image"
@@ -71,11 +71,11 @@ export default async function RootLayout({ children }) {
         <meta name="twitter:url" content="https://platform.blockfrost.io/" />
         <meta
           name="twitter:title"
-          content="Blockfrost Platform Documentation"
+          content="Blockfrost platform documentation"
         />
         <meta
           name="twitter:description"
-          content="Transform your Cardano node infrastructure into a high-performance JSON API endpoint with Blockfrost. Learn about deployment options to join the fleet or run independently."
+          content="Documentation for Blockfrost platform. The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint, offering deployment options to join the fleet or run independently."
         />
         <meta
           name="twitter:image"
