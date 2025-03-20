@@ -38,6 +38,18 @@ pub async fn build(
         None
     };
 
+    // Export process metrics (memory, CPU time, fds, threads):
+    if metrics.is_some() {
+        tokio::spawn(async {
+            let collector = metrics_process::Collector::default();
+            collector.describe();
+            loop {
+                collector.collect();
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await
+            }
+        });
+    }
+
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
