@@ -10,7 +10,7 @@ export const metadata = {
   title: {
     template: "%s - Documentation",
   },
-  description: "Blockfrost platform",
+  description: "Documentation for Blockfrost platform",
   applicationName: "Blockfrost platform",
   generator: "Next.js",
   appleWebApp: {
