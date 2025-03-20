@@ -2,6 +2,10 @@
 
 ## [0.0.2] - 2025-03-20
 
+### Changed
+
+- Enable metrics endpoint by default
+
 ### Added
 
 - Expose process metrics (memory, CPU time, fds, threads)
