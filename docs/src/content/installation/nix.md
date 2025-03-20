@@ -7,7 +7,6 @@ If you are using Nix, building `blockfrost-platform` is straightforward.
 nix build github:blockfrost/blockfrost-platform
 
 # To build a release version (recommended)
-# NOTE: this option will be available after the first release
 nix build github:blockfrost/blockfrost-platform/0.0.2
 ```
 
