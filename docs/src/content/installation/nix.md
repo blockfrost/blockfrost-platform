@@ -24,5 +24,5 @@ Usage section of this documentation.
 
 ```bash
 $ ./result/bin/blockfrost-platform --version
-blockfrost-platform 0.0.2 (0000000000000000000000000000000000000000)
+blockfrost-platform 0.0.2 (e06029b9da747fa5daa027605a918fc9fe103b7c)
 ```
