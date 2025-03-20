@@ -21,24 +21,29 @@ in
 
     src = craneLib.cleanCargoSource ../../.;
 
-    commonArgs = {
-      inherit src;
-      strictDeps = true;
-      nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
-        pkgs.pkg-config
-      ];
-      TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
-      buildInputs =
-        lib.optionals pkgs.stdenv.isLinux [
-          pkgs.openssl
-        ]
-        ++ lib.optionals pkgs.stdenv.isDarwin [
-          pkgs.libiconv
-          pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-          pkgs.darwin.apple_sdk_12_3.frameworks.Security
-          pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+    commonArgs =
+      {
+        inherit src;
+        strictDeps = true;
+        nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
+          pkgs.pkg-config
         ];
-    };
+        TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
+        buildInputs =
+          lib.optionals pkgs.stdenv.isLinux [
+            pkgs.openssl
+          ]
+          ++ lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.libiconv
+            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
+            pkgs.darwin.apple_sdk_12_3.frameworks.Security
+            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+          ];
+      }
+      // lib.optionalAttrs pkgs.stdenv.isDarwin {
+        # for bindgen, used by libproc, used by metrics_process
+        LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+      };
 
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;

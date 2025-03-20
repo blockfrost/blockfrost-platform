@@ -83,12 +83,19 @@ in {
     You can now run ‘{bold}cargo run{reset}’.
   '';
 
-  env = [
-    {
-      name = "TESTGEN_HS_PATH";
-      value = lib.getExe internal.testgen-hs;
-    }
-  ];
+  env =
+    [
+      {
+        name = "TESTGEN_HS_PATH";
+        value = lib.getExe internal.testgen-hs;
+      }
+    ]
+    ++ lib.optionals pkgs.stdenv.isDarwin [
+      {
+        name = "LIBCLANG_PATH";
+        value = internal.commonArgs.LIBCLANG_PATH;
+      }
+    ];
 
   devshell.startup.symlink-configs.text = ''
     ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
