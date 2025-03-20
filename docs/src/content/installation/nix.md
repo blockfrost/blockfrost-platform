@@ -8,7 +8,7 @@ nix build github:blockfrost/blockfrost-platform
 
 # To build a release version (recommended)
 # NOTE: this option will be available after the first release
-nix build github:blockfrost/blockfrost-platform/0.0.1
+nix build github:blockfrost/blockfrost-platform/0.0.2
 ```
 
 To make the builds much faster, it’s worth adding the IOG binary cache to your Nix configuration (`/etc/nix/nix.conf`):
@@ -24,5 +24,5 @@ Usage section of this documentation.
 
 ```bash
 $ ./result/bin/blockfrost-platform --version
-blockfrost-platform 0.0.1
+blockfrost-platform 0.0.2 (0000000000000000000000000000000000000000)
 ```
