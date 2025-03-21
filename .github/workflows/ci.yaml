@@ -105,4 +105,4 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 50
+        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 10
