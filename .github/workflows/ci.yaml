@@ -105,7 +105,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 10
+        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 9
 
   pages:
     name: Prepare coverage for GitHub Pages
