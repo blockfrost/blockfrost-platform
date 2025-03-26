@@ -80,9 +80,13 @@ This UUID is critical for accessing endpoints:
 
 ### Example log entry showing UUID
 
+```
 INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
 
-Make a note of this UUID as you'll need it for subsequent verification steps.
+You would need this UUID for things like your own manual transaction submission tests.
+Otherwise, it’s an implementation detail.
 Remember that this changes every time you restart the service.
 
 ### Metrics endpoint verification
@@ -90,10 +94,9 @@ Remember that this changes every time you restart the service.
 Check if your service is properly reporting metrics:
 
 ```shell
-wget http://your-server-ip:3000/3fa85f64-5717-4562-b3fc-2c963f66afa6/metrics
+wget http://your-server-ip:3000/metrics
 ```
 
-Replace the UUID in the URL with your current instance ID.
 If functioning properly, this endpoint provides:
 
 - API calls served count
@@ -102,6 +105,26 @@ If functioning properly, this endpoint provides:
 
 Note: The metrics endpoint may require the latest binary.
 If you receive a 500 error, update your installation.
+
+### Health endpoint verification
+
+Check if your service is up and running by calling the health endpoint:
+
+```shell
+wget http://your-server-ip:3000/
+```
+
+If working properly, this endpoint will return JSON with service status details such as:
+
+- Application name
+- Current release version
+- Revision (Git commit hash)
+- Boolean indicating overall health (`healthy`)
+- Block, epoch, era, slot, and sync progress info
+- Array listing any issues detected
+
+If `healthy` is true, the service is operational.
+If you get a 503 error or if `healthy` is false, check your logs or update your installation to resolve potential issues.
 
 ## Grafana dashboard monitoring
 
