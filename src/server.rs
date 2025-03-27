@@ -53,7 +53,7 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
-    let health_monitor = health_monitor::spawn(node_conn_pool.clone()).await;
+    let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 
     // Build a prefix
     let api_prefix = if config.icebreakers_config.is_some() {
