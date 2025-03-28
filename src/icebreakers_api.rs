@@ -1,6 +1,8 @@
 use crate::{
     cli::{Config, Network},
     errors::AppError,
+    load_balancer::LoadBalancerConfig,
+    server::ApiPrefix,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -16,7 +18,7 @@ pub struct IcebreakersAPI {
     mode: String,
     port: u16,
     reward_address: String,
-    api_prefix: String,
+    api_prefix: ApiPrefix,
 }
 
 #[derive(Deserialize)]
@@ -28,11 +30,26 @@ struct ErrorResponse {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SuccessResponse {
     pub route: String,
+    /// Experimental: a list of WebSocket URIs and access tokens that the
+    /// `blockfrost-platform` should connect to. Blockfrost.io request and
+    /// responses, as well as network reconfiguration requests (in the future)
+    /// will be will be passed to the `blockfrost-platform` over the socket(s),
+    /// eventually eliminating the need for each relay to expose a public
+    /// routable port, and making network configuration on their side much
+    /// easier. We keep the previous setup and backwards compatibility, and just
+    /// observe this experiment.
+    ///
+    /// It has to temporarily be an option, to keep compatibility with the older
+    /// IceBreakers API.
+    pub load_balancers: Option<Vec<LoadBalancerConfig>>,
 }
 
 impl IcebreakersAPI {
     /// Creates a new `IcebreakersAPI` instance or logs a warning if not configured
-    pub async fn new(config: &Config, api_prefix: String) -> Result<Option<Arc<Self>>, AppError> {
+    pub async fn new(
+        config: &Config,
+        api_prefix: ApiPrefix,
+    ) -> Result<Option<Arc<Self>>, AppError> {
         let api_url = match config.network {
             Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
             Network::Mainnet => "https://icebreakers-api.blockfrost.io",
@@ -88,7 +105,7 @@ impl IcebreakersAPI {
             "mode": self.mode,
             "port": self.port,
             "reward_address": self.reward_address,
-            "api_prefix": self.api_prefix.strip_prefix("/"),
+            "api_prefix": self.api_prefix.0.unwrap_or_default(),
         });
 
         let response = self
@@ -105,6 +122,34 @@ impl IcebreakersAPI {
             })?;
 
             info!("Successfully registered with Icebreakers API.");
+
+            // In case we get a URI without a protocol (http: or https: or ws: or wss:):
+            let fallback_proto = if self.base_url.starts_with("https:") {
+                "wss:"
+            } else {
+                "ws:"
+            };
+
+            let success_response = SuccessResponse {
+                load_balancers: Some(
+                    success_response
+                        .load_balancers
+                        .into_iter()
+                        .flatten()
+                        .map(|lb| {
+                            if lb.uri.starts_with("//") {
+                                LoadBalancerConfig {
+                                    uri: format!("{}{}", fallback_proto, lb.uri),
+                                    ..lb
+                                }
+                            } else {
+                                lb
+                            }
+                        })
+                        .collect(),
+                ),
+                ..success_response
+            };
 
             Ok(success_response)
         } else {
