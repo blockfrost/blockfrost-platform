@@ -114,8 +114,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
       - name: Configure Pages
         uses: actions/configure-pages@v3
+
       - name: Upload coverage folder
         uses: actions/upload-pages-artifact@v3
         with:
