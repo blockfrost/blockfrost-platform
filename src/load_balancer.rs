@@ -9,9 +9,9 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 const ACCESS_TOKEN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
-const MAX_BODY_BYTES: usize = 1 * 1024 * 1024;
-const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1 * 60);
-const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1 * 15);
+const MAX_BODY_BYTES: usize = 1024 * 1024;
+const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccessToken(String);
@@ -42,6 +42,7 @@ struct JsonHeader {
     value: String,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Serialize, Deserialize, Debug)]
 enum JsonRequestMethod {
     GET,
@@ -248,7 +249,7 @@ pub mod api {
             rv.insert(
                 relay_state.name.clone(),
                 RelayStats {
-                    api_prefix: api_prefix.clone(),
+                    api_prefix: *api_prefix,
                     network_rtt_seconds: relay_state.network_rtt.lock().await.map(|a| a.as_secs_f64()),
                     connected_since: now_chrono - (now_instant - relay_state.connected_since),
                     requests_sent: relay_state.requests_sent.load(atomic::Ordering::SeqCst),
@@ -432,7 +433,10 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRequest(request) => {
-                    if let Err(_) = pass_on_request(request, &relay_state, &asset_name, &mut socket_tx).await {
+                    if pass_on_request(request, &relay_state, asset_name, &mut socket_tx)
+                        .await
+                        .is_err()
+                    {
                         break 'event_loop;
                     }
                 },
@@ -442,12 +446,13 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Ping(ping_id)) => {
-                    if let Err(_) = send_json_msg(
+                    if send_json_msg(
                         &mut socket_tx,
                         &LoadBalancerMessage::Pong(ping_id),
                         asset_name,
                     )
                     .await
+                    .is_err()
                     {
                         break 'event_loop;
                     }
@@ -474,12 +479,13 @@ pub mod event_loop {
                         // Time to send a new ping:
                         last_ping_id += 1;
                         last_ping_sent_at = Some(std::time::Instant::now());
-                        if let Err(_) = send_json_msg(
+                        if send_json_msg(
                             &mut socket_tx,
                             &LoadBalancerMessage::Ping(last_ping_id),
                             asset_name,
                         )
                         .await
+                        .is_err()
                         {
                             break 'event_loop;
                         }
@@ -627,7 +633,7 @@ pub mod event_loop {
         let (tx, mut rx) = mpsc::channel(64);
         let task = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
-                if let Err(_) = event_tx.send(LBEvent::NewRequest(msg)).await {
+                if event_tx.send(LBEvent::NewRequest(msg)).await.is_err() {
                     break;
                 }
             }
@@ -640,7 +646,7 @@ pub mod event_loop {
         let (tx, mut rx) = mpsc::channel(64);
         let task = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
-                if let Err(_) = event_tx.send(LBEvent::Finish(msg)).await {
+                if event_tx.send(LBEvent::Finish(msg)).await.is_err() {
                     break;
                 }
             }
@@ -662,7 +668,7 @@ pub mod event_loop {
                     Message::Text(text) => {
                         match serde_json::from_str::<RelayMessage>(&text) {
                             Ok(msg) => {
-                                if let Err(_) = event_tx.send(LBEvent::NewRelayMessage(msg)).await {
+                                if event_tx.send(LBEvent::NewRelayMessage(msg)).await.is_err() {
                                     break;
                                 }
                             },

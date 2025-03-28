@@ -149,7 +149,7 @@ pub async fn route(
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: payload.api_prefix.clone(),
+        route: payload.api_prefix,
         load_balancers: vec![LoadBalancer {
             // We can’t know if it’s HTTPS or HTTP here, so we have to count on `blockfrost-platform`:
             uri: format!("//{}/ws", our_host),
