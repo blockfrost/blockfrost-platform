@@ -119,7 +119,7 @@ jobs:
         uses: actions/configure-pages@v3
 
       - name: Upload coverage folder
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
           path: coverage
 
