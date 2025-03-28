@@ -3,6 +3,7 @@ mod blockfrost;
 mod config;
 mod db;
 mod errors;
+mod load_balancer;
 mod models;
 mod payload;
 mod schema;
@@ -39,10 +40,26 @@ async fn main() {
 
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
+    let load_balancer = load_balancer::LoadBalancerState::new().await;
 
     let app = Router::new()
         .route("/", get(root::route))
         .route("/register", post(register::route))
+        .route("/ws", get(load_balancer::api::websocket_route))
+        .route("/stats", get(load_balancer::api::stats_route))
+        .route(
+            "/:uuid",
+            axum::routing::any(load_balancer::api::prefix_route_root),
+        )
+        .route(
+            "/:uuid/",
+            axum::routing::any(load_balancer::api::prefix_route_root),
+        )
+        .route(
+            "/:uuid/*rest",
+            axum::routing::any(load_balancer::api::prefix_route),
+        )
+        .layer(Extension(load_balancer))
         .layer(Extension(config.clone()))
         .layer(Extension(pool))
         .layer(Extension(blockfrost_api));

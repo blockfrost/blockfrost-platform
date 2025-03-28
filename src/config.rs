@@ -13,9 +13,6 @@ use tracing::Level;
 pub struct Args {
     #[arg(short, long, value_name = "FILE")]
     pub config: PathBuf,
-
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
 }
 
 #[derive(Debug, Deserialize, Clone)]

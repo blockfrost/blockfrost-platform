@@ -1,5 +1,6 @@
 use crate::errors::APIError;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI as bf_sdk};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct BlockfrostAPI {
@@ -7,8 +8,16 @@ pub struct BlockfrostAPI {
     policy_id_size: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct AssetName(String);
+impl AssetName {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 pub struct Asset {
-    pub asset_name: String,
+    pub asset_name: AssetName,
 }
 
 impl BlockfrostAPI {
@@ -33,7 +42,7 @@ impl BlockfrostAPI {
         let decoded =
             hex::decode(asset_hex).map_err(|err| APIError::License(format!("Hex decoding failed: {}", err)))?;
 
-        let asset_name = String::from_utf8_lossy(&decoded).to_string();
+        let asset_name = AssetName(String::from_utf8_lossy(&decoded).to_string());
 
         Ok(Asset { asset_name })
     }
