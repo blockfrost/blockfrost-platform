@@ -1,8 +1,10 @@
-use axum::{ServiceExt, extract::Request};
-use blockfrost_platform::{cli::Args, errors::AppError, logging::setup_tracing, server::build};
+use blockfrost_platform::{
+    cli::Args, errors::AppError, load_balancer, logging::setup_tracing, server::build,
+};
 use dotenvy::dotenv;
-use tokio::{signal, sync::oneshot};
-use tracing::info;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -22,36 +24,77 @@ async fn main() -> Result<(), AppError> {
         env!("GIT_REVISION")
     );
 
-    let (app, _, icebreakers_api, api_prefix) = build(config.clone().into()).await?;
+    let (app, _, health_monitor, icebreakers_api, api_prefix) =
+        build(config.clone().into()).await?;
+
     let address = std::net::SocketAddr::new(config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(address).await?;
-    let (ready_tx, ready_rx) = oneshot::channel();
     let shutdown_signal = async {
-        let _ = signal::ctrl_c().await;
+        let _ = tokio::signal::ctrl_c().await;
         info!("Received shutdown signal");
     };
 
+    let notify_server_ready = Arc::new(tokio::sync::Notify::new());
+
     // Spawn the server in its own task
     let spawn_task = tokio::spawn({
-        let app = app;
+        let notify_server_ready = notify_server_ready.clone();
+        let app = app.clone();
         async move {
-            let server_future =
-                axum::serve(listener, ServiceExt::<Request>::into_make_service(app))
-                    .with_graceful_shutdown(shutdown_signal);
+            let server_future = axum::serve(listener, app.into_make_service())
+                .with_graceful_shutdown(shutdown_signal);
 
             // Notify that the server has reached the listening stage
-            let _ = ready_tx.send(());
+            notify_server_ready.notify_one();
 
             server_future.await
         }
     });
 
-    if let Ok(()) = ready_rx.await {
-        info!("Server is listening on http://{}{}", address, api_prefix);
+    notify_server_ready.notified().await;
 
-        if let Some(icebreakers_api) = &icebreakers_api {
-            icebreakers_api.register().await?;
-        }
+    info!("Server is listening on http://{}{}", address, api_prefix);
+
+    // IceBreakers registration and the load balancer task.
+    //
+    // Whenever a single load balancer connection breaks, we drop all of them,
+    // and re-register to get a new set of access tokens. It’s complicated by
+    // our want to to specify _multiple_ load balancer endpoints in the future,
+    // so it’s best to have future-compatibility in the messaging now.
+    if let Some(icebreakers_api) = icebreakers_api {
+        let health_errors = Arc::new(Mutex::new(vec![]));
+        health_monitor
+            .register_error_source(health_errors.clone())
+            .await;
+
+        tokio::spawn(async move {
+            loop {
+                match icebreakers_api.register().await {
+                    Ok(response) => {
+                        load_balancer::run_all(
+                            response.load_balancers.into_iter().flatten().collect(),
+                            app.clone(),
+                            health_errors.clone(),
+                            api_prefix.clone(),
+                        )
+                        .await;
+
+                        let delay = std::time::Duration::from_secs(1);
+                        info!("IceBreakers: will re-register in {:?}", delay);
+                        tokio::time::sleep(delay).await;
+                    },
+                    Err(err) => {
+                        let delay = std::time::Duration::from_secs(10);
+                        error!(
+                            "IceBreakers registration failed: {}, will re-register in {:?}",
+                            err, delay
+                        );
+                        *health_errors.lock().await = vec![err.into()];
+                        tokio::time::sleep(delay).await;
+                    },
+                };
+            }
+        });
     }
 
     spawn_task
