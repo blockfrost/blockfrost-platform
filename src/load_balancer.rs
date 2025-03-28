@@ -16,12 +16,12 @@ pub struct LoadBalancerConfig {
 
 /// It’s slightly less than on the server side to desynchronize
 /// [`LoadBalancerMessage::Ping`] with [`RelayMessage::Ping`]:.
-const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1 * 13);
+const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(13);
 
 /// How long we allow Axum to work on a [`JsonRequest`].
-const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1 * 60);
+const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
-const MAX_BODY_BYTES: usize = 1 * 1024 * 1024;
+const MAX_BODY_BYTES: usize = 1024 * 1024;
 
 /// Whenever a single load balancer connection breaks, we abort all of them.
 /// This logic will have to be better once we actually use more than a single
@@ -103,6 +103,7 @@ struct JsonHeader {
     value: String,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Serialize, Deserialize, Debug)]
 enum JsonRequestMethod {
     GET,
@@ -237,12 +238,13 @@ mod event_loop {
                         // Time to send a new ping:
                         last_ping_id += 1;
                         last_ping_sent_at = Some(std::time::Instant::now());
-                        if let Err(_) = send_json_msg(
+                        if send_json_msg(
                             &mut socket_tx,
                             &LoadBalancerMessage::Ping(last_ping_id),
                             &config,
                         )
                         .await
+                        .is_err()
                         {
                             break 'event_loop;
                         }
@@ -332,7 +334,7 @@ mod event_loop {
         >,
         config: LoadBalancerConfig,
     ) -> JoinHandle<()> {
-        let task = tokio::spawn(async move {
+        tokio::spawn(async move {
             'read_loop: loop {
                 match socket_rx.next().await {
                     None => {
@@ -368,8 +370,10 @@ mod event_loop {
                     Some(Ok(Message::Text(text))) => {
                         match serde_json::from_str::<LoadBalancerMessage>(&text) {
                             Ok(msg) => {
-                                if let Err(_) =
-                                    event_tx.send(LBEvent::NewLoadBalancerMessage(msg)).await
+                                if event_tx
+                                    .send(LBEvent::NewLoadBalancerMessage(msg))
+                                    .await
+                                    .is_err()
                                 {
                                     break 'read_loop;
                                 }
@@ -382,8 +386,7 @@ mod event_loop {
                     },
                 }
             }
-        });
-        task
+        })
     }
 
     /// Passes one [`JsonRequest`] through our underlying original HTTP server.
