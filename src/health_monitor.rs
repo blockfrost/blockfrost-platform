@@ -32,6 +32,11 @@ impl HealthMonitor {
         }
     }
 
+    /// Gets the number of currently happening errors for Prometheus metrics.
+    pub async fn num_errors(&self) -> u32 {
+        Self::collect_errors(&self.sources.lock().await).await.len() as u32
+    }
+
     /// Collect errors across multiple sources.
     async fn collect_errors(sources: &[Arc<Mutex<Vec<BlockfrostError>>>]) -> Vec<BlockfrostError> {
         let mut errors = vec![];
