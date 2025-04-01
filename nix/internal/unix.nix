@@ -2,7 +2,7 @@
   inputs,
   targetSystem,
 }:
-assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"]; let
+assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
@@ -61,7 +61,7 @@ in
       });
 
     # We use a newer `rustfmt`:
-    rustfmt = inputs.fenix.packages.${pkgs.system}.stable.rustfmt;
+    inherit (inputs.fenix.packages.${pkgs.system}.stable) rustfmt;
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs

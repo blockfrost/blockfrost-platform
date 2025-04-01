@@ -32,12 +32,7 @@
         "aarch64-darwin"
         "x86_64-darwin"
       ];
-      perSystem = {
-        config,
-        system,
-        pkgs,
-        ...
-      }: let
+      perSystem = {system, ...}: let
         internal = inputs.self.internal.${system};
       in {
         packages.default = internal.package;
@@ -48,10 +43,15 @@
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
-          programs.alejandra.enable = true; # Nix
-          programs.prettier.enable = true;
-          programs.rustfmt.enable = true;
-          programs.rustfmt.package = internal.rustfmt;
+          programs = {
+            alejandra.enable = true; # Nix
+            prettier.enable = true;
+            rustfmt.enable = true;
+            rustfmt.package = internal.rustfmt;
+            yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            taplo.enable = true; # TOML
+            shfmt.enable = true;
+          };
           settings.formatter.rustfmt.options = [
             "--config-path"
             (builtins.path {
@@ -59,9 +59,6 @@
               path = ./rustfmt.toml;
             })
           ];
-          programs.yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
-          programs.taplo.enable = true; # TOML
-          programs.shfmt.enable = true;
         };
       };
     });
