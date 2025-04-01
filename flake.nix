@@ -71,7 +71,7 @@
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
 
-        checks = internal.cargoChecks;
+        checks = internal.cargoChecks // internal.nixChecks;
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";
