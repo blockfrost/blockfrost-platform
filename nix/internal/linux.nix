@@ -3,10 +3,9 @@
   targetSystem,
   unix,
 }:
-assert __elem targetSystem ["x86_64-linux" "aarch64-linux"]; let
+assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
-  inherit (pkgs) lib;
 in
   unix
   // rec {
