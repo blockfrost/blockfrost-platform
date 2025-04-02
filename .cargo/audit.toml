@@ -2,6 +2,7 @@
 ignore = [
   "RUSTSEC-2022-0004", # Solution:  No fixed upgrade is available!
   "RUSTSEC-2024-0421", # FIXME: upgrade to idna >=1.0.0 (transitive dependency of `url`)
+  "RUSTSEC-2024-0436", # FIXME: see <https://github.com/blockfrost/blockfrost-platform/pull/264#issuecomment-2772436194>.
 ]
 informational_warnings = ["unmaintained"]
 severity_threshold = "low"
