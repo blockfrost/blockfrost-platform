@@ -2,10 +2,9 @@
   inputs,
   targetSystem,
 }:
-assert __elem targetSystem ["aarch64-linux"]; let
+assert builtins.elem targetSystem ["aarch64-linux"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
-  inherit (pkgs) lib;
 in rec {
   toolchain = with inputs.fenix.packages.${buildSystem};
     combine [
