@@ -30,11 +30,13 @@ in {
     {package = pkgs.doctl;}
   ];
 
-  language.c.compiler =
-    if pkgs.stdenv.isLinux
-    then pkgs.gcc
-    else pkgs.clang;
-  language.c.includes = internal.commonArgs.buildInputs;
+  language.c = {
+    compiler =
+      if pkgs.stdenv.isLinux
+      then pkgs.gcc
+      else pkgs.clang;
+    includes = internal.commonArgs.buildInputs;
+  };
 
   language.rust.packageSet =
     pkgs.rustPackages

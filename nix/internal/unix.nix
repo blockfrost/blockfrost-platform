@@ -2,7 +2,7 @@
   inputs,
   targetSystem,
 }:
-assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"]; let
+assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
@@ -61,7 +61,7 @@ in
       });
 
     # We use a newer `rustfmt`:
-    rustfmt = inputs.fenix.packages.${pkgs.system}.stable.rustfmt;
+    inherit (inputs.fenix.packages.${pkgs.system}.stable) rustfmt;
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
@@ -90,5 +90,57 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
         });
+    };
+
+    nixChecks = {
+      nix-statix =
+        pkgs.runCommandNoCC "nix-statix" {
+          buildInputs = [pkgs.statix];
+        } ''
+          touch $out
+          cd ${inputs.self}
+          exec statix check .
+        '';
+
+      nix-deadnix =
+        pkgs.runCommandNoCC "nix-deadnix" {
+          buildInputs = [pkgs.deadnix];
+        } ''
+          touch $out
+          cd ${inputs.self}
+          exec deadnix --fail .
+        '';
+
+      nix-nil =
+        pkgs.runCommandNoCC "nix-nil" {
+          buildInputs = [pkgs.nil];
+        } ''
+          ec=0
+          touch $out
+          cd ${inputs.self}
+          find . -type f -iname '*.nix' | while IFS= read -r file; do
+            nil diagnostics "$file" || ec=1
+          done
+          exit $ec
+        '';
+
+      # From `nixd`:
+      nix-nixf =
+        pkgs.runCommandNoCC "nix-nil" {
+          buildInputs = [pkgs.nixf pkgs.jq];
+        } ''
+          ec=0
+          touch $out
+          cd ${inputs.self}
+          find . -type f -iname '*.nix' | while IFS= read -r file; do
+            errors=$(nixf-tidy --variable-lookup --pretty-print <"$file" | jq -c '.[]' | sed -r "s#^#$file: #")
+            if [ -n "$errors" ] ; then
+              cat <<<"$errors"
+              echo
+              ec=1
+            fi
+          done
+          exit $ec
+        '';
     };
   }
