@@ -2,6 +2,7 @@ use crate::blockfrost::BlockfrostAPI;
 use crate::config::Config;
 use crate::db::DB;
 use crate::errors::APIError;
+use crate::load_balancer::{AccessToken, LoadBalancerState};
 use crate::models::RequestNewItem;
 use crate::payload::Payload;
 use axum::body::Bytes;
@@ -14,17 +15,34 @@ use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tracing::info;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseSuccess {
-    route: String,
+    route: Uuid,
     status: String,
+    /// Experimental: a list of WebSocket URIs and access tokens that the
+    /// `blockfrost-platform` should connect to. Blockfrost.io request and
+    /// responses, as well as network reconfiguration requests (in the future)
+    /// will be will be passed to the `blockfrost-platform` over the socket(s),
+    /// eventually eliminating the need for each relay to expose a public
+    /// routable port, and making network configuration on their side much
+    /// easier. We keep the previous setup and backwards compatibility, and just
+    /// observe this experiment.
+    load_balancers: Vec<LoadBalancer>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LoadBalancer {
+    uri: String,
+    access_token: AccessToken,
 }
 
 pub async fn route(
     Extension(db): Extension<DB>,
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
+    Extension(load_balancer): Extension<LoadBalancerState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     body: Bytes,
@@ -52,6 +70,15 @@ pub async fn route(
             "Network and address mismatch: testnet address provided on mainnet".to_string(),
         ));
     }
+
+    // How the client sees us, needed for the load balancing experiment:
+    let our_host: String = headers
+        .get("Host")
+        .and_then(|a| a.to_str().ok())
+        .ok_or(APIError::Validation(
+            "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP ≥ 1.1
+        ))?
+        .to_string();
 
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
@@ -111,14 +138,23 @@ pub async fn route(
         mode: payload.mode.clone(),
         ip_address: ip_address.to_string(),
         port: payload.port,
-        route: payload.api_prefix.clone(),
+        route: payload.api_prefix.to_string(),
         reward_address: payload.reward_address.clone(),
-        asset_name: Some(asset.asset_name),
+        asset_name: Some(asset.asset_name.as_str().to_string()),
     };
+
+    let token = load_balancer
+        .new_access_token(asset.asset_name, payload.api_prefix)
+        .await;
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
-        route: payload.api_prefix.clone(),
+        route: payload.api_prefix,
+        load_balancers: vec![LoadBalancer {
+            // We can’t know if it’s HTTPS or HTTP here, so we have to count on `blockfrost-platform`:
+            uri: format!("//{}/ws", our_host),
+            access_token: token,
+        }],
     };
 
     db.insert_request(new_item_request).await?;

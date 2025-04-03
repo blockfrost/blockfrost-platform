@@ -1,5 +1,6 @@
 use crate::errors::APIError;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Debug, Deserialize)]
 pub struct Payload {
@@ -7,7 +8,7 @@ pub struct Payload {
     pub port: i32,
     pub secret: String,
     pub reward_address: String,
-    pub api_prefix: String,
+    pub api_prefix: Uuid,
 }
 
 impl Payload {
@@ -40,11 +41,6 @@ impl Payload {
         // Validate reward_address
         if self.reward_address.is_empty() {
             return Err(APIError::Validation("reward_address is empty".to_string()));
-        }
-
-        // Validate api_prefix
-        if self.api_prefix.is_empty() {
-            return Err(APIError::Validation("api_prefix is empty".to_string()));
         }
 
         Ok(())

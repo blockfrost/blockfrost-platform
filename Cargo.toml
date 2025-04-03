@@ -8,8 +8,12 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-axum = "0.7.5"
+axum = { version = "0.7.5", features = ["ws"] }
 tokio = { version = "1.39.2", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3"
+tokio-tungstenite = "0.24"
+tungstenite = "0.24"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
@@ -26,3 +30,7 @@ reqwest = "0.12.5"
 blockfrost = "1.0.5"
 dotenvy = "0.15.7"
 hex = "0.4.3"
+rand = "0.8.5"
+base64 = "0.21"
+uuid = "1.10"
+hyper = "1.4.1"
