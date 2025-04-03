@@ -33,7 +33,6 @@ pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "f74c
 pallas-validate = { git = "https://github.com/blockfrost/pallas.git", rev = "f74c49e409570e7835a424bd20ad0cf9e86e0efb" }
 reqwest = "0.12.12"
 hex = "0.4.3"
-cbor = "0.4.1"
 metrics = { version = "0.24.1", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 metrics-process = "2.4.0"
