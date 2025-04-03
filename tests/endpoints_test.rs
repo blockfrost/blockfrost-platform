@@ -172,6 +172,8 @@ mod tests {
             .await
             .expect("Request to /tx/submit failed");
 
+        assert_eq!(response.status(), StatusCode::OK);
+
         assert!(
             response
                 .headers()
