@@ -2,7 +2,7 @@ import { Callout } from "nextra/components";
 
 # Frequently asked questions
 
-<Callout>
+<Callout type="default" emoji="📣">
   Cannot find your question listed here and it is missing from the
   documentation? Join our community on
   [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost`
@@ -47,8 +47,8 @@ The Blockfrost team actively monitors both email and Discord communications and 
 
 After receiving your Icebreaker NFT:
 
-- Notify the Blockfrost team that you've received your NFT
-- A team member will add you to the private Icebreakers channel
+- Notify the Blockfrost team via [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel that you've received your NFT
+- A team member will add you to the private Icebreakers Discord channel
 - The comprehensive documentation mentioned in the Icebreakers channel is this documentation site you are reading now.
 - Follow the setup instructions beginning with the [getting started](get-started) section.
 
@@ -86,14 +86,25 @@ For detailed instructions on each step, follow the links above.
 To function properly, your Icebreaker node requires the following ports to be open in your firewall:
 
 - `3000/tcp` (or custom port): For incoming API requests from Blockfrost
-- `8081/tcp`: Prometheus metrics endpoint for monitoring (optional but recommended)
+- `8081/tcp`: Prometheus metrics endpoint for monitoring (optional but recommended). Metrics can be disabled altogether if you prefer.
 
-Ensure these ports allow incoming connections from the Blockfrost server IPs documented [here](/usage/network#firewall).
+Ensure these ports allow incoming connections from the Blockfrost server IPs.
+
+**Example for Ubuntu with ufw**
 
 You can verify port accessibility using:
 ```bash
 sudo ufw allow 3000/tcp
 sudo ufw allow 8081/tcp
+```
+
+**Example using a computer outside of the server network**
+
+You can verify port accessibility from the external world by using another computer outside of the server network: 
+
+```bash
+telnet example.com 3000
+curl -v http://YOUR_PUBLIC_IP:3000/
 ```
 
 ### How do I build `blockfrost-platform` from source?
@@ -105,11 +116,15 @@ This is often recommended over using pre-built installers if you encounter issue
 
 Yes, a static public IP is strongly recommended for reliably running an Icebreaker node.
 
-The Blockfrost platform currently identifies and monitors nodes based on their consistent public IP. Without a static IP, you risk connection issues and flapping.
+The Blockfrost platform currently identifies and monitors nodes based on their consistent public IP.
+Without a static IP, you risk connection issues and flapping.
 
-A future update will allow dynamic IPs by having the node proactively report its address. See [this GitHub issue](https://github.com/blockfrost/blockfrost-platform/issues/178) for details on that roadmap.
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
 
-In the interim, using a static IP is best. If not possible, a dynamic DNS service or VPN may help provide a stable hostname to IP mapping.
+In the interim, using a static IP is best.
+If not possible, a dynamic DNS service or VPN may help provide a stable hostname to IP mapping.
 
 ### What should I do if my public IP address changes frequently?
 
@@ -117,42 +132,13 @@ Frequent public IP address changes can disrupt the connection between your Icebr
 A future update will address this by allowing connections from behind NATs (see [this GitHub Issue](https://github.com/blockfrost/blockfrost-platform/issues/178)).
 In the meantime, consider using a static IP address or a dynamic DNS service.
 
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
+
 ### How do I run blockfrost-platform with only IPv4?
 
 While a dedicated `-4` CLI switch isn't currently available, you can work around IPv6 issues by adding an entry to your `/etc/hosts` file that maps the Blockfrost server address to its IPv4 address.
-
-### Should I run my Icebreaker node on bare metal or in a VM?
-
-Either bare metal or VM-based Icebreaker nodes will work fine.
-The choice mainly depends on your available infrastructure and operational preferences.
-
-Benefits of bare metal:
-- Avoids virtualization overhead for maximum performance
-- Provides direct access to hardware for optimization
-- Keeps node infrastructure separate from other workloads
-
-Benefits of VMs:
-- Easier to deploy and manage using common VM platforms
-- Allows sharing server resources with other workloads
-- Provides snapshot and migration capabilities for easier updates
-
-Regardless of your approach, refer to the [Getting started](get-started) documentation to check the prerequisites.
-Over-provisioning CPU, RAM and disk will give you more headroom.
-
-### What is the Blockfrost Platform `server-address` configuration parameter used for?
-
-The `server-address` configuration parameter defines the IP address and port that your Icebreaker node's API server listens on.
-
-By default this uses `0.0.0.0:3000` which listens on all IPv4 interfaces on port 3000.
-
-Common customizations:
-
-- To use IPv6, specify `::` as the IP
-- To limit to localhost only, use `127.0.0.1`
-- To use a different port, change the `:3000` portion
-
-Be cautious when changing this value as it can impact your node's public reachability for API requests.
-Always ensure the specified interface and port are publicly accessible.
 
 ## Operation and monitoring
 
@@ -162,10 +148,10 @@ Please see the [Verifying that you are up and running](/installation/verificatio
 
 ### How can I check if my Icebreaker node is active?
 
-To verify if your Icebreaker node is active, you can:
+Here are a couple of ways you can verify if your Icebreaker node is active:
 
-1. Access the [Icebreaker dashboard](https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177) to check the status of your node.
-2. Use the command line to check logs for successful registration messages:
+- Access the Icebreaker dashboard at [http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/) to check the status of your node
+- Use the command line to check logs for successful registration messages:
    ```bash
    blockfrost-platform --config /etc/cardano/mainnet/blockfrost.toml
    ```
@@ -173,7 +159,7 @@ To verify if your Icebreaker node is active, you can:
 
 ### Where can I find the Icebreaker dashboard and monitor system metrics?
 
-The [Icebreaker dashboard](https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177) provides real-time information about the Icebreaker network, including:
+The Icebreaker dashboard ([http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/)) provides real-time information about the Icebreaker network, including:
 
 - Total number of minted Icebreaker NFTs
 - Number of Icebreaker nodes currently active
@@ -191,7 +177,13 @@ Tooltips explain each metric.
 
 ### What endpoints are currently supported by the Blockfrost platform?
 
-Currently, only the 'submit' endpoint is implemented in the Blockfrost platform. Additional endpoints are planned for future releases.
+Currently, the Blockfrost platform supports these endpoints: 
+
+- submit
+- metrics
+- root
+
+Additional endpoints are planned for future releases.
 
 ### How can I get more detailed metrics or logs for my Icebreaker node?
 
@@ -206,6 +198,9 @@ To access richer metrics:
 The Blockfrost team also plans to expand the public dashboard over time with additional useful metrics as the platform matures.
 
 For detailed logging, consult the `stdout` from the `blockfrost-platform` process or the `systemd` logs if running as a service.
+
+Additionally, make sure that the metrics are not disabled.
+Passing `--no_metrics` in the cli or using the wizard to do so will disable the metrics endpoint and metrics gathering.
 
 ### How much bandwidth does an Icebreaker node consume?
 
@@ -232,8 +227,13 @@ The `Incoming / Outgoing bytes` dashboard chart is helpful for this.
 Common issues include:
 
 1. Incorrect configuration of the `blockfrost.toml` file
-2. Network connectivity problems, especially with IPv6
-3. Using outdated versions of the platform.
+2. Using outdated versions of the platform
+3. External IP and port accessibility problems.
+4. Network connectivity problems, especially with IPv6
+
+<Callout type="warning" emoji="⚠️">
+   Blockfrost platform does not support IPv6.
+</Callout>
 
 ### How can I resolve issues with the Blockfrost platform or installer?
 
@@ -261,29 +261,17 @@ This error usually indicates an issue with your public IP address or firewall co
 To resolve it:
 
 1. Ensure your Icebreaker node has a public IPv4 address that is reachable from the Internet
-2. Open port 3000 in your firewall to allow incoming connections
+2. Open port 3000 (or the custom port if so configured) in your firewall to allow incoming connections
 3. Verify external reachability by running `curl -v http://YOUR_PUBLIC_IP:3000/` which should return a 404 error
 4. If using IPv6, consider temporarily disabling it or specifying an IPv4 address explicitly in your configuration.
 
 See the [Usage > configuration](/usage/configuration) documentation for more details.
 
-### What should I do if my Icebreaker node fails to register using IPv6?
-
-If registration fails using IPv6, consider the following:
-
-1. Ensure your IPv6 address is reachable by running:
-   ```bash
-   curl -v http://your-ipv6-address:port/
-   ```
-2. Temporarily disable IPv6 or use the `-4` CLI switch to force IPv4 usage.
-3. Refer to the [GitHub issue #207](https://github.com/blockfrost/blockfrost-platform/issues/207) for updates on IPv6 support.
-
 ### How do I handle IPv6 connectivity issues?
 
-For IPv6 issues:
-
-1. Verify that your IPv6 address is publicly reachable.
-2. Use the `-4` CLI switch to force IPv4 if necessary.
+<Callout type="warning" emoji="⚠️">
+   Blockfrost platform does not support IPv6.
+</Callout>
 
 ### I see warnings about old UUID paths after restarting my Icebreaker. Should I be concerned?
 
@@ -330,10 +318,17 @@ If you lose your key, reach out to the team on Discord for assistance with gener
 
 ### How can I improve the security of my Icebreaker node?
 
-For enhanced security:
+To enhance the security of your Icebreaker node:
 
-1. Limit access to the Blockfrost platform to specific IP addresses.
-2. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+- Configure and use a dedicated firewall with your network to limit traffic to your node
+- Set up a VPN for encrypted connections to your node
+- Regularly apply security patches to minimize vulnerabilities
+- Implement key-based authentication where possible for stronger security
+- Set up monitoring to detect unusual access patterns in system logs.
+
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
 
 ### How can I contribute to improving the Blockfrost platform?
 
@@ -345,11 +340,16 @@ You can contribute by:
 ### I found a typo or an error in the documentation. Where should I report it?
 
 Please report typos, errors, and any other documentation issues on the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform/issues).
+You are welcome to open a PR.
 
 ### What is the process for reporting a bug in the Blockfrost platform?
 
-Report bugs by:
+Report bugs by creating an issue in the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform).
 
-1. Creating an issue on the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform).
-2. Providing detailed information about the bug and steps to reproduce it.
+1. From the GitHub repository page, click **Issues**. The repository [Issues page](https://github.com/blockfrost/blockfrost-platform) displays.
+2. Click **New issue**. The Create new issue form displays. 
+3. Add a title. 
+4. Add a description. Provide detailed information about the bug and steps to reproduce it.
+5. Click **Create**. 
+
 
