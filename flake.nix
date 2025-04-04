@@ -100,6 +100,15 @@
             targetSystem: import ./nix/internal/linux-cross-arm64.nix {inherit inputs targetSystem;}
           );
 
+        nixosModule = {
+          pkgs,
+          lib,
+          ...
+        }: {
+          imports = [./nix/nixos];
+          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.system}.default;
+        };
+
         hydraJobs = let
           crossSystems = ["x86_64-windows" "aarch64-linux"];
           allJobs = {
