@@ -2,30 +2,36 @@ import { Callout } from "nextra/components";
 
 # Frequently asked questions
 
-<Callout>
+<Callout type="default" emoji="📣">
   Cannot find your question listed here and it is missing from the
   documentation? Join our community on
   [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost`
   channel.
 </Callout>
 
-## How can I monitor and verify that my Icebreaker node is working correctly?
+## FAQ sections
+- [Getting started](#getting-started)
+- [Installation and setup](#installation-and-setup)
+- [Operation and monitoring](#operation-and-monitoring)
+- [Troubleshooting](#troubleshooting)
+- [Maintenance and advanced topics](#maintenance-and-advanced-topics)
 
-Please see the [Verifying that you are up and running](/installation/verification) guide.
+## Getting started
 
-## What endpoints are currently supported by the Blockfrost platform?
-
-Currently, only the 'submit' endpoint is implemented in the Blockfrost platform. Additional endpoints are planned for future releases.
-
-## How do I receive an Icebreaker NFT?
+### How do I receive an Icebreaker NFT?
 
 To receive an Icebreaker NFT:
 
-1. Fill out and submit the [Icebreaker survey form](https://blockfrost.typeform.com/icebreakers). An email confirmation will be sent once the request is received.
+1. Connect with us on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel to ask about receiving an Icebreaker NFT and a team member will assist you.
 
 2. After reviewing and approving your request, the Blockfrost team will email you confirmation and mint the NFT to your wallet address. This NFT serves as your license to participate in the Icebreakers program.
 
-## What should I do if I've received the email but not the NFT?
+### How do I get an Icebreaker secret?
+
+The Icebreaker secret is tied to the Icebreaker NFT.
+You will receive its associated secret by email.
+
+### What should I do if I've received the email but not the NFT?
 
 If you've received the confirmation email but haven't received your NFT:
 
@@ -37,7 +43,34 @@ If you've received the confirmation email but haven't received your NFT:
 
 The Blockfrost team actively monitors both email and Discord communications and will help resolve any issues promptly.
 
-## What are the steps to set up the Icebreaker platform after receiving the NFT?
+### How do I get access to the private channel with Icebreaker documentation?
+
+After receiving your Icebreaker NFT:
+
+- Notify the Blockfrost team via [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel that you've received your NFT
+- A team member will add you to the private Icebreakers Discord channel
+- The comprehensive documentation mentioned in the Icebreakers channel is this documentation site you are reading now.
+- Follow the setup instructions beginning with the [getting started](get-started) section.
+
+If you've received your NFT but don't have channel access yet, post a message on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel for assistance.
+
+### Do I need confirmation after receiving the NFT to proceed?
+
+No, you don't need additional confirmation after receiving the NFT.
+Once the NFT is in your wallet, you can proceed with the installation and setup.
+However, you should notify the Blockfrost team that you've received your NFT so they can add you to the private Icebreakers Discord channel, where you can interact with other participants and the platform team for support.
+
+### Can I transfer my Icebreaker NFT to another wallet address?
+
+Yes, you can transfer your Icebreaker NFT to another wallet address by following these steps:
+
+1. Move the NFT to your new address
+2. Update your platform configuration to use this new address
+3. Notify the Blockfrost team about the change by emailing support@blockfrost.io.
+
+## Installation and setup
+
+### What are the steps to set up the Icebreaker platform after receiving the NFT?
 
 After receiving the NFT, follow these steps to set up the Icebreaker platform:
 
@@ -48,27 +81,280 @@ After receiving the NFT, follow these steps to set up the Icebreaker platform:
 
 For detailed instructions on each step, follow the links above.
 
-## How do I get access to the private channel with Icebreaker documentation?
+### What endpoints do I need to open in my firewall for the Icebreaker node?
 
-After receiving your Icebreaker NFT:
+To function properly, your Icebreaker node requires the following ports to be open in your firewall:
 
-- Notify the Blockfrost team that you've received your NFT
-- A team member will add you to the private Icebreakers channel
-- Access the comprehensive documentation in the announcement channel
-- Follow the setup instructions provided there.
+- `3000/tcp` (or custom port): For incoming API requests from Blockfrost
+- `8081/tcp`: Prometheus metrics endpoint for monitoring (optional but recommended). Metrics can be disabled altogether if you prefer.
 
-If you've received your NFT but don't have channel access yet, post a message on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel for assistance.
+Ensure these ports allow incoming connections from the Blockfrost server IPs.
 
-## Do I need confirmation after receiving the NFT to proceed?
+**Example for Ubuntu with ufw**
 
-No, you don't need additional confirmation after receiving the NFT.
-Once the NFT is in your wallet, you can proceed with installation and setup.
-However, you'll need access to the private Icebreakers channel for complete documentation, which is granted after notifying the team that you've received your NFT.
+You can verify port accessibility using:
+```bash
+sudo ufw allow 3000/tcp
+sudo ufw allow 8081/tcp
+```
 
-## Can I transfer my Icebreaker NFT to another wallet address?
+**Example using a computer outside of the server network**
 
-Yes, you can transfer your Icebreaker NFT to another wallet address by following these steps:
+You can verify port accessibility from the external world by using another computer outside of the server network: 
 
-1. Move the NFT to your new address
-2. Update your platform configuration to use this new address
-3. Notify the Blockfrost team about the change by emailing support@blockfrost.io.
+```bash
+telnet example.com 3000
+curl -v http://YOUR_PUBLIC_IP:3000/
+```
+
+### How do I build `blockfrost-platform` from source?
+
+Refer to the [installation instructions](/installation/source) for detailed steps on building from source.
+This is often recommended over using pre-built installers if you encounter issues with the provided binaries.
+
+### Do I need a static public IP address for my Icebreaker node?
+
+Yes, a static public IP is strongly recommended for reliably running an Icebreaker node.
+
+The Blockfrost platform currently identifies and monitors nodes based on their consistent public IP.
+Without a static IP, you risk connection issues and flapping.
+
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
+
+In the interim, using a static IP is best.
+If not possible, a dynamic DNS service or VPN may help provide a stable hostname to IP mapping.
+
+### What should I do if my public IP address changes frequently?
+
+Frequent public IP address changes can disrupt the connection between your Icebreaker and the Blockfrost servers.
+A future update will address this by allowing connections from behind NATs (see [this GitHub Issue](https://github.com/blockfrost/blockfrost-platform/issues/178)).
+In the meantime, consider using a static IP address or a dynamic DNS service.
+
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
+
+### How do I run blockfrost-platform with only IPv4?
+
+While a dedicated `-4` CLI switch isn't currently available, you can work around IPv6 issues by adding an entry to your `/etc/hosts` file that maps the Blockfrost server address to its IPv4 address.
+
+## Operation and monitoring
+
+### How can I monitor and verify that my Icebreaker node is working correctly?
+
+Please see the [Verifying that you are up and running](/installation/verification) guide.
+
+### How can I check if my Icebreaker node is active?
+
+Here are a couple of ways you can verify if your Icebreaker node is active:
+
+- Access the Icebreaker dashboard at [http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/) to check the status of your node
+- Use the command line to check logs for successful registration messages:
+   ```bash
+   blockfrost-platform --config /etc/cardano/mainnet/blockfrost.toml
+   ```
+   Look for "Successfully registered with Icebreakers API."
+
+### How do I identify my node in the Icebreaker dashboard?
+
+Your node appears on the [Icebreaker dashboard](http://icebreakers.blockfrost.io/) as 'Icebreaker X' where 'X' is your assigned Icebreaker number.
+This number is found in your Icebreaker NFT metadata, which you can view in a Cardano blockchain explorer like [Pool.pm](https://pool.pm/) after the NFT has been minted to your wallet.
+
+### Where can I find the Icebreaker dashboard and monitor system metrics?
+
+The Icebreaker dashboard ([http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/)) provides real-time information about the Icebreaker network, including:
+
+- Total number of minted Icebreaker NFTs
+- Number of Icebreaker nodes currently active
+- Percentage of active nodes compared to total slots
+- Current distribution of `blockfrost-platform` versions in use
+- Icebreakers by Status: Current count of nodes in 'Up' vs 'Down' status based on the last health check
+- Status check duration: Time in milliseconds for a node to respond to the last status check ping
+- Average total response time: Mean response time over the last 10 minutes for API requests to each node
+- Incoming/Outgoing bytes: Network traffic to and from each node, indicating overall activity level
+
+This dashboard serves as the central monitoring location for all Icebreaker-related metrics and is regularly updated as nodes join or leave the network.
+
+Use these metrics to monitor your node's availability, performance and traffic levels relative to other nodes.
+Tooltips explain each metric.
+
+### What endpoints are currently supported by the Blockfrost platform?
+
+Currently, the Blockfrost platform supports these endpoints: 
+
+- submit
+- metrics
+- root
+
+Additional endpoints are planned for future releases.
+
+### How can I get more detailed metrics or logs for my Icebreaker node?
+
+The `blockfrost-platform` process exposes a Prometheus metrics endpoint by default at `http://localhost:8081/metrics` with detailed operational stats.
+
+To access richer metrics:
+
+1. Ensure port `8081` is accessible
+2. Install and configure [Prometheus](https://prometheus.io/docs/introduction/overview/) to scrape the metrics endpoint
+3. Use a visualization tool like [Grafana](https://grafana.com/docs/grafana/latest/getting-started/) to graph and analyze the data.
+
+The Blockfrost team also plans to expand the public dashboard over time with additional useful metrics as the platform matures.
+
+For detailed logging, consult the `stdout` from the `blockfrost-platform` process or the `systemd` logs if running as a service.
+
+Additionally, make sure that the metrics are not disabled.
+Passing `--no_metrics` in the cli or using the wizard to do so will disable the metrics endpoint and metrics gathering.
+
+### How much bandwidth does an Icebreaker node consume?
+
+Bandwidth consumption will vary depending on overall network activity and how many requests your node serves.
+
+Rough estimates per node based on early testing:
+
+- Idle baseline: 10-50 MB/day
+- Light usage: 100-500 MB/day
+- Moderate usage: 1-5 GB/day
+- Heavy usage: 10+ GB/day
+
+Nodes also require brief bursts of higher bandwidth to submit transactions and sync with the network.
+
+Providing 5-10Mbps capacity per node should be sufficient for now, with the ability to expand as the platform scales up usage over time.
+
+Monitor your node's network metrics to gauge actual usage.
+The `Incoming / Outgoing bytes` dashboard chart is helpful for this.
+
+## Troubleshooting
+
+### What are the common setup issues with the Icebreaker platform?
+
+Common issues include:
+
+1. Incorrect configuration of the `blockfrost.toml` file
+2. Using outdated versions of the platform
+3. External IP and port accessibility problems.
+4. Network connectivity problems, especially with IPv6
+
+<Callout type="warning" emoji="⚠️">
+   Blockfrost platform does not support IPv6.
+</Callout>
+
+### How can I resolve issues with the Blockfrost platform or installer?
+
+If you encounter issues with the `blockfrost-platform` binary or installer:
+
+1. Consider building from the latest source code on the `main` branch. This is often the most reliable method when pre-built binaries have problems. Follow the compilation instructions on the [official installers](/installation/installers) page.
+
+2. If using the latest version from the main branch, check if others are experiencing similar issues on the [Icebreaker dashboard](https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177) which shows version distribution.
+
+3. Report any persistent bugs on the [Blockfrost platform GitHub issues page](https://github.com/blockfrost/blockfrost-platform/issues) with details about your environment and the specific error messages you're encountering.
+
+4. If you are not already in the Icebreakers private Discord channel, post a message on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel for assistance, as other participants may have found solutions to similar problems.
+
+### I'm having trouble registering my Icebreaker node. What should I check?
+
+* **Secret Key and Reward Address:** Ensure your `--secret` and `--reward-address` in the configuration file are correct.
+* **Firewall:** Ensure your firewall allows outgoing connections on port 3000.
+* **IPv6 Connectivity:**  Check if your server can reach the IceBreakers API via IPv6. A simple `curl -v http://[IPv6-address]:[port]/` (expecting a 404) can help diagnose this. Consider adding an entry to your `/etc/hosts` file to resolve the Blockfrost server address to its IPv4 address as a workaround.
+* **Network Namespace:** If IPv6 is causing issues, consider running `blockfrost-platform` within a network namespace with IPv6 disabled.
+* **Open Issues:** Check the [GitHub Issues](https://github.com/blockfrost/blockfrost-platform/issues) for known problems and potential solutions.
+
+### What should I do if I encounter the error "failed to register to the Icebreakers API" when starting the platform?
+
+This error usually indicates an issue with your public IP address or firewall configuration.
+To resolve it:
+
+1. Ensure your Icebreaker node has a public IPv4 address that is reachable from the Internet
+2. Open port 3000 (or the custom port if so configured) in your firewall to allow incoming connections
+3. Verify external reachability by running `curl -v http://YOUR_PUBLIC_IP:3000/` which should return a 404 error
+4. If using IPv6, consider temporarily disabling it or specifying an IPv4 address explicitly in your configuration.
+
+See the [Usage > configuration](/usage/configuration) documentation for more details.
+
+### How do I handle IPv6 connectivity issues?
+
+<Callout type="warning" emoji="⚠️">
+   Blockfrost platform does not support IPv6.
+</Callout>
+
+### I see warnings about old UUID paths after restarting my Icebreaker. Should I be concerned?
+
+No, these warnings are typically not a concern.
+Each restart generates a new random UUID path, and the Blockfrost servers may briefly attempt to contact the old path.
+Unless the warnings persist, they can be safely ignored.
+This is expected behavior and should not cause concern unless persistent issues occur.
+If so, check your logs for errors.
+
+## Maintenance and advanced topics
+
+### What is the process for updating my Icebreaker node to a new version of the Blockfrost platform?
+
+When a new version of the Blockfrost platform is released:
+
+1. Watch for an announcement in the private Icebreakers Discord channel with update instructions
+2. Shut down your current `blockfrost-platform` process
+3. Update the platform software using the same [installation method](installation/installers) you originally used
+4. Restart the `blockfrost-platform` process
+5. Verify the new version is running with `blockfrost-platform --version`
+6. Monitor your logs and the dashboard to ensure your node reconnects successfully.
+
+Promptly updating is recommended to maintain compatibility and access new features.
+The specific update steps may vary slightly between releases so always refer to the official release notes.
+
+### What are the rules around sharing my Icebreaker secret key?
+
+Your Icebreaker secret key is like a password for your node.
+It should be kept confidential and never shared publicly.
+The secret key authorizes your node to participate in the Icebreakers platform.
+
+Specific guidelines:
+
+1. Don't post your secret key on any public websites, forums, or social media
+2. Don't share the key with untrusted parties
+3. Only store the key on servers you control and trust
+4. Use a unique secret key for each Icebreaker node you run
+5. If you suspect your key is compromised, generate a new one and update your node.
+
+The Blockfrost team will never ask for your secret key.
+Be cautious of phishing attempts.
+
+If you lose your key, reach out to the team on Discord for assistance with generating a new one.
+
+### How can I improve the security of my Icebreaker node?
+
+To enhance the security of your Icebreaker node:
+
+- Configure and use a dedicated firewall with your network to limit traffic to your node
+- Set up a VPN for encrypted connections to your node
+- Regularly apply security patches to minimize vulnerabilities
+- Implement key-based authentication where possible for stronger security
+- Set up monitoring to detect unusual access patterns in system logs.
+
+<Callout type="info">
+  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+</Callout>
+
+### How can I contribute to improving the Blockfrost platform?
+
+You can contribute by:
+
+1. Reporting bugs and suggesting features on the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform).
+2. Participating in community discussions on Discord to share feedback and ideas.
+
+### I found a typo or an error in the documentation. Where should I report it?
+
+Please report typos, errors, and any other documentation issues on the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform/issues).
+You are welcome to open a PR.
+
+### What is the process for reporting a bug in the Blockfrost platform?
+
+Report bugs by creating an issue in the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform).
+
+1. From the GitHub repository page, click **Issues**. The repository [Issues page](https://github.com/blockfrost/blockfrost-platform) displays.
+2. Click **New issue**. The Create new issue form displays. 
+3. Add a title. 
+4. Add a description. Provide detailed information about the bug and steps to reproduce it.
+5. Click **Create**. 
+
+
