@@ -10,6 +10,7 @@ import { Callout } from "nextra/components";
 </Callout>
 
 ## FAQ sections
+
 - [Getting started](#getting-started)
 - [Installation and setup](#installation-and-setup)
 - [Operation and monitoring](#operation-and-monitoring)
@@ -93,6 +94,7 @@ Ensure these ports allow incoming connections from the Blockfrost server IPs.
 **Example for Ubuntu with ufw**
 
 You can verify port accessibility using:
+
 ```bash
 sudo ufw allow 3000/tcp
 sudo ufw allow 8081/tcp
@@ -100,7 +102,7 @@ sudo ufw allow 8081/tcp
 
 **Example using a computer outside of the server network**
 
-You can verify port accessibility from the external world by using another computer outside of the server network: 
+You can verify port accessibility from the external world by using another computer outside of the server network:
 
 ```bash
 telnet example.com 3000
@@ -120,7 +122,13 @@ The Blockfrost platform currently identifies and monitors nodes based on their c
 Without a static IP, you risk connection issues and flapping.
 
 <Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+  **On our roadmap**: We're developing a reverse-connection mechanism using
+  WebSockets that will enable IP address filtering directly in the Blockfrost
+  platform. This feature will simplify security in complex network environments
+  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
+  Monitor updates on [GitHub issue
+  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
+  handling improvements.
 </Callout>
 
 In the interim, using a static IP is best.
@@ -133,7 +141,13 @@ A future update will address this by allowing connections from behind NATs (see 
 In the meantime, consider using a static IP address or a dynamic DNS service.
 
 <Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+  **On our roadmap**: We're developing a reverse-connection mechanism using
+  WebSockets that will enable IP address filtering directly in the Blockfrost
+  platform. This feature will simplify security in complex network environments
+  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
+  Monitor updates on [GitHub issue
+  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
+  handling improvements.
 </Callout>
 
 ### How do I run blockfrost-platform with only IPv4?
@@ -152,10 +166,10 @@ Here are a couple of ways you can verify if your Icebreaker node is active:
 
 - Access the Icebreaker dashboard at [http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/) to check the status of your node
 - Use the command line to check logs for successful registration messages:
-   ```bash
-   blockfrost-platform --config /etc/cardano/mainnet/blockfrost.toml
-   ```
-   Look for "Successfully registered with Icebreakers API."
+  ```bash
+  blockfrost-platform --config /etc/cardano/mainnet/blockfrost.toml
+  ```
+  Look for "Successfully registered with Icebreakers API."
 
 ### How do I identify my node in the Icebreaker dashboard?
 
@@ -182,7 +196,7 @@ Tooltips explain each metric.
 
 ### What endpoints are currently supported by the Blockfrost platform?
 
-Currently, the Blockfrost platform supports these endpoints: 
+Currently, the Blockfrost platform supports these endpoints:
 
 - submit
 - metrics
@@ -237,7 +251,7 @@ Common issues include:
 4. Network connectivity problems, especially with IPv6
 
 <Callout type="warning" emoji="⚠️">
-   Blockfrost platform does not support IPv6.
+  Blockfrost platform does not support IPv6.
 </Callout>
 
 ### How can I resolve issues with the Blockfrost platform or installer?
@@ -254,11 +268,11 @@ If you encounter issues with the `blockfrost-platform` binary or installer:
 
 ### I'm having trouble registering my Icebreaker node. What should I check?
 
-* **Secret Key and Reward Address:** Ensure your `--secret` and `--reward-address` in the configuration file are correct.
-* **Firewall:** Ensure your firewall allows outgoing connections on port 3000.
-* **IPv6 Connectivity:**  Check if your server can reach the IceBreakers API via IPv6. A simple `curl -v http://[IPv6-address]:[port]/` (expecting a 404) can help diagnose this. Consider adding an entry to your `/etc/hosts` file to resolve the Blockfrost server address to its IPv4 address as a workaround.
-* **Network Namespace:** If IPv6 is causing issues, consider running `blockfrost-platform` within a network namespace with IPv6 disabled.
-* **Open Issues:** Check the [GitHub Issues](https://github.com/blockfrost/blockfrost-platform/issues) for known problems and potential solutions.
+- **Secret Key and Reward Address:** Ensure your `--secret` and `--reward-address` in the configuration file are correct.
+- **Firewall:** Ensure your firewall allows outgoing connections on port 3000.
+- **IPv6 Connectivity:** Check if your server can reach the IceBreakers API via IPv6. A simple `curl -v http://[IPv6-address]:[port]/` (expecting a 404) can help diagnose this. Consider adding an entry to your `/etc/hosts` file to resolve the Blockfrost server address to its IPv4 address as a workaround.
+- **Network Namespace:** If IPv6 is causing issues, consider running `blockfrost-platform` within a network namespace with IPv6 disabled.
+- **Open Issues:** Check the [GitHub Issues](https://github.com/blockfrost/blockfrost-platform/issues) for known problems and potential solutions.
 
 ### What should I do if I encounter the error "failed to register to the Icebreakers API" when starting the platform?
 
@@ -275,7 +289,7 @@ See the [Usage > configuration](/usage/configuration) documentation for more det
 ### How do I handle IPv6 connectivity issues?
 
 <Callout type="warning" emoji="⚠️">
-   Blockfrost platform does not support IPv6.
+  Blockfrost platform does not support IPv6.
 </Callout>
 
 ### I see warnings about old UUID paths after restarting my Icebreaker. Should I be concerned?
@@ -332,7 +346,13 @@ To enhance the security of your Icebreaker node:
 - Set up monitoring to detect unusual access patterns in system logs.
 
 <Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using WebSockets that will enable IP address filtering directly in the Blockfrost platform. This feature will simplify security in complex network environments (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses. Monitor updates on [GitHub issue #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT handling improvements.
+  **On our roadmap**: We're developing a reverse-connection mechanism using
+  WebSockets that will enable IP address filtering directly in the Blockfrost
+  platform. This feature will simplify security in complex network environments
+  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
+  Monitor updates on [GitHub issue
+  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
+  handling improvements.
 </Callout>
 
 ### How can I contribute to improving the Blockfrost platform?
@@ -352,9 +372,7 @@ You are welcome to open a PR.
 Report bugs by creating an issue in the [Blockfrost platform GitHub repository](https://github.com/blockfrost/blockfrost-platform).
 
 1. From the GitHub repository page, click **Issues**. The repository [Issues page](https://github.com/blockfrost/blockfrost-platform) displays.
-2. Click **New issue**. The Create new issue form displays. 
-3. Add a title. 
+2. Click **New issue**. The Create new issue form displays.
+3. Add a title.
 4. Add a description. Provide detailed information about the bug and steps to reproduce it.
-5. Click **Create**. 
-
-
+5. Click **Create**.
