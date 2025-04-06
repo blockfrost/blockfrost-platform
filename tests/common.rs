@@ -3,14 +3,14 @@ use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     AppError, NodePool,
     cli::{Config, IcebreakersConfig, LogLevel, Mode, Network},
+    health_monitor,
     icebreakers_api::IcebreakersAPI,
-    server::build,
+    server::{ApiPrefix, build},
 };
 use std::{
     env,
     sync::{Arc, LazyLock},
 };
-use tower_http::normalize_path::NormalizePath;
 
 static INIT_LOGGING: LazyLock<()> = LazyLock::new(|| {
     tracing_subscriber::fmt::init();
@@ -50,10 +50,11 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
 
 pub async fn build_app() -> Result<
     (
-        NormalizePath<Router>,
+        Router,
         NodePool,
+        health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        String,
+        ApiPrefix,
     ),
     AppError,
 > {
@@ -64,10 +65,11 @@ pub async fn build_app() -> Result<
 
 pub async fn build_app_non_solitary() -> Result<
     (
-        NormalizePath<Router>,
+        Router,
         NodePool,
+        health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        String,
+        ApiPrefix,
     ),
     AppError,
 > {

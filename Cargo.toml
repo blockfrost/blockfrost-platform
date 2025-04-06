@@ -6,21 +6,27 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-axum = "0.8.1"
+axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+futures = "0.3"
+futures-util = "0.3"
 crossbeam = "0.8"
+tungstenite = "0.26"
+tokio-tungstenite = "0.26"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 serde = { version = "1.0.218", features = ["derive"] }
 tower-http = { version = "0.6.1", features = ["normalize-path"] }
 tower-layer = "0.3.2"
 tower = "0.5.1"
+hyper = "1.5.2"
 serde_json = "1.0.135"
 clap = { version = "4.5.26", features = ["derive"] }
 toml = "0.8.19"
 thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
+base64 = "0.22.1"
 num_cpus = "1"
 pallas = { git = "https://github.com/blockfrost/pallas.git", rev = "f74c49e409570e7835a424bd20ad0cf9e86e0efb" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "f74c49e409570e7835a424bd20ad0cf9e86e0efb" }
