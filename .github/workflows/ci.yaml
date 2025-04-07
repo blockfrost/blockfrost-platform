@@ -33,7 +33,6 @@ jobs:
   build_and_test:
     name: Build and Test
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -84,8 +83,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Query Tip
-        run: nix develop .# --command cardano-cli query tip --socket-path /run/cardano-node/node.socket --testnet-magic 2
-
       - name: Run Integration Tests
         run: nix develop .# --command cargo test --verbose --test endpoints_test
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage report
+        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 5
+
+      - name: Upload coverage report for GitHub Pages
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage/
+
+  pages:
+    name: Prepare coverage for GitHub Pages
+    needs: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v3
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage
+
+      - name: Upload coverage folder
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy
+        uses: actions/deploy-pages@v4
