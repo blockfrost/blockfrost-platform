@@ -1,5 +1,11 @@
 ## Unreleased
 
+### Added
+
+- Load balancing over a WebSocket (eliminating the need for public IP in the future)
+
+- Expose a `health_errors_total` gauge in metrics
+
 ## [0.0.2] - 2025-03-20
 
 ### Changed

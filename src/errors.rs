@@ -20,6 +20,9 @@ pub enum AppError {
 
     #[error("Server startup error: {0}")]
     Server(String),
+
+    #[error("Load balancer error: {0}")]
+    LoadBalancer(String),
 }
 
 /// Main error type.
@@ -52,6 +55,7 @@ impl From<AppError> for BlockfrostError {
             AppError::Node(e) => Self::internal_server_error(e),
             AppError::Registration(e) => Self::internal_server_error(e),
             AppError::Server(e) => Self::internal_server_error(e),
+            AppError::LoadBalancer(e) => Self::internal_server_error(e),
         }
     }
 }

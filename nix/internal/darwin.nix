@@ -3,7 +3,7 @@
   targetSystem,
   unix,
 }:
-assert __elem targetSystem ["x86_64-darwin" "aarch64-darwin"]; let
+assert builtins.elem targetSystem ["x86_64-darwin" "aarch64-darwin"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
@@ -60,7 +60,7 @@ in
     # repo. We replace that workdir on each release.
     homebrew-tap =
       pkgs.runCommandNoCC "homebrew-repo" {
-        version = unix.package.version;
+        inherit (unix.package) version;
         url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
       } ''
@@ -167,52 +167,49 @@ in
     installer = unsigned-dmg;
 
     # See <https://dmgbuild.readthedocs.io/en/latest/settings.html>:
-    dmgbuildSettingsPy = let
-      s = lib.escapeShellArg;
-    in
-      pkgs.writeText "settings.py" ''
-        import os.path
+    dmgbuildSettingsPy = pkgs.writeText "settings.py" ''
+      import os.path
 
-        app_path = defines.get("app_path", "/non-existent.app")
-        icon_path = defines.get("icon_path", "/non-existent.icns")
-        app_name = os.path.basename(app_path)
+      app_path = defines.get("app_path", "/non-existent.app")
+      icon_path = defines.get("icon_path", "/non-existent.icns")
+      app_name = os.path.basename(app_path)
 
-        # UDBZ (bzip2) is 154 MiB, while UDZO (gzip) is 204 MiB
-        format = "UDBZ"
-        size = None
-        files = [app_path]
-        symlinks = {"Applications": "/Applications"}
-        hide_extension = [ app_name ]
+      # UDBZ (bzip2) is 154 MiB, while UDZO (gzip) is 204 MiB
+      format = "UDBZ"
+      size = None
+      files = [app_path]
+      symlinks = {"Applications": "/Applications"}
+      hide_extension = [ app_name ]
 
-        icon = icon_path
+      icon = icon_path
 
-        icon_locations = {app_name: (140, 120), "Applications": (500, 120)}
-        background = "builtin-arrow"
+      icon_locations = {app_name: (140, 120), "Applications": (500, 120)}
+      background = "builtin-arrow"
 
-        show_status_bar = False
-        show_tab_view = False
-        show_toolbar = False
-        show_pathbar = False
-        show_sidebar = False
-        sidebar_width = 180
+      show_status_bar = False
+      show_tab_view = False
+      show_toolbar = False
+      show_pathbar = False
+      show_sidebar = False
+      sidebar_width = 180
 
-        window_rect = ((200, 200), (640, 320))
-        default_view = "icon-view"
-        show_icon_preview = False
+      window_rect = ((200, 200), (640, 320))
+      default_view = "icon-view"
+      show_icon_preview = False
 
-        include_icon_view_settings = "auto"
-        include_list_view_settings = "auto"
+      include_icon_view_settings = "auto"
+      include_list_view_settings = "auto"
 
-        arrange_by = None
-        grid_offset = (0, 0)
-        grid_spacing = 100
-        scroll_position = (0, 0)
-        label_pos = "bottom"  # or 'right'
-        text_size = 16
-        icon_size = 128
+      arrange_by = None
+      grid_offset = (0, 0)
+      grid_spacing = 100
+      scroll_position = (0, 0)
+      label_pos = "bottom"  # or 'right'
+      text_size = 16
+      icon_size = 128
 
-        # license = { … }
-      '';
+      # license = { … }
+    '';
 
     # XXX: this needs to be `nix run` on `iog-mac-studio-arm-2-signing` or a similar machine.
     # It can’t be a pure derivation because it needs to impurely access the Apple signing machinery.

@@ -13,15 +13,6 @@ in {
     "${inputs.devshell}/extra/language/rust.nix"
   ];
 
-  devshell.packages =
-    [pkgs.unixtools.xxd]
-    ++ lib.optionals pkgs.stdenv.isLinux [
-      pkgs.pkg-config
-    ]
-    ++ lib.optionals pkgs.stdenv.isDarwin [
-      pkgs.libiconv
-    ];
-
   commands = [
     {package = inputs.self.formatter.${pkgs.system};}
     {
@@ -63,25 +54,19 @@ in {
     }
   ];
 
-  language.c.compiler =
-    if pkgs.stdenv.isLinux
-    then pkgs.gcc
-    else pkgs.clang;
-  language.c.includes = internal.commonArgs.buildInputs;
+  language.c = {
+    compiler =
+      if pkgs.stdenv.isLinux
+      then pkgs.gcc
+      else pkgs.clang;
+    includes = internal.commonArgs.buildInputs;
+  };
 
   language.rust.packageSet =
     pkgs.rustPackages
     // {
       inherit (internal) rustfmt;
     };
-
-  devshell.motd = ''
-
-    {202}🔨 Welcome to ${config.name}{reset}
-    $(menu)
-
-    You can now run ‘{bold}cargo run{reset}’.
-  '';
 
   env =
     [
@@ -97,7 +82,26 @@ in {
       }
     ];
 
-  devshell.startup.symlink-configs.text = ''
-    ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
-  '';
+  devshell = {
+    packages =
+      [pkgs.unixtools.xxd]
+      ++ lib.optionals pkgs.stdenv.isLinux [
+        pkgs.pkg-config
+      ]
+      ++ lib.optionals pkgs.stdenv.isDarwin [
+        pkgs.libiconv
+      ];
+
+    motd = ''
+
+      {202}🔨 Welcome to ${config.name}{reset}
+      $(menu)
+
+      You can now run ‘{bold}cargo run{reset}’.
+    '';
+
+    startup.symlink-configs.text = ''
+      ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
+    '';
+  };
 }

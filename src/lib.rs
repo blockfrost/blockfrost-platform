@@ -5,6 +5,7 @@ pub mod common;
 pub mod errors;
 pub mod health_monitor;
 pub mod icebreakers_api;
+pub mod load_balancer;
 pub mod logging;
 pub mod middlewares;
 pub mod node;

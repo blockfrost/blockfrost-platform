@@ -23,6 +23,10 @@ For detailed instructions on using the platform, visit our [end-user documentati
 site](https://platform.blockfrost.io/). To begin, check out our [quickstart
 guide](https://platform.blockfrost.io/get-started).
 
+## Roadmap
+
+Explore the upcoming steps on our [roadmap](https://github.com/orgs/blockfrost/projects/17).
+
 ## Join our community
 
 [Join us on Discord](https://discord.gg/inputoutput).

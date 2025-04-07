@@ -7,9 +7,11 @@ use tokio::sync::RwLock;
 
 pub async fn route(
     Extension(prometheus_handle): Extension<Arc<RwLock<PrometheusHandle>>>,
+    Extension(health_monitor): Extension<crate::health_monitor::HealthMonitor>,
 ) -> Result<impl IntoResponse, BlockfrostError> {
-    let handle = prometheus_handle.write().await;
+    gauge!("health_errors_total").set(health_monitor.num_errors().await);
 
+    let handle = prometheus_handle.write().await;
     Ok(handle.render().into_response())
 }
 
@@ -27,6 +29,11 @@ fn internal_setup() -> Arc<RwLock<PrometheusHandle>> {
 
     // Note: we’re initializing the gauges with 0, otherwise they’re not present
     // under `GET /metrics` right after startup, before anything happens.
+
+    describe_gauge!(
+        "health_errors_total",
+        "The number of currently happening health errors; see details under GET /"
+    );
 
     describe_counter!(
         "http_requests_total",

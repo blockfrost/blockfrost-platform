@@ -27,7 +27,6 @@ let
     lib,
     fetchurl,
     scons,
-    gcc,
     zlib,
     arch,
     buildGcc,
@@ -80,7 +79,7 @@ let
         scons install "${sconsArgs}"
       '';
 
-      meta = with lib; {
+      meta = {
         description = "System to create Windows installers";
         homepage = "https://nsis.sourceforge.io/";
       };

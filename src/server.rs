@@ -13,9 +13,20 @@ use axum::{
     routing::{get, post},
 };
 use std::sync::Arc;
-use tower::ServiceBuilder;
-use tower_http::normalize_path::{NormalizePath, NormalizePathLayer};
+use tower_http::normalize_path::NormalizePathLayer;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ApiPrefix(pub Option<Uuid>);
+
+impl std::fmt::Display for ApiPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(uuid) => write!(f, "/{}", uuid),
+            None => write!(f, "/"),
+        }
+    }
+}
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
@@ -23,10 +34,11 @@ pub async fn build(
     config: Arc<Config>,
 ) -> Result<
     (
-        NormalizePath<Router>,
+        Router,
         NodePool,
+        health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        String,
+        ApiPrefix,
     ),
     AppError,
 > {
@@ -53,14 +65,10 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
-    let health_monitor = health_monitor::spawn(node_conn_pool.clone()).await;
+    let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 
     // Build a prefix
-    let api_prefix = if config.icebreakers_config.is_some() {
-        format!("/{}", Uuid::new_v4())
-    } else {
-        "/".to_string()
-    };
+    let api_prefix = ApiPrefix(config.icebreakers_config.as_ref().map(|_| Uuid::new_v4()));
 
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
@@ -86,19 +94,21 @@ pub async fn build(
     };
 
     // Nest under the UUID prefix
-    let api_routes = if api_prefix == "/" || api_prefix.is_empty() {
+    let api_routes: Router = if api_prefix.0.is_none() {
         regular_api_routes.merge(hidden_api_routes)
     } else {
-        regular_api_routes
-            .clone()
-            .nest(&api_prefix, regular_api_routes.merge(hidden_api_routes))
+        // XXX: using `.nest()` breaks trailing slashes, we need `.nest_service()`:
+        regular_api_routes.clone().nest_service(
+            &api_prefix.to_string(),
+            regular_api_routes.merge(hidden_api_routes),
+        )
     };
 
     // Add layers
     let app = {
         let mut rv = api_routes
             .layer(Extension(config))
-            .layer(Extension(health_monitor))
+            .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
@@ -109,9 +119,13 @@ pub async fn build(
     };
 
     // Final layers (e.g., trim trailing slash)
-    let app = ServiceBuilder::new()
-        .layer(NormalizePathLayer::trim_trailing_slash())
-        .service(app);
+    let app = app.layer(NormalizePathLayer::trim_trailing_slash());
 
-    Ok((app, node_conn_pool, icebreakers_api, api_prefix))
+    Ok((
+        app,
+        node_conn_pool,
+        health_monitor,
+        icebreakers_api,
+        api_prefix,
+    ))
 }
