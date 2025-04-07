@@ -69,6 +69,22 @@
             taplo.enable = true; # TOML
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
           };
+          settings.global.excludes = [
+            "**/.eslintignore"
+            "**/.gitignore"
+            "**/.gitkeep"
+            "**/.prettierrc"
+            "**/.yarnrc"
+            "*.diff"
+            "*.nsi"
+            "*.png"
+            "*.svg"
+            "*.xml"
+            "*.zip"
+            ".editorconfig"
+            "Dockerfile"
+            "LICENSE"
+          ];
           settings.formatter = {
             prettier.options = [
               "--config"
