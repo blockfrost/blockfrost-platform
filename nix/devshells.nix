@@ -34,7 +34,7 @@ in {
     {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
-    {package = pkgs.rust-analyzer;}
+    {package = config.language.rust.packageSet.rust-analyzer;}
     {
       category = "handy";
       package = internal.runNode "preview";
@@ -63,9 +63,9 @@ in {
   };
 
   language.rust.packageSet =
-    pkgs.rustPackages
+    internal.rustPackages
     // {
-      inherit (internal) rustfmt;
+      clippy = internal.rustPackages.clippy-unwrapped;
     };
 
   env =

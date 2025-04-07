@@ -64,7 +64,7 @@
             prettier.enable = true;
             rufo.enable = true; # Ruby
             rustfmt.enable = true;
-            rustfmt.package = internal.rustfmt;
+            rustfmt.package = internal.rustPackages.rustfmt;
             shfmt.enable = true;
             taplo.enable = true; # TOML
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
@@ -84,6 +84,7 @@
             ".editorconfig"
             "Dockerfile"
             "LICENSE"
+            "target/**/*"
           ];
           settings.formatter = {
             prettier.options = [
