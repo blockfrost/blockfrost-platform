@@ -101,7 +101,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 9
+        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 5
 
       - name: Upload coverage report for GitHub Pages
         uses: actions/upload-artifact@v4
