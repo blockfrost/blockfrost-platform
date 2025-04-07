@@ -86,18 +86,16 @@ For detailed instructions on each step, follow the links above.
 
 To function properly, your Icebreaker node requires the following ports to be open in your firewall:
 
-- `3000/tcp` (or custom port): For incoming API requests from Blockfrost
-- `8081/tcp`: Prometheus metrics endpoint for monitoring (optional but recommended). Metrics can be disabled altogether if you prefer.
+- `3000/tcp` (or custom port): For incoming API requests from Blockfrost and Prometheus metrics endpoint for monitoring. Metrics can be disabled altogether if you prefer.
 
 Ensure these ports allow incoming connections from the Blockfrost server IPs.
 
 **Example for Ubuntu with ufw**
 
-You can verify port accessibility using:
+You can make ports accessible using:
 
 ```bash
 sudo ufw allow 3000/tcp
-sudo ufw allow 8081/tcp
 ```
 
 **Example using a computer outside of the server network**
@@ -105,7 +103,7 @@ sudo ufw allow 8081/tcp
 You can verify port accessibility from the external world by using another computer outside of the server network:
 
 ```bash
-telnet example.com 3000
+telnet YOUR_PUBLIC_IP 3000
 curl -v http://YOUR_PUBLIC_IP:3000/
 ```
 
@@ -206,11 +204,11 @@ Additional endpoints are planned for future releases.
 
 ### How can I get more detailed metrics or logs for my Icebreaker node?
 
-The `blockfrost-platform` process exposes a Prometheus metrics endpoint by default at `http://localhost:8081/metrics` with detailed operational stats.
+The `blockfrost-platform` process exposes a Prometheus metrics endpoint by default at `http://localhost:3000/metrics` with detailed operational stats.
 
 To access richer metrics:
 
-1. Ensure port `8081` is accessible
+1. Ensure port `3000` is accessible
 2. Install and configure [Prometheus](https://prometheus.io/docs/introduction/overview/) to scrape the metrics endpoint
 3. Use a visualization tool like [Grafana](https://grafana.com/docs/grafana/latest/getting-started/) to graph and analyze the data.
 
@@ -309,9 +307,10 @@ When a new version of the Blockfrost platform is released:
 1. Watch for an announcement in the private Icebreakers Discord channel with update instructions
 2. Shut down your current `blockfrost-platform` process
 3. Update the platform software using the same [installation method](installation/installers) you originally used
-4. Restart the `blockfrost-platform` process
-5. Verify the new version is running with `blockfrost-platform --version`
-6. Monitor your logs and the dashboard to ensure your node reconnects successfully.
+4. Verify the new version is installed with `blockfrost-platform --version`
+5. Restart the `blockfrost-platform` process
+6. Verify the new version is running with `curl -sSL http://localhost:3000/ | jq .version`
+7. Monitor your logs and the dashboard to ensure your node reconnects successfully.
 
 Promptly updating is recommended to maintain compatibility and access new features.
 The specific update steps may vary slightly between releases so always refer to the official release notes.
