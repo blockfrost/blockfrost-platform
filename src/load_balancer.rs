@@ -32,6 +32,11 @@ pub async fn run_all(
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     api_prefix: ApiPrefix,
 ) {
+    assert!(
+        !configs.is_empty(),
+        "load_balancer::run_all called with no configs - nothing to run!"
+    );
+
     let connections: Vec<JoinHandle<Result<(), String>>> = configs
         .iter()
         .map(|c| {
