@@ -4,7 +4,7 @@ use blockfrost_platform::{
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -68,11 +68,19 @@ async fn main() -> Result<(), AppError> {
             .await;
 
         tokio::spawn(async move {
-            loop {
+            'load_balancers: loop {
                 match icebreakers_api.register().await {
                     Ok(response) => {
+                        let configs: Vec<_> =
+                            response.load_balancers.into_iter().flatten().collect();
+                        if configs.is_empty() {
+                            warn!("IceBreakers: no WebSocket load balancers to connect to");
+                            // If there are no load balancers, only register once, nothing to monitor:
+                            break 'load_balancers;
+                        }
+
                         load_balancer::run_all(
-                            response.load_balancers.into_iter().flatten().collect(),
+                            configs,
                             app.clone(),
                             health_errors.clone(),
                             api_prefix.clone(),
