@@ -17,7 +17,9 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
     ) {inherit inputs targetSystem unix;};
 in
   extendForTarget rec {
-    craneLib = inputs.crane.mkLib pkgs;
+    rustPackages = inputs.fenix.packages.${pkgs.system}.stable;
+
+    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
     src = craneLib.cleanCargoSource ../../.;
 
@@ -64,9 +66,6 @@ in
         '';
         meta.mainProgram = packageName;
       });
-
-    # We use a newer `rustfmt`:
-    inherit (inputs.fenix.packages.${pkgs.system}.stable) rustfmt;
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
