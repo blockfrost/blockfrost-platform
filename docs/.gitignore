@@ -40,3 +40,10 @@ jspm_packages
 install-state.gz
 out
 _pagefind
+
+# Yarn specific files
+.yarn/
+.yarnrc
+.yarnrc.yml
+yarn.lock
+yarn-error.log
