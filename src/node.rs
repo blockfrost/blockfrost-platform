@@ -1,3 +1,4 @@
+pub mod addresses;
 pub mod connection;
 pub mod pool;
 pub mod pool_manager;
