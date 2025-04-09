@@ -1,4 +1,4 @@
-# Building from the source code using nix
+# Building the binary using nix
 
 If you are using Nix, building `blockfrost-platform` is straightforward.
 
@@ -18,8 +18,8 @@ substituters = https://cache.nixos.org https://cache.iog.io
 trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 ```
 
-After the build is complete, you should see the binary file and can move on to the
-Usage section of this documentation.
+After the build is complete, you should see the binary file.
+Then you can move on to [Configuring the platform](/configuration).
 
 ```bash
 $ ./result/bin/blockfrost-platform --version
