@@ -46,11 +46,12 @@
         packages =
           {
             default = internal.package;
+            blockfrost-platform = internal.package;
             inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
-            default-x86_64-windows = inputs.self.internal.x86_64-windows.package;
-            default-aarch64-linux = inputs.self.internal.aarch64-linux.package;
+            blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.package;
+            blockfrost-platform-aarch64-linux = inputs.self.internal.aarch64-linux.package;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -123,7 +124,7 @@
           ...
         }: {
           imports = [./nix/nixos];
-          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.system}.default;
+          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.system}.blockfrost-platform;
         };
 
         hydraJobs = let
