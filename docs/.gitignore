@@ -41,9 +41,5 @@ install-state.gz
 out
 _pagefind
 
-# Yarn specific files
-.yarn/
-.yarnrc
-.yarnrc.yml
-yarn.lock
-yarn-error.log
+# Ignore yarn cache artifacts
+.yarn/cache
