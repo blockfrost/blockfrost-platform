@@ -1,4 +1,4 @@
-# Building the binary using nix
+# Building the binary using Nix
 
 If you are using Nix, building `blockfrost-platform` is straightforward.
 

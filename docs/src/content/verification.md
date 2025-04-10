@@ -128,7 +128,7 @@ If you get a 503 error or if `healthy` is false, check your logs or update your 
 
 ## Icebreaker dashboard monitoring
 
-For a visual verification of your node's status, access the Icebreaker dashboard at [http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/)
+For a visual verification of your node's status, access the Icebreaker dashboard at [https://icebreakers.blockfrost.io/](https://icebreakers.blockfrost.io/)
 
 Your node will appear as 'Icebreaker X' where X is your assigned number (visible in your NFT metadata).
 
