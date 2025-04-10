@@ -109,55 +109,55 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
 
 1. The most important load balancer endpoints are `GET /{api_prefix}/{path}`, and `POST /{api_prefix}/{path}`:
 
-    - Using the example above, once you issue: `curl -fsSL https://icebreakers-api.blockfrost.io/b0be51e5-e5fe-4e42-98a9-2246173bea19/`, this request will be translated into a JSON message, and sent over the WebSocket connection with IcebreakerX (identified by its `api_prefix`):
+   - Using the example above, once you issue: `curl -fsSL https://icebreakers-api.blockfrost.io/b0be51e5-e5fe-4e42-98a9-2246173bea19/`, this request will be translated into a JSON message, and sent over the WebSocket connection with IcebreakerX (identified by its `api_prefix`):
 
-      ```json
-      {
-        "id": "04810b96-87cd-4af0-8c1b-7b5e00806769",
-        "method": "GET",
-        "path": "/",
-        "header": [
-          {
-            "name": "host",
-            "value": "0.0.0.0:3001"
-          },
-          {
-            "name": "user-agent",
-            "value": "curl/8.11.1"
-          },
-          {
-            "name": "accept",
-            "value": "*/*"
-          }
-        ],
-        "body_base64": ""
-      }
-      ```
+     ```json
+     {
+       "id": "04810b96-87cd-4af0-8c1b-7b5e00806769",
+       "method": "GET",
+       "path": "/",
+       "header": [
+         {
+           "name": "host",
+           "value": "0.0.0.0:3001"
+         },
+         {
+           "name": "user-agent",
+           "value": "curl/8.11.1"
+         },
+         {
+           "name": "accept",
+           "value": "*/*"
+         }
+       ],
+       "body_base64": ""
+     }
+     ```
 
-    - Then this particular `blockfrost-platform` will resolve the request against its local HTTP server – all cheap, and in memory, without opening any new TCP connections to itself.
-    - The response is encoded back into a JSON response message, and sent over the WebSocket to the load balancer:
+   - Then this particular `blockfrost-platform` will resolve the request against its local HTTP server – all cheap, and in memory, without opening any new TCP connections to itself.
+   - The response is encoded back into a JSON response message, and sent over the WebSocket to the load balancer:
 
-      ```json
-      {
-        "id": "04810b96-87cd-4af0-8c1b-7b5e00806769",
-        "code": 200,
-        "header": [
-          {
-            "name": "content-type",
-            "value": "application/json"
-          },
-          {
-            "name": "content-length",
-            "value": "241"
-          }
-        ],
-        "body_base64": "eyJuYW1lIjoiYmxvY2tmcm9zdC1wbGF0Zm9ybSIsInZlcnNpb24iOiIwLjAuMiIsInJldmlzaW9uIjoiZGlydHkiLCJoZWFsdGh5Ijp0cnVlLCJub2RlX2luZm8iOnsiYmxvY2siOiIyNjkzZTk1M2M4NmU0NzZlNGZhMmFhYWY2MDZjZWRjOThhZmU1ZjEwZTFhZDViYTk3NmNmZDkxNzI4NGI4MGJiIiwiZXBvY2giOjg4NSwiZXJhIjo2LCJzbG90Ijo3NjU0MjI5Niwic3luY19wcm9ncmVzcyI6OTkuOTV9LCJlcnJvcnMiOltdfQ=="
-      }
-      ```
+     ```json
+     {
+       "id": "04810b96-87cd-4af0-8c1b-7b5e00806769",
+       "code": 200,
+       "header": [
+         {
+           "name": "content-type",
+           "value": "application/json"
+         },
+         {
+           "name": "content-length",
+           "value": "241"
+         }
+       ],
+       "body_base64": "eyJuYW1lIjoiYmxvY2tmcm9zdC1wbGF0Zm9ybSIsInZlcnNpb24iOiIwLjAuMiIsInJldmlzaW9uIjoiZGlydHkiLCJoZWFsdGh5Ijp0cnVlLCJub2RlX2luZm8iOnsiYmxvY2siOiIyNjkzZTk1M2M4NmU0NzZlNGZhMmFhYWY2MDZjZWRjOThhZmU1ZjEwZTFhZDViYTk3NmNmZDkxNzI4NGI4MGJiIiwiZXBvY2giOjg4NSwiZXJhIjo2LCJzbG90Ijo3NjU0MjI5Niwic3luY19wcm9ncmVzcyI6OTkuOTV9LCJlcnJvcnMiOltdfQ=="
+     }
+     ```
 
-    - Which in turn converts it to an HTTP response, and sends it to the end user.
-    
-    #### Example
+   - Which in turn converts it to an HTTP response, and sends it to the end user.
+
+   #### Example
 
    ```
    ❯ curl -fsSL https://icebreakers-api.blockfrost.io/b0be51e5-e5fe-4e42-98a9-2246173bea19/ | jq .

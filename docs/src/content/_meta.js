@@ -11,5 +11,5 @@ export default {
   usage: "Running the platform",
   verification: "Verifying that you are up and running",
   options: "Advanced options",
-  faq: "FAQ"
-}
+  faq: "FAQ",
+};
