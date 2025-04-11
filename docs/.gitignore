@@ -40,6 +40,3 @@ jspm_packages
 install-state.gz
 out
 _pagefind
-
-# Ignore yarn cache artifacts
-.yarn/cache
