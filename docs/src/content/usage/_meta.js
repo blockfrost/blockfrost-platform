@@ -1,7 +1,5 @@
-let config = {
-  configuration: "Configuring the platform",
-  cli: "Running the platform",
+export default {
+  cli: "From the command line",
+  systemd: "Setting up a systemd service",
   docker: "Using Docker",
 };
-
-export default config;

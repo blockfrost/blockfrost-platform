@@ -1,15 +1,14 @@
 import { Callout, Table } from "nextra/components";
 
-# Running the platform from your command line
+# Running the platform from the command line
 
-If you have used the configuration wizard to create your config file, all you need
-is to just run the binary:
+If you have used the configuration wizard to create your config file, all you need to do is run the binary:
 
 ```console
 blockfrost-platform
 ```
 
-If you are not using the configuration file, simple run as:
+If you are not using the configuration file, simply run as:
 
 ```console
 blockfrost-platform [OPTIONS] --network <NETWORK> \
@@ -22,77 +21,3 @@ blockfrost-platform [OPTIONS] --network <NETWORK> \
   For the full list of the command line options, run `blockfrost-platform
   --help`.
 </Callout>
-
-# Setting up `systemd` for your instance
-
-Running it from the command line is a good way of testing your new binary; however, as you want your instance
-to be up and running across the reboots, we recommend you setup a `systemd` service for it.
-
-First, we need to create a bash script file that will serve as a startup script for the Blockfrost platform.
-We can call it, for example, `start-blockfrost-platform.sh`, with content similar to the example below.
-
-Please note that this is just an example and you need to modify it to fit your specific use case.
-It won't work if you just copy and paste it.
-
-```bash
-#!/usr/bin/env bash
-# You can modify these variables for your specific setup
-# NETWORK=mainnet
-SECRET=my_icebreaker_secret_i_have_received_from_the_blockfrost_team
-REWARD_ADDR=addr1_rest_of_my_reward_address_that_holds_my_nft_license_provided_by_the_blockfrost_team
-NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
-
-/usr/local/bin/blockfrost-platform --network ${NEWORK:=mainnet} \
-                                   --node-socket-path $NODE_SOCKET_PATH \
-                                   --secret $SECRET \
-                                   --reward-address $REWARD_ADDR
-```
-
-Create a new `blockfrost-platform.service` file and add this to it:
-
-```systemd
-[Unit]
-Description       = Blockfrost Platform
-Wants             = network-online.target
-After             = network-online.target
-
-[Service]
-User              = <$USER>
-Type              = simple
-WorkingDirectory  = <$HOME>/blockfrost-platform
-ExecStart         = /bin/bash -c '<$HOME>/cardano-platform/start-blockfrost-platform.sh'
-ExecReload        = pkill -HUP blockfrost-platform
-KillSignal        = SIGINT
-RestartKillSignal = SIGINT
-TimeoutStopSec    = 300
-LimitNOFILE       = 32768
-Restart           = always
-RestartSec        = 5
-SyslogIdentifier  = blockfrost-platform
-
-[Install]
-WantedBy          = multi-user.target
-```
-
-Next, move it to the systemd folder and set appropriate permissions.
-
-```bash
-mv blockfrost-platform.service /etc/systemd/system/
-sudo chmod 644 /etc/systemd/system/blockfrost-platform.service
-```
-
-Following that, you can then enable the service.
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable blockfrost-platform.service
-```
-
-Let's restart the service and see if it is working.
-
-```bash
-sudo systemctl restart blockfrost-platform.service
-journalctl -f -u blockfrost-platform
-```
-
-Your Blockfrost platform is now enabled within `systemd` which means it should survive even reboots. But please test it.

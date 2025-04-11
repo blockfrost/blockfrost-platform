@@ -86,7 +86,7 @@ INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 ```
 
 You would need this UUID for things like your own manual transaction submission tests.
-Otherwise, it’s an implementation detail.
+Otherwise, it's an implementation detail.
 Remember that this changes every time you restart the service.
 
 ### Metrics endpoint verification
@@ -126,13 +126,9 @@ If working properly, this endpoint will return JSON with service status details 
 If `healthy` is true, the service is operational.
 If you get a 503 error or if `healthy` is false, check your logs or update your installation to resolve potential issues.
 
-## Grafana dashboard monitoring
+## Icebreaker dashboard monitoring
 
-For a visual verification of your node's status, access the Blockfrost Grafana dashboard:
-
-```shell
-https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177
-```
+For a visual verification of your node's status, access the Icebreaker dashboard at [https://icebreakers.blockfrost.io/](https://icebreakers.blockfrost.io/)
 
 Your node will appear as 'Icebreaker X' where X is your assigned number (visible in your NFT metadata).
 
