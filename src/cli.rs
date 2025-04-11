@@ -21,7 +21,7 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, Clone)]
 #[command(author,
           version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_REVISION"), ")"),
           about,
@@ -270,7 +270,7 @@ impl Args {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Mode {
     Compact,
@@ -278,7 +278,7 @@ pub enum Mode {
     Full,
 }
 
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
     Mainnet,
@@ -286,7 +286,7 @@ pub enum Network {
     Preview,
 }
 
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize)]
+#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     Debug,
@@ -296,7 +296,7 @@ pub enum LogLevel {
     Trace,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub server_address: std::net::IpAddr,
     pub server_port: u16,
@@ -310,7 +310,7 @@ pub struct Config {
     pub no_metrics: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IcebreakersConfig {
     pub reward_address: String,
     pub secret: String,
@@ -341,7 +341,15 @@ impl Config {
                 secret,
             })
         } else {
-            None
+            let conflicts = args.reward_address.is_some() || args.secret.is_some();
+
+            if conflicts {
+                return Err(AppError::Server(
+                    "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
+                ));
+            } else {
+                None
+            }
         };
 
         Ok(Config {
@@ -387,5 +395,186 @@ impl std::fmt::Display for Mode {
             Mode::Light => write!(f, "light"),
             Mode::Full => write!(f, "full"),
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mandatory_ok() {
+        let inputs = vec![
+            "testing",
+            "--network",
+            "mainnet",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--reward-address",
+            "test-reward-address",
+            "--secret",
+            "test-secret",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        let maybe_config = Config::from_args(args);
+
+        assert!(
+            maybe_config.is_ok(),
+            "Config should be created successfully"
+        );
+
+        let config = maybe_config.unwrap();
+
+        // Test mandatory values are properly set with minimal configuration
+        assert_eq!(config.node_socket_path, "/path/to/socket");
+        assert_eq!(config.max_pool_connections, 10);
+        assert_eq!(config.network, Network::Mainnet);
+        assert_eq!(config.server_address.to_string(), "0.0.0.0");
+        assert_eq!(config.server_port, 3000);
+        assert_eq!(config.log_level, Level::INFO);
+        assert_eq!(config.mode, Mode::Compact);
+        assert!(!config.no_metrics);
+        assert_eq!(config.network_magic, MAINNET_MAGIC);
+        assert!(config.icebreakers_config.is_some());
+
+        let icebreaker_config = config.icebreakers_config.unwrap();
+        assert_eq!(icebreaker_config.reward_address, "test-reward-address");
+        assert_eq!(icebreaker_config.secret, "test-secret");
+    }
+
+    #[test]
+    fn test_mandatory_solitary_ok() {
+        let inputs = vec![
+            "testing",
+            "--network",
+            "mainnet",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        let maybe_config = Config::from_args(args.clone());
+
+        assert!(
+            maybe_config.is_ok(),
+            "Config should be created successfully"
+        );
+
+        let config = maybe_config.unwrap();
+
+        // Test mandatory values are properly set with minimal configuration
+        assert_eq!(config.node_socket_path, "/path/to/socket");
+        assert_eq!(config.max_pool_connections, 10);
+        assert_eq!(config.network, Network::Mainnet);
+        assert_eq!(config.server_address.to_string(), "0.0.0.0");
+        assert_eq!(config.server_port, 3000);
+        assert_eq!(config.log_level, Level::INFO);
+        assert_eq!(config.mode, Mode::Compact);
+        assert!(!config.no_metrics);
+        assert_eq!(config.network_magic, MAINNET_MAGIC);
+        assert!(config.icebreakers_config.is_none());
+        assert!(args.solitary);
+    }
+
+    #[test]
+    fn test_no_metrics_ok() {
+        let inputs = vec![
+            "testing",
+            "--network",
+            "mainnet",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--reward-address",
+            "test-reward-address",
+            "--secret",
+            "test-secret",
+            "--no-metrics",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        let maybe_config = Config::from_args(args.clone());
+
+        assert!(
+            maybe_config.is_ok(),
+            "Config should be created successfully"
+        );
+
+        assert!(maybe_config.unwrap().no_metrics);
+    }
+
+    #[test]
+    fn test_non_defaults_ok() {
+        let inputs = vec![
+            "testing",
+            "--network",
+            "preprod",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--server-address",
+            "192.168.1.1",
+            "--server-port",
+            "5353",
+            "--log-level",
+            "debug",
+            "--mode",
+            "full",
+            "--no-metrics",
+            "--solitary",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        let maybe_config = Config::from_args(args.clone());
+
+        assert!(
+            maybe_config.is_ok(),
+            "Config should be created successfully"
+        );
+
+        let config = maybe_config.unwrap();
+
+        // Test mandatory values are properly set with minimal configuration
+        assert_eq!(config.node_socket_path, "/path/to/socket");
+        assert_eq!(config.max_pool_connections, 10);
+        assert_eq!(config.network, Network::Preprod);
+        assert_eq!(config.server_address.to_string(), "192.168.1.1");
+        assert_eq!(config.server_port, 5353);
+        assert_eq!(config.log_level, Level::DEBUG);
+        assert_eq!(config.mode, Mode::Full);
+        assert!(config.no_metrics);
+        assert_eq!(config.network_magic, PREPROD_MAGIC);
+        assert!(config.icebreakers_config.is_none());
+        assert!(args.solitary);
+    }
+
+    #[test]
+    fn test_solitary_conflict_fail() {
+        let inputs = vec![
+            "testing",
+            "--network",
+            "mainnet",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--reward-address",
+            "test-reward-address",
+            "--secret",
+            "test-secret",
+            "--solitary",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        let maybe_config = Config::from_args(args.clone());
+
+        assert!(
+            maybe_config.is_err(),
+            "Config should be created successfully"
+        );
+
+        assert_eq!(maybe_config.unwrap_err().to_string(), "Server startup error: Cannot set --reward-address or --secret in solitary mode (--solitary)".to_string());
     }
 }
