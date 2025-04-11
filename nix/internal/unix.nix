@@ -50,7 +50,9 @@ in
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-    packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
+    packageName = (craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/Cargo.toml";};}).pname;
+
+    cargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -64,7 +66,14 @@ in
           mkdir -p $out/bin
           ln -sf $out/libexec/${packageName} $out/bin/
         '';
-        meta.mainProgram = packageName;
+        meta = {
+          mainProgram = packageName;
+          license =
+            if cargoToml.package.license == "Apache-2.0"
+            then lib.licenses.asl20
+            else throw "unknown license in Cargo.toml: ${cargoToml.package.license}";
+          inherit (cargoToml.package) description homepage;
+        };
       });
 
     cargoChecks = {
