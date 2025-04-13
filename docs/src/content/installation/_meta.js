@@ -1,8 +1,6 @@
-let config = {
+export default {
   installers: "Official installers ⚙️",
-  source: "From source code",
-  nix: "Using Nix",
-  docker: "Using Docker",
+  source: "Building the binary from source code",
+  nix: "Building the binary using Nix",
+  docker: "Building the Docker image",
 };
-
-export default config;

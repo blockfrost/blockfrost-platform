@@ -32,4 +32,4 @@ docker pull ghcr.io/blockfrost/blockfrost-platform:latest
 docker pull ghcr.io/blockfrost/blockfrost-platform:0.0.2
 ```
 
-After you have your Docker image on your machine, you can proceed with the "Usage -> Docker" section of this documentation.
+After you have your Docker image on your machine, you can move on to [Configuring the platform](/configuration).
