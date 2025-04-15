@@ -12,4 +12,8 @@ export default {
   verification: "Verifying that you are up and running",
   options: "Advanced options",
   faq: "FAQ",
+  "---": {
+    type: "separator",
+  },
+  roadmap: "Roadmap",
 };
