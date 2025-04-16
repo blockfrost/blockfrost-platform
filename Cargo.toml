@@ -19,6 +19,7 @@ tokio-tungstenite = "0.26"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 serde = { version = "1.0.218", features = ["derive"] }
+minicbor = "0.26.1"
 tower-http = { version = "0.6.1", features = ["normalize-path"] }
 tower-layer = "0.3.2"
 tower = "0.5.1"
