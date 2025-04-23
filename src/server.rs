@@ -1,11 +1,5 @@
 use crate::{
-    api::{
-        blocks, health,
-        metrics::setup_metrics_recorder,
-        network,
-        root::{self},
-        tx_submit,
-    },
+    api::{blocks, health, metrics::setup_metrics_recorder, network, tx},
     cli::Config,
     errors::{AppError, BlockfrostError},
     health_monitor,
@@ -95,19 +89,73 @@ pub async fn build(
     // API routes that are *only* under the UUID prefix
     let hidden_api_routes = {
         let mut rv = Router::new()
-            .route("/tx/submit", post(tx_submit::route))
+            // accounts
+            .route("/accounts", get(accounts::root::route))
+            .route("/accounts/{account}/blocks", get(accounts::account::blocks::route))
+            .route("/accounts/{account}/txs", get(accounts::account::txs::route))
+
+            // addresses
+            .route("addresses/{address}/blocks", get(addresses::address::blocks::route))
+            .route("addresses/{address}/txs", get(addresses::address::txs::route))
+
+            // assets
+            .route("assets/{asset}/addresses", get(assets::asset::addresses::route))
+            .route("assets/{asset}/txs", get(assets::asset::txs::route))
+
+            // blocks
+            .route("blocks/latest", get(blocks::latest::root::route))
+            .route("blocks/latest/txs", get(blocks::latest::txs::route))
+            .route("blocks/{hash_or_number}/addresses", get(blocks::hash_or_number::addresses::route))
+            .route("blocks/{hash_or_number}/next", get(blocks::hash_or_number::next::route))
+            .route("blocks/{hash_or_number}/previous", get(blocks::hash_or_number::previous::route))
+            .route("blocks/{hash_or_number}/txs", get(blocks::hash_or_number::txs::route))
+
+            // epochs
+            .route("epochs/latest", get(epochs::latest::root::route))
+            .route("epochs/latest/txs", get(epochs::latest::txs::route))
+            .route("epochs/{hash_or_number}/addresses", get(epochs::hash_or_number::addresses::route))
+            .route("epochs/{hash_or_number}/next", get(epochs::hash_or_number::next::route))
+            .route("epochs/{hash_or_number}/previous", get(epochs::hash_or_number::previous::route))
+            .route("epochs/{hash_or_number}/txs", get(epochs::hash_or_number::txs::route))
 
             // health
             .route("/health", get(health::root::route))
             .route("/health/clock", get(health::clock::route))
 
-            // blocks
-            .route("blocks/latest", get(blocks::latest::root::route))
-            .route("blocks/latest/txs", get(blocks::latest::txs::route))
+            // ledger
+            .route("geensis", get(ledger::root::route))
+
+            // metadata
+            .route("metadata", get(metadata::root::route))
+            .route("metadata/latest", get(metadata::latest::root::route))
+            .route("metadata/latest/txs", get(metadata::latest::txs::route))
+            .route("metadata/{hash_or_number}/addresses", get(metadata::hash_or_number::addresses::route))
+            .route("metadata/{hash_or_number}/next", get(metadata::hash_or_number::next::route))
+            .route("metadata/{hash_or_number}/previous", get(metadata::hash_or_number::previous::route))
+            .route("metadata/{hash_or_number}/txs", get(metadata::hash_or_number::txs::route))
 
             // network
             .route("/network", get(network::root::route))
-            .route("/network/eras", get(network::eras::route));
+            .route("/network/eras", get(network::eras::route))
+
+            // pools
+            .route("/pools", get(pools::root::route))
+            .route("/pools/{hash_or_number}", get(pools::hash_or_number::route))
+            .route("/pools/{hash_or_number}/addresses", get(pools::hash_or_number::addresses::route))
+            .route("/pools/{hash_or_number}/next", get(pools::hash_or_number::next::route))
+            .route("/pools/{hash_or_number}/previous", get(pools::hash_or_number::previous::route))
+            .route("/pools/{hash_or_number}/txs", get(pools::hash_or_number::txs::route))
+
+            // tx
+            .route("/tx/submit", post(tx::submit::route));
+
+            // txs
+            .route("/txs", get(txs::root::route))
+            .route("/txs/{hash_or_number}", get(txs::hash_or_number::route))
+            .route("/txs/{hash_or_number}/addresses", get(txs::hash_or_number::addresses::route))
+
+            // utils
+            .route("/utils", get(utils::root::route))
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));

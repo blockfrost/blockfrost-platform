@@ -6,4 +6,4 @@ pub mod health;
 pub mod metrics;
 pub mod network;
 pub mod root;
-pub mod tx_submit;
+pub mod tx;
