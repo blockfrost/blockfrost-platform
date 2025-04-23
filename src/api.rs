@@ -1,4 +1,10 @@
+pub mod accounts;
+pub mod addresses;
 pub mod assets;
+pub mod blocks;
+pub mod epochs;
+pub mod health;
 pub mod metrics;
+pub mod network;
 pub mod root;
 pub mod tx_submit;

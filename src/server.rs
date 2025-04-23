@@ -1,5 +1,10 @@
 use crate::{
-    api::{metrics::setup_metrics_recorder, root, tx_submit},
+    api::{
+        accounts, addresses, blocks, health,
+        metrics::setup_metrics_recorder,
+        root::{self, route},
+        tx_submit,
+    },
     cli::Config,
     errors::{AppError, BlockfrostError},
     health_monitor,
@@ -86,7 +91,10 @@ pub async fn build(
 
     // API routes that are *only* under the UUID prefix
     let hidden_api_routes = {
-        let mut rv = Router::new().route("/tx/submit", post(tx_submit::route));
+        let mut rv = Router::new()
+            .route("/tx/submit", post(tx_submit::route))
+            .route("/health", get(health::root::route));
+
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));
         }
