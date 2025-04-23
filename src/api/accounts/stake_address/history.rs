@@ -1,6 +1,7 @@
 use crate::BlockfrostError;
-use blockfrost_openapi;
+use axum::Json;
+use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
 
-pub async fn route() -> Result<HealthClockGet200Response, BlockfrostError> {
+pub async fn route() -> Result<Json<Vec<NetworkErasInner>>, BlockfrostError> {
     Err(BlockfrostError::not_found())
 }

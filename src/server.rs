@@ -1,8 +1,9 @@
 use crate::{
     api::{
-        accounts, addresses, blocks, health,
+        blocks, health,
         metrics::setup_metrics_recorder,
-        root::{self, route},
+        network,
+        root::{self},
         tx_submit,
     },
     cli::Config,
@@ -81,11 +82,13 @@ pub async fn build(
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = {
         let mut rv = Router::new().route("/", get(root::route));
+
         if metrics.is_some() {
             rv = rv
                 .route("/metrics", get(crate::api::metrics::route))
                 .route_layer(from_fn(track_http_metrics));
         }
+
         rv
     };
 
@@ -93,7 +96,18 @@ pub async fn build(
     let hidden_api_routes = {
         let mut rv = Router::new()
             .route("/tx/submit", post(tx_submit::route))
-            .route("/health", get(health::root::route));
+
+            // health
+            .route("/health", get(health::root::route))
+            .route("/health/clock", get(health::clock::route))
+
+            // blocks
+            .route("blocks/latest", get(blocks::latest::root::route))
+            .route("blocks/latest/txs", get(blocks::latest::txs::route))
+
+            // network
+            .route("/network", get(network::root::route))
+            .route("/network/eras", get(network::eras::route));
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));

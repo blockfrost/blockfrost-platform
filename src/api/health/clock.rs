@@ -1,6 +1,7 @@
 use crate::BlockfrostError;
-use blockfrost_openapi::models::_health_clock_get_200_response::HealthClockGet200Response;
+use axum::Json;
+use blockfrost_openapi::models::_health_get_200_response::HealthGet200Response;
 
-pub async fn route() -> Result<HealthClockGet200Response, BlockfrostError> {
+pub async fn route() -> Result<Json<HealthGet200Response>, BlockfrostError> {
     Err(BlockfrostError::not_found())
 }
