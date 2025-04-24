@@ -137,9 +137,9 @@ pub async fn build(
             .route("epochs/{number}", get(epochs::number::root::route))
             .route("epochs/{number}/next", get(epochs::number::next::route))
             .route("epochs/{number}/previous", get(epochs::number::previous::route))
-            .route("epochs/{number}/stakes", get(epochs::number::stakes::route))
+            .route("epochs/{number}/stakes", get(epochs::number::stakes::root::route))
             .route("epochs/{number}/stakes/{pool_id}", get(epochs::number::stakes::pool_id::route))
-            .route("epochs/{number}/blocks", get(epochs::number::blocks::route))
+            .route("epochs/{number}/blocks", get(epochs::number::blocks::root::route))
             .route("epochs/{number}/blocks/{pool_id}", get(epochs::number::blocks::pool_id::route))
             .route("epochs/{number}/parameters", get(epochs::number::parameters::route))
 
@@ -214,8 +214,8 @@ pub async fn build(
             .route("/txs/{hash}/cbor", get(txs::hash::cbor::route))
 
             // utils
-            .route("/utils/tx/evaluate", post(utils::root::route))
-            .route("/utils/tx/evaluate/utxos", post(utils::root::route));
+            .route("/utils/tx/evaluate", post(utils::txs::evaluate::root::route))
+            .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route));
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));
