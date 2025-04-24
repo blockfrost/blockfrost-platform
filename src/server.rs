@@ -1,5 +1,8 @@
 use crate::{
-    api::{blocks, health, metrics::setup_metrics_recorder, network, tx},
+    api::{
+        accounts, addresses, assets, blocks, epochs, governance, health, ledger,
+        metrics::setup_metrics_recorder, network, pools, root, scripts, tx, txs, utils,
+    },
     cli::Config,
     errors::{AppError, BlockfrostError},
     health_monitor,
@@ -90,17 +93,35 @@ pub async fn build(
     let hidden_api_routes = {
         let mut rv = Router::new()
             // accounts
-            .route("/accounts", get(accounts::root::route))
-            .route("/accounts/{account}/blocks", get(accounts::account::blocks::route))
-            .route("/accounts/{account}/txs", get(accounts::account::txs::route))
+            .route("/accounts/{stake_address}", get(accounts::stake_address::route))
+            .route("/accounts/{stake_address}/rewards", get(accounts::stake_address::rewards::route))
+            .route("/accounts/{stake_address}/history", get(accounts::stake_address::history::route))
+            .route("/accounts/{stake_address}/delegations", get(accounts::stake_address::delegations::route))
+            .route("/accounts/{stake_address}/registrations", get(accounts::stake_address::registrations::route))
+            .route("/accounts/{stake_address}/withdrawals", get(accounts::stake_address::withdrawals::route))
+            .route("/accounts/{stake_address}/mirs", get(accounts::stake_address::mirs::route))
+            .route("/accounts/{stake_address}/addresses", get(accounts::stake_address::addresses::route))
+            .route("/accounts/{stake_address}/addresses/assets", get(accounts::stake_address::addresses::assets::route))
+            .route("/accounts/{stake_address}/addresses/total", get(accounts::stake_address::addresses::total::route))
+            .route("/accounts/{stake_address}/utxos", get(accounts::stake_address::utxos::route))
 
             // addresses
-            .route("addresses/{address}/blocks", get(addresses::address::blocks::route))
-            .route("addresses/{address}/txs", get(addresses::address::txs::route))
+            .route("/addresses/{address}", get(addresses::address::route))
+            .route("/addresses/{address}/extended", get(addresses::address::extended::route))
+            .route("/addresses/{address}/total", get(addresses::address::total::route))
+            .route("/addresses/{address}/utxos", get(addresses::address::utxos::route))
+            .route("/addresses/{address}/utxos/{asset}", get(addresses::address::utxos::asset::route))
+            .route("/addresses/{address}/txs", get(addresses::address::txs::route))
+            .route("/addresses/{address}/transactions", get(addresses::address::transactions::route))
 
             // assets
-            .route("assets/{asset}/addresses", get(assets::asset::addresses::route))
-            .route("assets/{asset}/txs", get(assets::asset::txs::route))
+            .route("/assets", get(assets::root::route))
+            .route("/assets/{asset}", get(assets::asset::root::route))
+            .route("/assets/{asset}/history", get(assets::asset::history::route))
+            .route("/assets/{asset}/txs", get(assets::asset::txs::route))
+            .route("/assets/{asset}/transactions", get(assets::asset::transactions::route))
+            .route("/assets/{asset}/addresses", get(assets::asset::addresses::route))
+            .route("/assets/policy/{policy_id}", get(assets::policy::policy_id::route))
 
             // blocks
             .route("blocks/latest", get(blocks::latest::root::route))
@@ -112,27 +133,41 @@ pub async fn build(
 
             // epochs
             .route("epochs/latest", get(epochs::latest::root::route))
-            .route("epochs/latest/txs", get(epochs::latest::txs::route))
-            .route("epochs/{hash_or_number}/addresses", get(epochs::hash_or_number::addresses::route))
-            .route("epochs/{hash_or_number}/next", get(epochs::hash_or_number::next::route))
-            .route("epochs/{hash_or_number}/previous", get(epochs::hash_or_number::previous::route))
-            .route("epochs/{hash_or_number}/txs", get(epochs::hash_or_number::txs::route))
+            .route("epochs/latest/parameters", get(epochs::latest::parameters::route))
+            .route("epochs/{number}", get(epochs::number::root::route))
+            .route("epochs/{number}/next", get(epochs::number::next::route))
+            .route("epochs/{number}/previous", get(epochs::number::previous::route))
+            .route("epochs/{number}/stakes", get(epochs::number::stakes::route))
+            .route("epochs/{number}/stakes/{pool_id}", get(epochs::number::stakes::pool_id::route))
+            .route("epochs/{number}/blocks", get(epochs::number::blocks::route))
+            .route("epochs/{number}/blocks/{pool_id}", get(epochs::number::blocks::pool_id::route))
+            .route("epochs/{number}/parameters", get(epochs::number::parameters::route))
 
             // health
             .route("/health", get(health::root::route))
             .route("/health/clock", get(health::clock::route))
 
             // ledger
-            .route("geensis", get(ledger::root::route))
+            .route("geensis", get(ledger::genesis::route))
+
+            // governance
+            .route("governance/dreps", get(governance::dreps::route))
+            .route("governance/dreps/{drep_id}", get(governance::dreps::route))
+            .route("governance/dreps/{drep_id}/delegators", get(governance::dreps::route))
+            .route("governance/dreps/{drep_id}/metadata", get(governance::dreps::route))
+            .route("governance/dreps/{drep_id}/updates", get(governance::dreps::route))
+            .route("governance/dreps/{drep_id}/votes", get(governance::dreps::route))
+            .route("governance/proposals", get(governance::proposals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}", get(governance::proposals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/parameters", get(governance::proposals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/withdrawals", get(governance::proposals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/votes", get(governance::proposals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/metadata", get(governance::proposals::route))
 
             // metadata
-            .route("metadata", get(metadata::root::route))
-            .route("metadata/latest", get(metadata::latest::root::route))
-            .route("metadata/latest/txs", get(metadata::latest::txs::route))
-            .route("metadata/{hash_or_number}/addresses", get(metadata::hash_or_number::addresses::route))
-            .route("metadata/{hash_or_number}/next", get(metadata::hash_or_number::next::route))
-            .route("metadata/{hash_or_number}/previous", get(metadata::hash_or_number::previous::route))
-            .route("metadata/{hash_or_number}/txs", get(metadata::hash_or_number::txs::route))
+            .route("metadata/txs/labels", get(metadata::root::route))
+            .route("metadata/txs/labels/{label}", get(metadata::root::route))
+            .route("metadata/txs/labels/{label}/cbor", get(metadata::root::route))
 
             // network
             .route("/network", get(network::root::route))
@@ -140,22 +175,47 @@ pub async fn build(
 
             // pools
             .route("/pools", get(pools::root::route))
-            .route("/pools/{hash_or_number}", get(pools::hash_or_number::route))
-            .route("/pools/{hash_or_number}/addresses", get(pools::hash_or_number::addresses::route))
-            .route("/pools/{hash_or_number}/next", get(pools::hash_or_number::next::route))
-            .route("/pools/{hash_or_number}/previous", get(pools::hash_or_number::previous::route))
-            .route("/pools/{hash_or_number}/txs", get(pools::hash_or_number::txs::route))
+            .route("/pools/extended", get(pools::hash_or_number::route))
+            .route("/pools/retired", get(pools::hash_or_number::route))
+            .route("/pools/retiring", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/history", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/metadata", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/relays", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/delegators", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/blocks", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/updates", get(pools::hash_or_number::route))
+            .route("/pools/{pool_id}/votes", get(pools::hash_or_number::route))
 
             // tx
-            .route("/tx/submit", post(tx::submit::route));
+            .route("/tx/submit", post(tx::submit::route))
+
+            // scripts
+            .route("/scripts", post(tx::submit::route))
+            .route("/scripts/{script_hash}/json", post(tx::submit::route))
+            .route("/scripts/{script_hash}/cbor", post(tx::submit::route))
+            .route("/scripts/{script_hash}/redeemers", post(tx::submit::route))
+            .route("/scripts/{script_hash}/json", post(tx::submit::route))
+            .route("/scripts/datum/{datum_hash}", post(tx::submit::route))
+            .route("/scripts/datum/{datum_hash}/cbor", post(tx::submit::route))
 
             // txs
-            .route("/txs", get(txs::root::route))
-            .route("/txs/{hash_or_number}", get(txs::hash_or_number::route))
-            .route("/txs/{hash_or_number}/addresses", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}", get(txs::root::route))
+            .route("/txs/{hash}/utxos", get(txs::hash_or_number::route))
+            .route("/txs/{hash}/stakes", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/delegations", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/withdrawals", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/mirs", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/pool_updates", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/pool_retires", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/metadata", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/metadata/cbor", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/redeemers", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/required_signers", get(txs::hash_or_number::addresses::route))
+            .route("/txs/{hash}/cbor", get(txs::hash_or_number::addresses::route))
 
             // utils
-            .route("/utils", get(utils::root::route))
+            .route("/utils", get(utils::root::route));
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));

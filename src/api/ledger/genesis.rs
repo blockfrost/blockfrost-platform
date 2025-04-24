@@ -1,6 +1,7 @@
 use crate::BlockfrostError;
-use blockfrost_openapi::models::assets_inner::AssetsInner;
+use axum::Json;
+use blockfrost_openapi::models::genesis_content::GenesisContent;
 
-pub async fn route() -> Result<Vec<AssetsInner>, BlockfrostError> {
+pub async fn route() -> Result<Json<GenesisContent>, BlockfrostError> {
     Err(BlockfrostError::not_found())
 }
