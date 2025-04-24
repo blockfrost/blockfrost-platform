@@ -10,5 +10,6 @@ pub mod metrics;
 pub mod network;
 pub mod pools;
 pub mod root;
+pub mod scripts;
 pub mod tx;
 pub mod utils;
