@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        accounts, addresses, assets, blocks, epochs, governance, health, ledger,
+        accounts, addresses, assets, blocks, epochs, governance, health, ledger, metadata,
         metrics::setup_metrics_recorder, network, pools, root, scripts, tx, txs, utils,
     },
     cli::Config,
@@ -151,23 +151,23 @@ pub async fn build(
             .route("geensis", get(ledger::genesis::route))
 
             // governance
-            .route("governance/dreps", get(governance::dreps::route))
-            .route("governance/dreps/{drep_id}", get(governance::dreps::route))
-            .route("governance/dreps/{drep_id}/delegators", get(governance::dreps::route))
-            .route("governance/dreps/{drep_id}/metadata", get(governance::dreps::route))
-            .route("governance/dreps/{drep_id}/updates", get(governance::dreps::route))
-            .route("governance/dreps/{drep_id}/votes", get(governance::dreps::route))
-            .route("governance/proposals", get(governance::proposals::route))
-            .route("governance/proposals/{tx_hash}/{cert_index}", get(governance::proposals::route))
-            .route("governance/proposals/{tx_hash}/{cert_index}/parameters", get(governance::proposals::route))
-            .route("governance/proposals/{tx_hash}/{cert_index}/withdrawals", get(governance::proposals::route))
-            .route("governance/proposals/{tx_hash}/{cert_index}/votes", get(governance::proposals::route))
-            .route("governance/proposals/{tx_hash}/{cert_index}/metadata", get(governance::proposals::route))
+            .route("governance/dreps", get(governance::dreps::root::route))
+            .route("governance/dreps/{drep_id}", get(governance::dreps::drep_id::root::route))
+            .route("governance/dreps/{drep_id}/delegators", get(governance::dreps::drep_id::delegators::route))
+            .route("governance/dreps/{drep_id}/metadata", get(governance::dreps::drep_id::metadata::route))
+            .route("governance/dreps/{drep_id}/updates", get(governance::dreps::drep_id::updates::route))
+            .route("governance/dreps/{drep_id}/votes", get(governance::dreps::drep_id::votes::route))
+            .route("governance/proposals", get(governance::proposals::root::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}", get(governance::proposals::tx_hash::cert_index::root::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/parameters", get(governance::proposals::tx_hash::cert_index::parameters::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/withdrawals", get(governance::proposals::tx_hash::cert_index::withdrawals::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/votes", get(governance::proposals::tx_hash::cert_index::votes::route))
+            .route("governance/proposals/{tx_hash}/{cert_index}/metadata", get(governance::proposals::tx_hash::cert_index::metadata::route))
 
             // metadata
-            .route("metadata/txs/labels", get(metadata::root::route))
-            .route("metadata/txs/labels/{label}", get(metadata::root::route))
-            .route("metadata/txs/labels/{label}/cbor", get(metadata::root::route))
+            .route("metadata/txs/labels", get(metadata::txs::labels::route))
+            .route("metadata/txs/labels/{label}", get(metadata::txs::label::root::route))
+            .route("metadata/txs/labels/{label}/cbor", get(metadata::txs::label::cbor::route))
 
             // network
             .route("/network", get(network::root::route))
