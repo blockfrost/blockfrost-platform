@@ -175,17 +175,17 @@ pub async fn build(
 
             // pools
             .route("/pools", get(pools::root::route))
-            .route("/pools/extended", get(pools::hash_or_number::route))
-            .route("/pools/retired", get(pools::hash_or_number::route))
-            .route("/pools/retiring", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/history", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/metadata", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/relays", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/delegators", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/blocks", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/updates", get(pools::hash_or_number::route))
-            .route("/pools/{pool_id}/votes", get(pools::hash_or_number::route))
+            .route("/pools/extended", get(pools::extended::route))
+            .route("/pools/retired", get(pools::retired::route))
+            .route("/pools/retiring", get(pools::retiring::route))
+            .route("/pools/{pool_id}", get(pools::pool_id::root::route))
+            .route("/pools/{pool_id}/history", get(pools::pool_id::history::route))
+            .route("/pools/{pool_id}/metadata", get(pools::pool_id::metadata::route))
+            .route("/pools/{pool_id}/relays", get(pools::pool_id::relays::route))
+            .route("/pools/{pool_id}/delegators", get(pools::pool_id::delegators::route))
+            .route("/pools/{pool_id}/blocks", get(pools::pool_id::blocks::route))
+            .route("/pools/{pool_id}/updates", get(pools::pool_id::updates::route))
+            .route("/pools/{pool_id}/votes", get(pools::pool_id::votes::route))
 
             // tx
             .route("/tx/submit", post(tx::submit::route))
@@ -215,7 +215,8 @@ pub async fn build(
             .route("/txs/{hash}/cbor", get(txs::hash_or_number::addresses::route))
 
             // utils
-            .route("/utils", get(utils::root::route));
+            .route("/utils/tx/evaluate", post(utils::root::route))
+            .route("/utils/tx/evaluate/utxos", post(utils::root::route));
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));
