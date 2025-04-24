@@ -13,4 +13,5 @@ pub mod pools;
 pub mod root;
 pub mod scripts;
 pub mod tx;
+pub mod txs;
 pub mod utils;

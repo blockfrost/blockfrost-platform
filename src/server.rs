@@ -199,7 +199,7 @@ pub async fn build(
             .route("/scripts/datum/{datum_hash}/cbor", post(scripts::datum::datum_hash::cbor::route))
 
             // txs
-            .route("/txs/{hash}", get(txs::root::route))
+            .route("/txs/{hash}", get(txs::hash::root::route))
             .route("/txs/{hash}/utxos", get(txs::hash::utxos::route))
             .route("/txs/{hash}/stakes", get(txs::hash::stakes::route))
             .route("/txs/{hash}/delegations", get(txs::hash::delegations::route))
@@ -207,7 +207,7 @@ pub async fn build(
             .route("/txs/{hash}/mirs", get(txs::hash::mirs::route))
             .route("/txs/{hash}/pool_updates", get(txs::hash::pool_updates::route))
             .route("/txs/{hash}/pool_retires", get(txs::hash::pool_retires::route))
-            .route("/txs/{hash}/metadata", get(txs::hash::metadata::route))
+            .route("/txs/{hash}/metadata", get(txs::hash::metadata::root::route))
             .route("/txs/{hash}/metadata/cbor", get(txs::hash::metadata::cbor::route))
             .route("/txs/{hash}/redeemers", get(txs::hash::redeemers::route))
             .route("/txs/{hash}/required_signers", get(txs::hash::required_signers::route))
