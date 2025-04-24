@@ -93,14 +93,14 @@ pub async fn build(
     let hidden_api_routes = {
         let mut rv = Router::new()
             // accounts
-            .route("/accounts/{stake_address}", get(accounts::stake_address::route))
+            .route("/accounts/{stake_address}", get(accounts::stake_address::root::route))
             .route("/accounts/{stake_address}/rewards", get(accounts::stake_address::rewards::route))
             .route("/accounts/{stake_address}/history", get(accounts::stake_address::history::route))
             .route("/accounts/{stake_address}/delegations", get(accounts::stake_address::delegations::route))
             .route("/accounts/{stake_address}/registrations", get(accounts::stake_address::registrations::route))
             .route("/accounts/{stake_address}/withdrawals", get(accounts::stake_address::withdrawals::route))
             .route("/accounts/{stake_address}/mirs", get(accounts::stake_address::mirs::route))
-            .route("/accounts/{stake_address}/addresses", get(accounts::stake_address::addresses::route))
+            .route("/accounts/{stake_address}/addresses", get(accounts::stake_address::addresses::root::route))
             .route("/accounts/{stake_address}/addresses/assets", get(accounts::stake_address::addresses::assets::route))
             .route("/accounts/{stake_address}/addresses/total", get(accounts::stake_address::addresses::total::route))
             .route("/accounts/{stake_address}/utxos", get(accounts::stake_address::utxos::route))
