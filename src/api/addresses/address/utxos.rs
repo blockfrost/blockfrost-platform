@@ -1,6 +1,3 @@
-use crate::BlockfrostError;
-use blockfrost_openapi::{self, models::_health_clock_get_200_response::HealthClockGet200Response};
-
-pub async fn route() -> Result<HealthClockGet200Response, BlockfrostError> {
-    Err(BlockfrostError::not_found())
-}
+pub mod asset;
+pub mod root;
+pub mod transactions;

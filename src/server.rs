@@ -106,10 +106,10 @@ pub async fn build(
             .route("/accounts/{stake_address}/utxos", get(accounts::stake_address::utxos::route))
 
             // addresses
-            .route("/addresses/{address}", get(addresses::address::route))
+            .route("/addresses/{address}", get(addresses::address::root::route))
             .route("/addresses/{address}/extended", get(addresses::address::extended::route))
             .route("/addresses/{address}/total", get(addresses::address::total::route))
-            .route("/addresses/{address}/utxos", get(addresses::address::utxos::route))
+            .route("/addresses/{address}/utxos", get(addresses::address::utxos::root::route))
             .route("/addresses/{address}/utxos/{asset}", get(addresses::address::utxos::asset::route))
             .route("/addresses/{address}/txs", get(addresses::address::txs::route))
             .route("/addresses/{address}/transactions", get(addresses::address::transactions::route))
@@ -148,7 +148,7 @@ pub async fn build(
             .route("/health/clock", get(health::clock::route))
 
             // ledger
-            .route("geensis", get(ledger::genesis::route))
+            .route("genesis", get(ledger::genesis::route))
 
             // governance
             .route("governance/dreps", get(governance::dreps::root::route))

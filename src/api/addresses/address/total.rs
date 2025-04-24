@@ -1,6 +1,7 @@
 use crate::BlockfrostError;
-use blockfrost_openapi::{self, models::_health_clock_get_200_response::HealthClockGet200Response};
+use axum::Json;
+use blockfrost_openapi::models::assets_inner::AssetsInner;
 
-pub async fn route() -> Result<HealthClockGet200Response, BlockfrostError> {
+pub async fn route() -> Result<Json<Vec<AssetsInner>>, BlockfrostError> {
     Err(BlockfrostError::not_found())
 }
