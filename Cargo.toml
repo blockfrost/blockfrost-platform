@@ -56,6 +56,8 @@ dirs = "5.0"
 inquire = "0.7.5"
 anyhow = "1.0.95"
 blockfrost-openapi = "0.1.75"
+bech32 = "0.9.1"
+cardano-serialization-lib = "12.1.1"
 
 [features]
 tarpaulin = []

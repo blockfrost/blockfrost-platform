@@ -398,6 +398,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.22.1",
+ "bech32 0.9.1",
  "bip39",
  "blake2",
  "blockfrost",

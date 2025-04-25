@@ -1,4 +1,7 @@
+pub mod accounts;
+pub mod addresses;
 pub mod api;
+pub mod assets;
 pub mod cbor;
 pub mod cli;
 pub mod common;
@@ -9,7 +12,10 @@ pub mod load_balancer;
 pub mod logging;
 pub mod middlewares;
 pub mod node;
+pub mod pagination;
+pub mod payment_cred;
 pub mod server;
+pub mod types;
 
 pub use errors::{AppError, BlockfrostError};
 pub use node::pool::NodePool;
