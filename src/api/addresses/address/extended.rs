@@ -1,7 +1,7 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::assets_inner::AssetsInner;
+use crate::{BlockfrostError, api::ApiResult};
 
-pub async fn route() -> Result<Json<Vec<AssetsInner>>, BlockfrostError> {
+use blockfrost_openapi::models::address_content_extended::AddressContentExtended;
+
+pub async fn route() -> ApiResult<AddressContentExtended> {
     Err(BlockfrostError::not_found())
 }

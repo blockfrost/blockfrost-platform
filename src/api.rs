@@ -1,3 +1,7 @@
+use crate::BlockfrostError;
+
+use axum::Json;
+
 pub mod accounts;
 pub mod addresses;
 pub mod assets;
@@ -15,3 +19,5 @@ pub mod scripts;
 pub mod tx;
 pub mod txs;
 pub mod utils;
+
+pub type ApiResult<T> = Result<Json<T>, BlockfrostError>;

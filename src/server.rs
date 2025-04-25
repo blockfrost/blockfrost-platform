@@ -191,12 +191,12 @@ pub async fn build(
             .route("/tx/submit", post(tx::submit::route))
 
             // scripts
-            .route("/scripts", post(scripts::root::route))
-            .route("/scripts/{script_hash}/json", post(scripts::script_hash::json::route))
-            .route("/scripts/{script_hash}/cbor", post(scripts::script_hash::cbor::route))
-            .route("/scripts/{script_hash}/redeemers", post(scripts::script_hash::redeemers::route))
-            .route("/scripts/datum/{datum_hash}", post(scripts::datum::datum_hash::root::route))
-            .route("/scripts/datum/{datum_hash}/cbor", post(scripts::datum::datum_hash::cbor::route))
+            .route("/scripts", get(scripts::root::route))
+            .route("/scripts/{script_hash}/json", get(scripts::script_hash::json::route))
+            .route("/scripts/{script_hash}/cbor", get(scripts::script_hash::cbor::route))
+            .route("/scripts/{script_hash}/redeemers", get(scripts::script_hash::redeemers::route))
+            .route("/scripts/datum/{datum_hash}", get(scripts::datum::datum_hash::root::route))
+            .route("/scripts/datum/{datum_hash}/cbor", get(scripts::datum::datum_hash::cbor::route))
 
             // txs
             .route("/txs/{hash}", get(txs::hash::root::route))
