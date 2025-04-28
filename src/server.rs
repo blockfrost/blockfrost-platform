@@ -192,6 +192,7 @@ pub async fn build(
 
             // scripts
             .route("/scripts", get(scripts::root::route))
+            .route("/scripts/{script_hash}", get(scripts::script_hash::root::route))
             .route("/scripts/{script_hash}/json", get(scripts::script_hash::json::route))
             .route("/scripts/{script_hash}/cbor", get(scripts::script_hash::cbor::route))
             .route("/scripts/{script_hash}/redeemers", get(scripts::script_hash::redeemers::route))

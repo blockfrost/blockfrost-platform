@@ -1,7 +1,14 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
+use crate::{
+    BlockfrostError,
+    pagination::{Pagination, PaginationQuery},
+};
+use axum::{Json, extract::Query};
+use blockfrost_openapi::models::tx_metadata_label_cbor_inner::TxMetadataLabelCborInner;
 
-pub async fn route() -> Result<Json<Vec<NetworkErasInner>>, BlockfrostError> {
+pub async fn route(
+    Query(pagination_query): Query<PaginationQuery>,
+) -> Result<Json<Vec<TxMetadataLabelCborInner>>, BlockfrostError> {
+    let _ = Pagination::from_query(pagination_query).await?;
+
     Err(BlockfrostError::not_found())
 }
