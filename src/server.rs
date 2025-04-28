@@ -111,14 +111,12 @@ pub async fn build(
             .route("/addresses/{address}/total", get(addresses::address::total::route))
             .route("/addresses/{address}/utxos", get(addresses::address::utxos::root::route))
             .route("/addresses/{address}/utxos/{asset}", get(addresses::address::utxos::asset::route))
-            .route("/addresses/{address}/txs", get(addresses::address::txs::route))
             .route("/addresses/{address}/transactions", get(addresses::address::transactions::route))
 
             // assets
             .route("/assets", get(assets::root::route))
             .route("/assets/{asset}", get(assets::asset::root::route))
             .route("/assets/{asset}/history", get(assets::asset::history::route))
-            .route("/assets/{asset}/txs", get(assets::asset::txs::route))
             .route("/assets/{asset}/transactions", get(assets::asset::transactions::route))
             .route("/assets/{asset}/addresses", get(assets::asset::addresses::route))
             .route("/assets/policy/{policy_id}", get(assets::policy::policy_id::route))
