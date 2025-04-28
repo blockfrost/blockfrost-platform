@@ -6,6 +6,7 @@ pub mod cbor;
 pub mod cli;
 pub mod common;
 pub mod errors;
+pub mod genesis;
 pub mod health_monitor;
 pub mod icebreakers_api;
 pub mod load_balancer;
