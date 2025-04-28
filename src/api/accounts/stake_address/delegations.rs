@@ -5,7 +5,6 @@ use crate::{
     cli::Config,
     pagination::{Pagination, PaginationQuery},
 };
-
 use axum::{
     Extension,
     extract::{Path, Query},

@@ -1,7 +1,23 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
+use crate::{
+    BlockfrostError,
+    accounts::{AccountData, AccountsPath},
+    api::ApiResult,
+    cli::Config,
+    pagination::{Pagination, PaginationQuery},
+};
+use axum::{
+    Extension,
+    extract::{Path, Query},
+};
+use blockfrost_openapi::models::account_addresses_content_inner::AccountAddressesContentInner;
 
-pub async fn route() -> Result<Json<Vec<NetworkErasInner>>, BlockfrostError> {
+pub async fn route(
+    Path(path): Path<AccountsPath>,
+    Extension(config): Extension<Config>,
+    Query(pagination_query): Query<PaginationQuery>,
+) -> ApiResult<Vec<AccountAddressesContentInner>> {
+    let _ = AccountData::from_account_path(path.stake_address, config.network)?;
+    let _ = Pagination::from_query(pagination_query).await?;
+
     Err(BlockfrostError::not_found())
 }
