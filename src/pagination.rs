@@ -189,11 +189,6 @@ pub fn get_range_param(param: Option<String>) -> Result<ParamParts, BlockfrostEr
     }
 }
 
-#[derive(Deserialize)]
-pub struct KupoQuery {
-    pub kupo_only: Option<bool>,
-}
-
 fn valid_value(val: i32) -> bool {
     (0..=i32::MAX).contains(&val)
 }

@@ -1,4 +1,4 @@
-use crate::{errors::BlockfrostError, pagination::Order, types::Amount};
+use crate::errors::BlockfrostError;
 use serde::Deserialize;
 
 const POLICY_ID_SIZE: usize = 56;
@@ -57,86 +57,10 @@ pub fn parse_asset(hex: &str) -> Result<ParsedAsset, BlockfrostError> {
     })
 }
 
-pub fn sort_asset_array(amount: &mut [Amount], order: &Order) {
-    amount.sort_by(|a, b| {
-        let is_lovelace_a = a.unit == "lovelace";
-        let is_lovelace_b = b.unit == "lovelace";
-
-        if is_lovelace_a && !is_lovelace_b {
-            return std::cmp::Ordering::Less;
-        } else if !is_lovelace_a && is_lovelace_b {
-            return std::cmp::Ordering::Greater;
-        }
-
-        let asset_a = parse_asset(&a.unit);
-        let asset_b = parse_asset(&b.unit);
-
-        let result = match (asset_a, asset_b) {
-            (Ok(ref a), Ok(ref b)) => match a.policy_id.cmp(&b.policy_id) {
-                std::cmp::Ordering::Equal => a.asset_name_hex.cmp(&b.asset_name_hex),
-                other => other,
-            },
-            (Err(ref err), Ok(_)) | (Err(ref err), Err(_)) => {
-                sentry::capture_message(
-                    &format!("Failed to parse asset from kupo: {}", err),
-                    sentry::Level::Error,
-                );
-                std::cmp::Ordering::Less
-            },
-            (Ok(_), Err(ref err)) => {
-                sentry::capture_message(
-                    &format!("Failed to parse asset from kupo: {}", err),
-                    sentry::Level::Error,
-                );
-                std::cmp::Ordering::Less
-            },
-        };
-
-        if order == &Order::Asc {
-            result
-        } else {
-            result.reverse()
-        }
-    });
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::assets::sort_asset_array;
-    use crate::pagination::Order;
-    use crate::types::Amount;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
-
-    #[rstest]
-    #[case(
-        vec![
-            Amount { unit: "43b07d4037f0d75ee10f9863097463fc02ff3c0b8b705ae61d9c75bf4d796e746820546f6b656e".to_string(), quantity: "100000000".to_string() },
-            Amount { unit: "08745cbfeed4d42985b9fb6accd955514e21d9425e6746268c46360c5455524638345752464d36563758".to_string(), quantity: "1".to_string() },
-            Amount { unit: "22aae60dc7877bca8be2fb82ede807747d0b207cda51adf519853430756e64657266756e646564676f6c6430303037".to_string(), quantity: "1".to_string() },
-        ], vec![
-            Amount { unit: "08745cbfeed4d42985b9fb6accd955514e21d9425e6746268c46360c5455524638345752464d36563758".to_string(), quantity: "1".to_string() },
-            Amount { unit: "22aae60dc7877bca8be2fb82ede807747d0b207cda51adf519853430756e64657266756e646564676f6c6430303037".to_string(), quantity: "1".to_string() },
-            Amount { unit: "43b07d4037f0d75ee10f9863097463fc02ff3c0b8b705ae61d9c75bf4d796e746820546f6b656e".to_string(), quantity: "100000000".to_string() },
-        ], Order::Asc)]
-    #[case(
-        vec![
-            Amount { unit: "da8c30857834c6ae7203935b89278c532b3995245295456f993e1d244c51".to_string(), quantity: "3487087727563".to_string() },
-            Amount { unit: "d436d9f6b754582f798fe33f4bed12133d47493f78b944b9cc55fd1853756d6d69744c6f6467653138343232".to_string(), quantity: "1".to_string() },
-            Amount { unit: "d436d9f6b754582f798fe33f4bed12133d47493f78b944b9cc55fd1853756d6d69744c6f6467653131373138".to_string(), quantity: "1".to_string() },
-        ], vec![
-            Amount { unit: "da8c30857834c6ae7203935b89278c532b3995245295456f993e1d244c51".to_string(), quantity: "3487087727563".to_string() },
-            Amount { unit: "d436d9f6b754582f798fe33f4bed12133d47493f78b944b9cc55fd1853756d6d69744c6f6467653138343232".to_string(), quantity: "1".to_string() },
-            Amount { unit: "d436d9f6b754582f798fe33f4bed12133d47493f78b944b9cc55fd1853756d6d69744c6f6467653131373138".to_string(), quantity: "1".to_string() },
-        ],  Order::Desc)]
-    fn test_sort_asset_array(
-        #[case] mut input: Vec<Amount>,
-        #[case] expected: Vec<Amount>,
-        #[case] order: Order,
-    ) {
-        sort_asset_array(&mut input, &order);
-        assert_eq!(input, expected);
-    }
 
     #[rstest]
     #[case(

@@ -1,8 +1,4 @@
-use crate::{
-    cli::Network,
-    errors::BlockfrostError,
-    payment_cred::{PaymentCred, PaymentCredPrefix},
-};
+use crate::{cli::Network, errors::BlockfrostError, payment_cred::PaymentCred};
 
 use bech32::decode;
 use core::fmt;
@@ -26,7 +22,6 @@ pub struct AddressesPath {
 pub struct AddressInfo {
     pub address_type: AddressType,
     pub payment_cred: PaymentCred,
-    pub kupo_address: String,
 }
 
 impl AddressInfo {
@@ -38,18 +33,10 @@ impl AddressInfo {
         }
 
         let payment_cred = PaymentCred::from_bech_32(address);
-        let kupo_address = if payment_cred.prefix != PaymentCredPrefix::Invalid {
-            format!("{}/*", address)
-        } else {
-            address.to_string()
-        };
-
-        let payment_cred = PaymentCred::from_bech_32(address);
 
         Ok(Self {
             address_type,
             payment_cred,
-            kupo_address,
         })
     }
 
