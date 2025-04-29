@@ -1,7 +1,6 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
+use crate::{BlockfrostError, api::ApiResult};
+use blockfrost_openapi::models::tx_content_pool_retires_inner::TxContentPoolRetiresInner;
 
-pub async fn route() -> Result<Json<Vec<NetworkErasInner>>, BlockfrostError> {
+pub async fn route() -> ApiResult<Vec<TxContentPoolRetiresInner>> {
     Err(BlockfrostError::not_found())
 }

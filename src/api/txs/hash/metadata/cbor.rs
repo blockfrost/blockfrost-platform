@@ -1,7 +1,6 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
+use crate::{BlockfrostError, api::ApiResult};
+use blockfrost_openapi::models::tx_content_metadata_cbor_inner::TxContentMetadataCborInner;
 
-pub async fn route() -> Result<Json<Vec<NetworkErasInner>>, BlockfrostError> {
+pub async fn route() -> ApiResult<TxContentMetadataCborInner> {
     Err(BlockfrostError::not_found())
 }
