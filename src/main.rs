@@ -1,3 +1,11 @@
+#![warn(
+    clippy::all,
+    // clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    // clippy::cargo
+)]
+
 use blockfrost_platform::{
     cli::Args, errors::AppError, load_balancer, logging::setup_tracing, server::build,
 };
@@ -9,10 +17,7 @@ use tracing::{error, info, warn};
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     dotenv().ok();
-    let config = Args::init().unwrap_or_else(|e| {
-        eprintln!("\n{}", e);
-        std::process::exit(1);
-    });
+    let config = Args::init()?;
 
     // Logging
     setup_tracing(config.log_level);

@@ -124,6 +124,7 @@ pub async fn build(
             // blocks
             .route("/blocks/latest", get(blocks::latest::root::route))
             .route("/blocks/latest/txs", get(blocks::latest::txs::route))
+            .route("/blocks/{hash_or_number}", get(blocks::hash_or_number::root::route))
             .route("/blocks/{hash_or_number}/addresses", get(blocks::hash_or_number::addresses::route))
             .route("/blocks/{hash_or_number}/next", get(blocks::hash_or_number::next::route))
             .route("/blocks/{hash_or_number}/previous", get(blocks::hash_or_number::previous::route))
