@@ -1,7 +1,6 @@
-use crate::BlockfrostError;
-use axum::Json;
-use blockfrost_openapi::models::assets_inner::AssetsInner;
+use crate::{BlockfrostError, api::ApiResult};
+use blockfrost_openapi::models::epoch_stake_pool_content_inner::EpochStakePoolContentInner;
 
-pub async fn route() -> Result<Json<Vec<AssetsInner>>, BlockfrostError> {
+pub async fn route() -> ApiResult<Vec<EpochStakePoolContentInner>> {
     Err(BlockfrostError::not_found())
 }
