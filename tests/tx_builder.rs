@@ -1,7 +1,9 @@
 use anyhow::{Result, anyhow};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
-use blockfrost_openapi::models::{AddressUtxoContentInner, EpochParamContent};
+use blockfrost_openapi::models::{
+    address_utxo_content_inner::AddressUtxoContentInner, epoch_param_content::EpochParamContent,
+};
 use cardano_serialization_lib::{
     Address, BaseAddress, BigNum, Bip32PrivateKey, CoinSelectionStrategyCIP2, Credential,
     LinearFee, NetworkId, PrivateKey, Transaction, TransactionBody, TransactionBuilder,

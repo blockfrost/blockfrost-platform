@@ -10,5 +10,6 @@ allow = [
   "MPL-2.0",
   "BlueOak-1.0.0",
   "Zlib",
+  "BSD-2-Clause",
 ]
 confidence-threshold = 0.8

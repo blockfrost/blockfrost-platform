@@ -55,6 +55,9 @@ twelf = { version = "0.15.0", features = ["clap", "toml"] }
 dirs = "5.0"
 inquire = "0.7.5"
 anyhow = "1.0.95"
+blockfrost-openapi = "0.1.75"
+bech32 = "0.9.1"
+cardano-serialization-lib = "12.1.1"
 
 [features]
 tarpaulin = []
@@ -67,7 +70,7 @@ proptest = "1.6"
 cardano-serialization-lib = "12.1.1"
 bip39 = "2.1.0"
 blockfrost = "1.0.5"
-blockfrost-openapi = "0.1.69"
+
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

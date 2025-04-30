@@ -50,6 +50,7 @@ pub async fn route(
 pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
     let even_length = xs.len() % 2 == 0;
     let contains_non_hex = xs.iter().any(|&x| !x.is_ascii_hexdigit());
+
     if !even_length || contains_non_hex {
         xs.to_vec()
     } else {

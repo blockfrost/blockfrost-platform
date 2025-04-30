@@ -144,6 +144,52 @@ impl BlockfrostError {
         }
     }
 
+    /// error for assets endpoints
+    pub fn invalid_asset_name() -> Self {
+        Self::custom_400("Invalid or malformed asset format.".to_string())
+    }
+
+    /// error for pools endpoints
+    pub fn invalid_pool_id() -> Self {
+        Self::custom_400("Invalid or malformed pool id format.".to_string())
+    }
+
+    /// error for epochs endpoints
+    pub fn invalid_epoch_number() -> Self {
+        Self::custom_400("params/number must be integer".to_string())
+    }
+
+    /// error for malformed epoch_number
+    pub fn invalid_epoch_missing_or_malformed() -> Self {
+        Self::custom_400("Missing, out of range or malformed epoch_number.".to_string())
+    }
+
+    /// error for malformed stake_address
+    pub fn invalid_stake_address() -> Self {
+        Self::custom_400("Invalid or malformed stake address format.".to_string())
+    }
+
+    /// error for malformed address
+    pub fn invalid_address() -> Self {
+        Self::custom_400(
+            "Invalid address for this network or malformed address format.".to_string(),
+        )
+    }
+
+    /// custom method not allowed error
+    pub fn method_not_allowed() -> Self {
+        Self::custom_400("Invalid path. Please check https://docs.blockfrost.io/".to_string())
+    }
+
+    /// malformed range parameter error
+    pub fn malformed_range_param() -> Self {
+        Self {
+            error: "Bad Request".to_string(),
+            message: "Invalid (malformed or out of range) from/to parameter(s).".to_string(),
+            status_code: 400,
+        }
+    }
+
     /// This error is converted in middleware to internal_server_error_user
     pub fn internal_server_error(error: String) -> Self {
         Self {
@@ -169,10 +215,6 @@ impl BlockfrostError {
             message: "An unexpected response was received from the backend.".to_string(),
             status_code: 500,
         }
-    }
-
-    pub fn method_not_allowed() -> Self {
-        Self::custom_400("Invalid path. Please check https://docs.blockfrost.io/".to_string())
     }
 }
 
