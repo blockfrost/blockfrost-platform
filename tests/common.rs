@@ -20,6 +20,12 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
+pub async fn initialize_app() -> Router {
+    initialize_logging();
+    let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
+    app
+}
+
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
