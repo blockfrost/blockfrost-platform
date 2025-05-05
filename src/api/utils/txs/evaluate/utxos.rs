@@ -2,7 +2,7 @@ use crate::{BlockfrostError, NodePool, cbor::evaluate, common::validate_content_
 use axum::{Extension, Json, response::IntoResponse};
 use hyper::HeaderMap;
 
-use super::{TxEvaluationRequest, convert_eval_report};
+use super::model::{TxEvaluationRequest, convert_eval_report};
 
 pub async fn route(
     Extension(node): Extension<NodePool>,

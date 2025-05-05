@@ -6,7 +6,7 @@ use crate::{
 use axum::{Extension, Json, response::IntoResponse};
 use hyper::HeaderMap;
 
-use super::convert_eval_report;
+use super::model::convert_eval_report;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,

@@ -21,7 +21,7 @@ use pallas_validate::{
 use crate::BlockfrostError;
 use crate::NodePool;
 
-static EMPY_UTXOS: LazyLock<UtxoMap> = LazyLock::new(|| UtxoMap::new());
+static EMPY_UTXOS: LazyLock<UtxoMap> = LazyLock::new(UtxoMap::new);
 
 pub async fn evaluate_binary_tx(
     node_pool: NodePool,
@@ -29,7 +29,7 @@ pub async fn evaluate_binary_tx(
     utxos: Option<&UtxoMap>,
 ) -> Result<EvalReport, BlockfrostError> {
     let minted_tx: conway::Tx =
-        pallas_codec::minicbor::decode::<conway::Tx>(&tx_cbor_binary).unwrap();
+        pallas_codec::minicbor::decode::<conway::Tx>(tx_cbor_binary).unwrap();
     let multi_era_tx: MultiEraTx = MultiEraTx::from_conway(&minted_tx);
     let slot_config = pallas_validate::phase2::script_context::SlotConfig::default();
 
@@ -280,7 +280,7 @@ mod tests {
     use pallas_codec::utils::Bytes;
     use pallas_codec::utils::{AnyUInt, CborWrap};
     use pallas_network::miniprotocols::localstate::queries_v16::{
-        self, CostModels, Fraction, PositiveInterval,
+        self, Fraction,
     };
     use pallas_primitives::conway::{DRepVotingThresholds, PoolVotingThresholds};
     use pallas_primitives::{
@@ -288,7 +288,7 @@ mod tests {
         conway::{DatumOption, ScriptRef, Value},
     };
     use pallas_traverse::{MultiEraInput, MultiEraOutput};
-    use pallas_validate::utils::{AccountState, CertState, Environment, EraCbor, TxoRef, UTxOs};
+    use pallas_validate::utils::{EraCbor, TxoRef, UTxOs};
 
     use super::*;
 
