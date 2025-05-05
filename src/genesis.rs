@@ -1,7 +1,41 @@
 use crate::cli::Network;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
 
-pub fn all_genesis_contents() -> Vec<(Network, GenesisContent)> {
+pub trait GenesisRegistry {
+    fn by_network(&self, network: &Network) -> GenesisContent;
+    fn by_magic(&self, magic: u64) -> GenesisContent;
+    fn all_magics(&self) -> Vec<u64>;
+    fn network_by_magic(&self, magic: u64) -> &Network;
+}
+
+impl GenesisRegistry for Vec<(Network, GenesisContent)> {
+    fn by_network(&self, network: &Network) -> GenesisContent {
+        self.iter()
+            .find(|(n, _)| n == network)
+            .map(|(_, g)| g.clone())
+            .expect("Missing GenesisContent for known Network")
+    }
+
+    fn by_magic(&self, magic: u64) -> GenesisContent {
+        self.iter()
+            .find(|(_, g)| g.network_magic as u64 == magic)
+            .map(|(_, g)| g.clone())
+            .expect("Missing GenesisContent for known magic")
+    }
+
+    fn all_magics(&self) -> Vec<u64> {
+        self.iter().map(|(_, g)| g.network_magic as u64).collect()
+    }
+
+    fn network_by_magic(&self, magic: u64) -> &Network {
+        self.iter()
+            .find(|(_, g)| g.network_magic as u64 == magic)
+            .map(|(n, _)| n)
+            .expect("Missing Network for known magic")
+    }
+}
+
+pub fn genesis() -> Vec<(Network, GenesisContent)> {
     vec![
         (
             Network::Mainnet,
@@ -49,19 +83,4 @@ pub fn all_genesis_contents() -> Vec<(Network, GenesisContent)> {
             },
         ),
     ]
-}
-
-pub fn get_genesis_content_for(network: &Network) -> GenesisContent {
-    all_genesis_contents()
-        .into_iter()
-        .find(|(n, _)| n == network)
-        .map(|(_, g)| g)
-        .expect("Missing genesis content for given network")
-}
-
-pub fn get_all_network_magics() -> Vec<u64> {
-    all_genesis_contents()
-        .into_iter()
-        .map(|(_, g)| g.network_magic as u64)
-        .collect()
 }

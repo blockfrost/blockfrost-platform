@@ -1,7 +1,10 @@
 use crate::AppError;
+use crate::genesis::{GenesisRegistry, genesis};
+use crate::node::pool_manager::NodePoolManager;
 use anyhow::{Error, Result, anyhow};
 use clap::CommandFactory;
 use clap::{Parser, ValueEnum, arg, command};
+use deadpool::managed::Manager;
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::{Deserialize, Serialize};
@@ -101,6 +104,7 @@ impl Args {
             _ => AppError::Server(e.to_string()),
         })
     }
+
     pub fn init() -> Result<Config, AppError> {
         let initial_args = Args::parse();
         let config_path = initial_args.config.unwrap_or(get_config_path());
@@ -294,6 +298,7 @@ pub struct Config {
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
     pub no_metrics: bool,
+    pub network: Network,
 }
 
 #[derive(Clone, Debug)]
@@ -333,6 +338,8 @@ impl Config {
             }
         };
 
+        let network = detect_network(&node_socket_path)?;
+
         Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
@@ -342,8 +349,41 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             no_metrics: args.no_metrics,
+            network,
         })
     }
+}
+
+fn detect_network(socket_path: &str) -> Result<Network, AppError> {
+    let magics = genesis().all_magics();
+
+    for magic in magics {
+        let manager = NodePoolManager {
+            network_magic: magic,
+            socket_path: socket_path.to_string(),
+        };
+
+        let result: Result<(), AppError> = tokio::runtime::Handle::current().block_on(async move {
+            let mut client = manager
+                .create()
+                .await
+                .map_err(|e| AppError::Server(e.to_string()))?;
+            client
+                .ping()
+                .await
+                .map_err(|e| AppError::Server(e.to_string()))?;
+
+            Ok(())
+        });
+
+        if result.is_ok() {
+            return Ok(genesis().network_by_magic(magic).clone());
+        }
+    }
+
+    Err(AppError::Server(
+        "Could not detect network from socket path".to_string(),
+    ))
 }
 
 // Implement conversion from LogLevel enum to tracing::Level
