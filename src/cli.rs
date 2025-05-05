@@ -1,12 +1,11 @@
 use crate::AppError;
 use crate::genesis::{GenesisRegistry, genesis};
-use crate::node::pool_manager::NodePoolManager;
 use anyhow::{Error, Result, anyhow};
 use clap::CommandFactory;
 use clap::{Parser, ValueEnum, arg, command};
-use deadpool::managed::Manager;
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
+use pallas_network::facades::NodeClient;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
 use std::fs;
@@ -14,6 +13,7 @@ use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::runtime::Handle;
 use tracing::Level;
 use twelf::{Layer, config};
 
@@ -358,25 +358,17 @@ fn detect_network(socket_path: &str) -> Result<Network, AppError> {
     let magics = genesis().all_magics();
 
     for magic in magics {
-        let manager = NodePoolManager {
-            network_magic: magic,
-            socket_path: socket_path.to_string(),
-        };
-
-        let result: Result<(), AppError> = tokio::runtime::Handle::current().block_on(async move {
-            let mut client = manager
-                .create()
-                .await
-                .map_err(|e| AppError::Server(e.to_string()))?;
-            client
-                .ping()
-                .await
-                .map_err(|e| AppError::Server(e.to_string()))?;
-
-            Ok(())
+        let ok = Handle::current().block_on(async {
+            match NodeClient::connect(socket_path, magic).await {
+                Ok(conn) => {
+                    conn.abort().await;
+                    true
+                },
+                Err(_) => false,
+            }
         });
 
-        if result.is_ok() {
+        if ok {
             return Ok(genesis().network_by_magic(magic).clone());
         }
     }
@@ -416,7 +408,6 @@ mod tests {
     fn test_mandatory_ok() {
         let inputs = vec![
             "testing",
-            "--network",
             "mainnet",
             "--node-socket-path",
             "/path/to/socket",
@@ -440,7 +431,6 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Mainnet);
         assert_eq!(config.server_address.to_string(), "0.0.0.0");
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
@@ -457,7 +447,6 @@ mod tests {
     fn test_mandatory_solitary_ok() {
         let inputs = vec![
             "testing",
-            "--network",
             "mainnet",
             "--node-socket-path",
             "/path/to/socket",
@@ -478,7 +467,6 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Mainnet);
         assert_eq!(config.server_address.to_string(), "0.0.0.0");
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
@@ -492,7 +480,6 @@ mod tests {
     fn test_no_metrics_ok() {
         let inputs = vec![
             "testing",
-            "--network",
             "mainnet",
             "--node-socket-path",
             "/path/to/socket",
@@ -519,7 +506,6 @@ mod tests {
     fn test_non_defaults_ok() {
         let inputs = vec![
             "testing",
-            "--network",
             "preprod",
             "--node-socket-path",
             "/path/to/socket",
@@ -549,7 +535,6 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Preprod);
         assert_eq!(config.server_address.to_string(), "192.168.1.1");
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
@@ -563,7 +548,6 @@ mod tests {
     fn test_solitary_conflict_fail() {
         let inputs = vec![
             "testing",
-            "--network",
             "mainnet",
             "--node-socket-path",
             "/path/to/socket",
