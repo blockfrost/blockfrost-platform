@@ -33,9 +33,6 @@ pub struct Args {
     #[arg(long, default_value = "3000")]
     server_port: u16,
 
-    #[arg(long)]
-    network: Option<Network>,
-
     #[arg(long, default_value = "info")]
     log_level: LogLevel,
 
@@ -157,13 +154,6 @@ impl Args {
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
 
-        let network = Args::enum_prompt(
-            "Which network are you connecting to?",
-            Network::value_variants(),
-            0,
-        )
-        .and_then(|it| Network::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
-
         let mode = Args::enum_prompt("Mode?", Mode::value_variants(), 0)
             .and_then(|it| Mode::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
@@ -218,7 +208,6 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            network: Some(network),
             no_metrics: !metrics,
             mode,
             log_level,
@@ -304,7 +293,6 @@ pub struct Config {
     pub mode: Mode,
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
-    pub network: Network,
     pub no_metrics: bool,
 }
 
@@ -316,9 +304,6 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network = args.network.ok_or(AppError::Server(
-            "--network must be set. [possible values: mainnet, preprod, preview]".into(),
-        ))?;
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
@@ -357,7 +342,6 @@ impl Config {
             icebreakers_config,
             max_pool_connections: 10,
             no_metrics: args.no_metrics,
-            network,
         })
     }
 }
