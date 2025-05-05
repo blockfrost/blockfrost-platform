@@ -4,7 +4,6 @@ use clap::CommandFactory;
 use clap::{Parser, ValueEnum, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
 use std::fs;
@@ -301,7 +300,6 @@ pub struct Config {
     pub server_address: std::net::IpAddr,
     pub server_port: u16,
     pub log_level: Level,
-    pub network_magic: u64,
     pub node_socket_path: String,
     pub mode: Mode,
     pub icebreakers_config: Option<IcebreakersConfig>,
@@ -324,8 +322,6 @@ impl Config {
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
-
-        let network_magic = Self::get_network_magic(&network);
 
         let icebreakers_config = if !args.solitary {
             let reward_address = args
@@ -356,7 +352,6 @@ impl Config {
             server_address: args.server_address,
             server_port: args.server_port,
             log_level: args.log_level.into(),
-            network_magic,
             node_socket_path,
             mode: args.mode,
             icebreakers_config,
@@ -364,14 +359,6 @@ impl Config {
             no_metrics: args.no_metrics,
             network,
         })
-    }
-
-    fn get_network_magic(network: &Network) -> u64 {
-        match network {
-            Network::Mainnet => MAINNET_MAGIC,
-            Network::Preprod => PREPROD_MAGIC,
-            Network::Preview => PREVIEW_MAGIC,
-        }
     }
 }
 
@@ -435,7 +422,6 @@ mod tests {
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -474,7 +460,6 @@ mod tests {
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -546,7 +531,6 @@ mod tests {
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
         assert!(config.no_metrics);
-        assert_eq!(config.network_magic, PREPROD_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
