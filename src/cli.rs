@@ -1,10 +1,12 @@
 use crate::AppError;
+use crate::genesis::{GenesisRegistry, genesis};
+use crate::node::pool_manager::NodePoolManager;
 use anyhow::{Error, Result, anyhow};
 use clap::CommandFactory;
 use clap::{Parser, ValueEnum, arg, command};
+use deadpool::managed::Manager;
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
 use std::fs;
@@ -33,9 +35,6 @@ pub struct Args {
 
     #[arg(long, default_value = "3000")]
     server_port: u16,
-
-    #[arg(long)]
-    network: Option<Network>,
 
     #[arg(long, default_value = "info")]
     log_level: LogLevel,
@@ -105,6 +104,7 @@ impl Args {
             _ => AppError::Server(e.to_string()),
         })
     }
+
     pub fn init() -> Result<Config, AppError> {
         let initial_args = Args::parse();
         let config_path = initial_args.config.unwrap_or(get_config_path());
@@ -157,13 +157,6 @@ impl Args {
             .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
-
-        let network = Args::enum_prompt(
-            "Which network are you connecting to?",
-            Network::value_variants(),
-            0,
-        )
-        .and_then(|it| Network::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
         let mode = Args::enum_prompt("Mode?", Mode::value_variants(), 0)
             .and_then(|it| Mode::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
@@ -219,7 +212,6 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            network: Some(network),
             no_metrics: !metrics,
             mode,
             log_level,
@@ -301,13 +293,12 @@ pub struct Config {
     pub server_address: std::net::IpAddr,
     pub server_port: u16,
     pub log_level: Level,
-    pub network_magic: u64,
     pub node_socket_path: String,
     pub mode: Mode,
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
-    pub network: Network,
     pub no_metrics: bool,
+    pub network: Network,
 }
 
 #[derive(Clone, Debug)]
@@ -318,14 +309,9 @@ pub struct IcebreakersConfig {
 
 impl Config {
     pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network = args.network.ok_or(AppError::Server(
-            "--network must be set. [possible values: mainnet, preprod, preview]".into(),
-        ))?;
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
-
-        let network_magic = Self::get_network_magic(&network);
 
         let icebreakers_config = if !args.solitary {
             let reward_address = args
@@ -352,11 +338,12 @@ impl Config {
             }
         };
 
+        let network = detect_network(&node_socket_path)?;
+
         Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
             log_level: args.log_level.into(),
-            network_magic,
             node_socket_path,
             mode: args.mode,
             icebreakers_config,
@@ -365,14 +352,38 @@ impl Config {
             network,
         })
     }
+}
 
-    fn get_network_magic(network: &Network) -> u64 {
-        match network {
-            Network::Mainnet => MAINNET_MAGIC,
-            Network::Preprod => PREPROD_MAGIC,
-            Network::Preview => PREVIEW_MAGIC,
+fn detect_network(socket_path: &str) -> Result<Network, AppError> {
+    let magics = genesis().all_magics();
+
+    for magic in magics {
+        let manager = NodePoolManager {
+            network_magic: magic,
+            socket_path: socket_path.to_string(),
+        };
+
+        let result: Result<(), AppError> = tokio::runtime::Handle::current().block_on(async move {
+            let mut client = manager
+                .create()
+                .await
+                .map_err(|e| AppError::Server(e.to_string()))?;
+            client
+                .ping()
+                .await
+                .map_err(|e| AppError::Server(e.to_string()))?;
+
+            Ok(())
+        });
+
+        if result.is_ok() {
+            return Ok(genesis().network_by_magic(magic).clone());
         }
     }
+
+    Err(AppError::Server(
+        "Could not detect network from socket path".to_string(),
+    ))
 }
 
 // Implement conversion from LogLevel enum to tracing::Level
@@ -435,7 +446,6 @@ mod tests {
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -474,7 +484,6 @@ mod tests {
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -546,7 +555,6 @@ mod tests {
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
         assert!(config.no_metrics);
-        assert_eq!(config.network_magic, PREPROD_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
