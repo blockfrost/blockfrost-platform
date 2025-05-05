@@ -3,6 +3,7 @@ mod common;
 mod tx_builder;
 
 mod tests {
+    //pub mod api;
     use std::net::{IpAddr, SocketAddr};
 
     use crate::asserts;
