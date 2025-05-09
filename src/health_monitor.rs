@@ -74,6 +74,7 @@ impl HealthMonitor {
         let notify_state_update_ = notify_state_update.clone();
 
         tokio::spawn(async move {
+            let mut previously_healthy = true;
             loop {
                 node_mon.update(&node).await;
                 chain_mon
@@ -85,6 +86,14 @@ impl HealthMonitor {
                 let node_healthy = Self::collect_errors(&[node_mon.errors(), chain_mon.errors()])
                     .await
                     .is_empty();
+
+                if previously_healthy && !node_healthy {
+                    tracing::warn!("Node pool became unhealthy.");
+                } else if !previously_healthy && node_healthy {
+                    tracing::info!("Node pool became healthy again.");
+                }
+                previously_healthy = node_healthy;
+
                 let delay = Duration::from_secs(if node_healthy { 10 } else { 2 });
 
                 time::sleep(delay).await;
