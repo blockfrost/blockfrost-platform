@@ -45,6 +45,10 @@ in {
     }
     {
       category = "handy";
+      package = internal.runNode "mainnet";
+    }
+    {
+      category = "handy";
       package = internal.tx-build;
     }
     {

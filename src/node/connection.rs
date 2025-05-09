@@ -13,6 +13,7 @@ pub struct NodeClient {
     pub(in crate::node) client: Option<NodeClientFacade>,
     pub(in crate::node) connection_id: u64,
     pub(in crate::node) unrecoverable_error_happened: bool,
+    pub(in crate::node) network_magic: u64,
 }
 
 impl NodeClient {

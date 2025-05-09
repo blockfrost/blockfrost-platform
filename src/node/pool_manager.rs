@@ -35,6 +35,7 @@ impl Manager for NodePoolManager {
                     client: Some(connection),
                     connection_id,
                     unrecoverable_error_happened: false,
+                    network_magic: self.network_magic,
                 })
             },
             Err(err) => {
