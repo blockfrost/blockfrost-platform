@@ -90,7 +90,7 @@ impl HealthMonitor {
                 if previously_healthy && !node_healthy {
                     tracing::warn!("Node pool became unhealthy.");
                 } else if !previously_healthy && node_healthy {
-                    tracing::info!("Node pool became healthy again.");
+                    tracing::warn!("Node pool became healthy again.");
                 }
                 previously_healthy = node_healthy;
 
