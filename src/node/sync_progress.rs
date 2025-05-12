@@ -18,36 +18,27 @@ pub struct NodeInfo {
 impl NodeClient {
     /// Reports the sync progress of the node.
     pub async fn sync_progress(&mut self) -> Result<NodeInfo, BlockfrostError> {
+        let network_magic = self.network_magic;
         self.with_statequery(|generic_client: &mut localstate::GenericClient| {
-            Box::pin(async {
-                let current_era = localstate::queries_v16::get_current_era(generic_client).await?;
-
-                let epoch =
-                    localstate::queries_v16::get_block_epoch_number(generic_client, current_era)
-                        .await?;
-
-                let genesis =
-                    localstate::queries_v16::get_genesis_config(generic_client, current_era)
-                        .await?;
-
-                let system_start =
-                    localstate::queries_v16::get_system_start(generic_client).await?;
-                let chain_point = localstate::queries_v16::get_chain_point(generic_client).await?;
-                let slot = chain_point.slot_or_default();
-
+            Box::pin(async move {
                 // FIXME: this is debatable, because it won’t work for custom networks; we should rather
                 // get this information by calling `Ouroboros.Consensus.HardFork.History.Qry.slotToWallclock`
                 // like both cardano-cli (through cardano-api) and Ogmios do, but it’s not implemented
                 // in pallas_network yet.
                 let wellknown_genesis = wellknown::GenesisValues::from_magic(
-                    genesis.network_magic.into(),
+                    network_magic,
                 )
                 .ok_or_else(|| {
                     BlockfrostError::internal_server_error(format!(
                         "Only well-known networks are supported (unsupported network magic: {})",
-                        genesis.network_magic
+                        network_magic
                     ))
                 })?;
+
+                let system_start =
+                    localstate::queries_v16::get_system_start(generic_client).await?;
+                let chain_point = localstate::queries_v16::get_chain_point(generic_client).await?;
+                let slot = chain_point.slot_or_default();
 
                 let year: i32 = system_start.year.try_into().map_err(|e| {
                     BlockfrostError::internal_server_error(format!("Failed to convert year: {}", e))
@@ -74,6 +65,17 @@ impl NodeClient {
                 let duration_ns = Duration::nanoseconds(nanoseconds);
 
                 let utc_start = base_date + days + duration_ns;
+
+                let current_era = localstate::queries_v16::get_current_era(generic_client).await?;
+
+                let epoch = if current_era == 0 {
+                    // Byron is special…
+                    let (epoch, _) = wellknown_genesis.absolute_slot_to_relative(slot);
+                    epoch as u32
+                } else {
+                    localstate::queries_v16::get_block_epoch_number(generic_client, current_era)
+                        .await?
+                };
 
                 let slot_time_secs: i64 = wellknown_genesis
                     .slot_to_wallclock(slot)

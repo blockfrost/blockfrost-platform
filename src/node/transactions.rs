@@ -84,6 +84,7 @@ mod tests {
             client: None,
             connection_id: 0,
             unrecoverable_error_happened: false,
+            network_magic: 2,
         };
 
         // Test invalid CBOR transaction
