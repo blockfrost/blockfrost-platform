@@ -22,17 +22,30 @@ pub fn assert_submit_error_responses(bf_response: &[u8], local_response: &[u8]) 
         status_code: u64,
     }
 
+    fn sort_all_error_arrays(value: &mut Value) {
+        match value {
+            Value::Object(map) => {
+                for (key, val) in map.iter_mut() {
+                    if key == "error" {
+                        if let Value::Array(arr) = val {
+                            arr.sort_by_key(|v| v.to_string());
+                        }
+                    }
+                    sort_all_error_arrays(val);
+                }
+            },
+            Value::Array(arr) => {
+                for val in arr {
+                    sort_all_error_arrays(val);
+                }
+            },
+            _ => {},
+        }
+    }
+
     fn sort_error_array_in_message_json(raw: &str) -> String {
         let mut message_value: Value = serde_json::from_str(raw).unwrap();
-
-        if let Some(obj) = message_value.as_object_mut() {
-            if let Some(error_array) = obj.get_mut("error") {
-                if let Some(array) = error_array.as_array_mut() {
-                    array.sort_by_key(|a| a.to_string());
-                }
-            }
-        }
-
+        sort_all_error_arrays(&mut message_value);
         serde_json::to_string(&message_value).unwrap()
     }
 
