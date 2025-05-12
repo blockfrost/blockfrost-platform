@@ -66,7 +66,7 @@ pub async fn build(
     }
 
     // Create node pool
-    let node_conn_pool = NodePool::new(&config).await?;
+    let node_conn_pool = NodePool::new(&config)?;
 
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 

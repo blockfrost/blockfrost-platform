@@ -17,7 +17,7 @@ pub struct NodePool {
 
 impl NodePool {
     /// Creates a new pool of [`super::connection::NodeClient`] connections.
-    pub async fn new(config: &Config) -> Result<Self, AppError> {
+    pub fn new(config: &Config) -> Result<Self, AppError> {
         let network_magic = genesis().by_network(&config.network).network_magic as u64;
 
         let manager = NodePoolManager {
