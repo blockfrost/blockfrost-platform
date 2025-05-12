@@ -84,3 +84,58 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
         ),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::Network;
+
+    #[test]
+    fn test_by_network_returns_correct_genesis() {
+        let registry = genesis();
+
+        let mainnet = registry.by_network(&Network::Mainnet);
+        assert_eq!(mainnet.network_magic, 764_824_073);
+
+        let preprod = registry.by_network(&Network::Preprod);
+        assert_eq!(preprod.network_magic, 1);
+
+        let preview = registry.by_network(&Network::Preview);
+        assert_eq!(preview.network_magic, 2);
+    }
+
+    #[test]
+    fn test_by_magic_returns_correct_genesis() {
+        let registry = genesis();
+
+        let mainnet = registry.by_magic(764_824_073);
+        assert_eq!(mainnet.system_start, 1_506_203_091);
+
+        let preprod = registry.by_magic(1);
+        assert_eq!(preprod.system_start, 1_654_041_600);
+
+        let preview = registry.by_magic(2);
+        assert_eq!(preview.system_start, 1_666_692_000);
+    }
+
+    #[test]
+    fn test_all_magics_returns_all_magics() {
+        let registry = genesis();
+        let magics = registry.all_magics();
+
+        assert_eq!(magics.len(), 3);
+
+        assert!(magics.contains(&764_824_073));
+        assert!(magics.contains(&1));
+        assert!(magics.contains(&2));
+    }
+
+    #[test]
+    fn test_network_by_magic_returns_correct_network() {
+        let registry = genesis();
+
+        assert_eq!(registry.network_by_magic(764_824_073), &Network::Mainnet);
+        assert_eq!(registry.network_by_magic(1), &Network::Preprod);
+        assert_eq!(registry.network_by_magic(2), &Network::Preview);
+    }
+}
