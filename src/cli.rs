@@ -308,7 +308,10 @@ pub struct IcebreakersConfig {
 }
 
 impl Config {
-    pub fn from_args(args: Args) -> Result<Self, AppError> {
+    pub fn from_args_with_detector<F>(args: Args, detector: F) -> Result<Self, AppError>
+    where
+        F: Fn(&str) -> Result<Network, AppError>,
+    {
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
@@ -327,18 +330,15 @@ impl Config {
                 secret,
             })
         } else {
-            let conflicts = args.reward_address.is_some() || args.secret.is_some();
-
-            if conflicts {
+            if args.reward_address.is_some() || args.secret.is_some() {
                 return Err(AppError::Server(
                     "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
                 ));
-            } else {
-                None
             }
+            None
         };
 
-        let network = detect_network(&node_socket_path)?;
+        let network = detector(&node_socket_path)?;
 
         Ok(Config {
             server_address: args.server_address,
@@ -351,6 +351,10 @@ impl Config {
             no_metrics: args.no_metrics,
             network,
         })
+    }
+
+    pub fn from_args(args: Args) -> Result<Self, AppError> {
+        Self::from_args_with_detector(args, detect_network)
     }
 }
 
@@ -404,11 +408,14 @@ impl std::fmt::Display for Mode {
 mod tests {
     use super::*;
 
+    fn mock_detector(_: &str) -> Result<Network, AppError> {
+        Ok(Network::Preview)
+    }
+
     #[test]
     fn test_mandatory_ok() {
         let inputs = vec![
             "testing",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",
@@ -419,7 +426,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args);
+        let maybe_config = Config::from_args_with_detector(args, mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -447,7 +454,6 @@ mod tests {
     fn test_mandatory_solitary_ok() {
         let inputs = vec![
             "testing",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--solitary",
@@ -455,7 +461,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -480,7 +486,6 @@ mod tests {
     fn test_no_metrics_ok() {
         let inputs = vec![
             "testing",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",
@@ -492,7 +497,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -506,7 +511,6 @@ mod tests {
     fn test_non_defaults_ok() {
         let inputs = vec![
             "testing",
-            "preprod",
             "--node-socket-path",
             "/path/to/socket",
             "--server-address",
@@ -523,7 +527,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -548,7 +552,6 @@ mod tests {
     fn test_solitary_conflict_fail() {
         let inputs = vec![
             "testing",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",
