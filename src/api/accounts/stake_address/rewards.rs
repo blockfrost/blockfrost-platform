@@ -2,7 +2,7 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    cli::Config,
+    config::Config,
     pagination::{Pagination, PaginationQuery},
 };
 use axum::{

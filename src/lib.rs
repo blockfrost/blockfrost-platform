@@ -5,6 +5,7 @@ pub mod assets;
 pub mod cbor;
 pub mod cli;
 pub mod common;
+pub mod config;
 pub mod errors;
 pub mod genesis;
 pub mod health_monitor;

@@ -1,6 +1,6 @@
 use crate::{
     api::ApiResult,
-    cli::Config,
+    config::Config,
     genesis::{GenesisRegistry, genesis},
 };
 

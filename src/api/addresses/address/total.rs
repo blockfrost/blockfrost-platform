@@ -2,7 +2,7 @@ use crate::{
     BlockfrostError,
     addresses::{AddressInfo, AddressesPath},
     api::ApiResult,
-    cli::Config,
+    config::Config,
 };
 use axum::{Extension, extract::Path};
 use blockfrost_openapi::models::address_content_total::AddressContentTotal;

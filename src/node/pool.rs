@@ -1,7 +1,7 @@
 use super::pool_manager::NodePoolManager;
 use crate::{
     AppError,
-    cli::Config,
+    config::Config,
     genesis::{GenesisRegistry, genesis},
 };
 use deadpool::managed::{Object, Pool};

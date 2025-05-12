@@ -1,19 +1,17 @@
 use crate::AppError;
-use crate::genesis::{GenesisRegistry, genesis};
+use crate::config::{Config, LogLevel, Mode};
 use anyhow::{Error, Result, anyhow};
-use clap::CommandFactory;
-use clap::{Parser, ValueEnum, arg, command};
+use clap::{CommandFactory, ValueEnum};
+use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use pallas_network::facades::NodeClient;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::fmt::{self, Formatter};
 use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tokio::runtime::Handle;
 use tracing::Level;
 use twelf::{Layer, config};
 
@@ -31,19 +29,19 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
 #[config]
 pub struct Args {
     #[arg(long, default_value = "0.0.0.0")]
-    server_address: IpAddr,
+    pub server_address: IpAddr,
 
     #[arg(long, default_value = "3000")]
-    server_port: u16,
+    pub server_port: u16,
 
     #[arg(long, default_value = "info")]
-    log_level: LogLevel,
+    pub log_level: LogLevel,
 
     #[arg(long)]
-    node_socket_path: Option<String>,
+    pub node_socket_path: Option<String>,
 
     #[arg(long, default_value = "compact")]
-    mode: Mode,
+    pub mode: Mode,
 
     #[arg(long, help = "Initialize a new configuration file")]
     #[serde(skip_serializing_if = "should_skip_serializng_fields")]
@@ -56,16 +54,16 @@ pub struct Args {
 
     /// Whether to run in solitary mode, without registering with the Icebreakers API
     #[arg(long)]
-    solitary: bool,
+    pub solitary: bool,
 
     #[arg(long)]
-    secret: Option<String>,
+    pub secret: Option<String>,
 
     #[arg(long)]
-    reward_address: Option<String>,
+    pub reward_address: Option<String>,
 
     #[arg(long)]
-    no_metrics: bool,
+    pub no_metrics: bool,
 }
 
 fn get_config_path() -> PathBuf {
@@ -262,126 +260,6 @@ impl Args {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Mode {
-    Compact,
-    Light,
-    Full,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Network {
-    Mainnet,
-    Preprod,
-    Preview,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warn,
-    Error,
-    Trace,
-}
-
-#[derive(Clone, Debug)]
-pub struct Config {
-    pub server_address: std::net::IpAddr,
-    pub server_port: u16,
-    pub log_level: Level,
-    pub node_socket_path: String,
-    pub mode: Mode,
-    pub icebreakers_config: Option<IcebreakersConfig>,
-    pub max_pool_connections: usize,
-    pub no_metrics: bool,
-    pub network: Network,
-}
-
-#[derive(Clone, Debug)]
-pub struct IcebreakersConfig {
-    pub reward_address: String,
-    pub secret: String,
-}
-
-impl Config {
-    pub fn from_args_with_detector<F>(args: Args, detector: F) -> Result<Self, AppError>
-    where
-        F: Fn(&str) -> Result<Network, AppError>,
-    {
-        let node_socket_path = args
-            .node_socket_path
-            .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
-
-        let icebreakers_config = if !args.solitary {
-            let reward_address = args
-                .reward_address
-                .ok_or(AppError::Server("--reward-address must be set".into()))?;
-
-            let secret = args
-                .secret
-                .ok_or(AppError::Server("--secret must be set".into()))?;
-
-            Some(IcebreakersConfig {
-                reward_address,
-                secret,
-            })
-        } else {
-            if args.reward_address.is_some() || args.secret.is_some() {
-                return Err(AppError::Server(
-                    "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
-                ));
-            }
-            None
-        };
-
-        let network = detector(&node_socket_path)?;
-
-        Ok(Config {
-            server_address: args.server_address,
-            server_port: args.server_port,
-            log_level: args.log_level.into(),
-            node_socket_path,
-            mode: args.mode,
-            icebreakers_config,
-            max_pool_connections: 10,
-            no_metrics: args.no_metrics,
-            network,
-        })
-    }
-
-    pub fn from_args(args: Args) -> Result<Self, AppError> {
-        Self::from_args_with_detector(args, detect_network)
-    }
-}
-
-fn detect_network(socket_path: &str) -> Result<Network, AppError> {
-    let magics = genesis().all_magics();
-
-    for magic in magics {
-        let ok = Handle::current().block_on(async {
-            match NodeClient::connect(socket_path, magic).await {
-                Ok(conn) => {
-                    conn.abort().await;
-                    true
-                },
-                Err(_) => false,
-            }
-        });
-
-        if ok {
-            return Ok(genesis().network_by_magic(magic).clone());
-        }
-    }
-
-    Err(AppError::Server(
-        "Could not detect network from socket path".to_string(),
-    ))
-}
-
 // Implement conversion from LogLevel enum to tracing::Level
 impl From<LogLevel> for Level {
     fn from(log_level: LogLevel) -> Self {
@@ -406,6 +284,8 @@ impl std::fmt::Display for Mode {
 }
 #[cfg(test)]
 mod tests {
+    use crate::config::Network;
+
     use super::*;
 
     fn mock_detector(_: &str) -> Result<Network, AppError> {

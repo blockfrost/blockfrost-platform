@@ -1,4 +1,4 @@
-use crate::cli::Network;
+use crate::config::Network;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
 
 pub trait GenesisRegistry {
@@ -88,7 +88,7 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::Network;
+    use crate::config::Network;
 
     #[test]
     fn test_by_network_returns_correct_genesis() {
