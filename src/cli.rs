@@ -6,13 +6,11 @@ use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::Serialize;
-use std::fmt::{self, Formatter};
 use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::Level;
 use twelf::{Layer, config};
 
 static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
@@ -260,30 +258,10 @@ impl Args {
     }
 }
 
-// Implement conversion from LogLevel enum to tracing::Level
-impl From<LogLevel> for Level {
-    fn from(log_level: LogLevel) -> Self {
-        match log_level {
-            LogLevel::Debug => Level::DEBUG,
-            LogLevel::Info => Level::INFO,
-            LogLevel::Warn => Level::WARN,
-            LogLevel::Error => Level::ERROR,
-            LogLevel::Trace => Level::TRACE,
-        }
-    }
-}
-
-impl std::fmt::Display for Mode {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Mode::Compact => write!(f, "compact"),
-            Mode::Light => write!(f, "light"),
-            Mode::Full => write!(f, "full"),
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
+    use tracing::Level;
+
     use crate::config::Network;
 
     use super::*;
