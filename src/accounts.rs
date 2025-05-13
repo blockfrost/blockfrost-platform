@@ -14,7 +14,7 @@ pub struct AccountData {
 impl AccountData {
     pub fn from_account_path(
         stake_address: String,
-        network: Network,
+        network: &Network,
     ) -> Result<Self, BlockfrostError> {
         let is_valid = is_stake_address_valid(&stake_address, network)?;
 

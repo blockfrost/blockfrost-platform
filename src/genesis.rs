@@ -1,11 +1,25 @@
 use crate::config::Network;
+use axum::Extension;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
+use std::sync::Arc;
+
+pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisContent)>>>;
 
 pub trait GenesisRegistry {
+    /// Get a network config by its `Network` enum variant.
     fn by_network(&self, network: &Network) -> GenesisContent;
+
+    /// Get a network config by magic.
     fn by_magic(&self, magic: u64) -> GenesisContent;
+
+    /// List all known network magics.
     fn all_magics(&self) -> Vec<u64>;
+
+    /// Map a magic number back to its `Network`.
     fn network_by_magic(&self, magic: u64) -> &Network;
+
+    /// Insert or replace the `GenesisContent` for `network` at the front.
+    fn add(&mut self, network: Network, genesis: GenesisContent);
 }
 
 impl GenesisRegistry for Vec<(Network, GenesisContent)> {
@@ -32,6 +46,16 @@ impl GenesisRegistry for Vec<(Network, GenesisContent)> {
             .find(|(_, g)| g.network_magic as u64 == magic)
             .map(|(n, _)| n)
             .expect("Missing Network for known magic")
+    }
+
+    fn add(&mut self, network: Network, genesis: GenesisContent) {
+        // If the network already exists, replace its GenesisContent;
+        // otherwise, insert this (network, genesis) tuple at index 0.
+        if let Some((_, slot)) = self.iter_mut().find(|(n, _)| n == &network) {
+            *slot = genesis;
+        } else {
+            self.insert(0, (network, genesis));
+        }
     }
 }
 

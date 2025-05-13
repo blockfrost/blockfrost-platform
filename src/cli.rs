@@ -62,6 +62,9 @@ pub struct Args {
 
     #[arg(long)]
     pub no_metrics: bool,
+
+    #[arg(long, help = "Path to an configuration file")]
+    pub custom_genesis_config: Option<PathBuf>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -216,6 +219,7 @@ impl Args {
             node_socket_path: Some(node_socket_path),
             reward_address: None,
             secret: None,
+            custom_genesis_config: None,
         };
 
         if !is_solitary {

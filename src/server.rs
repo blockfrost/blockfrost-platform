@@ -3,7 +3,7 @@ use crate::{
         accounts, addresses, assets, blocks, epochs, governance, health, ledger, metadata,
         metrics::setup_metrics_recorder, network, pools, root, scripts, tx, txs, utils,
     },
-    config::Config,
+    config::{Config, Network},
     errors::{AppError, BlockfrostError},
     health_monitor,
     icebreakers_api::IcebreakersAPI,
@@ -12,12 +12,22 @@ use crate::{
 };
 use axum::{
     Extension, Router,
+    extract::State,
     middleware::from_fn,
     routing::{get, post},
 };
+use blockfrost_openapi::models::genesis_content::GenesisContent;
 use std::sync::Arc;
 use tower_http::normalize_path::NormalizePathLayer;
 use uuid::Uuid;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub config: Arc<Config>,
+    pub genesis: Arc<Vec<(Network, GenesisContent)>>,
+}
+
+pub type AppStateExt = State<AppState>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ApiPrefix(pub Option<Uuid>);
@@ -86,7 +96,7 @@ pub async fn build(
                 .route_layer(from_fn(track_http_metrics));
         }
 
-        rv
+        rv.route_layer(NormalizePathLayer::trim_trailing_slash())
     };
 
     // API routes that are *only* under the UUID prefix
@@ -215,29 +225,33 @@ pub async fn build(
 
             // utils
             .route("/utils/tx/evaluate", post(utils::txs::evaluate::root::route))
-            .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route));
+            .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route))
+            .route_layer(NormalizePathLayer::trim_trailing_slash());
 
         if metrics.is_some() {
             rv = rv.route_layer(from_fn(track_http_metrics));
         }
+
         rv
     };
 
     // Nest under the UUID prefix
-    let api_routes: Router = if api_prefix.0.is_none() {
+    let api_routes = if api_prefix.0.is_none() {
         regular_api_routes.merge(hidden_api_routes)
     } else {
-        // XXX: using `.nest()` breaks trailing slashes, we need `.nest_service()`:
-        regular_api_routes.clone().nest_service(
+        regular_api_routes.clone().nest(
             &api_prefix.to_string(),
             regular_api_routes.merge(hidden_api_routes),
         )
     };
 
+    let genesis = Arc::new(config.build_genesis_registry()?);
+    let app_state = AppState { config, genesis };
+
     // Add layers
     let app = {
         let mut rv = api_routes
-            .layer(Extension(config))
+            .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
@@ -247,9 +261,6 @@ pub async fn build(
         }
         rv
     };
-
-    // Final layers (e.g., trim trailing slash)
-    let app = app.layer(NormalizePathLayer::trim_trailing_slash());
 
     Ok((
         app,
