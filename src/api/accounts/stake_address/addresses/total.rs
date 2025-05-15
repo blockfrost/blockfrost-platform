@@ -2,7 +2,7 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    cli::Config,
+    config::Config,
 };
 use axum::{Extension, extract::Path};
 use blockfrost_openapi::models::account_addresses_total::AccountAddressesTotal;

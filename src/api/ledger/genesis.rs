@@ -1,10 +1,14 @@
-use crate::{api::ApiResult, cli::Config, genesis::get_genesis_content_for};
+use crate::{
+    api::ApiResult,
+    config::Config,
+    genesis::{GenesisRegistry, genesis},
+};
 
 use axum::{Extension, Json};
 use blockfrost_openapi::models::genesis_content::GenesisContent;
 
 pub async fn route(Extension(config): Extension<Config>) -> ApiResult<GenesisContent> {
-    let genesis = get_genesis_content_for(&config.network);
+    let genesis = genesis().by_network(&config.network);
 
-    Ok(Json(genesis))
+    Ok(Json(genesis.clone()))
 }

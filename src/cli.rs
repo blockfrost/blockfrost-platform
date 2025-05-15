@@ -1,18 +1,16 @@
 use crate::AppError;
+use crate::config::{Config, LogLevel, Mode};
 use anyhow::{Error, Result, anyhow};
-use clap::CommandFactory;
-use clap::{Parser, ValueEnum, arg, command};
+use clap::{CommandFactory, ValueEnum};
+use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use pallas_network::miniprotocols::{MAINNET_MAGIC, PREPROD_MAGIC, PREVIEW_MAGIC};
-use serde::{Deserialize, Serialize};
-use std::fmt::{self, Formatter};
+use serde::Serialize;
 use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::Level;
 use twelf::{Layer, config};
 
 static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
@@ -29,22 +27,19 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
 #[config]
 pub struct Args {
     #[arg(long, default_value = "0.0.0.0")]
-    server_address: IpAddr,
+    pub server_address: IpAddr,
 
     #[arg(long, default_value = "3000")]
-    server_port: u16,
-
-    #[arg(long)]
-    network: Option<Network>,
+    pub server_port: u16,
 
     #[arg(long, default_value = "info")]
-    log_level: LogLevel,
+    pub log_level: LogLevel,
 
     #[arg(long)]
-    node_socket_path: Option<String>,
+    pub node_socket_path: Option<String>,
 
     #[arg(long, default_value = "compact")]
-    mode: Mode,
+    pub mode: Mode,
 
     #[arg(long, help = "Initialize a new configuration file")]
     #[serde(skip_serializing_if = "should_skip_serializng_fields")]
@@ -57,16 +52,16 @@ pub struct Args {
 
     /// Whether to run in solitary mode, without registering with the Icebreakers API
     #[arg(long)]
-    solitary: bool,
+    pub solitary: bool,
 
     #[arg(long)]
-    secret: Option<String>,
+    pub secret: Option<String>,
 
     #[arg(long)]
-    reward_address: Option<String>,
+    pub reward_address: Option<String>,
 
     #[arg(long)]
-    no_metrics: bool,
+    pub no_metrics: bool,
 }
 
 fn get_config_path() -> PathBuf {
@@ -105,6 +100,7 @@ impl Args {
             _ => AppError::Server(e.to_string()),
         })
     }
+
     pub fn init() -> Result<Config, AppError> {
         let initial_args = Args::parse();
         let config_path = initial_args.config.unwrap_or(get_config_path());
@@ -157,13 +153,6 @@ impl Args {
             .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
-
-        let network = Args::enum_prompt(
-            "Which network are you connecting to?",
-            Network::value_variants(),
-            0,
-        )
-        .and_then(|it| Network::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
         let mode = Args::enum_prompt("Mode?", Mode::value_variants(), 0)
             .and_then(|it| Mode::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
@@ -219,7 +208,6 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            network: Some(network),
             no_metrics: !metrics,
             mode,
             log_level,
@@ -270,143 +258,22 @@ impl Args {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Mode {
-    Compact,
-    Light,
-    Full,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Network {
-    Mainnet,
-    Preprod,
-    Preview,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warn,
-    Error,
-    Trace,
-}
-
-#[derive(Clone, Debug)]
-pub struct Config {
-    pub server_address: std::net::IpAddr,
-    pub server_port: u16,
-    pub log_level: Level,
-    pub network_magic: u64,
-    pub node_socket_path: String,
-    pub mode: Mode,
-    pub icebreakers_config: Option<IcebreakersConfig>,
-    pub max_pool_connections: usize,
-    pub network: Network,
-    pub no_metrics: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct IcebreakersConfig {
-    pub reward_address: String,
-    pub secret: String,
-}
-
-impl Config {
-    pub fn from_args(args: Args) -> Result<Self, AppError> {
-        let network = args.network.ok_or(AppError::Server(
-            "--network must be set. [possible values: mainnet, preprod, preview]".into(),
-        ))?;
-        let node_socket_path = args
-            .node_socket_path
-            .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
-
-        let network_magic = Self::get_network_magic(&network);
-
-        let icebreakers_config = if !args.solitary {
-            let reward_address = args
-                .reward_address
-                .ok_or(AppError::Server("--reward-address must be set".into()))?;
-
-            let secret = args
-                .secret
-                .ok_or(AppError::Server("--secret must be set".into()))?;
-
-            Some(IcebreakersConfig {
-                reward_address,
-                secret,
-            })
-        } else {
-            let conflicts = args.reward_address.is_some() || args.secret.is_some();
-
-            if conflicts {
-                return Err(AppError::Server(
-                    "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
-                ));
-            } else {
-                None
-            }
-        };
-
-        Ok(Config {
-            server_address: args.server_address,
-            server_port: args.server_port,
-            log_level: args.log_level.into(),
-            network_magic,
-            node_socket_path,
-            mode: args.mode,
-            icebreakers_config,
-            max_pool_connections: 10,
-            no_metrics: args.no_metrics,
-            network,
-        })
-    }
-
-    fn get_network_magic(network: &Network) -> u64 {
-        match network {
-            Network::Mainnet => MAINNET_MAGIC,
-            Network::Preprod => PREPROD_MAGIC,
-            Network::Preview => PREVIEW_MAGIC,
-        }
-    }
-}
-
-// Implement conversion from LogLevel enum to tracing::Level
-impl From<LogLevel> for Level {
-    fn from(log_level: LogLevel) -> Self {
-        match log_level {
-            LogLevel::Debug => Level::DEBUG,
-            LogLevel::Info => Level::INFO,
-            LogLevel::Warn => Level::WARN,
-            LogLevel::Error => Level::ERROR,
-            LogLevel::Trace => Level::TRACE,
-        }
-    }
-}
-
-impl std::fmt::Display for Mode {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Mode::Compact => write!(f, "compact"),
-            Mode::Light => write!(f, "light"),
-            Mode::Full => write!(f, "full"),
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
+    use tracing::Level;
+
+    use crate::config::Network;
+
     use super::*;
+
+    fn mock_detector(_: &str) -> Result<Network, AppError> {
+        Ok(Network::Preview)
+    }
 
     #[test]
     fn test_mandatory_ok() {
         let inputs = vec![
             "testing",
-            "--network",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",
@@ -417,7 +284,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args);
+        let maybe_config = Config::from_args_with_detector(args, mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -429,13 +296,11 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Mainnet);
         assert_eq!(config.server_address.to_string(), "0.0.0.0");
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -447,8 +312,6 @@ mod tests {
     fn test_mandatory_solitary_ok() {
         let inputs = vec![
             "testing",
-            "--network",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--solitary",
@@ -456,7 +319,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -468,13 +331,11 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Mainnet);
         assert_eq!(config.server_address.to_string(), "0.0.0.0");
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
         assert!(!config.no_metrics);
-        assert_eq!(config.network_magic, MAINNET_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -483,8 +344,6 @@ mod tests {
     fn test_no_metrics_ok() {
         let inputs = vec![
             "testing",
-            "--network",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",
@@ -496,7 +355,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -510,8 +369,6 @@ mod tests {
     fn test_non_defaults_ok() {
         let inputs = vec![
             "testing",
-            "--network",
-            "preprod",
             "--node-socket-path",
             "/path/to/socket",
             "--server-address",
@@ -528,7 +385,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
 
         assert!(
             maybe_config.is_ok(),
@@ -540,13 +397,11 @@ mod tests {
         // Test mandatory values are properly set with minimal configuration
         assert_eq!(config.node_socket_path, "/path/to/socket");
         assert_eq!(config.max_pool_connections, 10);
-        assert_eq!(config.network, Network::Preprod);
         assert_eq!(config.server_address.to_string(), "192.168.1.1");
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
         assert!(config.no_metrics);
-        assert_eq!(config.network_magic, PREPROD_MAGIC);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -555,8 +410,6 @@ mod tests {
     fn test_solitary_conflict_fail() {
         let inputs = vec![
             "testing",
-            "--network",
-            "mainnet",
             "--node-socket-path",
             "/path/to/socket",
             "--reward-address",

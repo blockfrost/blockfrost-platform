@@ -1,7 +1,5 @@
 use crate::{
-    cli::{Config, Network},
-    errors::AppError,
-    load_balancer::LoadBalancerConfig,
+    config::Config, config::Network, errors::AppError, load_balancer::LoadBalancerConfig,
     server::ApiPrefix,
 };
 use reqwest::Client;

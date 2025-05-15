@@ -3,7 +3,7 @@ use crate::{
         accounts, addresses, assets, blocks, epochs, governance, health, ledger, metadata,
         metrics::setup_metrics_recorder, network, pools, root, scripts, tx, txs, utils,
     },
-    cli::Config,
+    config::Config,
     errors::{AppError, BlockfrostError},
     health_monitor,
     icebreakers_api::IcebreakersAPI,
