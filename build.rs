@@ -1,6 +1,7 @@
 fn main() {
     git_revision::set();
     testgen_hs::ensure();
+    dolos::resolve();
 }
 
 mod git_revision {
@@ -225,5 +226,44 @@ mod testgen_hs {
                 std::io::copy(&mut entry, &mut outfile).expect("Unable to write file");
             }
         }
+    }
+}
+
+mod dolos {
+    const DOLOS_VERSION: &str = "v0.22.0";
+    const DOLOS_PATH: &str = "DOLOS_PATH";
+
+    use std::path::Path;
+    use std::process::Command;
+
+    pub fn resolve() {
+        let dolos_path = format!("./downloaded/dolos/{}", DOLOS_VERSION);
+
+        if Path::new(&dolos_path).exists() {
+            println!("dolos already present, not downloading");
+        } else {
+            let status = Command::new("bash")
+                .arg("./scripts/download-dolos.sh")
+                .arg(DOLOS_VERSION)
+                .status()
+                .expect("Failed to run download-dolos.sh");
+
+            if !status.success() {
+                panic!("download-dolos.sh failed!");
+            }
+        }
+
+        let dolos_bin_path = format!("./assets/dolos/{}/dolos", DOLOS_VERSION);
+        let dolos_version = Command::new(&dolos_bin_path)
+            .arg("--version")
+            .output()
+            .expect("dolos --version failed");
+
+        let version = String::from_utf8_lossy(&dolos_version.stdout)
+            .trim()
+            .to_string();
+
+        println!("cargo:rustc-env={}={}", DOLOS_PATH, dolos_bin_path);
+        println!("cargo:rustc-env={}={}", DOLOS_VERSION, version);
     }
 }
