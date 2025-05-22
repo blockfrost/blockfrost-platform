@@ -5,6 +5,7 @@ use clap::ValueEnum;
 use pallas_network::facades::NodeClient;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
+use tokio::runtime::Runtime;
 use tracing::Level;
 
 #[derive(Clone, Debug)]
@@ -130,8 +131,7 @@ fn detect_network(socket_path: &str) -> Result<Network, AppError> {
     let magics = genesis().all_magics();
 
     let network = tokio::task::block_in_place(|| {
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| AppError::Server(format!("Runtime creation failed: {}", e)))?;
+        let runtime = Runtime::new()?;
 
         for magic in magics {
             let ok = runtime.block_on(async {
