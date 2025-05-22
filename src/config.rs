@@ -5,7 +5,6 @@ use clap::ValueEnum;
 use pallas_network::facades::NodeClient;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
-use tokio::runtime::Handle;
 use tracing::Level;
 
 #[derive(Clone, Debug)]
@@ -150,9 +149,10 @@ fn detect_network(socket_path: &str) -> Result<Network, AppError> {
             }
         }
 
-        Err(AppError::Server(
-            "Could not detect network from socket path".to_string(),
-        ))
+        Err(AppError::Server(format!(
+            "Could not detect network from socket path '{}'. Is the Cardano node running and accessible?",
+            socket_path
+        )))
     })?;
 
     Ok(network)
