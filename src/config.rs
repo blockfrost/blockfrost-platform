@@ -130,23 +130,30 @@ impl Config {
 fn detect_network(socket_path: &str) -> Result<Network, AppError> {
     let magics = genesis().all_magics();
 
-    for magic in magics {
-        let ok = Handle::current().block_on(async {
-            match NodeClient::connect(socket_path, magic).await {
-                Ok(conn) => {
-                    conn.abort().await;
-                    true
-                },
-                Err(_) => false,
+    let network = tokio::task::block_in_place(|| {
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| AppError::Server(format!("Runtime creation failed: {}", e)))?;
+
+        for magic in magics {
+            let ok = runtime.block_on(async {
+                match NodeClient::connect(socket_path, magic).await {
+                    Ok(conn) => {
+                        conn.abort().await;
+                        true
+                    },
+                    Err(_) => false,
+                }
+            });
+
+            if ok {
+                return Ok(genesis().network_by_magic(magic).clone());
             }
-        });
-
-        if ok {
-            return Ok(genesis().network_by_magic(magic).clone());
         }
-    }
 
-    Err(AppError::Server(
-        "Could not detect network from socket path".to_string(),
-    ))
+        Err(AppError::Server(
+            "Could not detect network from socket path".to_string(),
+        ))
+    })?;
+
+    Ok(network)
 }
