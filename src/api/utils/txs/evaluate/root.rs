@@ -19,7 +19,8 @@ pub async fn route(
     // Allow both hex-encoded and raw binary bodies
     let binary_tx = binary_or_hex_heuristic(body.as_ref());
 
-    let pallas_report = evaluate::evaluate_binary_tx(node, &binary_tx, None).await?;
+    let report = evaluate::evaluate_binary_tx(node, &binary_tx, None).await?;
+    let result = convert_eval_report(report);
 
-    Ok(Json(convert_eval_report(pallas_report)))
+    Ok(Json(result))
 }

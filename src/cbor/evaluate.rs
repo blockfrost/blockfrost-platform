@@ -1,18 +1,24 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::sync::LazyLock;
+use std::str::FromStr;
 
 use chrono::DateTime;
 use chrono::NaiveDate;
 use chrono::NaiveDateTime;
 use chrono::NaiveTime;
+use pallas_network::miniprotocols::localstate::queries_v16::CurrentProtocolParam;
 use pallas_network::miniprotocols::localstate::queries_v16::GenesisConfig;
-use pallas_network::miniprotocols::localstate::queries_v16::ProtocolParam;
 use pallas_network::miniprotocols::localstate::queries_v16::SystemStart;
+use pallas_primitives::AssetName;
 use pallas_primitives::ExUnitPrices;
 use pallas_primitives::ExUnits;
+use pallas_primitives::PolicyId;
+use pallas_primitives::PositiveCoin;
 use pallas_primitives::RationalNumber;
 use pallas_primitives::conway;
+use pallas_traverse::MultiEraOutput;
 use pallas_traverse::MultiEraTx;
+use pallas_validate::utils::TxoRef;
 use pallas_validate::{
     phase2::{EvalReport, script_context::SlotConfig},
     utils::{ConwayProtParams, MultiEraProtocolParameters, UtxoMap},
@@ -20,32 +26,29 @@ use pallas_validate::{
 
 use crate::BlockfrostError;
 use crate::NodePool;
-
-static EMPY_UTXOS: LazyLock<UtxoMap> = LazyLock::new(UtxoMap::new);
+use crate::api::utils::txs::evaluate::model::AdditionalUtxoSet;
+use crate::api::utils::txs::evaluate::model::Value;
+use pallas_codec::utils::CborWrap;
+use pallas_primitives::{
+    KeepRaw,
+    conway::{DatumOption, ScriptRef},
+};
+use pallas_traverse::MultiEraInput;
+use pallas_validate::utils::EraCbor;
 
 pub async fn evaluate_binary_tx(
     node_pool: NodePool,
     tx_cbor_binary: &[u8],
-    utxos: Option<&UtxoMap>,
+    utxos: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
-    let minted_tx: conway::Tx =
-        pallas_codec::minicbor::decode::<conway::Tx>(tx_cbor_binary).unwrap();
-    let multi_era_tx: MultiEraTx = MultiEraTx::from_conway(&minted_tx);
     let slot_config = pallas_validate::phase2::script_context::SlotConfig::default();
-
-    evaluate_tx(
-        node_pool,
-        &multi_era_tx,
-        &slot_config,
-        utxos.unwrap_or(&EMPY_UTXOS),
-    )
-    .await
+    evaluate_tx(node_pool, tx_cbor_binary, &slot_config, utxos).await
 }
 
 pub async fn evaluate_encoded_tx(
     node_pool: NodePool,
     tx_cbor: &String,
-    utxos: Option<&UtxoMap>,
+    utxos: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
     let tx_cbor_binary = hex::decode(tx_cbor).unwrap();
 
@@ -54,38 +57,147 @@ pub async fn evaluate_encoded_tx(
 
 pub async fn evaluate_tx(
     node_pool: NodePool,
-    tx: &MultiEraTx<'_>,
+    tx_cbor_binary: &[u8],
     slot_config: &SlotConfig,
-    utxos: &UtxoMap,
+    utxo_set: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
     let mut node: deadpool::managed::Object<crate::node::pool_manager::NodePoolManager> =
         node_pool.get().await?;
 
-    let genesis_config: GenesisConfig = node.genesis_config().await?;
-    let protocol_params: MultiEraProtocolParameters =
-        convert_protocol_param(node.protocol_params().await?, genesis_config);
+    match node.genesis_config_and_pp().await {
+        Ok((genesis_config, protocol_params)) => {
+            let protocol_params: MultiEraProtocolParameters =
+                convert_protocol_param(protocol_params, genesis_config);
+            /*
+             * Prepare transaction
+             */
+            let minted_tx: conway::Tx =
+                pallas_codec::minicbor::decode::<conway::Tx>(tx_cbor_binary).unwrap();
+            let multi_era_tx: MultiEraTx = MultiEraTx::from_conway(&minted_tx);
 
-    match evaluate_tx_with(tx, &protocol_params, utxos, slot_config) {
-        Ok(report) => Ok(report),
+            /*
+             * make codec safe utxo for conway
+             * with inputs, script and datum option
+             */
+            let mut utxos: UtxoMap = UtxoMap::new();
+            for (tx_in, tx_out) in utxo_set.unwrap_or_default() {
+                let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
+                    transaction_id: pallas_primitives::Hash::<32>::from_str(&tx_in.tx_id)
+                        .expect("Invalid tx_id in additional utxo set"),
+                    index: tx_in.index,
+                };
+
+                let multi_era_in: MultiEraInput =
+                    MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
+
+                /*
+                 * Prepare transaction output
+                 */
+                let address: pallas_codec::utils::Bytes = hex::decode(tx_out.address.clone())
+                    .expect("Invalid address in additional utxo output set")
+                    .into();
+
+                let value: pallas_primitives::conway::Value = match &tx_out.value {
+                    Value {
+                        coins,
+                        assets: None,
+                    } => pallas_primitives::conway::Value::Coin(*coins),
+                    Value {
+                        coins,
+                        assets: Some(assets_map),
+                    } => {
+                        let mut assets = BTreeMap::new();
+                        for (id_name, number) in assets_map {
+                            let mut asset_detail = BTreeMap::new();
+                            let coin: PositiveCoin = number.to_owned().try_into().expect(
+                                "Invalid number for PositiveCoin in additional utxo output set",
+                            );
+                            let (asset_id, asset_name) = parse_asset_string(id_name);
+
+                            asset_detail.insert(asset_name, coin);
+                            assets.insert(asset_id, asset_detail);
+                        }
+                        pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
+                    },
+                };
+
+                let datum_vec: Vec<u8>;
+
+                let datum_option = match &tx_out.datum {
+                    Some(d) => {
+                        let datum_bytes = hex::decode(d).unwrap();
+                        let datum_option = DatumOption::Data(CborWrap(
+                            pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
+                        ));
+                        datum_vec = pallas_codec::minicbor::to_vec(datum_option).unwrap();
+
+                        let datum_option: KeepRaw<'_, DatumOption> =
+                            pallas_codec::minicbor::decode(&datum_vec).unwrap();
+
+                        Some(datum_option)
+                    },
+                    None => None,
+                };
+
+                let script_ref: Option<CborWrap<ScriptRef>> =
+                    tx_out.script.map(|script| CborWrap(script.into()));
+
+                let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
+                    address,
+                    value,
+                    datum_option,
+                    script_ref,
+                };
+
+                //let tx_out_cbor  = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
+                let tx_out_cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
+                //tx_out_cbors.push(tx_out_cbor.clone());
+                let post_alonzo = pallas_codec::minicbor::decode::<
+                    pallas_codec::utils::KeepRaw<
+                        '_,
+                        pallas_primitives::conway::PostAlonzoTransactionOutput,
+                    >,
+                >(&tx_out_cbor)
+                .unwrap();
+                let tx_out =
+                    pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
+                let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
+
+                utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
+            }
+
+            match pallas_validate::phase2::evaluate_tx(
+                &multi_era_tx,
+                &protocol_params,
+                &utxos,
+                slot_config,
+            ) {
+                Ok(report) => Ok(report),
+                Err(e) => Err(BlockfrostError::custom_400(
+                    "Error evaluating transaction: ".to_string() + &e.to_string(),
+                )),
+            }
+        },
         Err(e) => Err(BlockfrostError::custom_400(
-            "Error evaluating transaction: ".to_string() + &e.to_string(),
+            "Error fetching protocol parameters: ".to_string() + &e.to_string(),
         )),
     }
 }
 
-// Implemented in this way for easy unit testing
-fn evaluate_tx_with(
-    tx: &MultiEraTx<'_>,
-    protocol_params: &MultiEraProtocolParameters,
-    utxos: &UtxoMap,
-    slot_config: &SlotConfig,
-) -> Result<EvalReport, BlockfrostError> {
-    match pallas_validate::phase2::evaluate_tx(tx, protocol_params, utxos, slot_config) {
-        Ok(report) => Ok(report),
-        Err(e) => Err(BlockfrostError::custom_400(
-            "Error evaluating transaction: ".to_string() + &e.to_string(),
-        )),
-    }
+fn parse_asset_string(str: &str) -> (PolicyId, AssetName) {
+    let mut parts = str.split('.');
+    let policy_id = parts.next().expect("Invalid asset string in utxo output");
+    let asset_name_bytes = hex::decode(parts.next().map(|s| s.to_string()).unwrap_or_default())
+        .expect("Invalid asset name in asset string"); // can be empty
+    let policy_id_bytes: [u8; 28] = hex::decode(policy_id)
+        .expect("Invalid policy id in asset string")
+        .try_into()
+        .expect("Policy id is not valid in additional utxo output set");
+
+    (
+        PolicyId::from(policy_id_bytes),
+        pallas_primitives::AssetName::from(asset_name_bytes),
+    )
 }
 
 fn convert_system_start(sys_start: SystemStart) -> chrono::DateTime<chrono::FixedOffset> {
@@ -106,7 +218,10 @@ fn convert_system_start(sys_start: SystemStart) -> chrono::DateTime<chrono::Fixe
     DateTime::from_naive_utc_and_offset(naive_date_time, utc_offset)
 }
 
-fn convert_protocol_param(pp: ProtocolParam, genesis: GenesisConfig) -> MultiEraProtocolParameters {
+fn convert_protocol_param(
+    pp: CurrentProtocolParam,
+    genesis: GenesisConfig,
+) -> MultiEraProtocolParameters {
     // Create a Conway protocol parameters struct from the ProtocolParam and GenesisConfig
     let conway_pp: ConwayProtParams = ConwayProtParams {
         minfee_a: pp.minfee_a.unwrap() as u32,
@@ -274,21 +389,11 @@ fn convert_protocol_param(pp: ProtocolParam, genesis: GenesisConfig) -> MultiEra
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, iter::zip};
 
     use chrono::{Datelike, Timelike};
-    use pallas_codec::utils::Bytes;
-    use pallas_codec::utils::{AnyUInt, CborWrap};
-    use pallas_network::miniprotocols::localstate::queries_v16::{
-        self, Fraction,
-    };
-    use pallas_primitives::conway::{DRepVotingThresholds, PoolVotingThresholds};
-    use pallas_primitives::{
-        KeepRaw, PlutusScript,
-        conway::{DatumOption, ScriptRef, Value},
-    };
-    use pallas_traverse::{MultiEraInput, MultiEraOutput};
-    use pallas_validate::utils::{EraCbor, TxoRef, UTxOs};
+
+    use pallas_codec::utils::AnyUInt;
+    use pallas_network::miniprotocols::localstate::queries_v16::{self, Fraction};
 
     use super::*;
 
@@ -370,7 +475,7 @@ mod tests {
             max_kes_evolutions: 62,
             update_quorum: 5,
         };
-        let pp = ProtocolParam {
+        let pp = CurrentProtocolParam {
             minfee_a: Some(44),
             minfee_b: Some(155381),
             max_block_body_size: Some(90112),
@@ -443,6 +548,7 @@ mod tests {
                     denominator: 100,
                 },
             }),
+            protocol_version: Some((10, 0)),
             drep_voting_thresholds: Some(queries_v16::DRepVotingThresholds {
                 motion_no_confidence: queries_v16::RationalNumber {
                     numerator: 51,
@@ -541,582 +647,6 @@ mod tests {
             assert_eq!(conway_pp.committee_term_limit, 4);
         } else {
             panic!("Expected Conway protocol parameters");
-        }
-    }
-    #[test]
-    fn test_evaluate_tx_with() {
-        let tx_cbor = "84A300D90102818258203F62DBE3279603D26F4E54728E6F10CDC479974F1F6D94C32FE39A0689EFA981000182825839015C5C318D01F729E205C95EB1B02D623DD10E78EA58F72D0C13F892B2E8904EDC699E2F0CE7B72BE7CEC991DF651A222E2AE9244EB5975CBA1A00989680825839015C5C318D01F729E205C95EB1B02D623DD10E78EA58F72D0C13F892B2E8904EDC699E2F0CE7B72BE7CEC991DF651A222E2AE9244EB5975CBA1A004C4B40021A004C4B40A100D90102818258202A60DCFFE8BA15307556DBF8D7DF142CB9EB15D601251D400D523689D575B83858407E960DAAED14C00888F032D6F08F1EE5DA643330BCDFAC01406662442A8530D83B383BAF2AECD6F715028BBA5A92B5A394C0AD3FB95A43CA7A8D4705C8152204F5F6";
-        let tx_cbor = hex::decode(tx_cbor).unwrap();
-        let mtx: conway::Tx = pallas_codec::minicbor::decode::<conway::Tx>(&tx_cbor).unwrap();
-        let metx: MultiEraTx = MultiEraTx::from_conway(&mtx);
-        let datum_bytes = hex::decode("d8799f4568656c6c6fff").unwrap();
-        let datum_option = DatumOption::Data(CborWrap(
-            pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
-        ));
-        let datum_option = pallas_codec::minicbor::to_vec(datum_option).unwrap();
-        let datum_option: KeepRaw<'_, DatumOption> =
-            pallas_codec::minicbor::decode(&datum_option).unwrap();
-
-        let mut tx_outs_info: Vec<(
-            String,
-            Value,
-            Option<KeepRaw<'_, DatumOption>>,
-            Option<CborWrap<ScriptRef>>,
-            Vec<u8>,
-        )> = vec![(
-            String::from("71faae60072c45d121b6e58ae35c624693ee3dad9ea8ed765eb6f76f9f"),
-            Value::Coin(2000000),
-            Some(datum_option),
-            None,
-            Vec::new(),
-        )];
-
-        let mut utxos: UTxOs =
-            mk_codec_safe_utxo_for_conway_tx(&mtx.transaction_body, &mut tx_outs_info);
-
-        let mut ref_info: Vec<(
-                String,
-                Value,
-                Option<KeepRaw<'_, DatumOption>>,
-                Option<CborWrap<ScriptRef>>,
-                Vec<u8>,
-            )> = vec![
-                (
-                    String::from("71faae60072c45d121b6e58ae35c624693ee3dad9ea8ed765eb6f76f9f"),
-                    Value::Coin(1624870),
-                    None,
-                    Some(CborWrap(ScriptRef::PlutusV3Script(PlutusScript::<3>(Bytes::from(hex::decode("58a701010032323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa00513232533300f30110021533300c3370e900018069baa00313371e6eb8c040c038dd50039bae3010300e37546020601c6ea800c5858dd7180780098061baa00516300c001300c300d001300937540022c6014601600660120046010004601000260086ea8004526136565734aae7555cf2ab9f5742ae89").unwrap()))))),
-                    Vec::new(),
-                ),
-            ];
-
-        add_codec_safe_ref_input_conway(&mtx.transaction_body, &mut utxos, &mut ref_info);
-
-        let mut collateral_info: Vec<(
-            String,
-            Value,
-            Option<KeepRaw<'_, DatumOption>>,
-            Option<CborWrap<ScriptRef>>,
-            Vec<u8>,
-        )> = vec![(
-            String::from(
-                "015c5c318d01f729e205c95eb1b02d623dd10e78ea58f72d0c13f892b2e8904edc699e2f0ce7b72be7cec991df651a222e2ae9244eb5975cba",
-            ),
-            Value::Coin(49731771),
-            None,
-            None,
-            Vec::new(),
-        )];
-
-        add_codec_safe_collateral_conway(&mtx.transaction_body, &mut utxos, &mut collateral_info);
-
-        let protocol_params = MultiEraProtocolParameters::Conway(get_mainnet_params_epoch_380());
-
-        let result = evaluate_tx_with(
-            &metx,
-            &protocol_params,
-            &mk_utxo_for_eval(utxos.clone()),
-            &pallas_validate::phase2::script_context::SlotConfig::default(),
-        );
-
-        assert!(result.is_ok(), "Tx evaluation failed");
-    }
-
-    fn mk_utxo_for_eval<'a>(utxos: UTxOs) -> UtxoMap {
-        let mut eval_utxos: UtxoMap = UtxoMap::new();
-
-        for (tx_in, tx_out) in utxos {
-            eval_utxos.insert(TxoRef::from(&tx_in), EraCbor::from(tx_out));
-        }
-        eval_utxos
-    }
-    fn mk_codec_safe_utxo_for_conway_tx<'a>(
-        tx_body: &pallas_primitives::conway::TransactionBody,
-        tx_outs_info: &'a mut Vec<(
-            String, // address in string format
-            pallas_primitives::conway::Value,
-            Option<pallas_codec::utils::KeepRaw<'a, pallas_primitives::conway::DatumOption>>,
-            Option<CborWrap<pallas_primitives::conway::ScriptRef>>,
-            Vec<u8>, // Placeholder for CBOR data.
-        )>,
-    ) -> UTxOs<'a> {
-        let mut utxos: UTxOs = UTxOs::new();
-
-        for (tx_in, (addr, val, datum_opt, script_ref, cbor)) in
-            zip(tx_body.inputs.clone().to_vec(), tx_outs_info)
-        {
-            let multi_era_in: MultiEraInput =
-                MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
-            let address_bytes: pallas_codec::utils::Bytes = match hex::decode(addr) {
-                Ok(bytes_vec) => pallas_codec::utils::Bytes::from(bytes_vec),
-                _ => panic!("Unable to decode input address"),
-            };
-            let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
-                address: address_bytes,
-                value: val.clone(),
-                datum_option: datum_opt.clone(),
-                script_ref: script_ref.clone(),
-            };
-            *cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
-            let post_alonzo = pallas_codec::minicbor::decode::<
-                pallas_codec::utils::KeepRaw<
-                    'a,
-                    pallas_primitives::conway::PostAlonzoTransactionOutput,
-                >,
-            >(cbor)
-            .unwrap();
-            let tx_out = pallas_primitives::conway::TransactionOutput::PostAlonzo(post_alonzo);
-            let multi_era_out: MultiEraOutput =
-                MultiEraOutput::Conway(Box::new(Cow::Owned(tx_out)));
-            utxos.insert(multi_era_in, multi_era_out);
-        }
-        utxos
-    }
-
-    fn add_codec_safe_ref_input_conway<'a>(
-        tx_body: &pallas_primitives::conway::TransactionBody,
-        utxos: &mut UTxOs<'a>,
-        ref_input_info: &'a mut Vec<(
-            String, // address in string format
-            pallas_primitives::conway::Value,
-            Option<pallas_codec::utils::KeepRaw<'a, pallas_primitives::conway::DatumOption>>,
-            Option<CborWrap<pallas_primitives::conway::ScriptRef>>,
-            Vec<u8>, // Placeholder for CBOR data.
-        )>,
-    ) {
-        match &tx_body.reference_inputs {
-            Some(ref_inputs) => {
-                if ref_inputs.is_empty() {
-                    panic!("UTxO addition error - reference input missing")
-                } else {
-                    for (tx_in, (addr, val, datum_opt, script_ref, cbor)) in
-                        zip(ref_inputs.clone().to_vec(), ref_input_info)
-                    {
-                        let multi_era_in: MultiEraInput =
-                            MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
-                        let address_bytes: Bytes = match hex::decode(addr) {
-                            Ok(bytes_vec) => Bytes::from(bytes_vec),
-                            _ => panic!("Unable to decode input address"),
-                        };
-                        let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
-                            address: address_bytes,
-                            value: val.clone(),
-                            datum_option: datum_opt.clone(),
-                            script_ref: script_ref.clone(),
-                        };
-                        *cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
-                        let post_alonzo = pallas_codec::minicbor::decode::<
-                            pallas_codec::utils::KeepRaw<
-                                'a,
-                                pallas_primitives::conway::PostAlonzoTransactionOutput,
-                            >,
-                        >(cbor)
-                        .unwrap();
-                        let tx_out =
-                            pallas_primitives::conway::TransactionOutput::PostAlonzo(post_alonzo);
-                        let multi_era_out: MultiEraOutput =
-                            MultiEraOutput::Conway(Box::new(Cow::Owned(tx_out)));
-                        utxos.insert(multi_era_in, multi_era_out);
-                    }
-                }
-            },
-            None => panic!("UTxO addition error - reference input missing"),
-        }
-    }
-
-    fn add_codec_safe_collateral_conway<'a>(
-        tx_body: &pallas_primitives::conway::TransactionBody,
-        utxos: &mut UTxOs<'a>,
-        collateral_info: &'a mut Vec<(
-            String, // address in string format
-            pallas_primitives::conway::Value,
-            Option<pallas_codec::utils::KeepRaw<'a, pallas_primitives::conway::DatumOption>>,
-            Option<CborWrap<pallas_primitives::conway::ScriptRef>>,
-            Vec<u8>, // Placeholder for CBOR data.
-        )>,
-    ) {
-        match &tx_body.collateral {
-            Some(collaterals) => {
-                if collaterals.is_empty() {
-                    panic!("UTxO addition error - collateral input missing")
-                } else {
-                    for (tx_in, (addr, val, datum_opt, script_ref, cbor)) in
-                        zip(collaterals.clone().to_vec(), collateral_info)
-                    {
-                        let multi_era_in: MultiEraInput =
-                            MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
-                        let address_bytes: Bytes = match hex::decode(addr) {
-                            Ok(bytes_vec) => Bytes::from(bytes_vec),
-                            _ => panic!("Unable to decode input address"),
-                        };
-                        let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
-                            address: address_bytes,
-                            value: val.clone(),
-                            datum_option: datum_opt.clone(),
-                            script_ref: script_ref.clone(),
-                        };
-                        *cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
-                        let post_alonzo = pallas_codec::minicbor::decode::<
-                            pallas_codec::utils::KeepRaw<
-                                'a,
-                                pallas_primitives::conway::PostAlonzoTransactionOutput,
-                            >,
-                        >(cbor)
-                        .unwrap();
-                        let tx_out =
-                            pallas_primitives::conway::TransactionOutput::PostAlonzo(post_alonzo);
-                        let multi_era_out: MultiEraOutput =
-                            MultiEraOutput::Conway(Box::new(Cow::Owned(tx_out)));
-                        utxos.insert(multi_era_in, multi_era_out);
-                    }
-                }
-            },
-            None => panic!("UTxO addition error - collateral input missing"),
-        }
-    }
-
-    fn get_mainnet_params_epoch_380() -> ConwayProtParams {
-        ConwayProtParams {
-            system_start: chrono::DateTime::parse_from_rfc3339("2022-10-25T00:00:00Z").unwrap(),
-            epoch_length: 432000,
-            slot_length: 1,
-            minfee_a: 44,
-            minfee_b: 155381,
-            max_block_body_size: 90112,
-            max_transaction_size: 16384,
-            max_block_header_size: 1100,
-            key_deposit: 2000000,
-            pool_deposit: 500000000,
-            maximum_epoch: 18,
-            desired_number_of_stake_pools: 500,
-            pool_pledge_influence: RationalNumber {
-                numerator: 3,
-                denominator: 10,
-            },
-            expansion_rate: RationalNumber {
-                numerator: 3,
-                denominator: 1000,
-            },
-            treasury_growth_rate: RationalNumber {
-                numerator: 2,
-                denominator: 10,
-            },
-            protocol_version: (7, 0),
-            min_pool_cost: 340000000,
-            ada_per_utxo_byte: 4310,
-            cost_models_for_script_languages: pallas_primitives::conway::CostModels {
-                plutus_v1: Some(vec![
-                    205665, 812, 1, 1, 1000, 571, 0, 1, 1000, 24177, 4, 1, 1000, 32, 117366, 10475,
-                    4, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 100,
-                    100, 23000, 100, 19537, 32, 175354, 32, 46417, 4, 221973, 511, 0, 1, 89141, 32,
-                    497525, 14068, 4, 2, 196500, 453240, 220, 0, 1, 1, 1000, 28662, 4, 2, 245000,
-                    216773, 62, 1, 1060367, 12586, 1, 208512, 421, 1, 187000, 1000, 52998, 1,
-                    80436, 32, 43249, 32, 1000, 32, 80556, 1, 57667, 4, 1000, 10, 197145, 156, 1,
-                    197145, 156, 1, 204924, 473, 1, 208896, 511, 1, 52467, 32, 64832, 32, 65493,
-                    32, 22558, 32, 16563, 32, 76511, 32, 196500, 453240, 220, 0, 1, 1, 69522,
-                    11687, 0, 1, 60091, 32, 196500, 453240, 220, 0, 1, 1, 196500, 453240, 220, 0,
-                    1, 1, 806990, 30482, 4, 1927926, 82523, 4, 265318, 0, 4, 0, 85931, 32, 205665,
-                    812, 1, 1, 41182, 32, 212342, 32, 31220, 32, 32696, 32, 43357, 32, 32247, 32,
-                    38314, 32, 9462713, 1021, 10,
-                ]),
-
-                plutus_v2: Some(vec![
-                    205665,
-                    812,
-                    1,
-                    1,
-                    1000,
-                    571,
-                    0,
-                    1,
-                    1000,
-                    24177,
-                    4,
-                    1,
-                    1000,
-                    32,
-                    117366,
-                    10475,
-                    4,
-                    23000,
-                    100,
-                    23000,
-                    100,
-                    23000,
-                    100,
-                    23000,
-                    100,
-                    23000,
-                    100,
-                    23000,
-                    100,
-                    100,
-                    100,
-                    23000,
-                    100,
-                    19537,
-                    32,
-                    175354,
-                    32,
-                    46417,
-                    4,
-                    221973,
-                    511,
-                    0,
-                    1,
-                    89141,
-                    32,
-                    497525,
-                    14068,
-                    4,
-                    2,
-                    196500,
-                    453240,
-                    220,
-                    0,
-                    1,
-                    1,
-                    1000,
-                    28662,
-                    4,
-                    2,
-                    245000,
-                    216773,
-                    62,
-                    1,
-                    1060367,
-                    12586,
-                    1,
-                    208512,
-                    421,
-                    1,
-                    187000,
-                    1000,
-                    52998,
-                    1,
-                    80436,
-                    32,
-                    43249,
-                    32,
-                    1000,
-                    32,
-                    80556,
-                    1,
-                    57667,
-                    4,
-                    1000,
-                    10,
-                    197145,
-                    156,
-                    1,
-                    197145,
-                    156,
-                    1,
-                    204924,
-                    473,
-                    1,
-                    208896,
-                    511,
-                    1,
-                    52467,
-                    32,
-                    64832,
-                    32,
-                    65493,
-                    32,
-                    22558,
-                    32,
-                    16563,
-                    32,
-                    76511,
-                    32,
-                    196500,
-                    453240,
-                    220,
-                    0,
-                    1,
-                    1,
-                    69522,
-                    11687,
-                    0,
-                    1,
-                    60091,
-                    32,
-                    196500,
-                    453240,
-                    220,
-                    0,
-                    1,
-                    1,
-                    196500,
-                    453240,
-                    220,
-                    0,
-                    1,
-                    1,
-                    1159724,
-                    392670,
-                    0,
-                    2,
-                    806990,
-                    30482,
-                    4,
-                    1927926,
-                    82523,
-                    4,
-                    265318,
-                    0,
-                    4,
-                    0,
-                    85931,
-                    32,
-                    205665,
-                    812,
-                    1,
-                    1,
-                    41182,
-                    32,
-                    212342,
-                    32,
-                    31220,
-                    32,
-                    32696,
-                    32,
-                    43357,
-                    32,
-                    32247,
-                    32,
-                    38314,
-                    32,
-                    20000000000,
-                    20000000000,
-                    9462713,
-                    1021,
-                    10,
-                    20000000000,
-                    0,
-                    20000000000,
-                ]),
-                plutus_v3: Some(vec![
-                    100788, 420, 1, 1, 1000, 173, 0, 1, 1000, 59957, 4, 1, 11183, 32, 201305, 8356,
-                    4, 16000, 100, 16000, 100, 16000, 100, 16000, 100, 16000, 100, 16000, 100, 100,
-                    100, 16000, 100, 94375, 32, 132994, 32, 61462, 4, 72010, 178, 0, 1, 22151, 32,
-                    91189, 769, 4, 2, 85848, 123203, 7305, -900, 1716, 549, 57, 85848, 0, 1, 1,
-                    1000, 42921, 4, 2, 24548, 29498, 38, 1, 898148, 27279, 1, 51775, 558, 1, 39184,
-                    1000, 60594, 1, 141895, 32, 83150, 32, 15299, 32, 76049, 1, 13169, 4, 22100,
-                    10, 28999, 74, 1, 28999, 74, 1, 43285, 552, 1, 44749, 541, 1, 33852, 32, 68246,
-                    32, 72362, 32, 7243, 32, 7391, 32, 11546, 32, 85848, 123203, 7305, -900, 1716,
-                    549, 57, 85848, 0, 1, 90434, 519, 0, 1, 74433, 32, 85848, 123203, 7305, -900,
-                    1716, 549, 57, 85848, 0, 1, 1, 85848, 123203, 7305, -900, 1716, 549, 57, 85848,
-                    0, 1, 955506, 213312, 0, 2, 270652, 22588, 4, 1457325, 64566, 4, 20467, 1, 4,
-                    0, 141992, 32, 100788, 420, 1, 1, 81663, 32, 59498, 32, 20142, 32, 24588, 32,
-                    20744, 32, 25933, 32, 24623, 32, 43053543, 10, 53384111, 14333, 10, 43574283,
-                    26308, 10, 16000, 100, 16000, 100, 962335, 18, 2780678, 6, 442008, 1, 52538055,
-                    3756, 18, 267929, 18, 76433006, 8868, 18, 52948122, 18, 1995836, 36, 3227919,
-                    12, 901022, 1, 166917843, 4307, 36, 284546, 36, 158221314, 26549, 36, 74698472,
-                    36, 333849714, 1, 254006273, 72, 2174038, 72, 2261318, 64571, 4, 207616, 8310,
-                    4, 1293828, 28716, 63, 0, 1, 1006041, 43623, 251, 0, 1, 100181, 726, 719, 0, 1,
-                    100181, 726, 719, 0, 1, 100181, 726, 719, 0, 1, 107878, 680, 0, 1, 95336, 1,
-                    281145, 18848, 0, 1, 180194, 159, 1, 1, 158519, 8942, 0, 1, 159378, 8813, 0, 1,
-                    107490, 3298, 1, 106057, 655, 1, 1964219, 24520, 3,
-                ]),
-                unknown: BTreeMap::default(),
-            },
-            execution_costs: pallas_primitives::ExUnitPrices {
-                mem_price: RationalNumber {
-                    numerator: 577,
-                    denominator: 10000,
-                },
-                step_price: RationalNumber {
-                    numerator: 721,
-                    denominator: 10000000,
-                },
-            },
-            max_tx_ex_units: ExUnits {
-                mem: 14000000,
-                steps: 10000000000,
-            },
-            max_block_ex_units: ExUnits {
-                mem: 62000000,
-                steps: 40000000000,
-            },
-            max_value_size: 5000,
-            collateral_percentage: 150,
-            max_collateral_inputs: 3,
-            pool_voting_thresholds: PoolVotingThresholds {
-                motion_no_confidence: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                committee_normal: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                committee_no_confidence: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                hard_fork_initiation: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                security_voting_threshold: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-            },
-            drep_voting_thresholds: DRepVotingThresholds {
-                motion_no_confidence: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                committee_normal: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                committee_no_confidence: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                update_constitution: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                hard_fork_initiation: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                pp_network_group: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                pp_economic_group: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                pp_technical_group: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                pp_governance_group: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-                treasury_withdrawal: RationalNumber {
-                    numerator: 0,
-                    denominator: 1,
-                },
-            },
-            min_committee_size: 0,
-            committee_term_limit: 0,
-            governance_action_validity_period: 0,
-            governance_action_deposit: 0,
-            drep_deposit: 0,
-            drep_inactivity_period: 0,
-            minfee_refscript_cost_per_byte: RationalNumber {
-                numerator: 0,
-                denominator: 1,
-            },
         }
     }
 }
