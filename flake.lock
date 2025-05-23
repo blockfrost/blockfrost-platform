@@ -3,11 +3,11 @@
     "advisory-db": {
       "flake": false,
       "locked": {
-        "lastModified": 1744011916,
-        "narHash": "sha256-vZIug2BsukcfdNIH8Kto6iUGJM4PgaE8sPIKZDy8MT0=",
+        "lastModified": 1747489415,
+        "narHash": "sha256-CLQVUrdiRhJx0JppNZxx8FhgUbcliQUIYVI9Aclk39g=",
         "owner": "rustsec",
         "repo": "advisory-db",
-        "rev": "b3d5d51745076cac459a298838d6bec9f4b052f3",
+        "rev": "f16bc6329058299fb558e8f78eb3b065a4d14ea5",
         "type": "github"
       },
       "original": {
@@ -19,16 +19,16 @@
     "cardano-node": {
       "flake": false,
       "locked": {
-        "lastModified": 1736202991,
-        "narHash": "sha256-Oys38YkpSpB48/H2NseP9kTWXm92a7kjAZtdnorcIEY=",
+        "lastModified": 1744738758,
+        "narHash": "sha256-XIuwW/D6uZ9BVxMUElZa8XyXWllMvDP96fTJ0vdXVL8=",
         "owner": "IntersectMBO",
         "repo": "cardano-node",
-        "rev": "1f63dbf2ab39e0b32bf6901dc203866d3e37de08",
+        "rev": "b3f237b75e64f4d8142af95b053e2828221d707f",
         "type": "github"
       },
       "original": {
         "owner": "IntersectMBO",
-        "ref": "10.1.4",
+        "ref": "10.3.1",
         "repo": "cardano-node",
         "type": "github"
       }
@@ -36,17 +36,17 @@
     "cardano-playground": {
       "flake": false,
       "locked": {
-        "lastModified": 1736967417,
-        "narHash": "sha256-ORjEkhUGwRuxj3TiRDyplddsY9p27qg5Ah3lo9U8duw=",
+        "lastModified": 1746032899,
+        "narHash": "sha256-3lUEe9uA55d3VaP8xgIJ3pQJrxk+EI1F3DuXmf9qiBU=",
         "owner": "input-output-hk",
         "repo": "cardano-playground",
-        "rev": "39ea4db0daa11d6334a55353f685e185765a619b",
+        "rev": "4c5800d0f32f586be270c7e3679c7f5e8d01d3d5",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
         "repo": "cardano-playground",
-        "rev": "39ea4db0daa11d6334a55353f685e185765a619b",
+        "rev": "4c5800d0f32f586be270c7e3679c7f5e8d01d3d5",
         "type": "github"
       }
     },
@@ -241,16 +241,16 @@
     "testgen-hs": {
       "flake": false,
       "locked": {
-        "lastModified": 1739209084,
-        "narHash": "sha256-E50j7ZXQN0f1mmSqQW0hry45YfM0MTqLzDMZv56qA7U=",
+        "lastModified": 1747817857,
+        "narHash": "sha256-OD3bJlxWd11CYCWZ9gYfHrDJT4Fa89E6vz04AqqtdLI=",
         "owner": "input-output-hk",
         "repo": "testgen-hs",
-        "rev": "982ba180b8a5ac0f00437d2b38b94bd8b9a6612e",
+        "rev": "92da4b81ec33435fd5e5b3bdee387b99a4a5e451",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "10.1.4.2",
+        "ref": "10.3.1.0",
         "repo": "testgen-hs",
         "type": "github"
       }
