@@ -104,7 +104,7 @@ impl Args {
         })
     }
 
-    pub fn init() -> Result<Config, AppError> {
+    pub async fn init() -> Result<Config, AppError> {
         let initial_args = Args::parse();
         let config_path = initial_args.config.unwrap_or(get_config_path());
 
@@ -117,8 +117,12 @@ impl Args {
         }
 
         match arguments.config {
-            Some(path) => Config::from_args(Args::parse_args(path)?),
-            None => Config::from_args(arguments),
+            Some(path) => {
+                let parsed_args = Args::parse_args(path)?;
+
+                Config::from_args(parsed_args).await
+            },
+            None => Config::from_args(arguments).await,
         }
     }
 
@@ -264,18 +268,20 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
-    use tracing::Level;
+    use futures::FutureExt;
+    use futures::future::BoxFuture;
+    use tracing::Level; // for `.boxed()`
 
     use crate::config::Network;
 
     use super::*;
 
-    fn mock_detector(_: &str) -> Result<Network, AppError> {
-        Ok(Network::Preview)
+    fn mock_detector(_: &str) -> BoxFuture<'_, Result<Network, AppError>> {
+        async { Ok(Network::Preview) }.boxed()
     }
 
-    #[test]
-    fn test_mandatory_ok() {
+    #[tokio::test]
+    async fn test_mandatory_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -287,8 +293,7 @@ mod tests {
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-
-        let maybe_config = Config::from_args_with_detector(args, mock_detector);
+        let maybe_config = Config::from_args_with_detector(args, mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -312,8 +317,8 @@ mod tests {
         assert_eq!(icebreaker_config.secret, "test-secret");
     }
 
-    #[test]
-    fn test_mandatory_solitary_ok() {
+    #[tokio::test]
+    async fn test_mandatory_solitary_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -322,8 +327,7 @@ mod tests {
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -344,8 +348,8 @@ mod tests {
         assert!(args.solitary);
     }
 
-    #[test]
-    fn test_no_metrics_ok() {
+    #[tokio::test]
+    async fn test_no_metrics_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -359,7 +363,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -369,8 +373,8 @@ mod tests {
         assert!(maybe_config.unwrap().no_metrics);
     }
 
-    #[test]
-    fn test_non_defaults_ok() {
+    #[tokio::test]
+    async fn test_non_defaults_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -389,7 +393,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -410,8 +414,8 @@ mod tests {
         assert!(args.solitary);
     }
 
-    #[test]
-    fn test_solitary_conflict_fail() {
+    #[tokio::test]
+    async fn test_solitary_conflict_fail() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -425,7 +429,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args(args.clone()).await;
 
         assert!(
             maybe_config.is_err(),

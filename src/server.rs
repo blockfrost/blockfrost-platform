@@ -245,7 +245,7 @@ pub async fn build(
         )
     };
 
-    let genesis = Arc::new(config.build_genesis_registry()?);
+    let genesis = Arc::new(config.with_custom_genesis()?);
     let app_state = AppState { config, genesis };
 
     // Add layers
