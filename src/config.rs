@@ -2,10 +2,11 @@ use crate::AppError;
 use crate::cli::Args;
 use crate::genesis::{GenesisRegistry, genesis};
 use clap::ValueEnum;
+use futures::FutureExt; // for `.boxed()`
+use futures::future::BoxFuture;
 use pallas_network::facades::NodeClient;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
-use tokio::runtime::Runtime;
 use tracing::Level;
 
 #[derive(Clone, Debug)]
@@ -77,10 +78,10 @@ impl From<LogLevel> for Level {
 }
 
 impl Config {
-    pub fn from_args_with_detector<F>(args: Args, detector: F) -> Result<Self, AppError>
-    where
-        F: Fn(&str) -> Result<Network, AppError>,
-    {
+    pub async fn from_args_with_detector(
+        args: Args,
+        detector: impl for<'a> Fn(&'a str) -> BoxFuture<'a, Result<Network, AppError>>,
+    ) -> Result<Self, AppError> {
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
@@ -107,7 +108,7 @@ impl Config {
             None
         };
 
-        let network = detector(&node_socket_path)?;
+        let network = detector(&node_socket_path).await?;
 
         Ok(Config {
             server_address: args.server_address,
@@ -122,38 +123,30 @@ impl Config {
         })
     }
 
-    pub fn from_args(args: Args) -> Result<Self, AppError> {
-        Self::from_args_with_detector(args, detect_network)
+    pub async fn from_args(args: Args) -> Result<Self, AppError> {
+        Self::from_args_with_detector(args, |s| detect_network(s).boxed()).await
     }
 }
 
-fn detect_network(socket_path: &str) -> Result<Network, AppError> {
-    let magics = genesis().all_magics();
+async fn detect_network(socket_path: &str) -> Result<Network, AppError> {
+    let all_magics = genesis().all_magics();
 
-    let network = tokio::task::block_in_place(|| {
-        let runtime = Runtime::new()?;
+    for magic in all_magics {
+        let ok = match NodeClient::connect(&socket_path, magic).await {
+            Ok(conn) => {
+                conn.abort().await;
+                true
+            },
+            Err(_) => false,
+        };
 
-        for magic in magics {
-            let ok = runtime.block_on(async {
-                match NodeClient::connect(socket_path, magic).await {
-                    Ok(conn) => {
-                        conn.abort().await;
-                        true
-                    },
-                    Err(_) => false,
-                }
-            });
-
-            if ok {
-                return Ok(genesis().network_by_magic(magic).clone());
-            }
+        if ok {
+            return Ok(genesis().network_by_magic(magic).clone());
         }
+    }
 
-        Err(AppError::Server(format!(
-            "Could not detect network from socket path '{}'. Is the Cardano node running and accessible?",
-            socket_path
-        )))
-    })?;
-
-    Ok(network)
+    Err(AppError::Server(format!(
+        "Could not detect network from '{}' is the node running?",
+        socket_path
+    )))
 }
