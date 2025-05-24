@@ -58,21 +58,26 @@ pub async fn build(
     let api_routes = nest_routes(&api_prefix, regular_api_routes, hidden_api_routes);
 
     let genesis = Arc::new(config.with_custom_genesis()?);
-    let app_state = AppState { config, genesis };
+    let app_state = AppState {
+        config: config.clone(),
+        genesis,
+    };
 
     // Add layers
     let app = {
-        let mut rv = api_routes
+        let mut routes = api_routes
             .route_layer(NormalizePathLayer::trim_trailing_slash())
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
-        if let Some(m) = metrics {
-            rv = rv.layer(Extension(m));
+
+        if config.metrics {
+            routes = routes.layer(Extension(metrics));
         }
-        rv
+
+        routes
     };
 
     Ok((
