@@ -358,7 +358,7 @@ mod tests {
             "test-reward-address",
             "--secret",
             "test-secret",
-            "--no-metrics",
+            "--metrics",
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
@@ -387,7 +387,7 @@ mod tests {
             "debug",
             "--mode",
             "full",
-            "--no-metrics",
+            "--metrics",
             "--solitary",
         ];
 
