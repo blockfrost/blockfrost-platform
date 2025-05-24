@@ -14,7 +14,7 @@ pub fn init_metrics(enable: bool) -> Option<Arc<RwLock<PrometheusHandle>>> {
 }
 
 pub fn spawn_process_collector_if(enable: bool) {
-    if *enable {
+    if enable {
         tokio::spawn(async {
             let collector = metrics_process::Collector::default();
             collector.describe();
