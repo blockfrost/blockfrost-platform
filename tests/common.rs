@@ -5,7 +5,7 @@ use blockfrost_platform::{
     config::{Config, IcebreakersConfig, LogLevel, Mode, Network},
     health_monitor,
     icebreakers_api::IcebreakersAPI,
-    server::{ApiPrefix, build},
+    server::{build, state::ApiPrefix},
 };
 use std::{
     env,
@@ -41,7 +41,8 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         icebreakers_config,
         max_pool_connections: 10,
         network: Network::Preview,
-        no_metrics: false,
+        metrics: true,
+        custom_genesis_config: None,
     };
 
     Arc::new(config)

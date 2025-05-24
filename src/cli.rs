@@ -61,7 +61,10 @@ pub struct Args {
     pub reward_address: Option<String>,
 
     #[arg(long)]
-    pub no_metrics: bool,
+    pub metrics: bool,
+
+    #[arg(long, help = "Path to an configuration file")]
+    pub custom_genesis_config: Option<PathBuf>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -212,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            no_metrics: !metrics,
+            metrics,
             mode,
             log_level,
             server_address,
@@ -220,6 +223,7 @@ impl Args {
             node_socket_path: Some(node_socket_path),
             reward_address: None,
             secret: None,
+            custom_genesis_config: None,
         };
 
         if !is_solitary {
@@ -305,7 +309,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert!(!config.metrics);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -339,7 +343,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert!(!config.metrics);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -354,7 +358,7 @@ mod tests {
             "test-reward-address",
             "--secret",
             "test-secret",
-            "--no-metrics",
+            "--metrics",
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
@@ -366,7 +370,7 @@ mod tests {
             "Config should be created successfully"
         );
 
-        assert!(maybe_config.unwrap().no_metrics);
+        assert!(maybe_config.unwrap().metrics);
     }
 
     #[tokio::test]
@@ -383,7 +387,7 @@ mod tests {
             "debug",
             "--mode",
             "full",
-            "--no-metrics",
+            "--metrics",
             "--solitary",
         ];
 
@@ -405,7 +409,7 @@ mod tests {
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
-        assert!(config.no_metrics);
+        assert!(config.metrics);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
