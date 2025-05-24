@@ -36,7 +36,7 @@ pub async fn build(
     // Setting up the metrics recorder needs to be the very first step before
     // doing anything that uses metrics, or the initial data will be lost:
     let metrics = init_metrics(config.metrics);
-    spawn_process_collector_if(metrics.is_some());
+    spawn_process_collector_if(config.metrics);
 
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
