@@ -7,7 +7,10 @@
 )]
 
 use blockfrost_platform::{
-    cli::Args, errors::AppError, load_balancer, logging::setup_tracing, server::build,
+    cli::Args,
+    errors::AppError,
+    load_balancer,
+    server::{build, logging::setup_tracing},
 };
 use dotenvy::dotenv;
 use std::sync::Arc;

@@ -3,7 +3,7 @@ use crate::{
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
     pagination::{Pagination, PaginationQuery},
-    server::AppState,
+    server::state::AppState,
 };
 use axum::extract::{Path, Query, State};
 use blockfrost_openapi::models::account_history_content_inner::AccountHistoryContentInner;

@@ -3,7 +3,7 @@ use crate::{
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
     pagination::{Pagination, PaginationQuery},
-    server::AppState,
+    server::state::AppState,
 };
 
 use axum::extract::{Path, Query, State};

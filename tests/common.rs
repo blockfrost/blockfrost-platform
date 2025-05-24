@@ -5,7 +5,7 @@ use blockfrost_platform::{
     config::{Config, IcebreakersConfig, LogLevel, Mode, Network},
     health_monitor,
     icebreakers_api::IcebreakersAPI,
-    server::{ApiPrefix, build},
+    server::{build, state::ApiPrefix},
 };
 use std::{
     env,

@@ -2,7 +2,7 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    server::AppState,
+    server::state::AppState,
 };
 
 use axum::extract::{Path, State};

@@ -1,6 +1,8 @@
 use crate::{
-    config::Config, config::Network, errors::AppError, load_balancer::LoadBalancerConfig,
-    server::ApiPrefix,
+    config::{Config, Network},
+    errors::AppError,
+    load_balancer::LoadBalancerConfig,
+    server::state::ApiPrefix,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
