@@ -35,7 +35,7 @@ pub async fn build(
 > {
     // Setting up the metrics recorder needs to be the very first step before
     // doing anything that uses metrics, or the initial data will be lost:
-    let metrics = init_metrics(&config.no_metrics);
+    let metrics = init_metrics(config.metrics);
     spawn_process_collector_if(metrics.is_some());
 
     // Create node pool
@@ -51,8 +51,8 @@ pub async fn build(
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
-    let regular_api_routes = get_regular_api_routes(config.no_metrics);
-    let hidden_api_routes = get_hidden_api_routes(config.no_metrics);
+    let regular_api_routes = get_regular_api_routes(config.metrics);
+    let hidden_api_routes = get_hidden_api_routes(config.metrics);
 
     // Nest under the UUID prefix
     let api_routes = nest_routes(&api_prefix, regular_api_routes, hidden_api_routes);

@@ -21,7 +21,7 @@ pub struct Config {
     pub mode: Mode,
     pub icebreakers_config: Option<IcebreakersConfig>,
     pub max_pool_connections: usize,
-    pub no_metrics: bool,
+    pub metrics: bool,
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
 }
@@ -123,7 +123,7 @@ impl Config {
             mode: args.mode,
             icebreakers_config,
             max_pool_connections: 10,
-            no_metrics: args.no_metrics,
+            metrics: args.metrics,
             network,
             custom_genesis_config: args.custom_genesis_config,
         })

@@ -5,8 +5,8 @@ use std::{
     time::Duration,
 };
 
-pub fn init_metrics(no_metrics: &bool) -> Option<Arc<RwLock<PrometheusHandle>>> {
-    if !*no_metrics {
+pub fn init_metrics(enable: bool) -> Option<Arc<RwLock<PrometheusHandle>>> {
+    if enable {
         Some(setup_metrics_recorder())
     } else {
         None

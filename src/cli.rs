@@ -61,7 +61,7 @@ pub struct Args {
     pub reward_address: Option<String>,
 
     #[arg(long)]
-    pub no_metrics: bool,
+    pub metrics: bool,
 
     #[arg(long, help = "Path to an configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
@@ -215,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            no_metrics: !metrics,
+            metrics,
             mode,
             log_level,
             server_address,
@@ -309,7 +309,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert!(!config.metrics);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert!(!config.metrics);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -370,7 +370,7 @@ mod tests {
             "Config should be created successfully"
         );
 
-        assert!(maybe_config.unwrap().no_metrics);
+        assert!(maybe_config.unwrap().metrics);
     }
 
     #[tokio::test]
@@ -409,7 +409,7 @@ mod tests {
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
-        assert!(config.no_metrics);
+        assert!(config.metrics);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
