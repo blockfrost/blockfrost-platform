@@ -9,7 +9,6 @@ use axum::{
     middleware::from_fn,
     routing::{get, post},
 };
-use tower_http::normalize_path::NormalizePathLayer;
 
 /// API routes that are *only* under the UUID prefix
 pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
@@ -137,8 +136,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
 
         // utils
         .route("/utils/tx/evaluate", post(utils::txs::evaluate::root::route))
-        .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route))
-        .route_layer(NormalizePathLayer::trim_trailing_slash());
+        .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route));
 
     if enable_metrics {
         router = router.route_layer(from_fn(track_http_metrics));
