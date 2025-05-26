@@ -1,9 +1,8 @@
 use metrics::{counter, describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use std::{
-    sync::{Arc, OnceLock, RwLock},
-    time::Duration,
-};
+use std::sync::Arc;
+use std::{sync::OnceLock, time::Duration};
+use tokio::sync::RwLock;
 
 pub fn init_metrics(enable: bool) -> Option<Arc<RwLock<PrometheusHandle>>> {
     if enable {
