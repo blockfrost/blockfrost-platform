@@ -111,6 +111,7 @@ jobs:
 
   pages:
     name: Prepare coverage for GitHub Pages
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: coverage
     runs-on: ubuntu-latest
     steps:
@@ -136,6 +137,7 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: pages
     runs-on: ubuntu-latest
     permissions:
