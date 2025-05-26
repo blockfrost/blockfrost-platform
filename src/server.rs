@@ -73,8 +73,8 @@ pub async fn build(
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
 
-        if config.metrics {
-            routes = routes.layer(Extension(metrics));
+        if let Some(prom_handler) = metrics {
+            routes = routes.layer(Extension(prom_handler));
         }
 
         routes
