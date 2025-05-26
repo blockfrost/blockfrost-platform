@@ -126,6 +126,9 @@ jobs:
           name: coverage-html
           path: coverage
 
+      - name: Copy to index.html
+        run: cp coverage/tarpaulin-report.html coverage/index.html
+
       - name: Upload coverage folder
         uses: actions/upload-pages-artifact@v3
         with:
