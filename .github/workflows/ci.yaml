@@ -129,7 +129,7 @@ jobs:
       - name: Upload coverage folder
         uses: actions/upload-pages-artifact@v3
         with:
-          path: coverage/*
+          path: coverage/
 
   deploy:
     name: Deploy to GitHub Pages
