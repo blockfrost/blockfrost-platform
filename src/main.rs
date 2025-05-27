@@ -17,7 +17,7 @@ use tracing::{error, info, warn};
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     dotenv().ok();
-    let config = Args::init()?;
+    let config = Args::init().await?;
 
     // Logging
     setup_tracing(config.log_level);
