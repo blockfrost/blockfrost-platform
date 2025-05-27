@@ -342,22 +342,19 @@ mod tests {
 
         assert_eq!(
             result,
-            Ok(serde_json::json!({
-              "contents": {
-                "contents": {
-                  "contents": {
-                    "era": "ShelleyBasedEraConway",
-                    "error": [
-                      "ConwayTreasuryValueMismatch (Coin 796507) (Coin 734700)"
-                    ],
+            Ok(serde_json::json!({"contents":
+                 {"contents":
+                  {"contents":
+                   {"era": "ShelleyBasedEraConway", "error":
+                    ["ConwayTreasuryValueMismatch (Mismatch {mismatchSupplied = Coin 734700, mismatchExpected = Coin 796507})"],
                     "kind": "ShelleyTxValidationError"
-                  },
-                  "tag": "TxValidationErrorInCardanoMode"
-                },
-                "tag": "TxCmdTxSubmitValidationError"
-              },
-              "tag": "TxSubmitFail"
-            }))
+                    },
+                    "tag": "TxValidationErrorInCardanoMode"
+                }, "tag": "TxCmdTxSubmitValidationError"
+            },
+                "tag": "TxSubmitFail"
+                }
+            ))
         );
     }
 }
