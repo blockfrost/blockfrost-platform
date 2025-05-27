@@ -26,6 +26,7 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
+#[allow(dead_code)]
 pub async fn initialize_app() -> Router {
     initialize_logging();
     let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -76,6 +77,7 @@ pub async fn build_app() -> Result<
     build(config).await
 }
 
+#[allow(dead_code)]
 pub async fn build_app_non_solitary() -> Result<
     (
         Router,
