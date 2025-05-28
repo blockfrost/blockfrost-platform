@@ -122,7 +122,7 @@ mod tests {
     #[case(Network::Preview, 2)]
     fn test_by_network_returns_correct_magic(
         #[case] network: Network,
-        #[case] expected_magic: u64,
+        #[case] expected_magic: i32,
     ) {
         let registry = genesis();
         let genesis = registry.by_network(&network);
@@ -174,7 +174,7 @@ mod tests {
         let mut registry = if prepopulated { genesis() } else { Vec::new() };
 
         // dummy
-        let mut dummy = GenesisContent {
+        let dummy = GenesisContent {
             active_slots_coefficient: 0.1,
             update_quorum: 10,
             max_lovelace_supply: "100".to_string(),
