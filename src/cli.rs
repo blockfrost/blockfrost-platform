@@ -60,7 +60,7 @@ pub struct Args {
     #[arg(long)]
     pub reward_address: Option<String>,
 
-    #[arg(long)]
+    #[arg(long = "no-metrics", default_value_t = true, action = ArgAction::SetFalse)]
     pub metrics: bool,
 
     #[arg(long, help = "Path to an configuration file")]
