@@ -304,7 +304,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33415e24172c1b7d6066f6d999545375ab8e1d95421d6784bdfff9496f292387"
 dependencies = [
  "bitcoin_hashes 0.13.0",
- "rand_core 0.6.4",
  "serde",
  "unicode-normalization",
 ]
@@ -2434,8 +2433,8 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pallas"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "pallas-addresses",
  "pallas-codec",
@@ -2451,8 +2450,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-addresses"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "base58",
  "bech32 0.9.1",
@@ -2466,8 +2465,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-codec"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "hex",
  "minicbor 0.26.4",
@@ -2477,8 +2476,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-configs"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "base64 0.22.1",
  "num-rational",
@@ -2492,8 +2491,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-crypto"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -2505,8 +2504,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-hardano"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "binary-layout",
  "hex",
@@ -2525,8 +2524,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-network"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "byteorder",
  "hex",
@@ -2542,8 +2541,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-primitives"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "hex",
  "pallas-codec",
@@ -2554,8 +2553,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-traverse"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "hex",
  "itertools 0.13.0",
@@ -2570,8 +2569,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-txbuilder"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "hex",
  "pallas-addresses",
@@ -2579,7 +2578,6 @@ dependencies = [
  "pallas-crypto",
  "pallas-primitives",
  "pallas-traverse",
- "pallas-wallet",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -2587,8 +2585,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-utxorpc"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "pallas-codec",
  "pallas-crypto",
@@ -2601,8 +2599,8 @@ dependencies = [
 
 [[package]]
 name = "pallas-validate"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
+version = "1.0.0-alpha.2"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
 dependencies = [
  "chrono",
  "hex",
@@ -2617,20 +2615,6 @@ dependencies = [
  "thiserror 1.0.69",
  "tracing",
  "uplc-turbo",
-]
-
-[[package]]
-name = "pallas-wallet"
-version = "1.0.0-alpha.1"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha2#fa233715b67b22fd8b191c9294858a3185e1207b"
-dependencies = [
- "bech32 0.9.1",
- "bip39",
- "cryptoxide",
- "ed25519-bip32",
- "pallas-crypto",
- "rand 0.8.5",
- "thiserror 1.0.69",
 ]
 
 [[package]]

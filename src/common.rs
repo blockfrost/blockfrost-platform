@@ -1,5 +1,6 @@
 use crate::BlockfrostError;
 use axum::http::{HeaderMap, header::CONTENT_TYPE};
+use pallas_network::miniprotocols::localstate::queries_v16::BigInt;
 
 /// Helper to validate content type or return custom BlockfrostError 400
 ///   Arguments:
@@ -49,6 +50,14 @@ pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
     }
 }
 
+pub fn convert_bigint(bigint: BigInt) -> Result<i128, BlockfrostError> {
+    match bigint {
+        BigInt::Int(big) => Ok(i128::from(big)),
+        _ => Err(BlockfrostError::internal_server_error(
+            "Invalid/unsupported BigInt format".to_string(),
+        )),
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

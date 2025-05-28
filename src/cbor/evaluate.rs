@@ -28,6 +28,7 @@ use crate::BlockfrostError;
 use crate::NodePool;
 use crate::api::utils::txs::evaluate::model::AdditionalUtxoSet;
 use crate::api::utils::txs::evaluate::model::Value;
+use crate::common::convert_bigint;
 use pallas_codec::utils::CborWrap;
 use pallas_primitives::{
     KeepRaw,
@@ -67,7 +68,7 @@ pub async fn evaluate_tx(
     match node.genesis_config_and_pp().await {
         Ok((genesis_config, protocol_params)) => {
             let protocol_params: MultiEraProtocolParameters =
-                convert_protocol_param(protocol_params, genesis_config);
+                convert_protocol_param(protocol_params, genesis_config)?;
             /*
              * Prepare transaction
              */
@@ -200,12 +201,18 @@ fn parse_asset_string(str: &str) -> (PolicyId, AssetName) {
     )
 }
 
-fn convert_system_start(sys_start: SystemStart) -> chrono::DateTime<chrono::FixedOffset> {
-    let naive_date = NaiveDate::from_yo_opt(sys_start.year as i32, sys_start.day_of_year)
-        .expect("Invalid system start date");
+fn convert_system_start(
+    sys_start: SystemStart,
+) -> Result<chrono::DateTime<chrono::FixedOffset>, BlockfrostError> {
+    let naive_date = NaiveDate::from_yo_opt(
+        convert_bigint(sys_start.year)? as i32,
+        sys_start.day_of_year as u32,
+    )
+    .expect("Invalid system start date");
 
-    let secs = (sys_start.picoseconds_of_day / 1_000_000_000_000) as u32;
-    let nano = ((sys_start.picoseconds_of_day % 1_000_000_000_000) / 1000) as u32;
+    let picoseconds_of_day = convert_bigint(sys_start.picoseconds_of_day)?;
+    let secs = (picoseconds_of_day / 1_000_000_000_000) as u32;
+    let nano = ((picoseconds_of_day % 1_000_000_000_000) / 1000) as u32;
 
     let naive_time =
         NaiveTime::from_num_seconds_from_midnight_opt(secs, nano).expect("Invalid time");
@@ -215,13 +222,16 @@ fn convert_system_start(sys_start: SystemStart) -> chrono::DateTime<chrono::Fixe
     // Convert to DateTime with UTC timezone (zero offset)
     let utc_offset = chrono::FixedOffset::east_opt(0).expect("Invalid offset");
 
-    DateTime::from_naive_utc_and_offset(naive_date_time, utc_offset)
+    Ok(DateTime::from_naive_utc_and_offset(
+        naive_date_time,
+        utc_offset,
+    ))
 }
 
 fn convert_protocol_param(
     pp: CurrentProtocolParam,
     genesis: GenesisConfig,
-) -> MultiEraProtocolParameters {
+) -> Result<MultiEraProtocolParameters, BlockfrostError> {
     // Create a Conway protocol parameters struct from the ProtocolParam and GenesisConfig
     let conway_pp: ConwayProtParams = ConwayProtParams {
         minfee_a: pp.minfee_a.unwrap() as u32,
@@ -229,7 +239,7 @@ fn convert_protocol_param(
         max_block_body_size: pp.max_block_body_size.unwrap() as u32,
         max_transaction_size: pp.max_transaction_size.unwrap() as u32,
         max_block_header_size: pp.max_block_header_size.unwrap() as u32,
-        system_start: convert_system_start(genesis.system_start),
+        system_start: convert_system_start(genesis.system_start)?,
         epoch_length: genesis.epoch_length as u64,
         slot_length: genesis.slot_length as u64,
         desired_number_of_stake_pools: pp.desired_number_of_stake_pools.unwrap() as u32,
@@ -384,7 +394,7 @@ fn convert_protocol_param(
         drep_inactivity_period: pp.drep_inactivity_period.unwrap(),
     };
 
-    MultiEraProtocolParameters::Conway(conway_pp)
+    Ok(MultiEraProtocolParameters::Conway(conway_pp))
 }
 
 #[cfg(test)]
@@ -393,6 +403,7 @@ mod tests {
     use chrono::{Datelike, Timelike};
 
     use pallas_codec::utils::AnyUInt;
+    use pallas_network::miniprotocols::localstate::queries_v16::BigInt;
     use pallas_network::miniprotocols::localstate::queries_v16::{self, Fraction};
 
     use super::*;
@@ -401,11 +412,11 @@ mod tests {
     fn test_convert_system_start() {
         // Test case 1: Standard date
         let sys_start = SystemStart {
-            year: 2023,
+            year: BigInt::from(2023),
             day_of_year: 100,
-            picoseconds_of_day: 43_200_000_000_000_000, // 12 hours
+            picoseconds_of_day: BigInt::from(43_200_000_000_000_000i64), // 12 hours
         };
-        let result = convert_system_start(sys_start);
+        let result = convert_system_start(sys_start).unwrap();
         assert_eq!(result.year(), 2023);
         assert_eq!(result.ordinal(), 100);
         assert_eq!(result.hour(), 12);
@@ -414,11 +425,11 @@ mod tests {
 
         // Test case 2: Year boundary
         let sys_start = SystemStart {
-            year: 2024,
+            year: BigInt::from(2024),
             day_of_year: 1,
-            picoseconds_of_day: 3_600_000_000_000_000, // 1 hour
+            picoseconds_of_day: BigInt::from(3_600_000_000_000_000i64), // 1 hour
         };
-        let result = convert_system_start(sys_start);
+        let result = convert_system_start(sys_start).unwrap();
         assert_eq!(result.year(), 2024);
         assert_eq!(result.ordinal(), 1);
         assert_eq!(result.hour(), 1);
@@ -427,11 +438,11 @@ mod tests {
 
         // Test case 3: Leap year
         let sys_start = SystemStart {
-            year: 2024,
+            year: BigInt::from(2024),
             day_of_year: 366,
-            picoseconds_of_day: 0, // midnight
+            picoseconds_of_day: BigInt::from(0), // midnight
         };
-        let result = convert_system_start(sys_start);
+        let result = convert_system_start(sys_start).unwrap();
         assert_eq!(result.year(), 2024);
         assert_eq!(result.ordinal(), 366);
         assert_eq!(result.hour(), 0);
@@ -440,11 +451,11 @@ mod tests {
 
         // Test case 4: Partial seconds
         let sys_start = SystemStart {
-            year: 2023,
+            year: BigInt::from(2023),
             day_of_year: 200,
-            picoseconds_of_day: 63_123_000_000_000_000, // 17:32:03
+            picoseconds_of_day: BigInt::from(63_123_000_000_000_000i64), // 17:32:03
         };
-        let result = convert_system_start(sys_start);
+        let result = convert_system_start(sys_start).unwrap();
         assert_eq!(result.year(), 2023);
         assert_eq!(result.ordinal(), 200);
         assert_eq!(result.hour(), 17);
@@ -457,9 +468,9 @@ mod tests {
         // Create minimal test data with required fields
         let genesis = GenesisConfig {
             system_start: SystemStart {
-                year: 2023,
+                year: BigInt::from(2023),
                 day_of_year: 100,
-                picoseconds_of_day: 43_200_000_000_000_000, // 12 hours
+                picoseconds_of_day: BigInt::from(43_200_000_000_000_000i64), // 12 hours
             },
             epoch_length: 432000,
             slot_length: 1,
@@ -604,7 +615,7 @@ mod tests {
         };
 
         // Convert protocol parameters
-        let result = convert_protocol_param(pp, genesis);
+        let result = convert_protocol_param(pp, genesis).unwrap();
 
         // Verify the result is a Conway protocol parameters
         if let MultiEraProtocolParameters::Conway(conway_pp) = result {
@@ -645,8 +656,6 @@ mod tests {
             assert_eq!(conway_pp.drep_deposit, 2_000_000);
             assert_eq!(conway_pp.min_committee_size, 3);
             assert_eq!(conway_pp.committee_term_limit, 4);
-        } else {
-            panic!("Expected Conway protocol parameters");
         }
     }
 }
