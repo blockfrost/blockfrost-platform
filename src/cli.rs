@@ -1,8 +1,8 @@
 use crate::AppError;
 use crate::config::{Config, LogLevel, Mode};
 use anyhow::{Error, Result, anyhow};
-use clap::{ArgAction, Parser, arg, command};
-use clap::{CommandFactory, ValueEnum};
+use clap::{ArgAction, CommandFactory, ValueEnum};
+use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::Serialize;
@@ -215,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            metrics,
+            metrics: !metrics,
             mode,
             log_level,
             server_address,
@@ -270,6 +270,7 @@ impl Args {
 mod tests {
     use futures::FutureExt;
     use futures::future::BoxFuture;
+    use pretty_assertions::assert_eq;
     use tracing::Level; // for `.boxed()`
 
     use crate::config::Network;
@@ -309,7 +310,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.metrics);
+        assert_eq!(config.metrics, true);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -343,7 +344,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.metrics);
+        assert_eq!(config.metrics, true);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -358,7 +359,7 @@ mod tests {
             "test-reward-address",
             "--secret",
             "test-secret",
-            "--metrics",
+            "--no-metrics",
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
@@ -370,7 +371,7 @@ mod tests {
             "Config should be created successfully"
         );
 
-        assert!(maybe_config.unwrap().metrics);
+        assert!(!maybe_config.unwrap().metrics);
     }
 
     #[tokio::test]
@@ -387,7 +388,7 @@ mod tests {
             "debug",
             "--mode",
             "full",
-            "--metrics",
+            "--no-metrics",
             "--solitary",
         ];
 
@@ -409,7 +410,7 @@ mod tests {
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
-        assert!(config.metrics);
+        assert_eq!(config.metrics, false);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
