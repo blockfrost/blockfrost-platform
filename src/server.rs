@@ -12,7 +12,7 @@ use crate::{
     node::pool::NodePool,
 };
 use axum::{Extension, Router, middleware::from_fn};
-use metrics::{init_metrics, spawn_process_collector_if};
+use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
 use std::sync::Arc;
@@ -35,8 +35,14 @@ pub async fn build(
 > {
     // Setting up the metrics recorder needs to be the very first step before
     // doing anything that uses metrics, or the initial data will be lost:
-    let metrics = init_metrics(config.metrics);
-    spawn_process_collector_if(config.metrics);
+    let metrics_handle = if config.metrics {
+        let recorder = setup_metrics_recorder();
+        spawn_process_collector();
+
+        Some(recorder)
+    } else {
+        None
+    };
 
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
@@ -73,7 +79,7 @@ pub async fn build(
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
 
-        if let Some(prom_handler) = metrics {
+        if let Some(prom_handler) = metrics_handle {
             routes = routes.layer(Extension(prom_handler));
         }
 

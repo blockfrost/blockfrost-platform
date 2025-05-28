@@ -268,14 +268,12 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::config::Network;
     use futures::FutureExt;
     use futures::future::BoxFuture;
     use pretty_assertions::assert_eq;
     use tracing::Level; // for `.boxed()`
-
-    use crate::config::Network;
-
-    use super::*;
 
     fn mock_detector(_: &str) -> BoxFuture<'_, Result<Network, AppError>> {
         async { Ok(Network::Preview) }.boxed()

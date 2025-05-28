@@ -4,26 +4,16 @@ use std::sync::Arc;
 use std::{sync::OnceLock, time::Duration};
 use tokio::sync::RwLock;
 
-pub fn init_metrics(enable: bool) -> Option<Arc<RwLock<PrometheusHandle>>> {
-    if enable {
-        Some(setup_metrics_recorder())
-    } else {
-        None
-    }
-}
+pub fn spawn_process_collector() {
+    tokio::spawn(async {
+        let collector = metrics_process::Collector::default();
+        collector.describe();
 
-pub fn spawn_process_collector_if(enable: bool) {
-    if enable {
-        tokio::spawn(async {
-            let collector = metrics_process::Collector::default();
-            collector.describe();
-
-            loop {
-                collector.collect();
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        });
-    }
+        loop {
+            collector.collect();
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    });
 }
 
 // to prevent multiple initialization of the metrics recorder, happens in tests
