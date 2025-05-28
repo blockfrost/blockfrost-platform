@@ -203,7 +203,7 @@ mod tests {
 
         // if we started empty it must have length 1, otherwise >=1
         if prepopulated {
-            assert!(registry.len() >= 1);
+            assert!(!registry.is_empty());
         } else {
             assert_eq!(registry.len(), 1);
         }
