@@ -1,8 +1,8 @@
 use crate::AppError;
 use crate::config::{Config, LogLevel, Mode};
 use anyhow::{Error, Result, anyhow};
+use clap::{ArgAction, Parser, arg, command};
 use clap::{CommandFactory, ValueEnum};
-use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::Serialize;
