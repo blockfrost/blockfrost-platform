@@ -1,4 +1,5 @@
 use super::connection::NodeClient;
+use crate::{BlockfrostError, common::convert_bigint};
 use chrono::{Duration, TimeZone, Utc};
 use common::errors::BlockfrostError;
 use pallas_network::{miniprotocols, miniprotocols::localstate};
@@ -38,10 +39,7 @@ impl NodeClient {
                     localstate::queries_v16::get_system_start(generic_client).await?;
                 let chain_point = localstate::queries_v16::get_chain_point(generic_client).await?;
                 let slot = chain_point.slot_or_default();
-
-                let year: i32 = system_start.year.try_into().map_err(|e| {
-                    BlockfrostError::internal_server_error(format!("Failed to convert year: {e}"))
-                })?;
+                let year: i32 = convert_bigint(system_start.year)? as i32;
 
                 let base_date = Utc
                     .with_ymd_and_hms(year, 1, 1, 0, 0, 0)
@@ -50,9 +48,9 @@ impl NodeClient {
                         BlockfrostError::internal_server_error("Invalid base date".to_string())
                     })?;
 
-                let days = Duration::days((system_start.day_of_year - 1).into());
+                let days = Duration::days(system_start.day_of_year - 1);
 
-                let nanoseconds: i64 = (system_start.picoseconds_of_day / 1_000)
+                let nanoseconds: i64 = (convert_bigint(system_start.picoseconds_of_day)? / 1_000)
                     .try_into()
                     .map_err(|e| {
                         BlockfrostError::internal_server_error(format!(
