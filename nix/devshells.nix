@@ -129,6 +129,7 @@ in {
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
         pkgs.websocat
+        pkgs.gnum4
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
