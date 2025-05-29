@@ -41,7 +41,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         icebreakers_config,
         max_pool_connections: 10,
         network: Network::Preview,
-        metrics: true,
+        no_metrics: true,
         custom_genesis_config: None,
     };
 

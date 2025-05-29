@@ -1,7 +1,7 @@
 use crate::AppError;
 use crate::config::{Config, LogLevel, Mode};
 use anyhow::{Error, Result, anyhow};
-use clap::{ArgAction, CommandFactory, ValueEnum};
+use clap::{CommandFactory, ValueEnum};
 use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
@@ -156,7 +156,7 @@ impl Args {
             .with_help_message("Should be run without icebreakers API?")
             .prompt()?;
 
-        let metrics = Confirm::new("Enable metrics?")
+        let no_metrics = Confirm::new("Enable metrics?")
             .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
@@ -215,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            no_metrics: !metrics,
+            no_metrics,
             mode,
             log_level,
             server_address,
@@ -308,7 +308,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert_eq!(config.metrics, true);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -342,7 +342,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert_eq!(config.metrics, true);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
@@ -369,7 +369,7 @@ mod tests {
             "Config should be created successfully"
         );
 
-        assert!(!maybe_config.unwrap().metrics);
+        assert!(maybe_config.unwrap().no_metrics);
     }
 
     #[tokio::test]
@@ -408,7 +408,7 @@ mod tests {
         assert_eq!(config.server_port, 5353);
         assert_eq!(config.log_level, Level::DEBUG);
         assert_eq!(config.mode, Mode::Full);
-        assert_eq!(config.metrics, false);
+        assert!(config.no_metrics);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
