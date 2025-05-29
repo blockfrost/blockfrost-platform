@@ -60,8 +60,8 @@ pub struct Args {
     #[arg(long)]
     pub reward_address: Option<String>,
 
-    #[arg(long = "no-metrics", default_value_t = true, action = ArgAction::SetFalse)]
-    pub metrics: bool,
+    #[arg(long)]
+    pub no_metrics: bool,
 
     #[arg(long, help = "Path to an configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
@@ -215,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            metrics: !metrics,
+            no_metrics: !metrics,
             mode,
             log_level,
             server_address,

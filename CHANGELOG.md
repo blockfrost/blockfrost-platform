@@ -1,9 +1,5 @@
 ## Unreleased
 
-### Changed
-
-- In CLI `no_metrics` renamed to `metrics`
-
 ### Removed
 
 - `network` parameter from CLI. It's resolved automatically now.
