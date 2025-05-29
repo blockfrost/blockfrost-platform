@@ -2,10 +2,11 @@
 
 ### Removed
 
-- `network` parameter from CLI
+- `network` parameter from CLI. It's resolved automatically now.
 
 ### Added
 
+- Set custom genesis config
 - Load balancing over a WebSocket (eliminating the need for public IP in the future)
 - Expose a `health_errors_total` gauge in metrics
 

@@ -11,7 +11,6 @@ pub mod genesis;
 pub mod health_monitor;
 pub mod icebreakers_api;
 pub mod load_balancer;
-pub mod logging;
 pub mod middlewares;
 pub mod node;
 pub mod pagination;

@@ -2,16 +2,16 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    config::Config,
+    server::state::AppState,
 };
-use axum::{Extension, extract::Path};
+use axum::extract::{Path, State};
 use blockfrost_openapi::models::account_addresses_total::AccountAddressesTotal;
 
 pub async fn route(
     Path(path): Path<AccountsPath>,
-    Extension(config): Extension<Config>,
+    State(state): State<AppState>,
 ) -> ApiResult<AccountAddressesTotal> {
-    let _ = AccountData::from_account_path(path.stake_address, config.network)?;
+    let _ = AccountData::from_account_path(path.stake_address, &state.config.network)?;
 
     Err(BlockfrostError::not_found())
 }

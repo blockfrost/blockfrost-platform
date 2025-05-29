@@ -1,6 +1,8 @@
 use crate::{
-    config::Config, config::Network, errors::AppError, load_balancer::LoadBalancerConfig,
-    server::ApiPrefix,
+    config::{Config, Network},
+    errors::AppError,
+    load_balancer::LoadBalancerConfig,
+    server::state::ApiPrefix,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -50,7 +52,7 @@ impl IcebreakersAPI {
     ) -> Result<Option<Arc<Self>>, AppError> {
         let api_url = match config.network {
             Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
-            Network::Mainnet => "https://icebreakers-api.blockfrost.io",
+            Network::Mainnet | Network::Custom => "https://icebreakers-api.blockfrost.io",
         };
 
         match &config.icebreakers_config {

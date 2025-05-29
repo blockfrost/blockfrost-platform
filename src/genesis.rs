@@ -1,11 +1,25 @@
 use crate::config::Network;
+use axum::Extension;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
+use std::sync::Arc;
+
+pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisContent)>>>;
 
 pub trait GenesisRegistry {
+    /// Get a network config by its `Network` enum variant.
     fn by_network(&self, network: &Network) -> GenesisContent;
+
+    /// Get a network config by magic.
     fn by_magic(&self, magic: u64) -> GenesisContent;
+
+    /// List all known network magics.
     fn all_magics(&self) -> Vec<u64>;
+
+    /// Map a magic number back to its `Network`.
     fn network_by_magic(&self, magic: u64) -> &Network;
+
+    /// Insert or replace the `GenesisContent` for `network` at the front.
+    fn add(&mut self, network: Network, genesis: GenesisContent);
 }
 
 impl GenesisRegistry for Vec<(Network, GenesisContent)> {
@@ -32,6 +46,16 @@ impl GenesisRegistry for Vec<(Network, GenesisContent)> {
             .find(|(_, g)| g.network_magic as u64 == magic)
             .map(|(n, _)| n)
             .expect("Missing Network for known magic")
+    }
+
+    fn add(&mut self, network: Network, genesis: GenesisContent) {
+        // If the network already exists, replace its GenesisContent;
+        // otherwise, insert this (network, genesis) tuple at index 0.
+        if let Some((_, slot)) = self.iter_mut().find(|(n, _)| n == &network) {
+            *slot = genesis;
+        } else {
+            self.insert(0, (network, genesis));
+        }
     }
 }
 
@@ -89,53 +113,99 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
 mod tests {
     use super::*;
     use crate::config::Network;
+    use blockfrost_openapi::models::genesis_content::GenesisContent;
+    use rstest::rstest;
 
-    #[test]
-    fn test_by_network_returns_correct_genesis() {
+    #[rstest]
+    #[case(Network::Mainnet, 764_824_073)]
+    #[case(Network::Preprod, 1)]
+    #[case(Network::Preview, 2)]
+    fn test_by_network_returns_correct_magic(
+        #[case] network: Network,
+        #[case] expected_magic: i32,
+    ) {
         let registry = genesis();
+        let genesis = registry.by_network(&network);
+        assert_eq!(genesis.network_magic, expected_magic);
+    }
 
-        let mainnet = registry.by_network(&Network::Mainnet);
-        assert_eq!(mainnet.network_magic, 764_824_073);
-
-        let preprod = registry.by_network(&Network::Preprod);
-        assert_eq!(preprod.network_magic, 1);
-
-        let preview = registry.by_network(&Network::Preview);
-        assert_eq!(preview.network_magic, 2);
+    #[rstest]
+    #[case(764_824_073, 1_506_203_091)]
+    #[case(1, 1_654_041_600)]
+    #[case(2, 1_666_692_000)]
+    fn test_by_magic_returns_correct_start(#[case] magic: i32, #[case] expected_start: i32) {
+        let registry = genesis();
+        let genesis = registry.by_magic(magic as u64);
+        assert_eq!(genesis.system_start, expected_start);
     }
 
     #[test]
-    fn test_by_magic_returns_correct_genesis() {
-        let registry = genesis();
-
-        let mainnet = registry.by_magic(764_824_073);
-        assert_eq!(mainnet.system_start, 1_506_203_091);
-
-        let preprod = registry.by_magic(1);
-        assert_eq!(preprod.system_start, 1_654_041_600);
-
-        let preview = registry.by_magic(2);
-        assert_eq!(preview.system_start, 1_666_692_000);
-    }
-
-    #[test]
-    fn test_all_magics_returns_all_magics() {
-        let registry = genesis();
-        let magics = registry.all_magics();
-
+    fn test_all_magics_len_is_three() {
+        let magics = genesis().all_magics();
         assert_eq!(magics.len(), 3);
-
-        assert!(magics.contains(&764_824_073));
-        assert!(magics.contains(&1));
-        assert!(magics.contains(&2));
     }
 
-    #[test]
-    fn test_network_by_magic_returns_correct_network() {
-        let registry = genesis();
+    #[rstest]
+    #[case(764_824_073)]
+    #[case(1)]
+    #[case(2)]
+    fn test_all_magics_contains_each(#[case] magic: u64) {
+        let magics = genesis().all_magics();
+        assert!(magics.contains(&magic));
+    }
 
-        assert_eq!(registry.network_by_magic(764_824_073), &Network::Mainnet);
-        assert_eq!(registry.network_by_magic(1), &Network::Preprod);
-        assert_eq!(registry.network_by_magic(2), &Network::Preview);
+    #[rstest]
+    #[case(764_824_073, Network::Mainnet)]
+    #[case(1, Network::Preprod)]
+    #[case(2, Network::Preview)]
+    fn test_network_by_magic_returns_correct_network(
+        #[case] magic: u64,
+        #[case] expected_network: Network,
+    ) {
+        let registry = genesis();
+        let network = registry.network_by_magic(magic);
+        assert_eq!(network, &expected_network);
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_add_behavior_for_replace_and_insert(#[case] prepopulated: bool) {
+        let mut registry = if prepopulated { genesis() } else { Vec::new() };
+
+        // dummy
+        let dummy = GenesisContent {
+            active_slots_coefficient: 0.1,
+            update_quorum: 10,
+            max_lovelace_supply: "100".to_string(),
+            network_magic: 999,
+            epoch_length: 1000,
+            system_start: 123_456,
+            slots_per_kes_period: 200,
+            slot_length: 2,
+            max_kes_evolutions: 3,
+            security_param: 4,
+        };
+
+        if prepopulated {
+            let mut existing = registry.by_network(&Network::Mainnet);
+            existing.network_magic = 888;
+            registry.add(Network::Mainnet, existing);
+        }
+
+        registry.add(Network::Mainnet, dummy.clone());
+
+        assert_eq!(registry[0].0, Network::Mainnet);
+        assert_eq!(registry[0].1.network_magic, 999);
+
+        let fetched = registry.by_network(&Network::Mainnet);
+        assert_eq!(fetched.network_magic, 999);
+
+        // if we started empty it must have length 1, otherwise >=1
+        if prepopulated {
+            assert!(!registry.is_empty());
+        } else {
+            assert_eq!(registry.len(), 1);
+        }
     }
 }

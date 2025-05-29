@@ -62,6 +62,9 @@ pub struct Args {
 
     #[arg(long)]
     pub no_metrics: bool,
+
+    #[arg(long, help = "Path to an configuration file")]
+    pub custom_genesis_config: Option<PathBuf>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -153,7 +156,7 @@ impl Args {
             .with_help_message("Should be run without icebreakers API?")
             .prompt()?;
 
-        let metrics = Confirm::new("Enable metrics?")
+        let no_metrics = Confirm::new("Enable metrics?")
             .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
@@ -212,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            no_metrics: !metrics,
+            no_metrics,
             mode,
             log_level,
             server_address,
@@ -220,6 +223,7 @@ impl Args {
             node_socket_path: Some(node_socket_path),
             reward_address: None,
             secret: None,
+            custom_genesis_config: None,
         };
 
         if !is_solitary {
@@ -264,13 +268,12 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::config::Network;
     use futures::FutureExt;
     use futures::future::BoxFuture;
+    use pretty_assertions::assert_eq;
     use tracing::Level; // for `.boxed()`
-
-    use crate::config::Network;
-
-    use super::*;
 
     fn mock_detector(_: &str) -> BoxFuture<'_, Result<Network, AppError>> {
         async { Ok(Network::Preview) }.boxed()
@@ -305,7 +308,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -339,7 +342,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }

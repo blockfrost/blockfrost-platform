@@ -2,21 +2,18 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    config::Config,
     pagination::{Pagination, PaginationQuery},
+    server::state::AppState,
 };
-use axum::{
-    Extension,
-    extract::{Path, Query},
-};
+use axum::extract::{Path, Query, State};
 use blockfrost_openapi::models::account_delegation_content_inner::AccountDelegationContentInner;
 
 pub async fn route(
-    Extension(config): Extension<Config>,
+    State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(path): Path<AccountsPath>,
 ) -> ApiResult<Vec<AccountDelegationContentInner>> {
-    let _ = AccountData::from_account_path(path.stake_address, config.network)?;
+    let _ = AccountData::from_account_path(path.stake_address, &state.config.network)?;
     let _ = Pagination::from_query(pagination_query).await?;
 
     Err(BlockfrostError::not_found())

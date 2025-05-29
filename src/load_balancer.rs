@@ -1,5 +1,5 @@
 use crate::errors::{AppError, BlockfrostError};
-use crate::server::ApiPrefix;
+use crate::server::state::ApiPrefix;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -141,6 +141,8 @@ enum RelayMessage {
 }
 
 mod event_loop {
+    use crate::server::state::ApiPrefix;
+
     use super::*;
     use futures::stream::{SplitSink, SplitStream};
     use futures_util::{SinkExt, StreamExt};
