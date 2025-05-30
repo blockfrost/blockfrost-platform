@@ -1,5 +1,5 @@
 FROM lukemathwalker/cargo-chef:0.1.68-rust-slim-bookworm AS base
-RUN apt-get update ; apt-get install build-essential m4=1.4.* sccache=0.4.* pkg-config=1.8.* libssl-dev=3.0.* bzip2=1.0.* -y --no-install-recommends \
+RUN apt-get update ; apt-get install build-essential=12.* m4=1.4.* sccache=0.4.* pkg-config=1.8.* libssl-dev=3.0.* bzip2=1.0.* -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
