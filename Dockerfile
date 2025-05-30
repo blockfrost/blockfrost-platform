@@ -8,7 +8,7 @@ RUN apt-get update \
   libssl-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
-
+  
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
