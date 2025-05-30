@@ -2,12 +2,15 @@ FROM lukemathwalker/cargo-chef:latest-rust-1 AS base
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
+  build-essential
+  m4=1.4.*
   sccache=0.4.0~~pre6-1+b1 \
   pkg-config=1.8.1-1 \
   libssl-dev=3.0.16-1~deb12u1 \
+  bzip2=1.0.* \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
-
+  
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
