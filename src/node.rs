@@ -1,4 +1,5 @@
 pub mod connection;
+pub mod ledger;
 pub mod pool;
 pub mod pool_manager;
 pub mod sync_progress;

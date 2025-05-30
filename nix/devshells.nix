@@ -88,7 +88,10 @@ in {
 
   devshell = {
     packages =
-      [pkgs.unixtools.xxd]
+      [
+        pkgs.unixtools.xxd
+        pkgs.gnum4
+      ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
       ]
