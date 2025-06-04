@@ -9,9 +9,9 @@
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     flake-compat.url = "github:input-output-hk/flake-compat";
     flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.3.1";
+    cardano-node.url = "github:IntersectMBO/cardano-node/10.4.1";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    testgen-hs.url = "github:input-output-hk/testgen-hs/10.3.1.0"; # make sure it follows cardano-node
+    testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.0"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";

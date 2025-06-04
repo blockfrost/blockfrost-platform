@@ -59,7 +59,7 @@ mod testgen_hs {
             return;
         }
 
-        let testgen_lib_version = "10.3.1.0";
+        let testgen_lib_version = "10.4.1.0";
 
         let target_os = if cfg!(target_os = "macos") {
             "darwin"
