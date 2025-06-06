@@ -12,8 +12,16 @@ pub fn nest_routes(
     if prefix.0.is_none() {
         regular.merge(hidden)
     } else {
+        let prefix_ = prefix.clone();
         regular
             .clone()
             .nest(&prefix.to_string(), regular.merge(hidden))
+            // Some of our health monitors request `GET /{prefix}/`:
+            .route(
+                &format!("{}/", prefix),
+                axum::routing::get(|| async move {
+                    axum::response::Redirect::permanent(&prefix_.to_string())
+                }),
+            )
     }
 }
