@@ -10,6 +10,10 @@
 - Load balancing over a WebSocket (eliminating the need for public IP in the future)
 - Expose a `health_errors_total` gauge in metrics
 
+### Fixed
+
+- Trailing slash in `GET /{uuid}/` works again
+
 ## [0.0.2] - 2025-03-20
 
 ### Changed
