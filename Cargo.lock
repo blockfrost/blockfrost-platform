@@ -420,6 +420,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
+ "minicbor",
  "num_cpus",
  "pallas",
  "pallas-addresses",
