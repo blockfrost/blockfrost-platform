@@ -26,6 +26,22 @@ project_id = 'BLOCKFROST_PROJECT_ID'
 nft_asset = 'b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f696e'
 ```
 
+### Development
+
+To run dev server:
+
+```
+cargo run -- --config="./config/development.toml"
+```
+
+If you are getting an error `ld: library 'pq' not found`, on MacOS you will need to install `libpq` and `diesel_cli`:
+
+```
+brew install libpq && brew link --force libpq
+cargo clean
+cargo install diesel_cli --no-default-features --features postgres
+```
+
 ## DigitalOcean
 
 This app is hosted on the DigitalOcean App Platform. At the moment, the
