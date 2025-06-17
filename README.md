@@ -26,6 +26,24 @@ project_id = 'BLOCKFROST_PROJECT_ID'
 nft_asset = 'b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f696e'
 ```
 
+### Development
+
+This repository has a [devshell](https://github.com/numtide/devshell) configured for Linux and macOS machines (both x86-64 and AArch64). To use it, please install [Nix](https://nixos.org/download/), [direnv](https://direnv.net/), enter the cloned directory, and run `direnv allow`
+
+To run dev server:
+
+```
+cargo run -- --config="./config/development.toml"
+```
+
+If you are not using nix and you are getting an error `ld: library 'pq' not found`, on MacOS you need to install `libpq` and `diesel_cli`:
+
+```
+brew install libpq && brew link --force libpq
+cargo clean
+cargo install diesel_cli --no-default-features --features postgres
+```
+
 ## DigitalOcean
 
 This app is hosted on the DigitalOcean App Platform. At the moment, the

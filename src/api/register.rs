@@ -102,28 +102,38 @@ pub async fn route(
         .parse()
         .map_err(|_| APIError::Validation(format!("Invalid IP address: {}", ip_string)))?;
 
-    info!(
-        "The server will now check if the IP address {} is reachable on port {}",
-        ip_string, payload.port
-    );
+    // Allow bypassing check for open port via header X-SKIP-PORT-CHECK=1
+    let skip_port_check = headers
+        .get("X-SKIP-PORT-CHECK")
+        .and_then(|v| v.to_str().ok())
+        .map_or(false, |v| v.eq_ignore_ascii_case("1"));
 
-    let socket_addr = SocketAddr::new(ip_address, payload.port as u16);
-
-    if !is_port_open(socket_addr).await {
+    if skip_port_check {
+        info!("Skipping port check. Client passed X-SKIP-PORT-CHECK header.");
+    } else {
         info!(
-            "Failed to connect to IP {} on port {}",
+            "The server will now check if the IP address {} is reachable on port {}",
             ip_string, payload.port
         );
-        return Err(APIError::NotAccessible {
-            ip: socket_addr,
-            port: socket_addr.port(),
-        });
-    }
 
-    info!(
-        "Successfully checked that IP {} is reachable on port {}",
-        ip_string, payload.port
-    );
+        let socket_addr = SocketAddr::new(ip_address, payload.port as u16);
+
+        if !is_port_open(socket_addr).await {
+            info!(
+                "Failed to connect to IP {} on port {}",
+                ip_string, payload.port
+            );
+            return Err(APIError::NotAccessible {
+                ip: socket_addr,
+                port: socket_addr.port(),
+            });
+        }
+
+        info!(
+            "Successfully checked that IP {} is reachable on port {}",
+            ip_string, payload.port
+        );
+    }
 
     // check if NFT is at the address
     let asset = blockfrost_api

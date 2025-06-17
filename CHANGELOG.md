@@ -1,8 +1,14 @@
 ## Unreleased
 
+### Added
+
+- Support for optional `X-Skip-Port-Check` header. When set to 1, the server skips the TCP port reachability check and accepts the provided port as-is.
+
 ## [1.3.3] - 2025-03-12
 
-HOTFIX: project_id env override
+### Fixed
+
+- HOTFIX: project_id env override
 
 ## [1.3.2] - 2025-03-12
 
