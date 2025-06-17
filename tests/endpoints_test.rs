@@ -49,13 +49,14 @@ mod tests {
         assert_eq!(root_response.node_info.unwrap().sync_progress, 100.0);
     }
 
-    // Test: `/metrics` route sanity check
+    // Test: `/metrics` route sanity check and trailing slash
     #[tokio::test]
     async fn test_route_metrics() {
         initialize_logging();
 
         let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
 
+        // Test without trailing slash
         let response = app
             .oneshot(
                 Request::builder()
@@ -73,8 +74,28 @@ mod tests {
             .expect("Failed to read response body");
 
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-
         assert!(body_str.contains("cardano_node_connections"));
+
+        // Test with trailing slash
+        let response_trailing = app
+            .oneshot(
+                Request::builder()
+                    .uri("/metrics/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("Request to /metrics/ route failed");
+
+        assert_eq!(response_trailing.status(), StatusCode::OK);
+
+        let body_bytes_trailing = to_bytes(response_trailing.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body for /metrics/");
+
+        let body_str_trailing = String::from_utf8(body_bytes_trailing.to_vec()).unwrap();
+
+        assert!(body_str_trailing.contains("cardano_node_connections"));
     }
 
     // Test: `/tx/submit` error has same response as blockfrost API
