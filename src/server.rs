@@ -87,7 +87,7 @@ pub async fn build(
     };
 
     let inner = NormalizePathLayer::trim_trailing_slash().layer(inner);
-    let app = Router::new().nest_service("/", inner);
+    let app = Router::new().fallback_service(inner);
 
     Ok((
         app,
