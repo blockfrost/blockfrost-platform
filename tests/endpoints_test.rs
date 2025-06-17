@@ -58,6 +58,7 @@ mod tests {
 
         // Test without trailing slash
         let response = app
+            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/metrics")
