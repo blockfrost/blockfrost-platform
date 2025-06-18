@@ -40,7 +40,10 @@ pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockf
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4",  features = ["phase2"] }
+[target.'cfg(not(any(target_os = "windows", all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4", features = [
+  "phase2",
+] }
 reqwest = "0.12.12"
 hex = "0.4.3"
 metrics = { version = "0.24.1", default-features = false }
@@ -57,6 +60,9 @@ anyhow = "1.0.98"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 ntest = "0.9.3"
+
+[features]
+tarpaulin = []
 
 [dev-dependencies]
 api-provider = { path = "crates/api_provider" }

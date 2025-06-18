@@ -116,6 +116,9 @@ in {
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
         pkgs.gnum4
+        pkgs.gnumake
+        pkgs.gawk
+        pkgs.diffutils
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
