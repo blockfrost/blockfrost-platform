@@ -1,8 +1,33 @@
 fn main() {
+    let os = target_os();
+    let arch = target_arch();
+
     git_revision::set();
-    testgen_hs::ensure();
+    features::evaluate(os, arch);
+    testgen_hs::ensure(os, arch);
 }
 
+fn target_os() -> &'static str {
+    (if cfg!(target_os = "macos") {
+        "darwin"
+    } else if cfg!(target_os = "linux") {
+        "linux"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        panic!("Unsupported OS");
+    }) as _
+}
+
+fn target_arch() -> &'static str {
+    (if cfg!(target_arch = "x86_64") {
+        "x86_64"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64"
+    } else {
+        panic!("Unsupported architecture");
+    }) as _
+}
 mod git_revision {
     use std::env;
 
@@ -50,7 +75,7 @@ mod testgen_hs {
 
     const TESTGEN_HS_PATH: &str = "TESTGEN_HS_PATH";
 
-    pub fn ensure() {
+    pub fn ensure(target_os: &str, arch: &str) {
         if env::var(TESTGEN_HS_PATH).is_ok() {
             println!(
                 "Environment variable {} is set. Skipping the download.",
@@ -60,24 +85,6 @@ mod testgen_hs {
         }
 
         let testgen_lib_version = "10.4.1.0";
-
-        let target_os = if cfg!(target_os = "macos") {
-            "darwin"
-        } else if cfg!(target_os = "linux") {
-            "linux"
-        } else if cfg!(target_os = "windows") {
-            "windows"
-        } else {
-            panic!("Unsupported OS");
-        };
-
-        let arch = if cfg!(target_arch = "x86_64") {
-            "x86_64"
-        } else if cfg!(target_arch = "aarch64") {
-            "aarch64"
-        } else {
-            panic!("Unsupported architecture");
-        };
 
         let suffix = if target_os == "windows" {
             ".zip"
@@ -224,6 +231,25 @@ mod testgen_hs {
                 let mut outfile = File::create(&outpath).expect("Unable to create file");
                 std::io::copy(&mut entry, &mut outfile).expect("Unable to write file");
             }
+        }
+    }
+}
+
+mod features {
+    pub fn evaluate(target_os: &str, target_arch: &str) {
+        println!("cargo::rustc-check-cfg=cfg(evaluate)");
+
+        if (target_os == "linux" && target_arch == "aarch64") || target_os == "windows" {
+            println!(
+                "cargo:warning=Skipping 'evaluate' cfg for {}-{}",
+                target_os, target_arch
+            );
+        } else {
+            println!(
+                "cargo:warning=Going to build with 'evaluate' cfg for {}-{}",
+                target_os, target_arch
+            );
+            println!("cargo:rustc-cfg=evaluate");
         }
     }
 }

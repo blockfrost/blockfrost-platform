@@ -11,7 +11,7 @@ use cardano_serialization_lib::{
     TransactionUnspentOutput, TransactionUnspentOutputs, TransactionWitnessSet, Vkeywitnesses,
     hash_transaction, make_vkey_witness,
 };
-
+#[allow(dead_code)]
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> {
     let output_amount = BigNum::from_str("1000000");
     let mnemonic = "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early";

@@ -27,6 +27,7 @@ pub async fn initialize_app() -> Router {
     app
 }
 
+#[allow(dead_code)]
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
