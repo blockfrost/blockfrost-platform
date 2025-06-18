@@ -10,31 +10,13 @@ use zip::ZipArchive;
 
 const TESTGEN_HS_PATH: &str = "TESTGEN_HS_PATH";
 
-pub fn ensure() {
+pub fn ensure(target_os: &str, arch: &str) {
     if env::var(TESTGEN_HS_PATH).is_ok() {
         println!("Environment variable {TESTGEN_HS_PATH} is set. Skipping the download.");
         return;
     }
 
     let testgen_lib_version = "10.4.1.0";
-
-    let target_os = if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "linux") {
-        "linux"
-    } else if cfg!(target_os = "windows") {
-        "windows"
-    } else {
-        panic!("Unsupported OS");
-    };
-
-    let arch = if cfg!(target_arch = "x86_64") {
-        "x86_64"
-    } else if cfg!(target_arch = "aarch64") {
-        "aarch64"
-    } else {
-        panic!("Unsupported architecture");
-    };
 
     let suffix = if target_os == "windows" {
         ".zip"
