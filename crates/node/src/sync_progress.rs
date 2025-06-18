@@ -61,7 +61,7 @@ impl NodeClient {
                         BlockfrostError::internal_server_error("Invalid base date".to_string())
                     })?;
 
-                let days = Duration::days(system_start.day_of_year - 1);
+                let days = Duration::days((system_start.day_of_year - 1).into());
 
                 let nanoseconds: i64 = big_int_to_i128(system_start.picoseconds_of_day)
                     .map(|i| i / 1_000)

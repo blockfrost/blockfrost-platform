@@ -61,6 +61,9 @@ bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
 
+[features]
+tarpaulin = []
+
 [dev-dependencies]
 bf-api-provider.workspace = true
 tracing-test = "0.2.5"
