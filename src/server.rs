@@ -16,6 +16,8 @@ use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
 use std::sync::Arc;
+use tower::Layer;
+use tower_http::normalize_path::NormalizePathLayer;
 use uuid::Uuid;
 
 /// Builds and configures the Axum `Router`.
@@ -69,7 +71,7 @@ pub async fn build(
     };
 
     // Add layers
-    let app = {
+    let inner = {
         let mut routes = api_routes
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
@@ -83,6 +85,9 @@ pub async fn build(
 
         routes
     };
+
+    let inner = NormalizePathLayer::trim_trailing_slash().layer(inner);
+    let app = Router::new().fallback_service(inner);
 
     Ok((
         app,
