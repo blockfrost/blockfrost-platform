@@ -46,6 +46,12 @@ impl From<std::num::TryFromIntError> for BlockfrostError {
     }
 }
 
+impl From<serde_json::Error> for BlockfrostError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::internal_server_error(format!("SerdeError: {err}"))
+    }
+}
+
 impl From<AppError> for BlockfrostError {
     fn from(err: AppError) -> Self {
         match err {
