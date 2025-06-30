@@ -36,7 +36,7 @@
 
       systems = [
         "x86_64-linux"
-        # "aarch64-linux"
+        "aarch64-linux"
         "aarch64-darwin"
         "x86_64-darwin"
       ];
@@ -51,7 +51,6 @@
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
             blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.package;
-            blockfrost-platform-aarch64-linux = inputs.self.internal.aarch64-linux.package;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -113,9 +112,6 @@
           )
           // lib.genAttrs ["x86_64-windows"] (
             targetSystem: import ./nix/internal/windows.nix {inherit inputs targetSystem;}
-          )
-          // lib.genAttrs ["aarch64-linux"] (
-            targetSystem: import ./nix/internal/linux-cross-arm64.nix {inherit inputs targetSystem;}
           );
 
         nixosModule = {
@@ -128,7 +124,7 @@
         };
 
         hydraJobs = let
-          crossSystems = ["x86_64-windows" "aarch64-linux"];
+          crossSystems = ["x86_64-windows"];
           allJobs = {
             blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.package
