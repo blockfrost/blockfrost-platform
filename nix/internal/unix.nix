@@ -182,7 +182,9 @@ in
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
         inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin;
       }
-      .${targetSystem};
+      .${
+        targetSystem
+      };
 
     inherit (cardano-node-packages) cardano-node cardano-cli cardano-submit-api;
 
@@ -245,14 +247,18 @@ in
             "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
             "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
           }
-          .${targetSystem};
+          .${
+            targetSystem
+          };
         hash =
           {
             "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
             "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
             "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
           }
-          .${targetSystem};
+          .${
+            targetSystem
+          };
       };
     in
       pkgs.runCommandNoCC "cardano-address" {

@@ -40,19 +40,18 @@ in
       };
 
     # Portable directory that can be run on any modern Darwin:
-    bundle =
-      (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
+    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
       .overrideAttrs (drv: {
-        name = unix.packageName;
-        buildCommand =
-          drv.buildCommand
-          + ''
-            mkdir -p $out/libexec
-            mv $out/{${unix.packageName},lib} $out/libexec
-            mkdir -p $out/bin
-            ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
-          '';
-      });
+      name = unix.packageName;
+      buildCommand =
+        drv.buildCommand
+        + ''
+          mkdir -p $out/libexec
+          mv $out/{${unix.packageName},lib} $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
+        '';
+    });
 
     bundle-testgen-hs = nix-bundle-exe-lib-subdir (lib.getExe unix.testgen-hs);
 
