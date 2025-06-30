@@ -110,8 +110,7 @@ impl PaymentCred {
                     Ok(bytes) => bytes.to_base32(),
                     err => {
                         return Err(BlockfrostError::internal_server_error(format!(
-                            "get_bech32_from_payment_cred hex decode error: {:?}",
-                            err
+                            "get_bech32_from_payment_cred hex decode error: {err:?}"
                         )));
                     },
                 };
@@ -121,8 +120,7 @@ impl PaymentCred {
                     PaymentCredPrefix::Script => "script",
                     err => {
                         return Err(BlockfrostError::internal_server_error(format!(
-                            "get_bech32_from_payment_cred hex decode error: {:?}",
-                            err
+                            "get_bech32_from_payment_cred hex decode error: {err:?}"
                         )));
                     },
                 };
@@ -131,8 +129,7 @@ impl PaymentCred {
                     Ok(address) => address,
                     err => {
                         return Err(BlockfrostError::internal_server_error(format!(
-                            "get_bech32_from_payment_cred hex decode error: {:?}",
-                            err
+                            "get_bech32_from_payment_cred hex decode error: {err:?}"
                         )));
                     },
                 };
@@ -140,8 +137,7 @@ impl PaymentCred {
                 Ok(address)
             },
             err => Err(BlockfrostError::internal_server_error(format!(
-                "get_bech32_from_payment_cred hex decode error: {:?}",
-                err
+                "get_bech32_from_payment_cred hex decode error: {err:?}"
             ))),
         }
     }
