@@ -254,37 +254,47 @@ in
     # For generating a signing key from a recovery phrase. It’s a little
     # controversial to download a binary, but we only need it for the devshell. If
     # needed, we can use the source instead.
-    cardano-address = let
-      release = "v2024-09-29";
-      baseUrl = "https://github.com/cardano-foundation/cardano-wallet/releases/download/${release}/cardano-wallet";
-      archive = pkgs.fetchzip {
-        name = "cardano-wallet-${release}";
-        url =
-          {
-            "x86_64-linux" = "${baseUrl}-${release}-linux64.tar.gz";
-            "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
-            "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
-          }
-          .${targetSystem};
-        hash =
-          {
-            "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
-            "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
-            "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
-          }
-          .${targetSystem};
-      };
-    in
-      pkgs.runCommandNoCC "cardano-address" {
-        meta.description = "Command-line for address and key manipulation in Cardano";
-      } ''
-        mkdir -p $out/bin $out/libexec
-        cp ${archive}/cardano-address $out/libexec/
-        ${lib.optionalString pkgs.stdenv.isDarwin ''
-          cp ${archive}/{libz,libiconv.2,libgmp.10,libffi.8}.dylib $out/libexec
-        ''}
-        ln -sf $out/libexec/cardano-address $out/bin/
-      '';
+    cardano-address =
+      if targetSystem == "aarch64-linux"
+      then
+        pkgs.writeShellApplication {
+          name = "cardano-address";
+          text = ''
+            echo >&2 "TODO: unimplemented: compile \`cardano-address\` for \`${targetSystem}\`!"
+            exit 1
+          '';
+        }
+      else let
+        release = "v2024-09-29";
+        baseUrl = "https://github.com/cardano-foundation/cardano-wallet/releases/download/${release}/cardano-wallet";
+        archive = pkgs.fetchzip {
+          name = "cardano-wallet-${release}";
+          url =
+            {
+              "x86_64-linux" = "${baseUrl}-${release}-linux64.tar.gz";
+              "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
+              "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
+            }
+            .${targetSystem};
+          hash =
+            {
+              "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
+              "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
+              "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
+            }
+            .${targetSystem};
+        };
+      in
+        pkgs.runCommandNoCC "cardano-address" {
+          meta.description = "Command-line for address and key manipulation in Cardano";
+        } ''
+          mkdir -p $out/bin $out/libexec
+          cp ${archive}/cardano-address $out/libexec/
+          ${lib.optionalString pkgs.stdenv.isDarwin ''
+            cp ${archive}/{libz,libiconv.2,libgmp.10,libffi.8}.dylib $out/libexec
+          ''}
+          ln -sf $out/libexec/cardano-address $out/bin/
+        '';
 
     tx-build = pkgs.writeShellApplication {
       name = "tx-build";

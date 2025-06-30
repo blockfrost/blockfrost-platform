@@ -60,7 +60,7 @@ index 72d2f8f..b192741 100644
          config,
          system,
 diff --git a/nix/internal.nix b/nix/internal.nix
-index 51248ac..09382ab 100644
+index 51248ac..7eb910e 100644
 --- a/nix/internal.nix
 +++ b/nix/internal.nix
 @@ -13,11 +13,29 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
@@ -90,19 +90,11 @@ index 51248ac..09382ab 100644
    cardano-node-packages =
      {
        x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
-+      aarch64-linux = cardano-node-flake.hydraJobs.aarch64-linux.musl;
++      aarch64-linux = cardano-node-flake.packages.aarch64-linux;
        x86_64-darwin = cardano-node-flake.packages.x86_64-darwin;
        aarch64-darwin = cardano-node-flake.packages.aarch64-darwin;
      }
-@@ -25,7 +43,6 @@ in rec {
- 
-   inherit (cardano-node-packages) cardano-node cardano-cli;
- 
--  testgen-hs = let
-     patched-flake = let
-       unpatched = inputs.cardano-node;
-     in
-@@ -35,7 +52,7 @@ in rec {
+@@ -35,7 +53,7 @@ in rec {
              cp -r ${unpatched} $out
              chmod -R +w $out
              cd $out
@@ -111,15 +103,11 @@ index 51248ac..09382ab 100644
              cp -r ${../testgen-hs} ./testgen-hs
              sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
              sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
-@@ -48,9 +65,11 @@ in rec {
-         };
-       })
-       .defaultNix;
-+  testgen-hs = let
+@@ -51,6 +69,7 @@ in rec {
    in
      {
        x86_64-linux = patched-flake.hydraJobs.x86_64-linux.musl.testgen-hs;
-+      aarch64-linux = patched-flake.project.aarch64-linux.projectCross.aarch64-multiplatform-musl.packages.testgen-hs.components.exes.testgen-hs;
++      aarch64-linux = patched-flake.packages.aarch64-linux.testgen-hs;
        x86_64-darwin = patched-flake.packages.x86_64-darwin.testgen-hs;
        aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
        x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
