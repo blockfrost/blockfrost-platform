@@ -31,15 +31,10 @@ in {
       name = "cardano-address";
       package = internal.cardano-address;
     }
-    {package = internal.dolos;}
-    {package = internal.mithril-client;}
+    {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
-    {
-      name = "cargo";
-      package = internal.rustPackages.cargo;
-    }
-    {package = internal.rustPackages.rust-analyzer;}
+    {package = config.language.rust.packageSet.rust-analyzer;}
     {
       category = "handy";
       package = internal.runNode "preview";
