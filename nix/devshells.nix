@@ -10,7 +10,6 @@ in {
 
   imports = [
     "${inputs.devshell}/extra/language/c.nix"
-    "${inputs.devshell}/extra/language/rust.nix"
   ];
 
   commands = [
@@ -31,10 +30,11 @@ in {
       name = "cardano-address";
       package = internal.cardano-address;
     }
-    {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
-    {package = config.language.rust.packageSet.rust-analyzer;}
+    {package = internal.rustPackages.cargo;}
+    {package = internal.rustPackages.clippy;}
+    {package = internal.rustPackages.rust-analyzer;}
     {
       category = "handy";
       package = internal.runNode "preview";
@@ -65,12 +65,6 @@ in {
       else pkgs.clang;
     includes = internal.commonArgs.buildInputs;
   };
-
-  language.rust.packageSet =
-    internal.rustPackages
-    // {
-      clippy = internal.rustPackages.clippy-unwrapped;
-    };
 
   env =
     [
