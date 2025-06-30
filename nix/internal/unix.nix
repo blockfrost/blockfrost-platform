@@ -166,14 +166,14 @@ in
     in
       (import inputs.flake-compat {
         src =
-          if targetSystem != "aarch64-darwin"
+          if targetSystem != "aarch64-darwin" && targetSystem != "aarch64-linux"
           then unpatched
           else {
             outPath = toString (pkgs.runCommand "source" {} ''
               cp -r ${unpatched} $out
               chmod -R +w $out
               cd $out
-              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
+              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
             '');
             inherit (unpatched) rev shortRev lastModified lastModifiedDate;
           };
@@ -183,7 +183,7 @@ in
     cardano-node-packages =
       {
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
-        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin;
+        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
       }
       .${targetSystem};
 
