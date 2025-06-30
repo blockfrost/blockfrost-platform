@@ -60,7 +60,7 @@ index 72d2f8f..b192741 100644
          config,
          system,
 diff --git a/nix/internal.nix b/nix/internal.nix
-index 51248ac..32b65f7 100644
+index 51248ac..09382ab 100644
 --- a/nix/internal.nix
 +++ b/nix/internal.nix
 @@ -13,11 +13,29 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
@@ -102,6 +102,15 @@ index 51248ac..32b65f7 100644
      patched-flake = let
        unpatched = inputs.cardano-node;
      in
+@@ -35,7 +52,7 @@ in rec {
+             cp -r ${unpatched} $out
+             chmod -R +w $out
+             cd $out
+-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
++            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+             cp -r ${../testgen-hs} ./testgen-hs
+             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+             sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
 @@ -48,9 +65,11 @@ in rec {
          };
        })
