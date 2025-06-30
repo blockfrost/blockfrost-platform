@@ -40,7 +40,7 @@ pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockf
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-[target.'cfg(not(any(target_os = "windows", all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
+[target.'cfg(not(target_os = "windows"))'.dependencies]
 pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4", features = [
   "phase2",
 ] }
