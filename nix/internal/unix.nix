@@ -174,6 +174,9 @@ in
               chmod -R +w $out
               cd $out
               echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+              ${lib.optionalString (targetSystem == "aarch64-linux") ''
+                sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+              ''}
             '');
             inherit (unpatched) rev shortRev lastModified lastModifiedDate;
           };
