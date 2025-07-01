@@ -9,28 +9,26 @@ repository = "https://github.com/blockfrost/blockfrost-platform"
 build = "build.rs"
 
 [dependencies]
-axum = { version = "0.8.2", features = ["ws"] }
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
-futures = "0.3"
-futures-util = "0.3"
-crossbeam = "0.8"
+axum = { version = "0.8.4", features = ["ws"] }
+tokio = { version = "1.45.1", features = ["rt", "rt-multi-thread", "signal"] }
+futures = "0.3.31"
+futures-util = "0.3.31"
+crossbeam = "0.8.4"
 tungstenite = "0.26"
 tokio-tungstenite = "0.26"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
-serde = { version = "1.0.218", features = ["derive"] }
-tower-http = { version = "0.6.1", features = ["normalize-path"] }
-tower-layer = "0.3.2"
-tower = "0.5.1"
-hyper = "1.5.2"
-serde_json = "1.0.135"
-clap = { version = "4.5.26", features = ["derive"] }
-toml = "0.8.19"
-thiserror = "2.0.11"
-sentry = "0.36.0"
-blake2 = "0.10.6"
+serde = { version = "1.0.219", features = ["derive"] }
+tower-http = { version = "0.6.6", features = ["normalize-path"] }
+tower = "0.5.2"
+hyper = "1.6.0"
+serde_json = "1.0.140"
+clap = { version = "4.5.40", features = ["derive"] }
+toml = "0.8.23"
+thiserror = "2.0.12"
+sentry = "0.41.0"
 base64 = "0.22.1"
-num_cpus = "1"
+num_cpus = "1.17.0"
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
@@ -39,7 +37,6 @@ pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockf
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 reqwest = "0.12.12"
 hex = "0.4.3"
 metrics = { version = "0.24.1", default-features = false }
@@ -47,14 +44,13 @@ metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 metrics-process = "2.4.0"
 chrono = "0.4"
 deadpool = "0.12.1"
-serde_with = "3.12.0"
 sysinfo = "0.33.1"
 dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
-dirs = "5.0"
+dirs = "6.0.0"
 inquire = "0.7.5"
-anyhow = "1.0.95"
+anyhow = "1.0.98"
 blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
