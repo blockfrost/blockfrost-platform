@@ -185,7 +185,6 @@ async fn detect_network(socket_path: &str) -> Result<Network, AppError> {
     }
 
     Err(AppError::Server(format!(
-        "Could not detect network from '{}' is the node running?",
-        socket_path
+        "Could not detect network from '{socket_path}' is the node running?"
     )))
 }

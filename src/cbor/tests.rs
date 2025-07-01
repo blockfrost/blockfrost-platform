@@ -65,7 +65,7 @@ pub fn check_generated_cases<F>(
         .args(["--number", &num_cases.to_string()])
         .args(["--generator-size", &generator_size.to_string()])
         .args(seed.map_or(vec![], |seed| vec!["--seed".to_string(), seed.to_string()]))
-        .arg(format!("{:?}", case_type))
+        .arg(format!("{case_type:?}"))
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to spawn child");
@@ -101,7 +101,7 @@ pub fn check_generated_cases<F>(
                             Ok(a) => a,
                             Err(_) => Err("panic! (see above for details)".to_string()),
                         },
-                        Err(e) => Err(format!("CborTestCase JSON parse error: {}", e)),
+                        Err(e) => Err(format!("CborTestCase JSON parse error: {e}")),
                     };
                     let _ = result_tx.send(outcome);
                 }
@@ -149,18 +149,17 @@ pub fn check_generated_cases<F>(
                     if num_failed <= show_n_failures {
                         "".to_string()
                     } else {
-                        format!(" (first {})", show_n_failures)
+                        format!(" (first {show_n_failures})")
                     }
                 ));
 
                 for case in first_n_failures {
-                    details.push_str(&format!("\n- {}", case));
+                    details.push_str(&format!("\n- {case}"));
                 }
             }
 
             panic!(
-                "For size {}: {} out of {} ({:.2}%) failed. Seed: {}.{}",
-                generator_size, num_failed, num_total, percent, random_seed, details
+                "For size {generator_size}: {num_failed} out of {num_total} ({percent:.2}%) failed. Seed: {random_seed}.{details}"
             )
         }
     });

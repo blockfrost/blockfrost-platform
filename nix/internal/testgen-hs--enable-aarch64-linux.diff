@@ -1,0 +1,127 @@
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 197c881..59ce8cc 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -30,6 +30,10 @@ jobs:
+             result-archive-x86_64-linux \
+             .#hydraJobs.testgen-hs.x86_64-linux
+ 
++          nix build -L --builders '' --max-jobs 0 --out-link \
++            result-archive-aarch64-linux \
++            .#hydraJobs.testgen-hs.aarch64-linux
++
+           nix build -L --builders '' --max-jobs 0 --out-link \
+             result-archive-x86_64-windows \
+             .#hydraJobs.testgen-hs.x86_64-windows
+@@ -48,6 +52,7 @@ jobs:
+         with:
+           files: |
+             result-archive-x86_64-linux/*.tar.bz2
++            result-archive-aarch64-linux/*.tar.bz2
+             result-archive-x86_64-darwin/*.tar.bz2
+             result-archive-aarch64-darwin/*.tar.bz2
+             result-archive-x86_64-windows/*.zip
+diff --git a/.github/workflows/upload.yml b/.github/workflows/upload.yml
+index e54ea87..6c3f02b 100644
+--- a/.github/workflows/upload.yml
++++ b/.github/workflows/upload.yml
+@@ -22,6 +22,7 @@ jobs:
+         run: |
+           set -euo pipefail
+           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-linux   && cp result/testgen-hs-*.* .
++          nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.aarch64-linux  && cp result/testgen-hs-*.* .
+           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-windows && cp result/testgen-hs-*.* .
+           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.x86_64-darwin  && cp result/testgen-hs-*.* .
+           nix build --builders "" --max-jobs 0 .#hydraJobs.testgen-hs.aarch64-darwin && cp result/testgen-hs-*.* .
+@@ -49,6 +50,12 @@ jobs:
+           name: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
+           path: testgen-hs-${{ env.version }}-x86_64-linux.tar.bz2
+           if-no-files-found: error
++      - name: Upload Artifact (aarch64-linux)
++        uses: actions/upload-artifact@v4
++        with:
++          name: testgen-hs-${{ env.version }}-aarch64-linux.tar.bz2
++          path: testgen-hs-${{ env.version }}-aarch64-linux.tar.bz2
++          if-no-files-found: error
+       - name: Upload Artifact (x86_64-windows)
+         uses: actions/upload-artifact@v4
+         with:
+diff --git a/flake.nix b/flake.nix
+index 72d2f8f..b192741 100644
+--- a/flake.nix
++++ b/flake.nix
+@@ -28,7 +28,7 @@
+           targetSystem: import ./nix/internal.nix {inherit inputs targetSystem;}
+         );
+ 
+-      systems = ["x86_64-linux" "aarch64-darwin" "x86_64-darwin"];
++      systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"];
+       perSystem = {
+         config,
+         system,
+diff --git a/nix/internal.nix b/nix/internal.nix
+index 51248ac..61a7c70 100644
+--- a/nix/internal.nix
++++ b/nix/internal.nix
+@@ -13,11 +13,32 @@ assert __elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86
+ in rec {
+   defaultPackage = testgen-hs;
+ 
+-  cardano-node-flake = (import inputs.flake-compat {src = inputs.cardano-node;}).defaultNix;
++  cardano-node-flake = let
++    unpatched = inputs.cardano-node;
++  in
++    (import inputs.flake-compat {
++      src =
++        if targetSystem != "aarch64-linux"
++        then unpatched
++        else {
++          outPath = toString (pkgs.runCommand "source" {} ''
++            cp -r ${unpatched} $out
++            chmod -R +w $out
++            cd $out
++            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
++            ${lib.optionalString (targetSystem == "aarch64-linux") ''
++              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
++            ''}
++          '');
++          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
++        };
++    })
++    .defaultNix;
+ 
+   cardano-node-packages =
+     {
+       x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
++      aarch64-linux = cardano-node-flake.packages.aarch64-linux;
+       x86_64-darwin = cardano-node-flake.packages.x86_64-darwin;
+       aarch64-darwin = cardano-node-flake.packages.aarch64-darwin;
+     }
+@@ -35,7 +56,10 @@ in rec {
+             cp -r ${unpatched} $out
+             chmod -R +w $out
+             cd $out
+-            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} $out/nix/supported-systems.nix
++            echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
++            ${lib.optionalString (targetSystem == "aarch64-linux") ''
++              sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
++            ''}
+             cp -r ${../testgen-hs} ./testgen-hs
+             sed -r '/^packages:/ a\  testgen-hs' -i cabal.project
+             sed -r 's/other-modules:\s*/                    , /g' -i cardano-submit-api/cardano-submit-api.cabal
+@@ -51,6 +75,7 @@ in rec {
+   in
+     {
+       x86_64-linux = patched-flake.hydraJobs.x86_64-linux.musl.testgen-hs;
++      aarch64-linux = patched-flake.packages.aarch64-linux.testgen-hs;
+       x86_64-darwin = patched-flake.packages.x86_64-darwin.testgen-hs;
+       aarch64-darwin = patched-flake.packages.aarch64-darwin.testgen-hs;
+       x86_64-windows = patched-flake.legacyPackages.x86_64-linux.hydraJobs.windows.testgen-hs;
+@@ -113,6 +138,7 @@ in rec {
+       aarch64-darwin = darwinLike;
+       x86_64-darwin = darwinLike;
+       x86_64-linux = linuxLike {};
++      aarch64-linux = linuxLike {};
+       x86_64-windows = linuxLike {useZip = true;};
+     }
+     .${targetSystem};

@@ -60,7 +60,7 @@ impl IcebreakersAPI {
                 let client = Client::builder()
                     .local_address(config.server_address)
                     .build()
-                    .map_err(|e| AppError::Registration(format!("Registering failed: {}", e)))?;
+                    .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
                 let base_url = api_url.to_string();
                 let icebreakers_api = IcebreakersAPI {
                     client,
@@ -114,11 +114,11 @@ impl IcebreakersAPI {
             .json(&body)
             .send()
             .await
-            .map_err(|e| AppError::Registration(format!("Registering failed: {}", e)))?;
+            .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
 
         if response.status().is_success() {
             let success_response = response.json::<SuccessResponse>().await.map_err(|e| {
-                AppError::Registration(format!("Failed to parse success response: {}", e))
+                AppError::Registration(format!("Failed to parse success response: {e}"))
             })?;
 
             info!("Successfully registered with Icebreakers API.");
@@ -159,7 +159,7 @@ impl IcebreakersAPI {
             Ok(success_response)
         } else {
             let error_response = response.json::<ErrorResponse>().await.map_err(|e| {
-                AppError::Registration(format!("Failed to parse error response: {}", e))
+                AppError::Registration(format!("Failed to parse error response: {e}"))
             })?;
 
             Err(AppError::Registration(format!(

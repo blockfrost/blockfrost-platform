@@ -63,18 +63,18 @@ async fn parse_and_log_error(bytes: Bytes, request_path: &str, status_code: Stat
                 request_path,
                 error_info.message
             );
-            log_to_sentry("|", format!("{:?}", error_info), request_path, status_code)
+            log_to_sentry("|", format!("{error_info:?}"), request_path, status_code)
         },
         Err(e) => {
-            println!("Failed to parse body as JSON: {:?}", e);
+            println!("Failed to parse body as JSON: {e:?}");
             log_to_sentry(
                 "JSON Parse Error",
-                format!("{:?}", e),
+                format!("{e:?}"),
                 request_path,
                 status_code,
             );
             let body_str = String::from_utf8_lossy(&bytes);
-            println!("Raw Body: {}", body_str);
+            println!("Raw Body: {body_str}");
         },
     }
 }
@@ -95,14 +95,13 @@ fn log_and_capture_error(
 
     let exception = Exception {
         ty: "ServerError".to_string(),
-        value: Some(format!("{:?}", error)),
+        value: Some(format!("{error:?}")),
         ..Default::default()
     };
 
     let event = Event {
         message: Some(format!(
-            "{}: Path: {}, Status: {}",
-            message, request_path, status_code
+            "{message}: Path: {request_path}, Status: {status_code}"
         )),
         level: Level::Error,
         exception: vec![exception].into(),
@@ -114,7 +113,7 @@ fn log_and_capture_error(
 
 fn log_to_sentry(context: &str, detail: String, request_path: &str, status_code: StatusCode) {
     let breadcrumb = Breadcrumb {
-        message: Some(format!("Request at {}", request_path)),
+        message: Some(format!("Request at {request_path}")),
         category: Some("request".into()),
         level: Level::Info,
         ..Default::default()
@@ -123,7 +122,7 @@ fn log_to_sentry(context: &str, detail: String, request_path: &str, status_code:
     sentry::add_breadcrumb(breadcrumb);
 
     let event = Event {
-        message: Some(format!("{} - {}: {}", status_code, context, detail)),
+        message: Some(format!("{status_code} - {context}: {detail}")),
         level: Level::Error,
         ..Default::default()
     };
