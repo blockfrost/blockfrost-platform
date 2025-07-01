@@ -57,7 +57,7 @@ blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 
-[target.'cfg(not(any(target_os = "windows", all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
+[target.'cfg(not(target_os = "windows"))'.dependencies]
 pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3", features = [
   "phase2",
 ] }

@@ -30,8 +30,7 @@ impl NodeClient {
                 )
                 .ok_or_else(|| {
                     BlockfrostError::internal_server_error(format!(
-                        "Only well-known networks are supported (unsupported network magic: {})",
-                        network_magic
+                        "Only well-known networks are supported (unsupported network magic: {network_magic})"
                     ))
                 })?;
 
@@ -55,8 +54,7 @@ impl NodeClient {
                     .try_into()
                     .map_err(|e| {
                         BlockfrostError::internal_server_error(format!(
-                            "Failed to convert picoseconds: {}",
-                            e
+                            "Failed to convert picoseconds: {e}"
                         ))
                     })?;
 
@@ -80,8 +78,7 @@ impl NodeClient {
                     .try_into()
                     .map_err(|e| {
                         BlockfrostError::internal_server_error(format!(
-                            "Failed to convert slot time: {}",
-                            e
+                            "Failed to convert slot time: {e}"
                         ))
                     })?;
 
