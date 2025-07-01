@@ -426,7 +426,7 @@ in
         };
         buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0") darwin.libffi];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type"];
+        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type" "-Wno-error=cast-function-type-mismatch"];
         preBuild =
           commonPreBuild
           + ''
