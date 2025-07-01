@@ -37,6 +37,6 @@ impl NodePool {
         self.pool_manager
             .get()
             .await
-            .map_err(|err| AppError::Node(format!("NodeConnPool: {}", err)))
+            .map_err(|err| AppError::Node(format!("NodeConnPool: {err}")))
     }
 }

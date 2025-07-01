@@ -21,7 +21,7 @@ pub fn validate_content_type(
             let error_message = if allowed_content_types.len() == 1 {
                 format!("Content-Type must be: {:?}", allowed_content_types[0])
             } else {
-                format!("Content-Type must be one of: {:?}", allowed_content_types)
+                format!("Content-Type must be one of: {allowed_content_types:?}")
             };
 
             return Err(BlockfrostError::custom_400(error_message));

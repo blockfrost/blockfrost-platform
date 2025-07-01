@@ -44,8 +44,7 @@ pub fn validate_asset_name(asset_name: &str) -> bool {
 pub fn parse_asset(hex: &str) -> Result<ParsedAsset, BlockfrostError> {
     if hex.len() < POLICY_ID_SIZE {
         return Err(BlockfrostError::internal_server_error(format!(
-            "Asset name is too short: {}",
-            hex,
+            "Asset name is too short: {hex}",
         )));
     }
 
