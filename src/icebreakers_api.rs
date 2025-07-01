@@ -1,6 +1,8 @@
 use crate::{
-    config::Config, config::Network, errors::AppError, load_balancer::LoadBalancerConfig,
-    server::ApiPrefix,
+    config::{Config, Network},
+    errors::AppError,
+    load_balancer::LoadBalancerConfig,
+    server::state::ApiPrefix,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -50,7 +52,7 @@ impl IcebreakersAPI {
     ) -> Result<Option<Arc<Self>>, AppError> {
         let api_url = match config.network {
             Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
-            Network::Mainnet => "https://icebreakers-api.blockfrost.io",
+            Network::Mainnet | Network::Custom => "https://icebreakers-api.blockfrost.io",
         };
 
         match &config.icebreakers_config {
@@ -58,7 +60,7 @@ impl IcebreakersAPI {
                 let client = Client::builder()
                     .local_address(config.server_address)
                     .build()
-                    .map_err(|e| AppError::Registration(format!("Registering failed: {}", e)))?;
+                    .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
                 let base_url = api_url.to_string();
                 let icebreakers_api = IcebreakersAPI {
                     client,
@@ -112,11 +114,11 @@ impl IcebreakersAPI {
             .json(&body)
             .send()
             .await
-            .map_err(|e| AppError::Registration(format!("Registering failed: {}", e)))?;
+            .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
 
         if response.status().is_success() {
             let success_response = response.json::<SuccessResponse>().await.map_err(|e| {
-                AppError::Registration(format!("Failed to parse success response: {}", e))
+                AppError::Registration(format!("Failed to parse success response: {e}"))
             })?;
 
             info!("Successfully registered with Icebreakers API.");
@@ -157,7 +159,7 @@ impl IcebreakersAPI {
             Ok(success_response)
         } else {
             let error_response = response.json::<ErrorResponse>().await.map_err(|e| {
-                AppError::Registration(format!("Failed to parse error response: {}", e))
+                AppError::Registration(format!("Failed to parse error response: {e}"))
             })?;
 
             Err(AppError::Registration(format!(

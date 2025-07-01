@@ -101,7 +101,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 5
+        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 12
 
       - name: Upload coverage report for GitHub Pages
         uses: actions/upload-artifact@v4
@@ -111,6 +111,7 @@ jobs:
 
   pages:
     name: Prepare coverage for GitHub Pages
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: coverage
     runs-on: ubuntu-latest
     steps:
@@ -126,13 +127,17 @@ jobs:
           name: coverage-html
           path: coverage
 
+      - name: Copy to index.html
+        run: cp coverage/tarpaulin-report.html coverage/index.html
+
       - name: Upload coverage folder
         uses: actions/upload-pages-artifact@v3
         with:
-          path: coverage
+          path: coverage/
 
   deploy:
     name: Deploy to GitHub Pages
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: pages
     runs-on: ubuntu-latest
     permissions:

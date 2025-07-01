@@ -62,6 +62,9 @@ pub struct Args {
 
     #[arg(long)]
     pub no_metrics: bool,
+
+    #[arg(long, help = "Path to an configuration file")]
+    pub custom_genesis_config: Option<PathBuf>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -101,7 +104,7 @@ impl Args {
         })
     }
 
-    pub fn init() -> Result<Config, AppError> {
+    pub async fn init() -> Result<Config, AppError> {
         let initial_args = Args::parse();
         let config_path = initial_args.config.unwrap_or(get_config_path());
 
@@ -114,8 +117,12 @@ impl Args {
         }
 
         match arguments.config {
-            Some(path) => Config::from_args(Args::parse_args(path)?),
-            None => Config::from_args(arguments),
+            Some(path) => {
+                let parsed_args = Args::parse_args(path)?;
+
+                Config::from_args(parsed_args).await
+            },
+            None => Config::from_args(arguments).await,
         }
     }
 
@@ -128,7 +135,7 @@ impl Args {
             message,
             enum_values
                 .iter()
-                .map(|it| format!("{:?}", it))
+                .map(|it| format!("{it:?}"))
                 .collect::<Vec<_>>(),
         )
         .with_starting_cursor(starting_cursor)
@@ -149,7 +156,7 @@ impl Args {
             .with_help_message("Should be run without icebreakers API?")
             .prompt()?;
 
-        let metrics = Confirm::new("Enable metrics?")
+        let no_metrics = Confirm::new("Enable metrics?")
             .with_default(true)
             .with_help_message("Should metrics be enabled?")
             .prompt()?;
@@ -208,7 +215,7 @@ impl Args {
             init: false,
             config: None,
             solitary: is_solitary,
-            no_metrics: !metrics,
+            no_metrics,
             mode,
             log_level,
             server_address,
@@ -216,6 +223,7 @@ impl Args {
             node_socket_path: Some(node_socket_path),
             reward_address: None,
             secret: None,
+            custom_genesis_config: None,
         };
 
         if !is_solitary {
@@ -252,7 +260,7 @@ impl Args {
         }
 
         app_config.to_file(&config_path)?;
-        println!("\nConfig has been written to {:?}", config_path);
+        println!("\nConfig has been written to {config_path:?}");
 
         std::process::exit(0);
     }
@@ -260,18 +268,19 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
-    use tracing::Level;
-
-    use crate::config::Network;
-
     use super::*;
+    use crate::config::Network;
+    use futures::FutureExt;
+    use futures::future::BoxFuture;
+    use pretty_assertions::assert_eq;
+    use tracing::Level; // for `.boxed()`
 
-    fn mock_detector(_: &str) -> Result<Network, AppError> {
-        Ok(Network::Preview)
+    fn mock_detector(_: &str) -> BoxFuture<'_, Result<Network, AppError>> {
+        async { Ok(Network::Preview) }.boxed()
     }
 
-    #[test]
-    fn test_mandatory_ok() {
+    #[tokio::test]
+    async fn test_mandatory_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -283,8 +292,7 @@ mod tests {
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-
-        let maybe_config = Config::from_args_with_detector(args, mock_detector);
+        let maybe_config = Config::from_args_with_detector(args, mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -300,7 +308,7 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_some());
 
         let icebreaker_config = config.icebreakers_config.unwrap();
@@ -308,8 +316,8 @@ mod tests {
         assert_eq!(icebreaker_config.secret, "test-secret");
     }
 
-    #[test]
-    fn test_mandatory_solitary_ok() {
+    #[tokio::test]
+    async fn test_mandatory_solitary_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -318,8 +326,7 @@ mod tests {
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -335,13 +342,13 @@ mod tests {
         assert_eq!(config.server_port, 3000);
         assert_eq!(config.log_level, Level::INFO);
         assert_eq!(config.mode, Mode::Compact);
-        assert!(!config.no_metrics);
+        assert_eq!(config.no_metrics, false);
         assert!(config.icebreakers_config.is_none());
         assert!(args.solitary);
     }
 
-    #[test]
-    fn test_no_metrics_ok() {
+    #[tokio::test]
+    async fn test_no_metrics_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -355,7 +362,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -365,8 +372,8 @@ mod tests {
         assert!(maybe_config.unwrap().no_metrics);
     }
 
-    #[test]
-    fn test_non_defaults_ok() {
+    #[tokio::test]
+    async fn test_non_defaults_ok() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -385,7 +392,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector);
+        let maybe_config = Config::from_args_with_detector(args.clone(), mock_detector).await;
 
         assert!(
             maybe_config.is_ok(),
@@ -406,8 +413,8 @@ mod tests {
         assert!(args.solitary);
     }
 
-    #[test]
-    fn test_solitary_conflict_fail() {
+    #[tokio::test]
+    async fn test_solitary_conflict_fail() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -421,7 +428,7 @@ mod tests {
 
         let args = Args::try_parse_from(inputs).unwrap();
 
-        let maybe_config = Config::from_args(args.clone());
+        let maybe_config = Config::from_args(args.clone()).await;
 
         assert!(
             maybe_config.is_err(),

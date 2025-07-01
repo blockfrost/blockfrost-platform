@@ -1,11 +1,15 @@
 use crate::AppError;
 use crate::cli::Args;
 use crate::genesis::{GenesisRegistry, genesis};
+use blockfrost_openapi::models::genesis_content::GenesisContent;
 use clap::ValueEnum;
+use futures::FutureExt; // for `.boxed()`
+use futures::future::BoxFuture;
 use pallas_network::facades::NodeClient;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
-use tokio::runtime::Handle;
+use std::fs;
+use std::path::PathBuf;
 use tracing::Level;
 
 #[derive(Clone, Debug)]
@@ -19,6 +23,7 @@ pub struct Config {
     pub max_pool_connections: usize,
     pub no_metrics: bool,
     pub network: Network,
+    pub custom_genesis_config: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug)]
@@ -51,6 +56,7 @@ pub enum Network {
     Mainnet,
     Preprod,
     Preview,
+    Custom,
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
@@ -77,10 +83,10 @@ impl From<LogLevel> for Level {
 }
 
 impl Config {
-    pub fn from_args_with_detector<F>(args: Args, detector: F) -> Result<Self, AppError>
-    where
-        F: Fn(&str) -> Result<Network, AppError>,
-    {
+    pub async fn from_args_with_detector(
+        args: Args,
+        detector: impl for<'a> Fn(&'a str) -> BoxFuture<'a, Result<Network, AppError>>,
+    ) -> Result<Self, AppError> {
         let node_socket_path = args
             .node_socket_path
             .ok_or(AppError::Server("--node-socket-path must be set".into()))?;
@@ -107,7 +113,7 @@ impl Config {
             None
         };
 
-        let network = detector(&node_socket_path)?;
+        let network = detector(&node_socket_path).await?;
 
         Ok(Config {
             server_address: args.server_address,
@@ -119,34 +125,66 @@ impl Config {
             max_pool_connections: 10,
             no_metrics: args.no_metrics,
             network,
+            custom_genesis_config: args.custom_genesis_config,
         })
     }
 
-    pub fn from_args(args: Args) -> Result<Self, AppError> {
-        Self::from_args_with_detector(args, detect_network)
+    pub async fn from_args(args: Args) -> Result<Self, AppError> {
+        Self::from_args_with_detector(args, |s| detect_network(s).boxed()).await
+    }
+
+    /// Build the full genesis registry, overriding or prepending
+    /// a user-supplied file if `custom_genesis_config` is Some.
+    pub fn with_custom_genesis(&self) -> Result<Vec<(Network, GenesisContent)>, AppError> {
+        let mut registry = genesis();
+
+        // if user pointed us at a file, load & insert it
+        if let Some(path) = &self.custom_genesis_config {
+            let data = fs::read_to_string(path).map_err(|e| {
+                AppError::Server(format!(
+                    "Failed to read custom genesis file {}: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
+
+            // try JSON and TOML
+            let custom: GenesisContent = serde_json::from_str(&data)
+                .or_else(|_| toml::from_str(&data))
+                .map_err(|e| {
+                    AppError::Server(format!(
+                        "Failed to parse custom genesis file {}: {}",
+                        path.display(),
+                        e
+                    ))
+                })?;
+
+            // prepend or replace the entry for custom network
+            registry.add(Network::Custom, custom);
+        }
+
+        Ok(registry)
     }
 }
 
-fn detect_network(socket_path: &str) -> Result<Network, AppError> {
-    let magics = genesis().all_magics();
+async fn detect_network(socket_path: &str) -> Result<Network, AppError> {
+    let all_magics = genesis().all_magics();
 
-    for magic in magics {
-        let ok = Handle::current().block_on(async {
-            match NodeClient::connect(socket_path, magic).await {
-                Ok(conn) => {
-                    conn.abort().await;
-                    true
-                },
-                Err(_) => false,
-            }
-        });
+    for magic in all_magics {
+        let ok = match NodeClient::connect(&socket_path, magic).await {
+            Ok(conn) => {
+                conn.abort().await;
+                true
+            },
+            Err(_) => false,
+        };
 
         if ok {
             return Ok(genesis().network_by_magic(magic).clone());
         }
     }
 
-    Err(AppError::Server(
-        "Could not detect network from socket path".to_string(),
-    ))
+    Err(AppError::Server(format!(
+        "Could not detect network from '{socket_path}' is the node running?"
+    )))
 }

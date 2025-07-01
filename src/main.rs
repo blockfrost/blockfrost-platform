@@ -1,7 +1,10 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
-    cli::Args, errors::AppError, load_balancer, logging::setup_tracing, server::build,
+    cli::Args,
+    errors::AppError,
+    load_balancer,
+    server::{build, logging::setup_tracing},
 };
 use dotenvy::dotenv;
 use std::sync::Arc;
@@ -11,7 +14,7 @@ use tracing::{error, info, warn};
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
     dotenv().ok();
-    let config = Args::init()?;
+    let config = Args::init().await?;
 
     // Logging
     setup_tracing(config.log_level);

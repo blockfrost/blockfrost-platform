@@ -68,7 +68,7 @@ impl fmt::Display for AddressType {
     }
 }
 
-pub fn is_stake_address_valid(input: &str, network: Network) -> Result<bool, BlockfrostError> {
+pub fn is_stake_address_valid(input: &str, network: &Network) -> Result<bool, BlockfrostError> {
     let bech32_info = decode(input).map_err(|_| BlockfrostError::invalid_stake_address())?;
     let prefix_str = match bech32_info.0.as_ref() {
         "stake" => Ok("stake"),
@@ -240,7 +240,7 @@ mod tests {
         #[case] network: Network,
         #[case] expected: bool,
     ) {
-        let result = is_stake_address_valid(input, network);
+        let result = is_stake_address_valid(input, &network);
 
         match result {
             Ok(value) => assert_eq!(value, expected, "{}", description),

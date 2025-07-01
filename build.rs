@@ -13,7 +13,7 @@ mod git_revision {
         use std::process::Command;
 
         if env::var(GIT_REVISION).is_ok() {
-            println!("Environment variable {} is set. Not setting.", GIT_REVISION);
+            println!("Environment variable {GIT_REVISION} is set. Not setting.");
             return;
         }
 
@@ -34,7 +34,7 @@ mod git_revision {
                 .to_string()
         };
 
-        println!("cargo:rustc-env={}={}", GIT_REVISION, revision);
+        println!("cargo:rustc-env={GIT_REVISION}={revision}");
     }
 }
 
@@ -53,14 +53,11 @@ mod testgen_hs {
 
     pub fn ensure() {
         if env::var(TESTGEN_HS_PATH).is_ok() {
-            println!(
-                "Environment variable {} is set. Skipping the download.",
-                TESTGEN_HS_PATH
-            );
+            println!("Environment variable {TESTGEN_HS_PATH} is set. Skipping the download.");
             return;
         }
 
-        let testgen_lib_version = "10.1.4.2";
+        let testgen_lib_version = "10.4.1.0";
 
         let target_os = if cfg!(target_os = "macos") {
             "darwin"
@@ -86,13 +83,12 @@ mod testgen_hs {
             ".tar.bz2"
         };
 
-        let file_name = format!("testgen-hs-{}-{}-{}", testgen_lib_version, arch, target_os);
+        let file_name = format!("testgen-hs-{testgen_lib_version}-{arch}-{target_os}");
         let download_url = format!(
-            "https://github.com/input-output-hk/testgen-hs/releases/download/{}/{}{}",
-            testgen_lib_version, file_name, suffix
+            "https://github.com/input-output-hk/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
         );
 
-        println!("Looking for {}", file_name);
+        println!("Looking for {file_name}");
 
         // Use the project’s target directory instead of a system cache location.
         let cargo_manifest_dir =
@@ -106,16 +102,16 @@ mod testgen_hs {
         create_dir_all(&download_dir).expect("Unable to create testgen directory");
 
         let archive_name = if target_os == "windows" {
-            format!("{}.zip", file_name)
+            format!("{file_name}.zip")
         } else {
-            format!("{}.tar.bz2", file_name)
+            format!("{file_name}.tar.bz2")
         };
 
         let archive_path = download_dir.join(&archive_name);
 
         // Download the artifact if not already in the target directory.
         if !archive_path.exists() {
-            println!("Downloading from: {}", download_url);
+            println!("Downloading from: {download_url}");
 
             let response = reqwest::blocking::get(&download_url)
                 .expect("Failed to download archive")
@@ -159,7 +155,7 @@ mod testgen_hs {
 
         // Verify version by running --version.
         println!("Verifying testgen-hs version...");
-        println!("Executing: {:?}", executable);
+        println!("Executing: {executable:?}");
 
         let output = Command::new(&executable)
             .arg("--version")
@@ -176,7 +172,7 @@ mod testgen_hs {
         let version_output = String::from_utf8_lossy(&output.stdout);
         println!("testgen-hs version: {}", version_output.trim());
 
-        let testgen_lib_version = format!("testgen-hs {}", testgen_lib_version);
+        let testgen_lib_version = format!("testgen-hs {testgen_lib_version}");
 
         if version_output.trim() != testgen_lib_version {
             panic!(

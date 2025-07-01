@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
@@ -9,13 +9,13 @@
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     flake-compat.url = "github:input-output-hk/flake-compat";
     flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.1.4";
+    cardano-node.url = "github:IntersectMBO/cardano-node/10.4.1";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    testgen-hs.url = "github:input-output-hk/testgen-hs/10.1.4.2"; # make sure it follows cardano-node
+    testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.0"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
-    cardano-playground.url = "github:input-output-hk/cardano-playground/39ea4db0daa11d6334a55353f685e185765a619b";
+    cardano-playground.url = "github:input-output-hk/cardano-playground/4c5800d0f32f586be270c7e3679c7f5e8d01d3d5";
     cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
     advisory-db.url = "github:rustsec/advisory-db";
     advisory-db.flake = false;
