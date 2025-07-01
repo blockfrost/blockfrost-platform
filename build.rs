@@ -230,21 +230,36 @@ mod testgen_hs {
 }
 
 mod dolos {
-    const DOLOS_VERSION: &str = "v0.22.0";
     const DOLOS_PATH: &str = "DOLOS_PATH";
 
     use std::path::Path;
     use std::process::Command;
 
+    fn get_dolos_version() -> String {
+        let cargo_manifest_dir =
+            std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+
+        let cargo_toml = std::fs::read_to_string(format!("{}/Cargo.toml", cargo_manifest_dir))
+            .expect("Failed to read Cargo.toml");
+
+        let value: toml::Value = cargo_toml.parse().expect("Invalid Cargo.toml");
+
+        value["package"]["metadata"]["dolos"]["version"]
+            .as_str()
+            .expect("version missing")
+            .to_string()
+    }
+
     pub fn resolve() {
-        let dolos_path = format!("./downloaded/dolos/{}", DOLOS_VERSION);
+        let dolos_version_from_toml = get_dolos_version();
+        let dolos_path = format!("./downloaded/dolos/{}", &dolos_version_from_toml);
 
         if Path::new(&dolos_path).exists() {
             println!("dolos already present, not downloading");
         } else {
             let status = Command::new("bash")
                 .arg("./scripts/download-dolos.sh")
-                .arg(DOLOS_VERSION)
+                .arg(&dolos_version_from_toml)
                 .status()
                 .expect("Failed to run download-dolos.sh");
 
@@ -253,7 +268,7 @@ mod dolos {
             }
         }
 
-        let dolos_bin_path = format!("./assets/dolos/{}/dolos", DOLOS_VERSION);
+        let dolos_bin_path = format!("./assets/dolos/{}/dolos", &dolos_version_from_toml);
         let dolos_version = Command::new(&dolos_bin_path)
             .arg("--version")
             .output()
@@ -264,6 +279,6 @@ mod dolos {
             .to_string();
 
         println!("cargo:rustc-env={}={}", DOLOS_PATH, dolos_bin_path);
-        println!("cargo:rustc-env={}={}", DOLOS_VERSION, version);
+        println!("cargo:rustc-env={}={}", version, version);
     }
 }

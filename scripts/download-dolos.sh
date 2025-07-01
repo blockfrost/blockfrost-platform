@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-v0.22.0}"
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <version> (e.g. v0.22.0)"
+  exit 1
+fi
+
+VERSION="$1"
 BASE="https://github.com/txpipe/dolos/releases/download/${VERSION}"
 
 case "$(uname -s)-$(uname -m)" in
