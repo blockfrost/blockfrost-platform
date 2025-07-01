@@ -6,6 +6,8 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 VERSION="$1"
 BASE="https://github.com/txpipe/dolos/releases/download/${VERSION}"
 
@@ -17,7 +19,7 @@ case "$(uname -s)-$(uname -m)" in
   *) echo "Unsupported platform"; exit 1 ;;
 esac
 
-DEST="assets/dolos/${VERSION}"
+DEST="${SCRIPT_DIR}/../bin/${VERSION}"
 mkdir -p "${DEST}"
 curl -L "${BASE}/${FILE}" \
   | tar -xz -C "${DEST}" --strip-components=1

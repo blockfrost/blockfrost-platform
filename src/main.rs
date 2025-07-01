@@ -1,10 +1,4 @@
-#![warn(
-    clippy::all,
-    // clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    // clippy::cargo
-)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
     cli::Args, errors::AppError, load_balancer, logging::setup_tracing, server::build,

@@ -31,8 +31,12 @@ result-*
 /cardano-node-configs
 /cardano-node
 
-testgen-hs
-testgen-hs.exe
+/testgen-hs
+/testgen-hs.exe
+
+!/crates/testgen-hs/
+
+/crates/dolos/bin
 
 # Ignore IDE specific files
 # Visual Studio Code
@@ -44,7 +48,6 @@ testgen-hs.exe
 *.iml
 
 .DS_Store
-testgen-hs
 
 *.log
 

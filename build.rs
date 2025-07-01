@@ -1,7 +1,7 @@
 fn main() {
     git_revision::set();
     testgen_hs::ensure();
-    dolos::resolve();
+    dolos::download::resolve();
 }
 
 mod git_revision {
@@ -226,59 +226,5 @@ mod testgen_hs {
                 std::io::copy(&mut entry, &mut outfile).expect("Unable to write file");
             }
         }
-    }
-}
-
-mod dolos {
-    const DOLOS_PATH: &str = "DOLOS_PATH";
-
-    use std::path::Path;
-    use std::process::Command;
-
-    fn get_dolos_version() -> String {
-        let cargo_manifest_dir =
-            std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
-
-        let cargo_toml = std::fs::read_to_string(format!("{}/Cargo.toml", cargo_manifest_dir))
-            .expect("Failed to read Cargo.toml");
-
-        let value: toml::Value = cargo_toml.parse().expect("Invalid Cargo.toml");
-
-        value["package"]["metadata"]["dolos"]["version"]
-            .as_str()
-            .expect("version missing")
-            .to_string()
-    }
-
-    pub fn resolve() {
-        let dolos_version_from_toml = get_dolos_version();
-        let dolos_path = format!("./downloaded/dolos/{}", &dolos_version_from_toml);
-
-        if Path::new(&dolos_path).exists() {
-            println!("dolos already present, not downloading");
-        } else {
-            let status = Command::new("bash")
-                .arg("./scripts/download-dolos.sh")
-                .arg(&dolos_version_from_toml)
-                .status()
-                .expect("Failed to run download-dolos.sh");
-
-            if !status.success() {
-                panic!("download-dolos.sh failed!");
-            }
-        }
-
-        let dolos_bin_path = format!("./assets/dolos/{}/dolos", &dolos_version_from_toml);
-        let dolos_version = Command::new(&dolos_bin_path)
-            .arg("--version")
-            .output()
-            .expect("dolos --version failed");
-
-        let version = String::from_utf8_lossy(&dolos_version.stdout)
-            .trim()
-            .to_string();
-
-        println!("cargo:rustc-env={}={}", DOLOS_PATH, dolos_bin_path);
-        println!("cargo:rustc-env={}={}", version, version);
     }
 }

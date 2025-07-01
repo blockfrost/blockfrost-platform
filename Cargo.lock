@@ -410,6 +410,7 @@ dependencies = [
  "crossbeam",
  "deadpool",
  "dirs 5.0.1",
+ "dolos",
  "dotenvy",
  "futures",
  "futures-util",
@@ -992,6 +993,15 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "dolos"
+version = "0.0.1"
+dependencies = [
+ "dirs 5.0.1",
+ "reqwest",
+ "toml 0.8.20",
+]
 
 [[package]]
 name = "dotenvy"

@@ -1,0 +1,12 @@
+[package]
+name = "dolos"
+version = "0.0.1"
+edition = "2021"
+
+[package.metadata.dolos]
+version = "v0.24.0"
+
+[dependencies]
+reqwest = { version = "0.12", features = ["blocking"] }
+toml = "0.8"
+dirs = "5.0"

@@ -75,12 +75,10 @@ blockfrost = "1.0.5"
 jemalloc = "0.3"
 
 [build-dependencies]
+dolos = { path = "crates/dolos" }
 reqwest = { version = "0.12.7", features = ["blocking"] }
 dirs = "5.0"
 toml = "0.8.19"
 bzip2 = "0.4.3"
 tar = "0.4.38"
 zip = "0.6.6"
-
-[package.metadata.dolos]
-version = "v0.24.0"
