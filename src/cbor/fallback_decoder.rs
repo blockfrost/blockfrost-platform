@@ -73,7 +73,7 @@ impl FallbackDecoder {
                 response_tx,
             })
             .await
-            .map_err(|err| format!("FallbackDecoder: failed to send request: {:?}", err))?;
+            .map_err(|err| format!("FallbackDecoder: failed to send request: {err:?}"))?;
 
         response_rx.await.unwrap_or_else(|err| {
             unreachable!(
@@ -168,8 +168,7 @@ impl FallbackDecoder {
             Ok(())
         } else {
             Err(format!(
-                "FallbackDecoder: startup_sanity_test failed: {:?}",
-                result
+                "FallbackDecoder: startup_sanity_test failed: {result:?}"
             ))
         }
     }
@@ -199,7 +198,7 @@ impl FallbackDecoder {
             .stdin(proc::Stdio::piped())
             .stdout(proc::Stdio::piped())
             .spawn()
-            .map_err(|err| format!("couldn’t start the child: {:?}", err))?;
+            .map_err(|err| format!("couldn’t start the child: {err:?}"))?;
 
         current_child_pid.store(child.id(), atomic::Ordering::Relaxed);
 
@@ -209,10 +208,10 @@ impl FallbackDecoder {
         // Will return Ok(()) if already dead.
         child
             .kill()
-            .map_err(|err| format!("couldn’t kill the child: {:?}", err))?;
+            .map_err(|err| format!("couldn’t kill the child: {err:?}"))?;
         child
             .wait()
-            .map_err(|err| format!("couldn’t reap the child: {:?}", err))?;
+            .map_err(|err| format!("couldn’t reap the child: {err:?}"))?;
 
         result
     }
@@ -242,12 +241,12 @@ impl FallbackDecoder {
             *last_unfulfilled_request = Some(request);
 
             let mut ask_and_receive = || -> Result<Result<serde_json::Value, String>, String> {
-                writeln!(stdin, "{}", cbor_hex)
-                    .map_err(|err| format!("couldn’t write to stdin: {:?}", err))?;
+                writeln!(stdin, "{cbor_hex}")
+                    .map_err(|err| format!("couldn’t write to stdin: {err:?}"))?;
 
                 match stdout_lines.next() {
                     Some(Ok(line)) => Ok(Self::parse_json(&line)),
-                    Some(Err(e)) => Err(format!("failed to read from subprocess: {}", e)),
+                    Some(Err(e)) => Err(format!("failed to read from subprocess: {e}")),
                     None => Err("no output from subprocess".to_string()),
                 }
             };

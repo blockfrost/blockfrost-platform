@@ -53,15 +53,14 @@ pub async fn run_all(
     let (first_res, first_idx, remaining) = futures::future::select_all(connections).await;
 
     let maybe_error = match first_res {
-        Err(panic) => format!(" with a panic: {:?}", panic),
-        Ok(Err(err)) => format!(" with an error: {}", err),
+        Err(panic) => format!(" with a panic: {panic:?}"),
+        Ok(Err(err)) => format!(" with an error: {err}"),
         Ok(Ok(())) => "".to_string(),
     };
 
     *health_errors.lock().await = vec![
         AppError::LoadBalancer(format!(
-            "Load balancer connection ended unexpectedly{}",
-            maybe_error
+            "Load balancer connection ended unexpectedly{maybe_error}"
         ))
         .into(),
     ];
@@ -323,8 +322,7 @@ mod event_loop {
                 // This branch is practically impossible, but for the sake of completeness:
                 // Let’s break 'event_loop, this seems the most elegant.
                 let err = format!(
-                    "error when serializing request to JSON (this will never happen): {:?}",
-                    err
+                    "error when serializing request to JSON (this will never happen): {err:?}"
                 );
                 error!("load balancer: {}: {}", config.uri, err);
                 Err(err)
@@ -352,7 +350,7 @@ mod event_loop {
                     },
                     Some(Err(err)) => {
                         let _ignored_failure: Result<_, _> = event_tx
-                            .send(LBEvent::SocketError(format!("stream error: {:?}", err)))
+                            .send(LBEvent::SocketError(format!("stream error: {err:?}")))
                             .await;
                         break 'read_loop;
                     },
@@ -421,10 +419,7 @@ mod event_loop {
                     .map_err(|_elapsed| {
                         (
                             StatusCode::GATEWAY_TIMEOUT,
-                            format!(
-                                "Timed out while waiting {:?} for a response",
-                                REQUEST_TIMEOUT
-                            ),
+                            format!("Timed out while waiting {REQUEST_TIMEOUT:?} for a response"),
                         )
                     })?
                     .unwrap(); // unwrap is safe, because the error is a non-instantiable [`std::convert::Infallible`]
@@ -467,7 +462,7 @@ fn json_to_request(
                     .map_err(|err| {
                         (
                             StatusCode::BAD_REQUEST,
-                            format!("Invalid base64 encoding of body_base64: {}", err),
+                            format!("Invalid base64 encoding of body_base64: {err}"),
                         )
                     })?;
             Body::from(body_bytes)
@@ -485,10 +480,7 @@ fn json_to_request(
     rv.body(body).map_err(|err| {
         (
             StatusCode::BAD_REQUEST,
-            format!(
-                "Error when constructing a request from JSON request: {}",
-                err
-            ),
+            format!("Error when constructing a request from JSON request: {err}"),
         )
     })
 }
@@ -519,7 +511,7 @@ async fn response_to_json(
             .map_err(|err| {
                 (
                     StatusCode::BAD_GATEWAY,
-                    format!("Cannot read body of the response: {}", err),
+                    format!("Cannot read body of the response: {err}"),
                 )
             })?;
         use base64::{Engine as _, engine::general_purpose};
