@@ -135,7 +135,7 @@ impl Args {
             message,
             enum_values
                 .iter()
-                .map(|it| format!("{:?}", it))
+                .map(|it| format!("{it:?}"))
                 .collect::<Vec<_>>(),
         )
         .with_starting_cursor(starting_cursor)
@@ -260,7 +260,7 @@ impl Args {
         }
 
         app_config.to_file(&config_path)?;
-        println!("\nConfig has been written to {:?}", config_path);
+        println!("\nConfig has been written to {config_path:?}");
 
         std::process::exit(0);
     }

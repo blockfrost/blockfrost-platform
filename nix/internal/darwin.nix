@@ -40,19 +40,18 @@ in
       };
 
     # Portable directory that can be run on any modern Darwin:
-    bundle =
-      (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
+    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
       .overrideAttrs (drv: {
-        name = unix.packageName;
-        buildCommand =
-          drv.buildCommand
-          + ''
-            mkdir -p $out/libexec
-            mv $out/{${unix.packageName},lib} $out/libexec
-            mkdir -p $out/bin
-            ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
-          '';
-      });
+      name = unix.packageName;
+      buildCommand =
+        drv.buildCommand
+        + ''
+          mkdir -p $out/libexec
+          mv $out/{${unix.packageName},lib} $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
+        '';
+    });
 
     bundle-testgen-hs = nix-bundle-exe-lib-subdir (lib.getExe unix.testgen-hs);
 
@@ -427,7 +426,7 @@ in
         };
         buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0") darwin.libffi];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type"];
+        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type" "-Wno-error=cast-function-type-mismatch"];
         preBuild =
           commonPreBuild
           + ''

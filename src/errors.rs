@@ -39,13 +39,13 @@ pub struct BlockfrostError {
 
 impl From<std::num::TryFromIntError> for BlockfrostError {
     fn from(err: std::num::TryFromIntError) -> Self {
-        Self::internal_server_error(format!("ConversionError: {}", err))
+        Self::internal_server_error(format!("ConversionError: {err}"))
     }
 }
 
 impl From<serde_json::Error> for BlockfrostError {
     fn from(err: serde_json::Error) -> Self {
-        Self::internal_server_error(format!("SerdeError: {}", err))
+        Self::internal_server_error(format!("SerdeError: {err}"))
     }
 }
 
@@ -75,25 +75,25 @@ impl From<io::Error> for AppError {
 
 impl From<pallas_network::miniprotocols::txsubmission::Error> for BlockfrostError {
     fn from(err: pallas_network::miniprotocols::txsubmission::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("TxSubmissionError: {}", err))
+        BlockfrostError::internal_server_error(format!("TxSubmissionError: {err}"))
     }
 }
 
 impl From<pallas_network::miniprotocols::handshake::Error> for BlockfrostError {
     fn from(err: pallas_network::miniprotocols::handshake::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("CardanoNodeHandshakeError: {}", err))
+        BlockfrostError::internal_server_error(format!("CardanoNodeHandshakeError: {err}"))
     }
 }
 
 impl From<pallas_network::miniprotocols::localstate::ClientError> for BlockfrostError {
     fn from(err: pallas_network::miniprotocols::localstate::ClientError) -> Self {
-        BlockfrostError::internal_server_error(format!("localstate::ClientError: {}", err))
+        BlockfrostError::internal_server_error(format!("localstate::ClientError: {err}"))
     }
 }
 
 impl From<TryFromSliceError> for BlockfrostError {
     fn from(err: TryFromSliceError) -> Self {
-        BlockfrostError::internal_server_error(format!("Hash conversion failed: {}", err))
+        BlockfrostError::internal_server_error(format!("Hash conversion failed: {err}"))
     }
 }
 
@@ -105,13 +105,13 @@ impl From<pallas_network::facades::Error> for AppError {
 
 impl From<reqwest::header::InvalidHeaderValue> for BlockfrostError {
     fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
-        BlockfrostError::internal_server_error(format!("Invalid header value: {}", err))
+        BlockfrostError::internal_server_error(format!("Invalid header value: {err}"))
     }
 }
 
 impl From<TxSubmissionError> for BlockfrostError {
     fn from(err: TxSubmissionError) -> Self {
-        BlockfrostError::internal_server_error(format!("Transaction submission error: {}", err))
+        BlockfrostError::internal_server_error(format!("Transaction submission error: {err}"))
     }
 }
 
