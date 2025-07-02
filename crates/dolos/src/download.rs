@@ -25,7 +25,7 @@ fn get_dolos_version() -> String {
         .to_string()
 }
 
-pub fn resolve() {
+pub fn run() {
     const DOLOS_BIN_PATH: &str = "DOLOS_BIN_PATH";
 
     let crate_root = get_crate_root();

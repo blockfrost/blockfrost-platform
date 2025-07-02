@@ -1,7 +1,7 @@
 fn main() {
     git_revision::set();
     testgen_hs::ensure();
-    dolos::download::resolve();
+    dolos::download::run();
 }
 
 mod git_revision {

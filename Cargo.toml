@@ -78,6 +78,7 @@ jemalloc = "0.3"
 
 [build-dependencies]
 dolos = { path = "crates/dolos" }
+common = { path = "crates/common" }
 reqwest = { version = "0.12.7", features = ["blocking"] }
 dirs = "5.0"
 toml = "0.8.19"
