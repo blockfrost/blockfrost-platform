@@ -9,8 +9,8 @@ repository = "https://github.com/blockfrost/blockfrost-platform"
 build = "build.rs"
 
 [dependencies]
-dolos = { path = "crates/dolos" }
 common = { path = "crates/common" }
+dolos = { path = "crates/dolos" }
 axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"
@@ -77,11 +77,14 @@ blockfrost = "1.0.5"
 jemalloc = "0.3"
 
 [build-dependencies]
-dolos = { path = "crates/dolos" }
 common = { path = "crates/common" }
+dolos = { path = "crates/dolos" }
 reqwest = { version = "0.12.7", features = ["blocking"] }
 dirs = "5.0"
 toml = "0.8.19"
 bzip2 = "0.4.3"
 tar = "0.4.38"
 zip = "0.6.6"
+
+[workspace]
+members = ["crates/common", "crates/dolos"]

@@ -146,8 +146,7 @@ impl PaymentCred {
 
 #[cfg(test)]
 mod tests {
-    use super::{PaymentCred, PaymentCredPrefix};
-    use common::errors::BlockfrostError;
+    use super::{BlockfrostError, PaymentCred, PaymentCredPrefix};
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 

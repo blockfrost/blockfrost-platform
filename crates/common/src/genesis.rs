@@ -112,7 +112,6 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Network;
     use blockfrost_openapi::models::genesis_content::GenesisContent;
     use rstest::rstest;
 
