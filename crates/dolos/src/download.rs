@@ -36,7 +36,7 @@ pub fn run() {
     if dolos_bin_path.exists() {
         println!("dolos already present at {}", dolos_bin_path.display());
     } else {
-        println!("Downloading dolos version {}...", dolos_version);
+        println!("Downloading dolos version {dolos_version}...");
         let script_path = crate_root.join("scripts").join("download.sh");
 
         let status = Command::new("bash")
@@ -46,7 +46,7 @@ pub fn run() {
             .unwrap_or_else(|_| panic!("Failed to run {}", script_path.display()));
 
         if !status.success() {
-            panic!("download.sh failed with status: {}", status);
+            panic!("download.sh failed with status: {status}");
         }
     }
 
@@ -55,7 +55,7 @@ pub fn run() {
         .output()
         .expect("dolos --version failed");
 
-    println!("version_output {:?}", version_output);
+    println!("version_output {version_output:?}");
 
     if !version_output.status.success() {
         panic!(
@@ -74,5 +74,5 @@ pub fn run() {
         dolos_bin_path.display()
     );
 
-    println!("cargo:rustc-env={}={}", version, version);
+    println!("cargo:rustc-env={version}={version}");
 }
