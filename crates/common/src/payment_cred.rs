@@ -1,6 +1,7 @@
+use crate::errors::BlockfrostError;
+
 use bech32::{FromBase32, ToBase32, decode};
 use cardano_serialization_lib::PublicKey;
-use common::errors::BlockfrostError;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Copy)]

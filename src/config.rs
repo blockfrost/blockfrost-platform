@@ -1,8 +1,9 @@
 use crate::AppError;
 use crate::cli::Args;
-use crate::genesis::{GenesisRegistry, genesis};
 use blockfrost_openapi::models::genesis_content::GenesisContent;
 use clap::ValueEnum;
+use common::genesis::{GenesisRegistry, genesis};
+use common::types::Network;
 use futures::FutureExt; // for `.boxed()`
 use futures::future::BoxFuture;
 use pallas_network::facades::NodeClient;
@@ -46,38 +47,6 @@ impl std::fmt::Display for Mode {
             Mode::Compact => write!(f, "compact"),
             Mode::Light => write!(f, "light"),
             Mode::Full => write!(f, "full"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Network {
-    Mainnet,
-    Preprod,
-    Preview,
-    Custom,
-}
-
-#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warn,
-    Error,
-    Trace,
-}
-
-// Implement conversion from LogLevel enum to tracing::Level
-impl From<LogLevel> for Level {
-    fn from(log_level: LogLevel) -> Self {
-        match log_level {
-            LogLevel::Debug => Level::DEBUG,
-            LogLevel::Info => Level::INFO,
-            LogLevel::Warn => Level::WARN,
-            LogLevel::Error => Level::ERROR,
-            LogLevel::Trace => Level::TRACE,
         }
     }
 }

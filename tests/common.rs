@@ -2,11 +2,12 @@ use axum::Router;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     AppError, NodePool,
-    config::{Config, IcebreakersConfig, LogLevel, Mode, Network},
+    config::{Config, IcebreakersConfig, Mode},
     health_monitor,
     icebreakers_api::IcebreakersAPI,
     server::{build, state::ApiPrefix},
 };
+use common::types::{LogLevel, Network};
 use std::{
     env,
     sync::{Arc, LazyLock},

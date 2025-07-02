@@ -1,4 +1,4 @@
-use crate::config::Network;
+use crate::types::Network;
 use axum::Extension;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
 use std::sync::Arc;

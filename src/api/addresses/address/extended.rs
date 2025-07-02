@@ -1,11 +1,7 @@
-use crate::{
-    BlockfrostError,
-    addresses::{AddressInfo, AddressesPath},
-    api::ApiResult,
-    config::Config,
-};
+use crate::{BlockfrostError, api::ApiResult, config::Config};
 use axum::{Extension, extract::Path};
 use blockfrost_openapi::models::address_content_extended::AddressContentExtended;
+use common::addresses::{AddressInfo, AddressesPath};
 
 pub async fn route(
     Path(address_path): Path<AddressesPath>,

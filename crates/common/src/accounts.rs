@@ -1,5 +1,4 @@
-use crate::{addresses::is_stake_address_valid, config::Network};
-use common::errors::BlockfrostError;
+use crate::{addresses::is_stake_address_valid, errors::BlockfrostError, types::Network};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

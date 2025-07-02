@@ -1,9 +1,6 @@
 use super::pool_manager::NodePoolManager;
-use crate::{
-    AppError,
-    config::Config,
-    genesis::{GenesisRegistry, genesis},
-};
+use crate::{AppError, config::Config};
+use common::genesis::{GenesisRegistry, genesis};
 use deadpool::managed::{Object, Pool};
 
 /// This represents a pool of `NodeToClient` connections to a single `cardano-node`.

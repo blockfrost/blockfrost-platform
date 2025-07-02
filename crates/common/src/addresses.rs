@@ -1,7 +1,5 @@
-use crate::{config::Network, payment_cred::PaymentCred};
-
+use crate::{errors::BlockfrostError, payment_cred::PaymentCred, types::Network};
 use bech32::decode;
-use common::errors::BlockfrostError;
 use core::fmt;
 use pallas_addresses::ByronAddress;
 use serde::Deserialize;
@@ -89,7 +87,7 @@ pub fn is_stake_address_valid(input: &str, network: &Network) -> Result<bool, Bl
 mod tests {
     use super::{AddressType, is_stake_address_valid};
     use crate::addresses::AddressInfo;
-    use crate::config::Network;
+    use crate::types::Network;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 

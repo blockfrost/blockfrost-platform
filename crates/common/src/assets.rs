@@ -1,4 +1,4 @@
-use common::errors::BlockfrostError;
+use crate::errors::BlockfrostError;
 use serde::Deserialize;
 
 const POLICY_ID_SIZE: usize = 56;

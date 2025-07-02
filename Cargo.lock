@@ -667,6 +667,12 @@ name = "common"
 version = "0.0.1"
 dependencies = [
  "axum",
+ "bech32 0.9.1",
+ "blockfrost-openapi",
+ "cardano-serialization-lib",
+ "clap",
+ "hex",
+ "pallas-addresses",
  "pallas-network",
  "reqwest",
  "serde",
