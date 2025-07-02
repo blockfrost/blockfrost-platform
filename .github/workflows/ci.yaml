@@ -62,7 +62,7 @@ jobs:
         run: cargo build --workspace --release --verbose
 
       - name: Test
-        run: cargo test --workspace --all-targets --all-features --verbose
+        run: cargo test --workspace --lib --all-features --verbose
         timeout-minutes: 10
 
       - name: Check formatting

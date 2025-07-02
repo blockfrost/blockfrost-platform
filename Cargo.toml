@@ -87,4 +87,4 @@ tar = "0.4.38"
 zip = "0.6.6"
 
 [workspace]
-members = ["crates/common", "crates/dolos"]
+members = ["crates/common", "crates/dolos", "."]
