@@ -1,9 +1,7 @@
-use crate::{
-    BlockfrostError,
-    pagination::{Pagination, PaginationQuery},
-};
+use crate::BlockfrostError;
 use axum::{Json, extract::Query};
 use blockfrost_openapi::models::assets_inner::AssetsInner;
+use common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,

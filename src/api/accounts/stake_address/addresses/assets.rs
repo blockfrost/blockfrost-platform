@@ -2,11 +2,11 @@ use crate::{
     BlockfrostError,
     accounts::{AccountData, AccountsPath},
     api::ApiResult,
-    pagination::{Pagination, PaginationQuery},
     server::state::AppState,
 };
 use axum::extract::{Path, Query, State};
 use blockfrost_openapi::models::account_addresses_assets_inner::AccountAddressesAssetsInner;
+use common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Path(path): Path<AccountsPath>,

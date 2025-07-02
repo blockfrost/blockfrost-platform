@@ -26,8 +26,7 @@ fn get_dolos_version() -> String {
 }
 
 pub fn resolve() {
-    eprintln!("asaaaaaaa");
-    const DOLOS_PATH: &str = "DOLOS_PATH";
+    const DOLOS_BIN_PATH: &str = "DOLOS_BIN_PATH";
 
     let crate_root = get_crate_root();
     let dolos_version = get_dolos_version();
@@ -71,8 +70,9 @@ pub fn resolve() {
 
     println!(
         "cargo:rustc-env={}={}",
-        DOLOS_PATH,
+        DOLOS_BIN_PATH,
         dolos_bin_path.display()
     );
+
     println!("cargo:rustc-env={}={}", version, version);
 }

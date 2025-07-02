@@ -2,10 +2,10 @@ use crate::{
     BlockfrostError,
     api::ApiResult,
     assets::{AssetData, AssetsPath},
-    pagination::{Pagination, PaginationQuery},
 };
 use axum::extract::{Path, Query};
 use blockfrost_openapi::models::asset_transactions_inner::AssetTransactionsInner;
+use common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Path(path): Path<AssetsPath>,

@@ -1,9 +1,9 @@
 use crate::{
     config::{Config, Network},
-    errors::AppError,
     load_balancer::LoadBalancerConfig,
     server::state::ApiPrefix,
 };
+use common::errors::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

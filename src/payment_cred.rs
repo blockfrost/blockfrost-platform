@@ -1,6 +1,6 @@
-use crate::errors::BlockfrostError;
 use bech32::{FromBase32, ToBase32, decode};
 use cardano_serialization_lib::PublicKey;
+use common::errors::BlockfrostError;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Copy)]
@@ -146,6 +146,7 @@ impl PaymentCred {
 #[cfg(test)]
 mod tests {
     use super::{PaymentCred, PaymentCredPrefix};
+    use common::errors::BlockfrostError;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
@@ -228,7 +229,7 @@ mod tests {
         #[case] description: &str,
         #[case] address: String,
         #[case] prefix: PaymentCredPrefix,
-        #[case] result: Result<String, crate::errors::BlockfrostError>,
+        #[case] result: Result<String, BlockfrostError>,
     ) {
         assert_eq!(
             PaymentCred::to_bech_32(&address, prefix),

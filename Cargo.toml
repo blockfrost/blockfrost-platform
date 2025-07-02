@@ -9,6 +9,8 @@ repository = "https://github.com/blockfrost/blockfrost-platform"
 build = "build.rs"
 
 [dependencies]
+dolos = { path = "crates/dolos" }
+common = { path = "crates/common" }
 axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"

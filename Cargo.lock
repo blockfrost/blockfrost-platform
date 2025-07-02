@@ -407,6 +407,7 @@ dependencies = [
  "cardano-serialization-lib",
  "chrono",
  "clap",
+ "common",
  "crossbeam",
  "deadpool",
  "dirs 5.0.1",
@@ -660,6 +661,19 @@ name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
+
+[[package]]
+name = "common"
+version = "0.0.1"
+dependencies = [
+ "axum",
+ "pallas-network",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tracing",
+]
 
 [[package]]
 name = "config-derive"

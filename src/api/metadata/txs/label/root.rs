@@ -1,10 +1,7 @@
-use crate::{
-    BlockfrostError,
-    api::ApiResult,
-    pagination::{Pagination, PaginationQuery},
-};
+use crate::{BlockfrostError, api::ApiResult};
 use axum::extract::Query;
 use blockfrost_openapi::models::tx_metadata_labels_inner::TxMetadataLabelsInner;
+use common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,

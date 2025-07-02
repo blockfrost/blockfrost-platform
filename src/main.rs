@@ -1,8 +1,8 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
+    AppError,
     cli::Args,
-    errors::AppError,
     load_balancer,
     server::{build, logging::setup_tracing},
 };

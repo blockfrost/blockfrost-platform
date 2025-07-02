@@ -78,6 +78,10 @@ in {
         name = "LIBCLANG_PATH";
         value = internal.commonArgs.LIBCLANG_PATH;
       }
+      {
+        name = "LIBRARY_PATH";
+        value = "${pkgs.libiconv}/lib";
+      }
     ];
 
   devshell = {

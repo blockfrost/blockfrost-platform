@@ -1,6 +1,7 @@
-use crate::{config::Network, errors::BlockfrostError, payment_cred::PaymentCred};
+use crate::{config::Network, payment_cred::PaymentCred};
 
 use bech32::decode;
+use common::errors::BlockfrostError;
 use core::fmt;
 use pallas_addresses::ByronAddress;
 use serde::Deserialize;
