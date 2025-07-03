@@ -71,7 +71,6 @@ cardano-serialization-lib = "12.1.1"
 bip39 = "2.1.0"
 blockfrost = "1.0.5"
 
-
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"
 
@@ -81,3 +80,6 @@ dirs = "5.0"
 bzip2 = "0.4.3"
 tar = "0.4.38"
 zip = "0.6.6"
+
+[lints.clippy]
+uninlined_format_args = "deny"
