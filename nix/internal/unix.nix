@@ -217,24 +217,7 @@ in
         done
       '';
 
-    testgen-hs-flake = let
-      unpatched = inputs.testgen-hs;
-    in
-      (import inputs.flake-compat {
-        src =
-          if targetSystem != "aarch64-linux"
-          then unpatched
-          else {
-            outPath = toString (pkgs.runCommand "source" {} ''
-              cp -r ${unpatched} $out
-              chmod -R +w $out
-              cd $out
-              patch -p1 -i ${./testgen-hs--enable-aarch64-linux.diff}
-            '');
-            inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-          };
-      })
-      .defaultNix;
+    testgen-hs-flake = (import inputs.flake-compat {src = inputs.testgen-hs;}).defaultNix;
 
     testgen-hs = testgen-hs-flake.packages.${targetSystem}.default;
 
