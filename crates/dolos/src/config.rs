@@ -1,3 +1,5 @@
+use std::{fs, path::Path};
+
 use common::{config::Config as RootConfig, errors::AppError};
 use serde::{Deserialize, Serialize};
 
@@ -144,9 +146,12 @@ impl Config {
         })
     }
 
-    pub async fn save_to_toml(&self, path: &str) -> Result<(), AppError> {
-        let toml = toml::to_string_pretty(self)?;
-        fs::write(path, toml).await?;
+    pub fn save_to_toml<P: AsRef<Path>>(&self, path: P) -> Result<(), AppError> {
+        let toml_str = toml::to_string_pretty(&self)
+            .map_err(|e| AppError::Dolos(format!("Serialization error: {}", e)))?;
+
+        fs::write(path, toml_str)
+            .map_err(|e| AppError::Dolos(format!("IO error writing config: {}", e)))?;
 
         Ok(())
     }

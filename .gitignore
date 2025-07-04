@@ -56,3 +56,6 @@ build_rs_cov.profraw
 cobertura.xml
 tarpaulin-report.html
 coverage
+
+# Config is regenerated with every run
+crates/dolos/dolos.toml
