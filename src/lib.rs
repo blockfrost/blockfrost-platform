@@ -1,7 +1,5 @@
 pub mod api;
 pub mod cbor;
-pub mod cli;
-pub mod config;
 pub mod health_monitor;
 pub mod icebreakers_api;
 pub mod load_balancer;

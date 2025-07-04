@@ -1,11 +1,11 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
-    AppError,
-    cli::Args,
-    load_balancer,
+    AppError, load_balancer,
     server::{build, logging::setup_tracing},
 };
+use common::cli::Args;
+use dolos::runner::run_dolos_daemon;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -20,10 +20,11 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(config.log_level);
 
     info!(
-        "Starting {} {} ({})",
+        "Starting {} {}",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
-        env!("GIT_REVISION")
+        // TODO: Fix this later
+        // env!("GIT_REVISION")
     );
 
     let (app, _, health_monitor, icebreakers_api, api_prefix) =
@@ -54,6 +55,9 @@ async fn main() -> Result<(), AppError> {
     });
 
     notify_server_ready.notified().await;
+
+    // Start syncing dolos daemon
+    run_dolos_daemon(config);
 
     info!("Server is listening on http://{}{}", address, api_prefix);
 

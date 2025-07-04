@@ -4,11 +4,14 @@ pub mod routes;
 pub mod state;
 
 use crate::{
-    config::Config, health_monitor, icebreakers_api::IcebreakersAPI,
-    middlewares::errors::error_middleware, node::pool::NodePool,
+    health_monitor, icebreakers_api::IcebreakersAPI, middlewares::errors::error_middleware,
+    node::pool::NodePool,
 };
 use axum::{Extension, Router, middleware::from_fn};
-use common::errors::{AppError, BlockfrostError};
+use common::{
+    config::Config,
+    errors::{AppError, BlockfrostError},
+};
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};

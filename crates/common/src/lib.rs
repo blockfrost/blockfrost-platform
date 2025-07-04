@@ -1,6 +1,8 @@
 pub mod accounts;
 pub mod addresses;
 pub mod assets;
+pub mod cli;
+pub mod config;
 pub mod errors;
 pub mod genesis;
 pub mod pagination;

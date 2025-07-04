@@ -1,9 +1,11 @@
-use crate::AppError;
-use crate::config::{Config, Mode};
+use crate::{
+    config::{Config, Mode},
+    errors::AppError,
+    types::LogLevel,
+};
 use anyhow::{Error, Result, anyhow};
 use clap::{CommandFactory, ValueEnum};
 use clap::{Parser, arg, command};
-use common::types::LogLevel;
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::Serialize;
@@ -270,7 +272,7 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::types::Network;
+    use crate::types::Network;
     use futures::FutureExt;
     use futures::future::BoxFuture;
     use pretty_assertions::assert_eq;

@@ -666,12 +666,17 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 name = "common"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "axum",
  "bech32 0.9.1",
  "blockfrost-openapi",
  "cardano-serialization-lib",
  "clap",
+ "dirs 5.0.1",
+ "futures",
+ "futures-util",
  "hex",
+ "inquire",
  "pallas-addresses",
  "pallas-network",
  "pretty_assertions",
@@ -680,7 +685,10 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+ "tokio",
+ "toml 0.8.20",
  "tracing",
+ "twelf",
 ]
 
 [[package]]
@@ -1020,8 +1028,10 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 name = "dolos"
 version = "0.0.1"
 dependencies = [
+ "common",
  "dirs 5.0.1",
  "reqwest",
+ "serde",
  "toml 0.8.20",
 ]
 

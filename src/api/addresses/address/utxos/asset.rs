@@ -1,4 +1,4 @@
-use crate::{BlockfrostError, api::ApiResult, config::Config};
+use crate::{BlockfrostError, api::ApiResult};
 use axum::{
     Extension,
     extract::{Path, Query},
@@ -6,6 +6,7 @@ use axum::{
 use blockfrost_openapi::models::address_utxo_content_inner::AddressUtxoContentInner;
 use common::{
     addresses::{AddressInfo, AddressesPath},
+    config::Config,
     pagination::{Pagination, PaginationQuery},
 };
 

@@ -89,6 +89,7 @@ impl Pagination {
 
 pub fn get_order_param(param: Option<String>) -> Result<Order, &'static str> {
     let order = param.unwrap_or_else(|| "asc".to_string());
+
     if order != "asc" && order != "desc" {
         return Err("querystring/order must be equal to one of the allowed values");
     }
