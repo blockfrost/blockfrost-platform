@@ -147,10 +147,10 @@ impl Config {
 
     pub fn save_to_toml<P: AsRef<Path>>(&self, path: P) -> Result<(), AppError> {
         let toml_str = toml::to_string_pretty(&self)
-            .map_err(|e| AppError::Dolos(format!("Serialization error: {}", e)))?;
+            .map_err(|err| AppError::Dolos(format!("Serialization error: {err}")))?;
 
         fs::write(path, toml_str)
-            .map_err(|e| AppError::Dolos(format!("IO error writing config: {}", e)))?;
+            .map_err(|err| AppError::Dolos(format!("IO error writing config: {err}")))?;
 
         Ok(())
     }

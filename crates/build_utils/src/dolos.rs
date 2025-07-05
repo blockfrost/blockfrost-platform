@@ -63,7 +63,7 @@ pub fn fetch_binary() {
 
     // Download
     if !dolos_bin_path.exists() {
-        println!("Downloading dolos version {}…", version);
+        println!("Downloading dolos version {version}…");
 
         let script_path = PathBuf::from(
             env::var("CARGO_MANIFEST_DIR").expect("build.rs: CARGO_MANIFEST_DIR not set"),

@@ -16,3 +16,6 @@ dirs = "5.0"
 
 [build-dependencies]
 build_utils = { path = "../build_utils" }
+
+[lints.clippy]
+uninlined_format_args = "deny"

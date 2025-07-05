@@ -89,3 +89,6 @@ zip = "0.6.6"
 
 [workspace]
 members = ["crates/common", "crates/dolos", "crates/build_utils"]
+
+[lints.clippy]
+uninlined_format_args = "deny"
