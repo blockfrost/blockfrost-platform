@@ -78,14 +78,6 @@ jemalloc = "0.3"
 
 [build-dependencies]
 build_utils = { path = "crates/build_utils" }
-common = { path = "crates/common" }
-dolos = { path = "crates/dolos" }
-reqwest = { version = "0.12.7", features = ["blocking"] }
-dirs = "5.0"
-toml = "0.8.19"
-bzip2 = "0.4.3"
-tar = "0.4.38"
-zip = "0.6.6"
 
 [workspace]
 members = ["crates/common", "crates/dolos", "crates/build_utils"]

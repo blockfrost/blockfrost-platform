@@ -5,9 +5,9 @@ RUN apt-get update \
   pkg-config=1.8.* \
   libssl-dev=3.0.* \
   bzip2=1.0.* \
-  curl \
-  tar \
-  gzip \
+  curl=8.14.1 \
+  tar=1.35-2 \
+  gzip=1.11-2 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
