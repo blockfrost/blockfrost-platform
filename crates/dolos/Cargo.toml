@@ -2,6 +2,7 @@
 name = "dolos"
 version = "0.0.1"
 edition = "2021"
+build = "build.rs"
 
 [package.metadata.dolos]
 version = "v0.24.0"
@@ -12,3 +13,6 @@ serde = { version = "1.0.218", features = ["derive"] }
 reqwest = { version = "0.12", features = ["blocking"] }
 toml = "0.8"
 dirs = "5.0"
+
+[build-dependencies]
+build_utils = { path = "../build_utils" }

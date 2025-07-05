@@ -403,6 +403,7 @@ dependencies = [
  "blake2",
  "blockfrost",
  "blockfrost-openapi",
+ "build_utils",
  "bzip2",
  "cardano-serialization-lib",
  "chrono",
@@ -456,6 +457,13 @@ dependencies = [
  "twelf",
  "uuid",
  "zip",
+]
+
+[[package]]
+name = "build_utils"
+version = "0.1.0"
+dependencies = [
+ "toml 0.8.20",
 ]
 
 [[package]]
@@ -670,6 +678,7 @@ dependencies = [
  "axum",
  "bech32 0.9.1",
  "blockfrost-openapi",
+ "build_utils",
  "cardano-serialization-lib",
  "clap",
  "dirs 5.0.1",
@@ -1028,6 +1037,7 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 name = "dolos"
 version = "0.0.1"
 dependencies = [
+ "build_utils",
  "common",
  "dirs 5.0.1",
  "reqwest",

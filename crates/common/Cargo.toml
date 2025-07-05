@@ -30,3 +30,6 @@ pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "bl
 [dev-dependencies]
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
+
+[build-dependencies]
+build_utils = { path = "../build_utils" }

@@ -77,6 +77,7 @@ blockfrost = "1.0.5"
 jemalloc = "0.3"
 
 [build-dependencies]
+build_utils = { path = "crates/build_utils" }
 common = { path = "crates/common" }
 dolos = { path = "crates/dolos" }
 reqwest = { version = "0.12.7", features = ["blocking"] }
@@ -87,4 +88,4 @@ tar = "0.4.38"
 zip = "0.6.6"
 
 [workspace]
-members = ["crates/common", "crates/dolos", "."]
+members = ["crates/common", "crates/dolos", "crates/build_utils"]

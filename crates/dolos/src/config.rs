@@ -1,7 +1,6 @@
-use std::{fs, path::Path};
-
 use common::{config::Config as RootConfig, errors::AppError};
 use serde::{Deserialize, Serialize};
+use std::{fs, path::Path};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
