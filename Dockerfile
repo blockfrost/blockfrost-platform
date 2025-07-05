@@ -5,7 +5,7 @@ RUN apt-get update \
   pkg-config=1.8.* \
   libssl-dev=3.0.* \
   bzip2=1.0.* \
-  curl=8.14.1 \
+  curl=8.14.1-2~bpo12+1 \
   tar=1.35-2 \
   gzip=1.11-2 \
   && apt-get clean \
