@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:0.1.68-rust-slim-bookworm AS base
+FROM lukemathwalker/cargo-chef:0.1.68-nightly-slim-bookworm
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
   sccache=0.4.* \
