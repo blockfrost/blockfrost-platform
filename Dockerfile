@@ -6,7 +6,7 @@ RUN apt-get update \
   libssl-dev=3.0.16-1~deb12u1 \
   bzip2 \
   curl \
-  tar=1.34.1 \
+  tar \
   gzip \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
