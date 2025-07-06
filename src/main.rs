@@ -105,7 +105,7 @@ async fn main() -> Result<(), AppError> {
                         *health_errors.lock().await = vec![err.into()];
                         tokio::time::sleep(delay).await;
                     },
-                };
+                }
             }
         });
     }
