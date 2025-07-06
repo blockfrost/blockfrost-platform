@@ -1,6 +1,6 @@
-use common::{config::Config as RootConfig, errors::AppError};
+use common::{config::Config as RootConfig, crates::get_crate_root, errors::AppError};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fs, path::PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -145,13 +145,12 @@ impl Config {
         })
     }
 
-    pub fn save_to_toml<P: AsRef<Path>>(&self, path: P) -> Result<(), AppError> {
+    pub fn save_to_toml(&self) -> Result<(), AppError> {
+        let path: PathBuf = get_crate_root("dolos").join("config.dolos.toml");
         let toml_str = toml::to_string_pretty(&self)
             .map_err(|err| AppError::Dolos(format!("Serialization error: {err}")))?;
 
-        println!("Saving dolos config to {}", path.as_ref().display());
-
-        fs::write(path, toml_str)
+        fs::write(&path, toml_str)
             .map_err(|err| AppError::Dolos(format!("IO error writing config: {err}")))?;
 
         Ok(())

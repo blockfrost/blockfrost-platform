@@ -58,4 +58,4 @@ tarpaulin-report.html
 coverage
 
 # Config is regenerated with every run
-crates/dolos/dolos.toml
+config.dolos.toml

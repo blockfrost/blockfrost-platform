@@ -10,12 +10,12 @@ build = "build.rs"
 
 [dependencies]
 common = { path = "crates/common" }
+node = { path = "crates/node" }
 dolos = { path = "crates/dolos" }
 axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"
 futures-util = "0.3"
-crossbeam = "0.8"
 tungstenite = "0.26"
 tokio-tungstenite = "0.26"
 tracing = "0.1.41"
@@ -32,7 +32,6 @@ thiserror = "2.0.11"
 sentry = "0.36.0"
 blake2 = "0.10.6"
 base64 = "0.22.1"
-num_cpus = "1"
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
@@ -48,9 +47,7 @@ metrics = { version = "0.24.1", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 metrics-process = "2.4.0"
 chrono = "0.4"
-deadpool = "0.12.1"
 serde_with = "3.12.0"
-sysinfo = "0.33.1"
 dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
@@ -61,8 +58,6 @@ blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 
-[features]
-tarpaulin = []
 
 [dev-dependencies]
 tracing-test = "0.2.5"
@@ -80,7 +75,7 @@ jemalloc = "0.3"
 build_utils = { path = "crates/build_utils" }
 
 [workspace]
-members = ["crates/common", "crates/dolos", "crates/build_utils"]
+members = ["crates/common", "crates/dolos", "crates/build_utils", "crates/node"]
 
 [lints.clippy]
 uninlined_format_args = "deny"

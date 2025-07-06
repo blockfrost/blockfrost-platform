@@ -1,8 +1,7 @@
+use common::errors::BlockfrostError;
 use pallas_hardano::display::haskell_error::as_cbor_decode_failure;
 use pallas_primitives::{alonzo::Value, babbage::GenTransactionOutput, conway::Tx};
 use tracing::info;
-
-use crate::BlockfrostError;
 
 /// Checks if the given transaction is a valid CBOR-encoded transaction, by trying to decode it.
 /// This function is used to validate the transaction before submitting it to the node.

@@ -3,6 +3,7 @@ pub mod addresses;
 pub mod assets;
 pub mod cli;
 pub mod config;
+pub mod crates;
 pub mod errors;
 pub mod genesis;
 pub mod pagination;

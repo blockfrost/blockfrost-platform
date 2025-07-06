@@ -408,8 +408,6 @@ dependencies = [
  "chrono",
  "clap",
  "common",
- "crossbeam",
- "deadpool",
  "dirs 5.0.1",
  "dolos",
  "dotenvy",
@@ -422,7 +420,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "num_cpus",
+ "node",
  "pallas",
  "pallas-addresses",
  "pallas-codec",
@@ -440,7 +438,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sysinfo",
  "thiserror 2.0.12",
  "tokio",
  "tokio-tungstenite",
@@ -2155,6 +2152,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b6b097ecb1cbfed438542d16e84fd7ad9b0c76c8a65b7f9039212a3d14dc7f"
 dependencies = [
  "unicode-segmentation",
+]
+
+[[package]]
+name = "node"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "common",
+ "crossbeam",
+ "deadpool",
+ "dirs 5.0.1",
+ "hex",
+ "metrics",
+ "num_cpus",
+ "pallas-codec",
+ "pallas-crypto",
+ "pallas-hardano",
+ "pallas-network",
+ "pallas-primitives",
+ "pallas-traverse",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+ "toml 0.8.20",
+ "tracing",
 ]
 
 [[package]]

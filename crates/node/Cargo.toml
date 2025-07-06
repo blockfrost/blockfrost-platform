@@ -1,0 +1,30 @@
+[package]
+name = "node"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+serde = { version = "1.0.218", features = ["derive"] }
+reqwest = { version = "0.12", features = ["blocking"] }
+toml = "0.8"
+tracing = "0.1.41"
+crossbeam = "0.8"
+hex = "0.4.3"
+dirs = "5.0"
+serde_json = "1.0.135"
+tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+deadpool = "0.12.1"
+sysinfo = "0.33.1"
+num_cpus = "1"
+metrics = { version = "0.24.1", default-features = false }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+chrono = "0.4"
+
+[features]
+tarpaulin = []

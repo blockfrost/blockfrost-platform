@@ -1,7 +1,7 @@
-use crate::NodePool;
 use axum::{Extension, Json, http::HeaderMap, response::IntoResponse};
 use common::{errors::BlockfrostError, validation::validate_content_type};
 use metrics::counter;
+use node::pool::NodePool;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,

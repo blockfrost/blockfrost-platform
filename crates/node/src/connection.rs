@@ -1,4 +1,4 @@
-use crate::BlockfrostError;
+use common::errors::BlockfrostError;
 use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
 use std::{boxed::Box, pin::Pin};
 use tokio::time::{Duration, timeout};
@@ -10,10 +10,10 @@ pub struct NodeClient {
     /// Note: this is an [`Option`] *only* to satisfy the borrow checker. It’s
     /// *always* [`Some`]. See [`<super::pool_manager::NodePoolManager as
     /// deadpool::managed::Manager>>::recycle`] for an explanation.
-    pub(in crate::node) client: Option<NodeClientFacade>,
-    pub(in crate::node) connection_id: u64,
-    pub(in crate::node) unrecoverable_error_happened: bool,
-    pub(in crate::node) network_magic: u64,
+    pub client: Option<NodeClientFacade>,
+    pub connection_id: u64,
+    pub unrecoverable_error_happened: bool,
+    pub network_magic: u64,
 }
 
 impl NodeClient {
