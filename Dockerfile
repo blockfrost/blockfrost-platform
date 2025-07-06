@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:0.1.68-nightly-slim-bookworm
+FROM lukemathwalker/cargo-chef:0.1.68-rust-slim-bookworm AS base
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
   sccache=0.4.* \
@@ -6,7 +6,7 @@ RUN apt-get update \
   libssl-dev=3.0.* \
   bzip2=1.0.* \
   curl=7.88.1-10+deb12u12  \
-  tar=1.34+dfsg-1.2+deb12u1 \
+  tar=1.35-2 \
   gzip=1.12-1 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*

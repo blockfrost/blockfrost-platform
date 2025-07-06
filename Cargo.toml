@@ -2,7 +2,7 @@
 name = "blockfrost-platform"
 version = "0.0.2"
 license = "Apache-2.0"
-edition = "2024"
+edition = "2021"
 description = "The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint."
 homepage = "https://platform.blockfrost.io"
 repository = "https://github.com/blockfrost/blockfrost-platform"
