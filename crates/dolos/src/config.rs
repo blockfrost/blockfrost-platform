@@ -149,6 +149,8 @@ impl Config {
         let toml_str = toml::to_string_pretty(&self)
             .map_err(|err| AppError::Dolos(format!("Serialization error: {err}")))?;
 
+        println!("Saving dolos config to {}", path.as_ref().display());
+
         fs::write(path, toml_str)
             .map_err(|err| AppError::Dolos(format!("IO error writing config: {err}")))?;
 
