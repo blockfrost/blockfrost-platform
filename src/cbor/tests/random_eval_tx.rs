@@ -36,11 +36,11 @@ fn proptest_with_params(
     use crate::api::utils::txs::evaluate::model::AdditionalUtxoSet;
 
     check_generated_cases(case_type, num_cases, generator_size, 5, seed, |case| {
-        let tx_cbor = case.cbor.clone();
+        let _tx_cbor = case.cbor.clone();
         let json: TestCaseJson = serde_json::from_value(case.json).unwrap();
-        let expected = json.execution_units;
+        let _expected = json.execution_units;
         let utxo_cbor = json.utxo_set_cbor;
-        let utxo: AdditionalUtxoSet =
+        let _utxo: AdditionalUtxoSet =
             utxo_decoder::decode_utxo(&hex::decode(&utxo_cbor).unwrap()).unwrap();
 
         // TODO: okay, so now we have `tx_cbor`, `AdditionalUtxoSet`, and the `expected` JSON.
