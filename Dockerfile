@@ -1,4 +1,4 @@
-FROM rust:nightly-bookworm AS base
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS base
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
