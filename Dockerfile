@@ -7,7 +7,7 @@ RUN apt-get update \
   libssl-dev=3.0.16-1~deb12u1 \
   bzip2=1.0.8-5+b1 \
   tar=1.34+dfsg-1.2+deb12u1 \
-  gzip=1.12.1 \
+  gzip=1.12-1 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
