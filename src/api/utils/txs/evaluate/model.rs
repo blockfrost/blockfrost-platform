@@ -17,13 +17,13 @@ pub struct TxEvaluationRequest {
 }
 
 pub type AdditionalUtxoSet = Vec<(TxIn, TxOut)>;
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct TxIn {
     #[serde(rename = "txId")]
     pub tx_id: String,
     pub index: u64,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct TxOut {
     pub address: String,
     pub value: Value,
@@ -77,21 +77,21 @@ impl From<ScriptNative> for NativeScript {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Datum {
     String(String),
     Map(HashMap<String, String>),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Value {
     pub coins: u64,
     pub assets: Option<HashMap<String, u64>>, // asset name and number. Asset number can be negative when burning assets but this behaviour changed in Conway. Now it can be only PositiveCoin
 }
 
 // This is originally missing PlutusV3 since blockfrost uses Ogmios v5.6 which has slightly different data structure
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 //#[serde(untagged)]
 pub enum Script {
     #[serde(rename = "plutus:v1")]
@@ -104,7 +104,7 @@ pub enum Script {
     Native(ScriptNative),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub enum ScriptNative {
     #[serde(rename = "any")]
     Any(Vec<ScriptNative>),
