@@ -11,6 +11,8 @@ use std::process::Command;
 #[cfg(not(feature = "tarpaulin"))]
 mod random;
 #[cfg(not(feature = "tarpaulin"))]
+mod random_eval_tx;
+#[cfg(not(feature = "tarpaulin"))]
 mod specific;
 
 #[derive(Deserialize, Debug)]
@@ -30,6 +32,7 @@ pub struct CborTestSeed {
 #[derive(Debug, Clone, Copy)]
 #[allow(non_camel_case_types, dead_code)]
 pub enum CaseType {
+    Tx_Conway,
     ApplyTxErr_Byron,
     ApplyTxErr_Shelley,
     ApplyTxErr_Allegra,
