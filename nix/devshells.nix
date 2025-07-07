@@ -72,6 +72,10 @@ in {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
       }
+      {
+        name = "RUST_SRC_PATH";
+        value = "${internal.rustPackages.rust-src}/lib/rustlib/src/rust/library";
+      }
     ]
     ++ lib.optionals pkgs.stdenv.isDarwin [
       {
