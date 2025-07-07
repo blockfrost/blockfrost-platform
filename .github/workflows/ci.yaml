@@ -92,12 +92,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Ensure wget is installed on Linux
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget
-
       - name: Run Integration Tests
         run: nix develop .# --command cargo test --verbose --test endpoints_test
 
