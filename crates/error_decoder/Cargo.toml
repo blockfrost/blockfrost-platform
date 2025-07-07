@@ -1,0 +1,22 @@
+[package]
+name = "blockfrost-platform-error-decoder"
+version = "0.1.0"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+bf-common.workspace = true
+bf-testgen.workspace = true
+hex.workspace = true
+sysinfo.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+pallas-network.workspace = true
+pallas-hardano.workspace = true
+pallas-codec.workspace = true
+
+[features]
+tarpaulin = []
+
+[dev-dependencies]
+bf-testgen = { workspace = true, features = ["test-utils"] }

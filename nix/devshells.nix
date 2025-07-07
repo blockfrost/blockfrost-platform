@@ -41,7 +41,11 @@ in {
     {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
-    {package = config.language.rust.packageSet.rust-analyzer;}
+    {
+      name = "cargo";
+      package = internal.rustPackages.cargo;
+    }
+    {package = internal.rustPackages.rust-analyzer;}
     {
       category = "handy";
       package = internal.runNode "preview";

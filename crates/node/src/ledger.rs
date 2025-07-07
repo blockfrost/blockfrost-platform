@@ -5,7 +5,7 @@ use pallas_network::miniprotocols::localstate::{
 
 use super::connection::NodeClient;
 
-use crate::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 
 impl NodeClient {
     /// Fetches the current protocol parameters from the connected Cardano node.

@@ -1,3 +1,3 @@
-pub mod model;
+mod model;
 pub mod root;
 pub mod utxos;

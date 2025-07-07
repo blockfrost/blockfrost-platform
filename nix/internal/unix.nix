@@ -171,14 +171,13 @@ in
       (import inputs.flake-compat {
         src =
           if targetSystem != "aarch64-darwin" && targetSystem != "aarch64-linux"
-          if targetSystem != "aarch64-darwin" && targetSystem != "aarch64-linux"
           then unpatched
           else {
             outPath = toString (pkgs.runCommand "source" {} ''
               cp -r ${unpatched} $out
               chmod -R +w $out
               cd $out
-              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >>$out/nix/supported-systems.nix
+              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
               ${lib.optionalString (targetSystem == "aarch64-linux") ''
                 sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
               ''}
@@ -191,7 +190,7 @@ in
     cardano-node-packages =
       {
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
-        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux aarch64-linux;
+        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
       }
       .${
         targetSystem
@@ -228,24 +227,7 @@ in
       ln -s ${dolos-configs} $out/dolos-configs
     '';
 
-    testgen-hs-flake = let
-      unpatched = inputs.testgen-hs;
-    in
-      (import inputs.flake-compat {
-        src =
-          if targetSystem != "aarch64-linux"
-          then unpatched
-          else {
-            outPath = toString (pkgs.runCommand "source" {} ''
-              cp -r ${unpatched} $out
-              chmod -R +w $out
-              cd $out
-              patch -p1 -i ${./testgen-hs--enable-aarch64-linux.diff}
-            '');
-            inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-          };
-      })
-      .defaultNix;
+    testgen-hs-flake = (import inputs.flake-compat {src = inputs.testgen-hs;}).defaultNix;
 
     testgen-hs = testgen-hs-flake.packages.${targetSystem}.default;
 

@@ -2,6 +2,7 @@ pub mod asserts;
 pub mod tx_builder;
 
 use axum::Router;
+use bf_common::config::Evaluator;
 use bf_common::{
     config::{Config, DataSources, IcebreakersConfig, Mode},
     types::{LogLevel, Network},
@@ -58,6 +59,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         no_metrics: false,
         custom_genesis_config: None,
         data_sources: DataSources { dolos: None },
+        evaluator: Evaluator::External,
     };
 
     Arc::new(config)

@@ -16,7 +16,7 @@ pub fn ensure(target_os: &str, arch: &str) {
         return;
     }
 
-    let testgen_lib_version = "10.4.1.1";
+    let testgen_lib_version = "10.4.1.2";
 
     let suffix = if target_os == "windows" {
         ".zip"
