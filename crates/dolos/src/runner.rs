@@ -8,6 +8,9 @@ pub async fn run_daemon(root_config: RootConfig) -> Result<(), AppError> {
     config.save_to_toml()?;
 
     Ok(())
+
+    // We will start dolos sync here
+
     // let dolos_bin = env::var("DOLOS_BIN").unwrap_or_else(|_| "dolos".to_string());
     // let args = vec![
     //     "daemon".to_string(),

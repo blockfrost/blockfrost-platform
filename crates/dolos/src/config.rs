@@ -1,4 +1,10 @@
-use common::{config::Config as RootConfig, crates::get_crate_root, errors::AppError};
+use common::{
+    config::Config as RootConfig,
+    crates::get_crate_root,
+    errors::AppError,
+    genesis::{GenesisRegistry, genesis},
+    types::Network,
+};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
@@ -27,7 +33,7 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Upstream {
     pub peer_address: String,
-    pub network_magic: u64,
+    pub network_magic: i32,
     pub is_testnet: bool,
 }
 
@@ -95,11 +101,21 @@ pub struct Logging {
 
 impl Config {
     pub async fn generate_from_root_config(root_config: &RootConfig) -> Result<Self, AppError> {
+        let network_magic = genesis().by_network(&root_config.network).network_magic;
+        let is_testnet = {
+            match root_config.network {
+                Network::Mainnet => false,
+                Network::Preview => true,
+                Network::Preprod => true,
+                Network::Custom => false,
+            }
+        };
+
         Ok(Self {
             upstream: Upstream {
                 peer_address: root_config.node_socket_path.clone(),
-                network_magic: 1,
-                is_testnet: true,
+                network_magic,
+                is_testnet,
             },
             storage: Storage {
                 version: "v1".to_string(),
