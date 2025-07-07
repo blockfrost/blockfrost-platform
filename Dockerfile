@@ -6,7 +6,6 @@ RUN apt-get update \
   pkg-config=1.8.1-1 \
   libssl-dev=3.0.16-1~deb12u1 \
   bzip2 \
-  curl \
   tar \
   gzip \
   && apt-get clean \

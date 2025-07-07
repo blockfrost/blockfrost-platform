@@ -32,10 +32,9 @@ mkdir -p "${DEST}"
 
 # Stream download → extract into DEST, stripping top-level directory
 echo "Downloading dolos ${VERSION} → ${DEST}/${FILE}"
-curl --fail --location "${BASE}/${FILE}" \
+wget -qO- "${BASE}/${FILE}" \
   | tar -xz -C "${DEST}" --strip-components=1
 
-# Make the binary executable
 chmod +x "${DEST}/dolos"
 
 echo "✓ Installed dolos ${VERSION} to ${DEST}/dolos"
