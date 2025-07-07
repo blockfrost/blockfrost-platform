@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 #[allow(non_snake_case)]
-fn proptest_eval_Tx_Conway_size_001() {
+fn proptest_eval_Tx_Conway_size_010() {
     proptest_with_params(CaseType::Tx_Conway, 100, 10, None)
 }
 
@@ -36,17 +36,22 @@ fn proptest_with_params(
     use crate::api::utils::txs::evaluate::model::AdditionalUtxoSet;
 
     check_generated_cases(case_type, num_cases, generator_size, 5, seed, |case| {
-        let _tx_cbor = case.cbor.clone();
+        let tx_cbor = case.cbor.clone();
         let json: TestCaseJson = serde_json::from_value(case.json).unwrap();
-        let _expected = json.execution_units;
+        let expected = json.execution_units;
         let utxo_cbor = json.utxo_set_cbor;
-        let _utxo: AdditionalUtxoSet =
+        let utxo: AdditionalUtxoSet =
             utxo_decoder::decode_utxo(&hex::decode(&utxo_cbor).unwrap()).unwrap();
 
         // TODO: okay, so now we have `tx_cbor`, `AdditionalUtxoSet`, and the `expected` JSON.
         // TODO: it’s time to call `crate::cbor::evaluate_tx()`, but it needs a `cardano-node` 👀
 
-        todo!()
+        Err(format!(
+            "Unimplemented:\n  Transaction: {tx_cbor}\n  Expected: {}\n  UTxO: {utxo:?}",
+            serde_json::to_string_pretty(&expected)
+                .unwrap()
+                .replace("\n", "\n  ")
+        ))
     })
 }
 
