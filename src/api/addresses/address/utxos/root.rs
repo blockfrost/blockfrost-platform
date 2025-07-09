@@ -21,9 +21,7 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
     let address_info = AddressInfo::from_address(&address, config.network)?;
 
-    let utxos = dolos
+    dolos
         .addresses_address_utxos(&address_info.address, &pagination)
-        .await?;
-
-    Ok(utxos)
+        .await
 }

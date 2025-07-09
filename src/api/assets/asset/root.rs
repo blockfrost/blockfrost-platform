@@ -1,17 +1,14 @@
-use crate::{BlockfrostError, api::ApiResult};
-use axum::extract::{Path, Query};
-use blockfrost_openapi::models::assets_inner::AssetsInner;
-use common::{
-    assets::{AssetData, AssetsPath},
-    pagination::{Pagination, PaginationQuery},
-};
+use crate::api::ApiResult;
+use axum::{Extension, extract::Path};
+use blockfrost_openapi::models::asset::Asset;
+use common::assets::{AssetData, AssetsPath};
+use dolos::client::Dolos;
 
 pub async fn route(
     Path(path): Path<AssetsPath>,
-    Query(pagination_query): Query<PaginationQuery>,
-) -> ApiResult<Vec<AssetsInner>> {
-    let _ = AssetData::from_query(path.asset)?;
-    let _ = Pagination::from_query(pagination_query).await?;
+    Extension(dolos): Extension<Dolos>,
+) -> ApiResult<Asset> {
+    let asset_data = AssetData::from_query(path.asset)?;
 
-    Err(BlockfrostError::not_found())
+    dolos.assets_asset(&asset_data.asset).await
 }

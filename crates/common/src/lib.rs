@@ -5,6 +5,8 @@ pub mod blocks;
 pub mod cli;
 pub mod config;
 pub mod crates;
+pub mod dreps;
+pub mod epochs;
 pub mod errors;
 pub mod genesis;
 pub mod json_client;

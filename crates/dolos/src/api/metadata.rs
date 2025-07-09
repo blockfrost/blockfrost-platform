@@ -16,6 +16,7 @@ impl Dolos {
         label: &str,
     ) -> ApiResult<Vec<TxMetadataLabelJsonInner>> {
         let path = format!("metadata/txs/labels/{label}");
+
         self.client.get(&path).await
     }
 
@@ -24,6 +25,7 @@ impl Dolos {
         label: &str,
     ) -> ApiResult<Vec<TxMetadataLabelCborInner>> {
         let path = format!("metadata/txs/labels/{label}/cbor");
+
         self.client.get(&path).await
     }
 }

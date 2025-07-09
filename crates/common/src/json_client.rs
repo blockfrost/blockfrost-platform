@@ -5,6 +5,7 @@ use crate::types::ApiResult;
 use axum::Json;
 use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
+use tracing::info;
 
 #[derive(Clone)]
 pub struct JsonClient {
@@ -27,7 +28,12 @@ impl JsonClient {
         T: DeserializeOwned,
     {
         let url = self.base_url.join(path)?;
+        let url_str = url.to_string();
+        info!(%path, %url, "JsonClient GET");
+
         let resp = self.client.request(Method::GET, url).send().await?;
+        info!(path, url = %url_str, "JsonClient GET");
+
         let body = resp.json::<T>().await?;
 
         Ok(Json(body))
@@ -38,9 +44,15 @@ impl JsonClient {
         T: DeserializeOwned,
     {
         let mut url = self.base_url.join(path)?;
+        info!(%url, "JsonClient GET");
+
         url.apply_pagination(pagination);
 
+        let url_str = url.to_string();
         let resp = self.client.request(Method::GET, url).send().await?;
+
+        info!(path, url = %url_str, ?pagination, "JsonClient GET paginated");
+
         let body = resp.json::<T>().await?;
 
         Ok(Json(body))

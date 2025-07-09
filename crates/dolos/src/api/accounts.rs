@@ -5,7 +5,7 @@ use blockfrost_openapi::models::{
     account_registration_content_inner::AccountRegistrationContentInner,
     account_reward_content_inner::AccountRewardContentInner,
 };
-use common::types::ApiResult;
+use common::{pagination::Pagination, types::ApiResult};
 
 impl Dolos {
     pub async fn accounts_stake_address(&self, stake_address: &str) -> ApiResult<AccountContent> {
@@ -26,24 +26,30 @@ impl Dolos {
     pub async fn accounts_stake_address_addresses(
         &self,
         stake_address: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<AccountContent>> {
         let path = format!("accounts/{stake_address}/addresses");
-        self.client.get(&path).await
+
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn accounts_stake_address_delegations(
         &self,
         stake_address: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<AccountDelegationContentInner>> {
         let path = format!("accounts/{stake_address}/delegations");
-        self.client.get(&path).await
+
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn accounts_stake_address_registrations(
         &self,
         stake_address: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<AccountRegistrationContentInner>> {
         let path = format!("accounts/{stake_address}/registrations");
-        self.client.get(&path).await
+
+        self.client.get_paginated(&path, pagination).await
     }
 }

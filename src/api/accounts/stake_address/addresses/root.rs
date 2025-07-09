@@ -1,18 +1,25 @@
-use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
-use axum::extract::{Path, Query, State};
-use blockfrost_openapi::models::account_addresses_content_inner::AccountAddressesContentInner;
+use crate::{api::ApiResult, server::state::AppState};
+use axum::{
+    Extension,
+    extract::{Path, Query, State},
+};
+use blockfrost_openapi::models::account_content::AccountContent;
 use common::{
     accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
 };
+use dolos::client::Dolos;
 
 pub async fn route(
-    Path(path): Path<AccountsPath>,
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
-) -> ApiResult<Vec<AccountAddressesContentInner>> {
-    let _ = AccountData::from_account_path(path.stake_address, &state.config.network)?;
-    let _ = Pagination::from_query(pagination_query).await?;
+    Extension(dolos): Extension<Dolos>,
+    Path(path): Path<AccountsPath>,
+) -> ApiResult<Vec<AccountContent>> {
+    let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
+    let pagination = Pagination::from_query(pagination_query).await?;
 
-    Err(BlockfrostError::not_found())
+    dolos
+        .accounts_stake_address_addresses(&account.stake_address, &pagination)
+        .await
 }
