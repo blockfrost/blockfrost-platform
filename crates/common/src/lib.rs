@@ -12,5 +12,6 @@ pub mod genesis;
 pub mod json_client;
 pub mod pagination;
 pub mod payment_cred;
+pub mod pools;
 pub mod types;
 pub mod validation;
