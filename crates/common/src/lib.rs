@@ -1,11 +1,13 @@
 pub mod accounts;
 pub mod addresses;
 pub mod assets;
+pub mod blocks;
 pub mod cli;
 pub mod config;
 pub mod crates;
 pub mod errors;
 pub mod genesis;
+pub mod json_client;
 pub mod pagination;
 pub mod payment_cred;
 pub mod types;

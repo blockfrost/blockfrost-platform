@@ -50,7 +50,7 @@ pub async fn build(
 
     // Dolos
     let dolos_config = DolosConfig {
-        base_url: "http://localhost:3000".to_string(),
+        base_url: "http://localhost:3010".to_string(),
         request_timeout: 60,
     };
 
