@@ -5,7 +5,6 @@ use blockfrost_platform::{
     server::{build, logging::setup_tracing},
 };
 use common::cli::Args;
-use dolos::runner::run_daemon;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -54,9 +53,6 @@ async fn main() -> Result<(), AppError> {
     });
 
     notify_server_ready.notified().await;
-
-    // Start dolos daemon
-    run_daemon(config).await?;
 
     info!("Server is listening on http://{}{}", address, api_prefix);
 

@@ -845,6 +845,7 @@ dependencies = [
  "toml 0.8.23",
  "tracing",
  "twelf",
+ "url",
 ]
 
 [[package]]
@@ -1215,7 +1216,9 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 name = "dolos"
 version = "0.0.1"
 dependencies = [
- "build_utils",
+ "async-trait",
+ "axum",
+ "blockfrost-openapi",
  "common",
  "dirs 5.0.1",
  "reqwest",

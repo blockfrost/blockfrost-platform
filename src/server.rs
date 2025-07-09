@@ -10,6 +10,7 @@ use common::{
     config::Config,
     errors::{AppError, BlockfrostError},
 };
+use dolos::client::{Dolos, DolosConfig};
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use node::pool::NodePool;
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
@@ -47,6 +48,14 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
+    // Dolos
+    let dolos_config = DolosConfig {
+        base_url: "http://localhost:3000".to_string(),
+        request_timeout: 60,
+    };
+
+    let dolos = Dolos::new(&dolos_config)?;
+
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 
@@ -75,6 +84,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
+            .layer(Extension(dolos.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
 

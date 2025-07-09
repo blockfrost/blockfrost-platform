@@ -1,3 +1,5 @@
+use crate::errors::BlockfrostError;
+use axum::Json;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use tracing::Level;
@@ -39,3 +41,5 @@ impl From<LogLevel> for Level {
         }
     }
 }
+
+pub type ApiResult<T> = Result<Json<T>, BlockfrostError>;

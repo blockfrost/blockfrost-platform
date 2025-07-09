@@ -46,12 +46,6 @@ impl From<std::num::TryFromIntError> for BlockfrostError {
     }
 }
 
-impl From<serde_json::Error> for BlockfrostError {
-    fn from(err: serde_json::Error) -> Self {
-        Self::internal_server_error(format!("SerdeError: {err}"))
-    }
-}
-
 impl From<AppError> for BlockfrostError {
     fn from(err: AppError) -> Self {
         match err {
@@ -74,6 +68,24 @@ impl From<io::Error> for AppError {
     fn from(err: io::Error) -> Self {
         error!("I/O Error occurred: {}", err);
         AppError::Server(err.to_string())
+    }
+}
+
+impl From<reqwest::Error> for BlockfrostError {
+    fn from(e: reqwest::Error) -> Self {
+        BlockfrostError::internal_server_error(format!("HTTP error: {e}"))
+    }
+}
+
+impl From<serde_json::Error> for BlockfrostError {
+    fn from(e: serde_json::Error) -> Self {
+        BlockfrostError::internal_server_error(format!("JSON error: {e}"))
+    }
+}
+
+impl From<url::ParseError> for BlockfrostError {
+    fn from(e: url::ParseError) -> Self {
+        BlockfrostError::internal_server_error(format!("URL error: {e}",))
     }
 }
 
