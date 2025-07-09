@@ -21,6 +21,7 @@ pub struct AddressesPath {
 pub struct AddressInfo {
     pub address_type: AddressType,
     pub payment_cred: PaymentCred,
+    pub address: String,
 }
 
 impl AddressInfo {
@@ -36,6 +37,7 @@ impl AddressInfo {
         Ok(Self {
             address_type,
             payment_cred,
+            address: address.to_string(),
         })
     }
 

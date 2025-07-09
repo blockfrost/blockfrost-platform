@@ -1,2 +1,2 @@
-pub mod blocks;
+pub mod api;
 pub mod client;

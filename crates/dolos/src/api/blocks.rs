@@ -12,9 +12,9 @@ impl Dolos {
     }
 
     pub async fn blocks_hash_or_number(&self, hash_or_number: &str) -> ApiResult<BlockContent> {
-        let path = &format!("blocks/{hash_or_number}");
+        let path = format!("blocks/{hash_or_number}");
 
-        self.client.get(path).await
+        self.client.get(&path).await
     }
 
     pub async fn blocks_hash_or_number_txs(
@@ -22,9 +22,9 @@ impl Dolos {
         hash_or_number: &str,
         pagination: Pagination,
     ) -> ApiResult<Vec<String>> {
-        let path = &format!("blocks/{hash_or_number}/txs");
+        let path = format!("blocks/{hash_or_number}/txs");
 
-        self.client.get_paginated(path, &pagination).await
+        self.client.get_paginated(&path, &pagination).await
     }
 
     pub async fn blocks_previous(
@@ -32,9 +32,9 @@ impl Dolos {
         hash_or_number: &str,
         pagination: Pagination,
     ) -> ApiResult<Vec<BlockContent>> {
-        let path = &format!("blocks/{hash_or_number}/previous");
+        let path = format!("blocks/{hash_or_number}/previous");
 
-        self.client.get_paginated(path, &pagination).await
+        self.client.get_paginated(&path, &pagination).await
     }
 
     pub async fn blocks_next(
@@ -42,14 +42,14 @@ impl Dolos {
         hash_or_number: &str,
         pagination: Pagination,
     ) -> ApiResult<Vec<BlockContent>> {
-        let path = &format!("blocks/{hash_or_number}/next");
+        let path = format!("blocks/{hash_or_number}/next");
 
-        self.client.get_paginated(path, &pagination).await
+        self.client.get_paginated(&path, &pagination).await
     }
 
     pub async fn blocks_slot_slot(&self, slot: &str) -> ApiResult<BlockContent> {
-        let path = &format!("blocks/slot/{slot}");
+        let path = format!("blocks/slot/{slot}");
 
-        self.client.get(path).await
+        self.client.get(&path).await
     }
 }

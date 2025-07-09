@@ -1,6 +1,6 @@
 use crate::api::ApiResult;
 use axum::{
-    Extension, Json,
+    Extension,
     extract::{Path, Query},
 };
 use blockfrost_openapi::models::block_content::BlockContent;
@@ -16,7 +16,7 @@ pub async fn route(
     Path(blocks_path): Path<BlocksPath>,
 ) -> ApiResult<Vec<BlockContent>> {
     let pagination = Pagination::from_query(pagination_query).await?;
-    let response: Json<Vec<BlockContent>> = dolos
+    let response = dolos
         .blocks_next(&blocks_path.hash_or_number, pagination)
         .await?;
 
