@@ -1,5 +1,6 @@
 use crate::errors::BlockfrostError;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Order {
@@ -19,6 +20,13 @@ impl Order {
             "asc" => Ok(Order::Asc),
             "desc" => Ok(Order::Desc),
             _ => Ok(Order::Asc),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Order::Asc => "asc",
+            Order::Desc => "desc",
         }
     }
 }
@@ -187,6 +195,39 @@ pub fn get_range_param(param: Option<String>) -> Result<ParamParts, BlockfrostEr
             height: None,
             index: None,
         }),
+    }
+}
+
+pub trait ApplyPagination {
+    fn apply_pagination(&mut self, pagination: &Pagination);
+}
+
+impl ApplyPagination for Url {
+    fn apply_pagination(&mut self, pagination: &Pagination) {
+        self.query_pairs_mut()
+            .append_pair("page", &pagination.page.to_string())
+            .append_pair("count", &pagination.count.to_string())
+            .append_pair("order", &pagination.order.as_str().to_lowercase());
+
+        if let Some(from_height) = pagination.from.height {
+            self.query_pairs_mut()
+                .append_pair("from", &from_height.to_string());
+
+            if let Some(from_index) = pagination.from.index {
+                self.query_pairs_mut()
+                    .append_pair("from", &format!("{from_height}:{from_index}"));
+            }
+        }
+
+        if let Some(to_height) = pagination.to.height {
+            self.query_pairs_mut()
+                .append_pair("to", &to_height.to_string());
+
+            if let Some(to_index) = pagination.to.index {
+                self.query_pairs_mut()
+                    .append_pair("to", &format!("{to_height}:{to_index}"));
+            }
+        }
     }
 }
 
