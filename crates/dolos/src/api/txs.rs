@@ -32,6 +32,7 @@ impl Dolos {
 
     pub async fn txs_hash_metadata(&self, hash: &str) -> ApiResult<Vec<TxContentMetadataInner>> {
         let path = format!("txs/{hash}/metadata");
+
         self.client.get(&path).await
     }
 

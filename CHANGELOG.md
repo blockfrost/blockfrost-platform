@@ -10,6 +10,64 @@
 - Load balancing over a WebSocket (eliminating the need for public IP in the future)
 - Expose a `health_errors_total` gauge in metrics
 
+#### New endpoints from Dolos
+
+**General**
+- `/network`
+- `/network/eras`
+- `/genesis`
+
+**Transactions**
+- `/txs/{hash}/cbor`
+- `/txs/{hash}/utxos`
+- `/txs/{hash}/metadata`
+- `/txs/{hash}/metadata/cbor`
+- `/txs/{hash}/withdrawals`
+- `/txs/{hash}/delegations`
+- `/txs/{hash}/redeemers`
+- `/txs/{hash}/mirs`
+- `/txs/{hash}/pool_retires`
+- `/txs/{hash}/pool_updates`
+- `/txs/{hash}/stakes`
+
+**Blocks**
+- `/blocks/latest`
+- `/blocks/latest/txs`
+- `/blocks/{hash_or_number}`
+- `/blocks/{hash_or_number}/next`
+- `/blocks/{hash_or_number}/previous`
+- `/blocks/{hash_or_number}/txs`
+- `/blocks/slot/{slot}`
+
+**Addresses**
+- `/addresses/{address}/utxos`
+- `/addresses/{address}/transactions`
+
+**Accounts**
+- `/accounts/{stake_address}`
+- `/accounts/{stake_address}/rewards`
+- `/accounts/{stake_address}/addresses`
+- `/accounts/{stake_address}/delegations`
+- `/accounts/{stake_address}/registrations`
+
+**Assets**
+- `/assets/{asset}`
+
+**Governance**
+- `/governance/dreps/{drep_id}`
+
+**Metadata**
+- `/metadata/txs/labels/{label}`
+- `/metadata/txs/labels/{label}/cbor`
+
+**Pools**
+- `/pools/extended`
+- `/pools/{pool_id}/delegators`
+
+**Epochs**
+- `/epochs/{number}/parameters`
+- `/epochs/latest/parameters`
+
 ### Fixed
 
 - Trailing slash in `GET /{uuid}/` works again

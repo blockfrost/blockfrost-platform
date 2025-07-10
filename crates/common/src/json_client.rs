@@ -29,7 +29,6 @@ impl JsonClient {
     {
         let url = self.base_url.join(path)?;
         let url_str = url.to_string();
-        info!(%path, %url, "JsonClient GET");
 
         let resp = self.client.request(Method::GET, url).send().await?;
         info!(path, url = %url_str, "JsonClient GET");
@@ -44,7 +43,6 @@ impl JsonClient {
         T: DeserializeOwned,
     {
         let mut url = self.base_url.join(path)?;
-        info!(%url, "JsonClient GET");
 
         url.apply_pagination(pagination);
 
