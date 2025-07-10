@@ -1,12 +1,23 @@
-use crate::{BlockfrostError, api::ApiResult};
-use axum::extract::Query;
+use crate::api::ApiResult;
+use axum::{
+    Extension,
+    extract::{Path, Query},
+};
 use blockfrost_openapi::models::tx_metadata_label_cbor_inner::TxMetadataLabelCborInner;
-use common::pagination::{Pagination, PaginationQuery};
+use common::{
+    metadata::MetadataPath,
+    pagination::{Pagination, PaginationQuery},
+};
+use dolos::client::Dolos;
 
 pub async fn route(
+    Extension(dolos): Extension<Dolos>,
     Query(pagination_query): Query<PaginationQuery>,
+    Path(matadata_path): Path<MetadataPath>,
 ) -> ApiResult<Vec<TxMetadataLabelCborInner>> {
-    let _ = Pagination::from_query(pagination_query).await?;
+    let pagination = Pagination::from_query(pagination_query).await?;
 
-    Err(BlockfrostError::not_found())
+    dolos
+        .metadata_txs_labels_label_cbor(&matadata_path.label, &pagination)
+        .await
 }

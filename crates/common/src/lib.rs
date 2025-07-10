@@ -10,6 +10,7 @@ pub mod epochs;
 pub mod errors;
 pub mod genesis;
 pub mod json_client;
+pub mod metadata;
 pub mod pagination;
 pub mod payment_cred;
 pub mod pools;
