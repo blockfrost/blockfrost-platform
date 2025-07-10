@@ -30,67 +30,83 @@ impl Dolos {
         self.client.get(&path).await
     }
 
-    pub async fn txs_hash_metadata(&self, hash: &str) -> ApiResult<Vec<TxContentMetadataInner>> {
+    pub async fn txs_hash_metadata(
+        &self,
+        hash: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<Vec<TxContentMetadataInner>> {
         let path = format!("txs/{hash}/metadata");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn txs_hash_metadata_cbor(
         &self,
         hash: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<TxContentMetadataCborInner>> {
         let path = format!("txs/{hash}/metadata/cbor");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn txs_hash_withdrawals(
         &self,
         hash: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<TxContentWithdrawalsInner>> {
         let path = format!("txs/{hash}/withdrawals");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn txs_hash_delegations(
         &self,
         hash: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<TxContentDelegationsInner>> {
         let path = format!("txs/{hash}/delegations");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
-    pub async fn txs_hash_mirs(&self, hash: &str) -> ApiResult<Vec<TxContentMirsInner>> {
+    pub async fn txs_hash_mirs(
+        &self,
+        hash: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<Vec<TxContentMirsInner>> {
         let path = format!("txs/{hash}/mirs");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn txs_hash_pool_updates(
         &self,
         hash: &str,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<TxContentPoolCertsInner>> {
         let path = format!("txs/{hash}/pool_updates");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 
     pub async fn txs_hash_pool_retires(
         &self,
         hash: &str,
-        pagination: Pagination,
+        pagination: &Pagination,
     ) -> ApiResult<Vec<TxContentPoolRetiresInner>> {
         let path = format!("txs/{hash}/pool_retires");
 
-        self.client.get_paginated(&path, &pagination).await
+        self.client.get_paginated(&path, pagination).await
     }
 
-    pub async fn txs_hash_stakes(&self, hash: &str) -> ApiResult<Vec<TxContentStakeAddrInner>> {
+    pub async fn txs_hash_stakes(
+        &self,
+        hash: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<Vec<TxContentStakeAddrInner>> {
         let path = format!("txs/{hash}/stakes");
 
-        self.client.get(&path).await
+        self.client.get_paginated(&path, pagination).await
     }
 }

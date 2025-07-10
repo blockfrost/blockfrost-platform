@@ -14,5 +14,6 @@ pub mod metadata;
 pub mod pagination;
 pub mod payment_cred;
 pub mod pools;
+pub mod txs;
 pub mod types;
 pub mod validation;
