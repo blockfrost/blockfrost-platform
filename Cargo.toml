@@ -54,6 +54,7 @@ anyhow = "1.0.98"
 blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
+ntest = "0.9.3"
 
 [features]
 tarpaulin = []
