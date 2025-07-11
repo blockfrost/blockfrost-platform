@@ -1,6 +1,7 @@
-use crate::{api::ApiResult, genesis::GenesisRegistry, server::state::AppState};
+use crate::{api::ApiResult, server::state::AppState};
 use axum::{Json, extract::State};
 use blockfrost_openapi::models::genesis_content::GenesisContent;
+use common::genesis::GenesisRegistry;
 
 pub async fn route(
     State(AppState { config, genesis }): State<AppState>,

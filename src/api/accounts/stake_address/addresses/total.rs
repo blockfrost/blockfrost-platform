@@ -1,11 +1,7 @@
-use crate::{
-    BlockfrostError,
-    accounts::{AccountData, AccountsPath},
-    api::ApiResult,
-    server::state::AppState,
-};
+use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
 use axum::extract::{Path, State};
 use blockfrost_openapi::models::account_addresses_total::AccountAddressesTotal;
+use common::accounts::{AccountData, AccountsPath};
 
 pub async fn route(
     Path(path): Path<AccountsPath>,

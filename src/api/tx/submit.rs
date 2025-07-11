@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, NodePool, common::validate_content_type};
 use axum::{Extension, Json, http::HeaderMap, response::IntoResponse};
+use common::{errors::BlockfrostError, validation::validate_content_type};
 use metrics::counter;
+use node::pool::NodePool;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,
@@ -49,9 +50,8 @@ pub async fn route(
 /// to ignore it.
 pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
     let even_length = xs.len() % 2 == 0;
-    let contains_non_hex = xs.iter().any(|&x| !x.is_ascii_hexdigit());
 
-    if !even_length || contains_non_hex {
+    if !even_length || xs.iter().any(|&x| !x.is_ascii_hexdigit()) {
         xs.to_vec()
     } else {
         hex::decode(xs).unwrap_or_else(|_| unreachable!())

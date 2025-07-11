@@ -99,6 +99,8 @@ in {
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
+        pkgs.wget
+        pkgs.curl
       ]
       ++ lib.optionals pkgs.stdenv.isDarwin [
         pkgs.libiconv
