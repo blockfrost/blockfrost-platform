@@ -85,6 +85,23 @@
         "type": "github"
       }
     },
+    "dolos": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1751915048,
+        "narHash": "sha256-GKSSOfxqx0TqW0RpB4+0Bv1J5jJRqYviQ3zrRbkBoy4=",
+        "owner": "txpipe",
+        "repo": "dolos",
+        "rev": "42d955835d9c210af1f5ab270ca1d31182511bde",
+        "type": "github"
+      },
+      "original": {
+        "owner": "txpipe",
+        "ref": "v0.26.0",
+        "repo": "dolos",
+        "type": "github"
+      }
+    },
     "fenix": {
       "inputs": {
         "nixpkgs": [
@@ -211,6 +228,7 @@
         "cardano-playground": "cardano-playground",
         "crane": "crane",
         "devshell": "devshell",
+        "dolos": "dolos",
         "fenix": "fenix",
         "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",

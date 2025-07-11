@@ -30,10 +30,13 @@ in {
       name = "cardano-address";
       package = internal.cardano-address;
     }
+    {package = internal.dolos;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
-    {package = internal.rustPackages.cargo;}
-    {package = internal.rustPackages.clippy;}
+    {
+      name = "cargo";
+      package = internal.rustPackages.cargo;
+    }
     {package = internal.rustPackages.rust-analyzer;}
     {
       category = "handy";
@@ -90,7 +93,10 @@ in {
 
   devshell = {
     packages =
-      [pkgs.unixtools.xxd]
+      [
+        pkgs.unixtools.xxd
+        internal.rustPackages.clippy
+      ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
         pkgs.wget

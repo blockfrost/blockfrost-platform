@@ -335,4 +335,34 @@ in
         chmod +x $out/*.sh
         shellcheck $out/*.sh
       '';
+
+    dolos =
+      craneLib.buildPackage
+      {
+        src = inputs.dolos;
+        strictDeps = true;
+        nativeBuildInputs =
+          [pkgs.gnum4]
+          ++ lib.optionals pkgs.stdenv.isLinux [
+            pkgs.pkg-config
+          ];
+        buildInputs =
+          lib.optionals pkgs.stdenv.isLinux [
+            pkgs.openssl
+          ]
+          ++ lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.libiconv
+            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
+            pkgs.darwin.apple_sdk_12_3.frameworks.Security
+            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+          ];
+        meta = {
+          mainProgram = "dolos";
+          description = "Cardano Data Node";
+        };
+      }
+      // lib.optionalAttrs pkgs.stdenv.isDarwin {
+        # for bindgen, used by libproc, used by metrics_process
+        LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+      };
   }

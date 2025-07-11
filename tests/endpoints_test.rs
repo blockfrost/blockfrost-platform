@@ -25,6 +25,7 @@ mod tests {
 
     // Test: `/` route correct response
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_root() {
         initialize_logging();
 
@@ -51,6 +52,7 @@ mod tests {
 
     // Test: `/metrics` route sanity check and trailing slash
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_metrics() {
         initialize_logging();
 
@@ -101,6 +103,7 @@ mod tests {
 
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_submit_cbor_error() {
         initialize_logging();
         let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -133,6 +136,7 @@ mod tests {
 
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_submit_error() {
         initialize_logging();
         let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -176,6 +180,7 @@ mod tests {
 
     // validation of the fix: https://github.com/blockfrost/blockfrost-platform/issues/238#issuecomment-2747354365
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_submit_agent_dequeu() {
         initialize_logging();
         let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -206,6 +211,7 @@ mod tests {
 
     // Test: build `/tx/submit` success - tx is accepted by the node
     #[tokio::test]
+    #[ntest::timeout(120_000)]
     async fn test_route_submit_success() {
         initialize_logging();
         let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
@@ -242,7 +248,9 @@ mod tests {
 
     // Test: `icebreakers register` success registration
     #[tokio::test]
-    async fn test_icebreakers_registrations() -> Result<(), Box<dyn std::error::Error>> {
+    #[ntest::timeout(120_000)]
+    async fn test_icebreakers_registrations() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+    {
         initialize_logging();
 
         let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary()
