@@ -6,7 +6,7 @@ use blockfrost_platform::{
     server::{build, state::ApiPrefix},
 };
 use common::{
-    config::{Config, IcebreakersConfig, Mode},
+    config::{Config, DataSources, IcebreakersConfig, Mode},
     types::{LogLevel, Network},
 };
 use node::pool::NodePool;
@@ -46,6 +46,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        data_sources: DataSources { dolos: None },
     };
 
     Arc::new(config)

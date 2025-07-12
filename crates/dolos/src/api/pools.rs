@@ -6,7 +6,7 @@ use common::{pagination::Pagination, types::ApiResult};
 
 impl Dolos {
     pub async fn pools_extended(&self) -> ApiResult<Vec<PoolListExtendedInner>> {
-        self.client.get("pools/extended").await
+        self.client.get("pools/extended", None).await
     }
 
     pub async fn pools_pool_id_delegators(
@@ -16,6 +16,6 @@ impl Dolos {
     ) -> ApiResult<Vec<PoolDelegatorsInner>> {
         let path = format!("pools/{pool_id}/delegators");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 }

@@ -17,6 +17,6 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     dolos
-        .blocks_hash_or_number_txs(&blocks_path.hash_or_number, pagination)
+        .blocks_hash_or_number_txs(&blocks_path.hash_or_number, &pagination)
         .await
 }

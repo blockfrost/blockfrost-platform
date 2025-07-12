@@ -10,7 +10,7 @@ use common::{
     config::Config,
     errors::{AppError, BlockfrostError},
 };
-use dolos::client::{Dolos, DolosConfig};
+use dolos::client::Dolos;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use node::pool::NodePool;
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
@@ -49,12 +49,7 @@ pub async fn build(
     let node_conn_pool = NodePool::new(&config)?;
 
     // Dolos
-    let dolos_config = DolosConfig {
-        base_url: "http://localhost:3010".to_string(),
-        request_timeout: 60,
-    };
-
-    let dolos = Dolos::new(&dolos_config)?;
+    let dolos = Dolos::new(&config.data_sources.dolos)?;
 
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;

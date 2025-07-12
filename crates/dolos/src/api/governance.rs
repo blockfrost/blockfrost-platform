@@ -6,6 +6,6 @@ impl Dolos {
     pub async fn governance_dreps_drep_id(&self, drep_id: &str) -> ApiResult<Drep> {
         let path = &format!("governance/dreps/{drep_id}");
 
-        self.client.get(path).await
+        self.client.get(path, None).await
     }
 }

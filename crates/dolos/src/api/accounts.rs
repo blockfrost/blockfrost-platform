@@ -11,7 +11,7 @@ impl Dolos {
     pub async fn accounts_stake_address(&self, stake_address: &str) -> ApiResult<AccountContent> {
         let path = format!("accounts/{stake_address}");
 
-        self.client.get(&path).await
+        self.client.get(&path, None).await
     }
 
     pub async fn accounts_stake_address_rewards(
@@ -20,7 +20,7 @@ impl Dolos {
     ) -> ApiResult<Vec<AccountRewardContentInner>> {
         let path = format!("accounts/{stake_address}/rewards");
 
-        self.client.get(&path).await
+        self.client.get(&path, None).await
     }
 
     pub async fn accounts_stake_address_addresses(
@@ -30,7 +30,7 @@ impl Dolos {
     ) -> ApiResult<Vec<AccountContent>> {
         let path = format!("accounts/{stake_address}/addresses");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 
     pub async fn accounts_stake_address_delegations(
@@ -40,7 +40,7 @@ impl Dolos {
     ) -> ApiResult<Vec<AccountDelegationContentInner>> {
         let path = format!("accounts/{stake_address}/delegations");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 
     pub async fn accounts_stake_address_registrations(
@@ -50,6 +50,6 @@ impl Dolos {
     ) -> ApiResult<Vec<AccountRegistrationContentInner>> {
         let path = format!("accounts/{stake_address}/registrations");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 }

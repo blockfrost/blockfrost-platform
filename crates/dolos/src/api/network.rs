@@ -4,10 +4,10 @@ use common::types::ApiResult;
 
 impl Dolos {
     pub async fn network(&self) -> ApiResult<Network> {
-        self.client.get("network").await
+        self.client.get("network", None).await
     }
 
     pub async fn network_eras(&self) -> ApiResult<Vec<NetworkErasInner>> {
-        self.client.get("network/eras").await
+        self.client.get("network/eras", None).await
     }
 }

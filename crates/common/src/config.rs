@@ -25,6 +25,18 @@ pub struct Config {
     pub no_metrics: bool,
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
+    pub data_sources: DataSources,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct DataSources {
+    pub dolos: Option<DolosConfig>,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct DolosConfig {
+    pub endpoint: String,
+    pub request_timeout: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -84,6 +96,15 @@ impl Config {
 
         let network = detector(&node_socket_path).await?;
 
+        let dolos = args
+            .data_sources
+            .dolos
+            .endpoint
+            .map(|endpoint| DolosConfig {
+                endpoint,
+                request_timeout: args.data_sources.dolos.request_timeout,
+            });
+
         Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
@@ -95,6 +116,7 @@ impl Config {
             no_metrics: args.no_metrics,
             network,
             custom_genesis_config: args.custom_genesis_config,
+            data_sources: DataSources { dolos },
         })
     }
 

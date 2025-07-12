@@ -8,7 +8,7 @@ use clap::{CommandFactory, ValueEnum};
 use clap::{Parser, arg, command};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
@@ -20,6 +20,21 @@ static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
 
 fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
+}
+
+#[derive(Parser, Debug, Serialize, Clone, Deserialize)]
+pub struct DataSources {
+    #[clap(flatten)]
+    pub dolos: DolosArgs,
+}
+
+#[derive(Parser, Debug, Clone, Serialize, Deserialize)]
+pub struct DolosArgs {
+    #[clap(long = "dolos-endpoint")]
+    pub endpoint: Option<String>,
+
+    #[clap(long = "dolos-timeout", default_value = "30")]
+    pub request_timeout: u64,
 }
 
 #[derive(Parser, Debug, Serialize, Clone)]
@@ -68,6 +83,9 @@ pub struct Args {
 
     #[arg(long, help = "Path to an configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
+
+    #[clap(flatten)]
+    pub data_sources: DataSources,
 }
 
 fn get_config_path() -> PathBuf {
@@ -214,6 +232,34 @@ impl Args {
             })
             .prompt()?;
 
+        let dolos_endpoint =
+            Text::new("Enter Dolos API endpoint URL (leave empty to skip):").prompt()?;
+
+        let dolos_args = if !dolos_endpoint.is_empty() {
+            let timeout_str = Text::new("Enter Dolos request timeout in seconds:")
+                .with_default("30")
+                .with_validator(|input: &str| match input.parse::<i32>() {
+                    Ok(timeout) if timeout > 0 => Ok(Validation::Valid),
+                    _ => Ok(Validation::Invalid(ErrorMessage::Custom(
+                        "Invalid timeout. It must be a positive integer.".into(),
+                    ))),
+                })
+                .prompt()?;
+
+            let request_timeout = timeout_str.parse::<u64>()?;
+
+            DolosArgs {
+                endpoint: Some(dolos_endpoint),
+                request_timeout,
+            }
+        } else {
+            // Dolos OFF
+            DolosArgs {
+                endpoint: None,
+                request_timeout: 30,
+            }
+        };
+
         let mut app_config = Args {
             init: false,
             config: None,
@@ -227,6 +273,7 @@ impl Args {
             reward_address: None,
             secret: None,
             custom_genesis_config: None,
+            data_sources: DataSources { dolos: dolos_args },
         };
 
         if !is_solitary {
@@ -246,7 +293,7 @@ impl Args {
                 .with_validator(|input: &str| {
                     if input.is_empty() {
                         Ok(Validation::Invalid(ErrorMessage::Custom(
-                            "Invalid reward address.".into(),
+                            "Invalid secret.".into(),
                         )))
                     } else {
                         Ok(Validation::Valid)

@@ -1,4 +1,5 @@
 use crate::errors::AppError;
+use crate::errors::BlockfrostError;
 use crate::pagination::ApplyPagination;
 use crate::pagination::Pagination;
 use crate::types::ApiResult;
@@ -23,33 +24,24 @@ impl JsonClient {
         Ok(Self { base_url, client })
     }
 
-    pub async fn get<T>(&self, path: &str) -> ApiResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        let url = self.base_url.join(path)?;
-        let url_str = url.to_string();
-
-        let resp = self.client.request(Method::GET, url).send().await?;
-        info!(path, url = %url_str, "JsonClient GET");
-
-        let body = resp.json::<T>().await?;
-
-        Ok(Json(body))
-    }
-
-    pub async fn get_paginated<T>(&self, path: &str, pagination: &Pagination) -> ApiResult<T>
+    pub async fn get<T>(&self, path: &str, pagination: Option<&Pagination>) -> ApiResult<T>
     where
         T: DeserializeOwned,
     {
         let mut url = self.base_url.join(path)?;
 
-        url.apply_pagination(pagination);
+        if let Some(pag) = pagination {
+            url.apply_pagination(pag);
+        }
 
         let url_str = url.to_string();
         let resp = self.client.request(Method::GET, url).send().await?;
 
-        info!(path, url = %url_str, ?pagination, "JsonClient GET paginated");
+        info!(path, url = %url_str, ?pagination, "JsonClient GET");
+
+        if resp.status() == 404 {
+            return Err(BlockfrostError::not_found());
+        }
 
         let body = resp.json::<T>().await?;
 

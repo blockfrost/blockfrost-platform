@@ -4,6 +4,6 @@ use common::types::ApiResult;
 
 impl Dolos {
     pub async fn genesis(&self) -> ApiResult<GenesisContent> {
-        self.client.get("genesis").await
+        self.client.get("genesis", None).await
     }
 }

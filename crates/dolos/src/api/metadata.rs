@@ -8,7 +8,7 @@ use common::{pagination::Pagination, types::ApiResult};
 
 impl Dolos {
     pub async fn metadata_txs_labels(&self) -> ApiResult<Vec<TxMetadataLabelsInner>> {
-        self.client.get("metadata/txs/labels").await
+        self.client.get("metadata/txs/labels", None).await
     }
 
     pub async fn metadata_txs_labels_label(
@@ -18,7 +18,7 @@ impl Dolos {
     ) -> ApiResult<Vec<TxMetadataLabelJsonInner>> {
         let path = format!("metadata/txs/labels/{label}");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 
     pub async fn metadata_txs_labels_label_cbor(
@@ -28,6 +28,6 @@ impl Dolos {
     ) -> ApiResult<Vec<TxMetadataLabelCborInner>> {
         let path = format!("metadata/txs/labels/{label}/cbor");
 
-        self.client.get_paginated(&path, pagination).await
+        self.client.get(&path, Some(pagination)).await
     }
 }

@@ -6,10 +6,10 @@ impl Dolos {
     pub async fn epoch_number_parameters(&self, number: &str) -> ApiResult<EpochParamContent> {
         let path = format!("epochs/{number}/parameters");
 
-        self.client.get(&path).await
+        self.client.get(&path, None).await
     }
 
     pub async fn epoch_latest_parameters(&self) -> ApiResult<EpochParamContent> {
-        self.client.get("epochs/latest/parameters").await
+        self.client.get("epochs/latest/parameters", None).await
     }
 }
