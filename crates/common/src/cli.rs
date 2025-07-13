@@ -232,31 +232,30 @@ impl Args {
             })
             .prompt()?;
 
-        let dolos_endpoint =
-            Text::new("Enter Dolos API endpoint URL (leave empty to skip):").prompt()?;
+        let dolos = {
+            let dolos_endpoint = Text::new("Dolos endpoint URL (empty to skip):").prompt()?;
 
-        let dolos_args = if !dolos_endpoint.is_empty() {
-            let timeout_str = Text::new("Enter Dolos request timeout in seconds:")
-                .with_default("30")
-                .with_validator(|input: &str| match input.parse::<i32>() {
-                    Ok(timeout) if timeout > 0 => Ok(Validation::Valid),
-                    _ => Ok(Validation::Invalid(ErrorMessage::Custom(
-                        "Invalid timeout. It must be a positive integer.".into(),
-                    ))),
-                })
-                .prompt()?;
+            if dolos_endpoint.is_empty() {
+                DolosArgs {
+                    endpoint: None,
+                    request_timeout: 30,
+                }
+            } else {
+                let to = Text::new("Dolos timeout (s):")
+                    .with_default("30")
+                    .with_validator(|i: &str| match i.parse::<u64>() {
+                        Ok(t) if t > 0 => Ok(Validation::Valid),
+                        _ => Ok(Validation::Invalid(ErrorMessage::Custom(
+                            "Must be > 0".into(),
+                        ))),
+                    })
+                    .prompt()?
+                    .parse()?;
 
-            let request_timeout = timeout_str.parse::<u64>()?;
-
-            DolosArgs {
-                endpoint: Some(dolos_endpoint),
-                request_timeout,
-            }
-        } else {
-            // Dolos OFF
-            DolosArgs {
-                endpoint: None,
-                request_timeout: 30,
+                DolosArgs {
+                    endpoint: Some(dolos_endpoint),
+                    request_timeout: to,
+                }
             }
         };
 
@@ -273,7 +272,7 @@ impl Args {
             reward_address: None,
             secret: None,
             custom_genesis_config: None,
-            data_sources: DataSources { dolos: dolos_args },
+            data_sources: DataSources { dolos },
         };
 
         if !is_solitary {
