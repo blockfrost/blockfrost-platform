@@ -290,4 +290,65 @@ mod tests {
     ) {
         assert_eq!(get_range_param(input), expected);
     }
+
+    #[rstest]
+    #[case(
+        "https://blockfrost.io",
+        2,
+        50,
+        Order::Desc,
+        None,
+        None,
+        "https://blockfrost.io/?page=2&count=50&order=desc"
+    )]
+    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  Some((123, None)), None, "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123")]
+    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  Some((123, Some(7))), None, "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123&from=123%3A7")]
+    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  None, Some((200, Some(5))), "https://blockfrost.io/endpoint?page=1&count=100&order=asc&to=200&to=200%3A5")]
+    #[case("https://blockfrost.io/endpoint", 3,  20, Order::Desc, Some((10, Some(2))), Some((50, Some(8))), "https://blockfrost.io/endpoint?page=3&count=20&order=desc&from=10&from=10%3A2&to=50&to=50%3A8")]
+    fn test_apply_pagination(
+        #[case] base: &str,
+        #[case] page: i32,
+        #[case] count: i32,
+        #[case] order: Order,
+        #[case] from: Option<(i32, Option<i32>)>,
+        #[case] to: Option<(i32, Option<i32>)>,
+        #[case] expected: &str,
+    ) {
+        use crate::pagination::{ApplyPagination, Pagination};
+        use url::Url;
+
+        let mut url = Url::parse(base).unwrap();
+
+        let from_parts = from
+            .map(|(h, idx)| ParamParts {
+                height: Some(h),
+                index: idx,
+            })
+            .unwrap_or(ParamParts {
+                height: None,
+                index: None,
+            });
+
+        let to_parts = to
+            .map(|(h, idx)| ParamParts {
+                height: Some(h),
+                index: idx,
+            })
+            .unwrap_or(ParamParts {
+                height: None,
+                index: None,
+            });
+
+        let pagination = Pagination {
+            page,
+            count,
+            order,
+            from: from_parts,
+            to: to_parts,
+        };
+
+        url.apply_pagination(&pagination);
+
+        assert_eq!(url.as_str(), expected);
+    }
 }
