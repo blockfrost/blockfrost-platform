@@ -26,7 +26,7 @@ pub fn initialize_logging() {
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
-    BlockfrostAPI::new("previewTjUg7ty9Har2JdaRYlzsGs7Wsy6wp8G6", settings)
+    BlockfrostAPI::new("previewy2pbyga8FifUwJSverBCwhESegV6I7gT", settings)
 }
 
 pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config> {
