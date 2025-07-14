@@ -27,7 +27,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
                 fetch_all: false,
                 page: 1,
                 count: 1,
-                order: Order::Asc,
+                order: Order::Desc,
             },
         )
         .await?;
