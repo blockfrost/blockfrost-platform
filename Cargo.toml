@@ -34,3 +34,7 @@ rand = "0.8.5"
 base64 = "0.21"
 uuid = "1.10"
 hyper = "1.4.1"
+
+[lib]
+name = "blockfrost_icebreakers_api"
+path = "src/lib.rs"

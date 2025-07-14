@@ -14,7 +14,7 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AccessToken(String);
+pub struct AccessToken(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RequestId(Uuid);
@@ -65,35 +65,37 @@ enum RelayMessage {
     Pong(u64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LoadBalancerState {
-    access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
-    background_worker: Arc<JoinHandle<()>>,
+    pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
+    pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
+    pub background_worker: Arc<JoinHandle<()>>,
 }
 
+#[derive(Debug)]
 pub struct AccessTokenState {
-    name: AssetName,
-    api_prefix: Uuid,
-    expires: std::time::Instant,
+    pub name: AssetName,
+    pub api_prefix: Uuid,
+    pub expires: std::time::Instant,
 }
 
-#[derive(Clone)]
-struct RelayState {
-    name: AssetName,
-    new_request_channel: mpsc::Sender<RequestState>,
+#[derive(Clone, Debug)]
+pub struct RelayState {
+    pub name: AssetName,
+    pub new_request_channel: mpsc::Sender<RequestState>,
     /// Send this to end the event loop of the connection, and disconnect the
     /// relay, with the [`String`] as the reason. It’s a little controversial
     /// for this to be an MPSC, but also the cleanest. You can’t clone [`oneshot`].
-    do_finish: mpsc::Sender<String>,
-    requests_in_progress: Arc<Mutex<HashMap<RequestId, RequestState>>>,
-    network_rtt: Arc<Mutex<Option<std::time::Duration>>>,
-    connected_since: std::time::Instant,
-    requests_sent: Arc<atomic::AtomicU64>,
-    responses_received: Arc<atomic::AtomicU64>,
+    pub do_finish: mpsc::Sender<String>,
+    pub requests_in_progress: Arc<Mutex<HashMap<RequestId, RequestState>>>,
+    pub network_rtt: Arc<Mutex<Option<std::time::Duration>>>,
+    pub connected_since: std::time::Instant,
+    pub requests_sent: Arc<atomic::AtomicU64>,
+    pub responses_received: Arc<atomic::AtomicU64>,
 }
 
-struct RequestState {
+#[derive(Debug)]
+pub struct RequestState {
     respond_to: oneshot::Sender<JsonResponse>,
     expires: std::time::Instant, // never read, do we need it?
     underlying: JsonRequest,

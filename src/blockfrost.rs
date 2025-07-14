@@ -9,7 +9,7 @@ pub struct BlockfrostAPI {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AssetName(String);
+pub struct AssetName(pub String);
 impl AssetName {
     pub fn as_str(&self) -> &str {
         &self.0

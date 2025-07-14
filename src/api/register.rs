@@ -106,7 +106,7 @@ pub async fn route(
     let skip_port_check = headers
         .get("X-SKIP-PORT-CHECK")
         .and_then(|v| v.to_str().ok())
-        .map_or(false, |v| v.eq_ignore_ascii_case("1"));
+        .is_some_and(|v| v.eq_ignore_ascii_case("1"));
 
     if skip_port_check {
         info!("Skipping port check. Client passed X-SKIP-PORT-CHECK header.");
