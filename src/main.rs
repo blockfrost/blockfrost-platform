@@ -19,7 +19,7 @@ async fn main() -> Result<(), AppError> {
     setup_tracing(config.log_level);
 
     info!(
-        "Starting {} {}, ({})",
+        "Starting {} {} ({})",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("GIT_REVISION")

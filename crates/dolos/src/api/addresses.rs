@@ -8,8 +8,8 @@ impl Dolos {
         address: &str,
         pagination: &Pagination,
     ) -> ApiResult<Vec<AddressUtxoContentInner>> {
-        let path = &format!("addresses/{address}/utxos");
+        let path = format!("addresses/{address}/utxos");
 
-        self.client.get(path, Some(pagination)).await
+        self.client.get(&path, Some(pagination)).await
     }
 }

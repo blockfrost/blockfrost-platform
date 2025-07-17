@@ -10,10 +10,10 @@ pub struct NodeClient {
     /// Note: this is an [`Option`] *only* to satisfy the borrow checker. It’s
     /// *always* [`Some`]. See [`<super::pool_manager::NodePoolManager as
     /// deadpool::managed::Manager>>::recycle`] for an explanation.
-    pub client: Option<NodeClientFacade>,
-    pub connection_id: u64,
-    pub unrecoverable_error_happened: bool,
-    pub network_magic: u64,
+    pub(crate) client: Option<NodeClientFacade>,
+    pub(crate) connection_id: u64,
+    pub(crate) unrecoverable_error_happened: bool,
+    pub(crate) network_magic: u64,
 }
 
 impl NodeClient {
