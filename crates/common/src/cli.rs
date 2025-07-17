@@ -33,7 +33,7 @@ pub struct DolosArgs {
     #[clap(long = "dolos-endpoint")]
     pub endpoint: Option<String>,
 
-    #[clap(long = "dolos-timeout", default_value = "30")]
+    #[clap(long = "dolos-timeout-sec", default_value = "30")]
     pub request_timeout: u64,
 }
 
@@ -238,7 +238,7 @@ impl Args {
             if dolos_endpoint.is_empty() {
                 DolosArgs {
                     endpoint: None,
-                    request_timeout: 30,
+                    request_timeout: 0,
                 }
             } else {
                 let to = Text::new("Dolos timeout (s):")

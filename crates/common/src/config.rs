@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Formatter};
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 use tracing::Level;
 
 #[derive(Clone, Debug)]
@@ -36,7 +37,7 @@ pub struct DataSources {
 #[derive(Clone, Deserialize, Debug)]
 pub struct DolosConfig {
     pub endpoint: String,
-    pub request_timeout: u64,
+    pub request_timeout: Duration,
 }
 
 #[derive(Clone, Debug)]
@@ -95,6 +96,7 @@ impl Config {
         };
 
         let network = detector(&node_socket_path).await?;
+        let request_timeout = Duration::from_secs(args.data_sources.dolos.request_timeout);
 
         let dolos = args
             .data_sources
@@ -102,7 +104,7 @@ impl Config {
             .endpoint
             .map(|endpoint| DolosConfig {
                 endpoint,
-                request_timeout: args.data_sources.dolos.request_timeout,
+                request_timeout,
             });
 
         Ok(Config {

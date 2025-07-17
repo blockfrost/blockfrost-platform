@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::errors::AppError;
 use crate::errors::BlockfrostError;
 use crate::pagination::ApplyPagination;
@@ -15,9 +17,9 @@ pub struct JsonClient {
 }
 
 impl JsonClient {
-    pub fn new(base_url: Url, timeout_secs: u64) -> Result<Self, AppError> {
+    pub fn new(base_url: Url, timeout_secs: Duration) -> Result<Self, AppError> {
         let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(timeout_secs))
+            .timeout(timeout_secs)
             .build()
             .map_err(|e| AppError::Server(format!("failed to build client: {e}")))?;
 
