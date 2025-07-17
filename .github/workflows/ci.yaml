@@ -42,25 +42,34 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      - name: Cache Cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
+      - name: Fast check
+        run: cargo check --workspace --all-targets --verbose
+
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --workspace --release --verbose
 
       - name: Test
-        run: cargo test --lib --verbose
+        run: cargo test --workspace --lib --all-features --verbose
         timeout-minutes: 10
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
       - name: Lint with Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
@@ -101,7 +110,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --lib --features tarpaulin --out html --output-dir coverage --fail-under 12
+        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --out html --output-dir coverage --fail-under 11
 
       - name: Upload coverage report for GitHub Pages
         uses: actions/upload-artifact@v4

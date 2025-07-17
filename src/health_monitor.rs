@@ -1,4 +1,6 @@
-use crate::{BlockfrostError, NodePool, node::sync_progress::NodeInfo};
+use crate::BlockfrostError;
+use node::pool::NodePool;
+use node::sync_progress::NodeInfo;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Notify};
 use tokio::time::{self, Duration};
@@ -106,7 +108,8 @@ impl HealthMonitor {
 }
 
 mod node_monitor {
-    use crate::{BlockfrostError, NodePool, node::sync_progress::NodeInfo};
+    use common::errors::BlockfrostError;
+    use node::{pool::NodePool, sync_progress::NodeInfo};
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
@@ -150,7 +153,8 @@ mod node_monitor {
 }
 
 mod chain_staleness_monitor {
-    use crate::{BlockfrostError, node::sync_progress::NodeInfo};
+    use common::errors::BlockfrostError;
+    use node::sync_progress::NodeInfo;
     use std::sync::Arc;
     use tokio::sync::Mutex;
 

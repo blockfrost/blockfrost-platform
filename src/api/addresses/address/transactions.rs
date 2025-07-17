@@ -1,15 +1,14 @@
-use crate::{
-    BlockfrostError,
-    addresses::{AddressInfo, AddressesPath},
-    api::ApiResult,
-    config::Config,
-    pagination::{Pagination, PaginationQuery},
-};
+use crate::{BlockfrostError, api::ApiResult};
 use axum::{
     Extension,
     extract::{Path, Query},
 };
 use blockfrost_openapi::models::address_transactions_content_inner::AddressTransactionsContentInner;
+use common::{
+    addresses::{AddressInfo, AddressesPath},
+    config::Config,
+    pagination::{Pagination, PaginationQuery},
+};
 
 pub async fn route(
     Path(address_path): Path<AddressesPath>,

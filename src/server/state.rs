@@ -1,7 +1,6 @@
-use crate::config::Config;
-use crate::config::Network;
 use axum::extract::State;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
+use common::{config::Config, types::Network};
 use std::sync::Arc;
 
 #[derive(Clone)]

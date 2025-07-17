@@ -1,5 +1,5 @@
-use crate::errors::{AppError, BlockfrostError};
 use crate::server::state::ApiPrefix;
+use common::errors::{AppError, BlockfrostError};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;

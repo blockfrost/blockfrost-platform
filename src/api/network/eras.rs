@@ -1,6 +1,8 @@
-use crate::{BlockfrostError, api::ApiResult};
+use crate::api::ApiResult;
+use axum::Extension;
 use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
+use dolos::client::Dolos;
 
-pub async fn route() -> ApiResult<Vec<NetworkErasInner>> {
-    Err(BlockfrostError::not_found())
+pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<Vec<NetworkErasInner>> {
+    dolos.network_eras().await
 }

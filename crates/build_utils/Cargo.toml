@@ -1,0 +1,15 @@
+[package]
+name = "build_utils"
+version = "0.1.0"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+toml = "0.8"
+bzip2 = "0.4.3"
+tar = "0.4.38"
+zip = "0.6.6"
+reqwest = { version = "0.12.7", features = ["blocking"] }
+
+[lints.clippy]
+uninlined_format_args = "deny"

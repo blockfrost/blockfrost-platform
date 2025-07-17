@@ -9,11 +9,13 @@ repository = "https://github.com/blockfrost/blockfrost-platform"
 build = "build.rs"
 
 [dependencies]
-axum = { version = "0.8.4", features = ["ws"] }
-tokio = { version = "1.45.1", features = ["rt", "rt-multi-thread", "signal"] }
-futures = "0.3.31"
-futures-util = "0.3.31"
-crossbeam = "0.8.4"
+common = { path = "crates/common" }
+node = { path = "crates/node" }
+dolos = { path = "crates/dolos" }
+axum = { version = "0.8.2", features = ["ws"] }
+tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+futures = "0.3"
+futures-util = "0.3"
 tungstenite = "0.26"
 tokio-tungstenite = "0.26"
 tracing = "0.1.41"
@@ -28,7 +30,6 @@ toml = "0.8.23"
 thiserror = "2.0.12"
 sentry = "0.41.0"
 base64 = "0.22.1"
-num_cpus = "1.17.0"
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
@@ -43,8 +44,7 @@ metrics = { version = "0.24.1", default-features = false }
 metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 metrics-process = "2.4.0"
 chrono = "0.4"
-deadpool = "0.12.1"
-sysinfo = "0.33.1"
+serde_with = "3.12.0"
 dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
@@ -56,9 +56,6 @@ bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 ntest = "0.9.3"
 
-[features]
-tarpaulin = []
-
 [dev-dependencies]
 tracing-test = "0.2.5"
 rstest = "0.24.0"
@@ -66,17 +63,16 @@ pretty_assertions = "1.4.1"
 proptest = "1.6"
 cardano-serialization-lib = "12.1.1"
 bip39 = "2.1.0"
-blockfrost = "1.0.5"
+blockfrost = "1.0.6"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"
 
 [build-dependencies]
-reqwest = { version = "0.12.7", features = ["blocking"] }
-dirs = "5.0"
-bzip2 = "0.4.3"
-tar = "0.4.38"
-zip = "0.6.6"
+build_utils = { path = "crates/build_utils" }
+
+[workspace]
+members = ["crates/common", "crates/dolos", "crates/build_utils", "crates/node"]
 
 [lints.clippy]
 uninlined_format_args = "deny"

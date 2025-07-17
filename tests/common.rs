@@ -1,12 +1,15 @@
 use axum::Router;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
-    AppError, NodePool,
-    config::{Config, IcebreakersConfig, LogLevel, Mode, Network},
-    health_monitor,
+    AppError, health_monitor,
     icebreakers_api::IcebreakersAPI,
     server::{build, state::ApiPrefix},
 };
+use common::{
+    config::{Config, DataSources, IcebreakersConfig, Mode},
+    types::{LogLevel, Network},
+};
+use node::pool::NodePool;
 use std::{
     env,
     sync::{Arc, LazyLock},
@@ -23,7 +26,7 @@ pub fn initialize_logging() {
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
-    BlockfrostAPI::new("previewTjUg7ty9Har2JdaRYlzsGs7Wsy6wp8G6", settings)
+    BlockfrostAPI::new("previewy2pbyga8FifUwJSverBCwhESegV6I7gT", settings)
 }
 
 pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config> {
@@ -43,6 +46,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        data_sources: DataSources { dolos: None },
     };
 
     Arc::new(config)

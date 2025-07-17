@@ -1,17 +1,10 @@
-#![warn(
-    clippy::all,
-    // clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    // clippy::cargo
-)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
-    cli::Args,
-    errors::AppError,
-    load_balancer,
+    AppError, load_balancer,
     server::{build, logging::setup_tracing},
 };
+use common::cli::Args;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -108,7 +101,7 @@ async fn main() -> Result<(), AppError> {
                         *health_errors.lock().await = vec![err.into()];
                         tokio::time::sleep(delay).await;
                     },
-                };
+                }
             }
         });
     }

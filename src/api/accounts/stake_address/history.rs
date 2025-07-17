@@ -1,12 +1,10 @@
-use crate::{
-    BlockfrostError,
-    accounts::{AccountData, AccountsPath},
-    api::ApiResult,
-    pagination::{Pagination, PaginationQuery},
-    server::state::AppState,
-};
+use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use blockfrost_openapi::models::account_history_content_inner::AccountHistoryContentInner;
+use common::{
+    accounts::{AccountData, AccountsPath},
+    pagination::{Pagination, PaginationQuery},
+};
 
 pub async fn route(
     State(state): State<AppState>,
