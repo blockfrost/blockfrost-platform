@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use bip39::Mnemonic;
-use blockfrost::{BlockfrostAPI, Pagination};
+use blockfrost::{BlockfrostAPI, Order, Pagination};
 use blockfrost_openapi::models::{
     address_utxo_content_inner::AddressUtxoContentInner, epoch_param_content::EpochParamContent,
 };
@@ -21,7 +21,15 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
 
     let utxos = blockfrost_client
-        .addresses_utxos(&address, Pagination::all())
+        .addresses_utxos(
+            &address,
+            Pagination {
+                fetch_all: false,
+                page: 1,
+                count: 1,
+                order: Order::Desc,
+            },
+        )
         .await?;
 
     let has_low_balance = utxos.len() == 1 && {
