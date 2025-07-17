@@ -23,6 +23,7 @@ proptest-regressions/
 # Nix
 result
 result-*
+/generated
 
 # direnv
 .direnv/
