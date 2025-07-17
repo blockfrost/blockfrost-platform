@@ -3,7 +3,7 @@ use axum::{
     Extension,
     extract::{Path, Query, State},
 };
-use blockfrost_openapi::models::account_content::AccountContent;
+use blockfrost_openapi::models::account_addresses_content_inner::AccountAddressesContentInner;
 use common::{
     accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
@@ -15,7 +15,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
     Extension(dolos): Extension<Dolos>,
     Path(path): Path<AccountsPath>,
-) -> ApiResult<Vec<AccountContent>> {
+) -> ApiResult<Vec<AccountAddressesContentInner>> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
     let pagination = Pagination::from_query(pagination_query).await?;
 

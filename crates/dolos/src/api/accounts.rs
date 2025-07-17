@@ -1,6 +1,6 @@
 use crate::client::Dolos;
 use blockfrost_openapi::models::{
-    account_content::AccountContent,
+    account_addresses_content_inner::AccountAddressesContentInner, account_content::AccountContent,
     account_delegation_content_inner::AccountDelegationContentInner,
     account_registration_content_inner::AccountRegistrationContentInner,
     account_reward_content_inner::AccountRewardContentInner,
@@ -27,7 +27,7 @@ impl Dolos {
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<AccountContent>> {
+    ) -> ApiResult<Vec<AccountAddressesContentInner>> {
         let path = format!("accounts/{stake_address}/addresses");
 
         self.client.get(&path, Some(pagination)).await
