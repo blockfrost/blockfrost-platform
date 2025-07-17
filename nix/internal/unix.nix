@@ -336,8 +336,27 @@ in
         shellcheck $out/*.sh
       '';
 
-    dolos =
-      craneLib.buildPackage
+    mithril-client = inputs.mithril.packages.${targetSystem}.mithril-client-cli;
+
+    mithrilGenesisVerificationKeys = {
+      preview = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/pre-release-preview/genesis.vkey");
+      preprod = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/release-preprod/genesis.vkey");
+      mainnet = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/release-mainnet/genesis.vkey");
+    };
+
+    mithrilAncillaryVerificationKeys = {
+      preview = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/pre-release-preview/ancillary.vkey");
+      preprod = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/release-preprod/ancillary.vkey");
+      mainnet = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/release-mainnet/ancillary.vkey");
+    };
+
+    mithrilAggregator = {
+      preview = "https://aggregator.pre-release-preview.api.mithril.network/aggregator";
+      preprod = "https://aggregator.release-preprod.api.mithril.network/aggregator";
+      mainnet = "https://aggregator.release-mainnet.api.mithril.network/aggregator";
+    };
+
+    dolos = craneLib.buildPackage (
       {
         src = inputs.dolos;
         strictDeps = true;
@@ -364,5 +383,90 @@ in
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
         # for bindgen, used by libproc, used by metrics_process
         LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
-      };
+      }
+    );
+
+    dolos-configs = let
+      networks = ["mainnet" "preprod" "preview"];
+      mkConfig = network: let
+        topology = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/topology.json");
+        byronGenesis = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/byron-genesis.json");
+        peerAddr = let first = lib.head (topology.bootstrapPeers); in "${first.address}:${toString first.port}";
+        magic = toString byronGenesis.protocolConsts.protocolMagic;
+      in
+        pkgs.writeText "dolos.toml" ''
+          [upstream]
+          peer_address = "${peerAddr}"
+          network_magic = ${magic}
+          is_testnet = ${
+            if network == "mainnet"
+            then "false"
+            else "true"
+          }
+
+          [storage]
+          version = "v1"
+          path = "dolos"
+          max_wal_history = 25920
+
+          [genesis]
+          byron_path = "${cardano-node-configs}/${network}/byron-genesis.json"
+          shelley_path = "${cardano-node-configs}/${network}/shelley-genesis.json"
+          alonzo_path = "${cardano-node-configs}/${network}/alonzo-genesis.json"
+          conway_path = "${cardano-node-configs}/${network}/conway-genesis.json"
+          force_protocol = 6
+
+          [sync]
+          pull_batch_size = 100
+
+          [submit]
+
+          [serve.grpc]
+          listen_address = "[::]:50051"
+          permissive_cors = true
+
+          [serve.ouroboros]
+          listen_path = "dolos.socket"
+          magic = ${magic}
+
+          [serve.minibf]
+          listen_address = "[::]:3010"
+
+          [relay]
+          listen_address = "[::]:30031"
+          magic = ${magic}
+
+          [mithril]
+          aggregator = "${mithrilAggregator.${network}}"
+          genesis_key = "${mithrilGenesisVerificationKeys.${network}}"
+
+          [logging]
+          max_level = "INFO"
+          include_tokio = false
+          include_pallas = false
+          include_grpc = false
+        '';
+    in
+      pkgs.runCommandNoCC "dolos-configs" {} ''
+        mkdir -p $out
+        ${lib.concatMapStringsSep "\n" (network: ''
+            mkdir -p $out/${network}
+            cp ${mkConfig network} $out/${network}/dolos.toml
+          '')
+          networks}
+      '';
+
+    runDolos = network:
+      pkgs.writeShellScriptBin "run-dolos-${network}" ''
+        stateDir="$HOME"/${lib.escapeShellArg (stateDir + "/" + network)}
+        mkdir -p "$stateDir"
+        cd "$stateDir"
+        defaultArgs=(daemon)
+        [ "$#" -eq 0 ] && set -- "''${defaultArgs[@]}"
+        set -x
+        exec ${lib.getExe dolos} \
+          --config ${dolos-configs}/${network}/dolos.toml \
+          "$@"
+      ''
+      // {meta.description = "Runs Dolos on ${network}";};
   }

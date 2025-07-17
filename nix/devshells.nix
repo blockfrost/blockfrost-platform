@@ -31,6 +31,7 @@ in {
       package = internal.cardano-address;
     }
     {package = internal.dolos;}
+    {package = internal.mithril-client;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
@@ -49,6 +50,18 @@ in {
     {
       category = "handy";
       package = internal.runNode "mainnet";
+    }
+    {
+      category = "handy";
+      package = internal.runDolos "preview";
+    }
+    {
+      category = "handy";
+      package = internal.runDolos "preprod";
+    }
+    {
+      category = "handy";
+      package = internal.runDolos "mainnet";
     }
     {
       category = "handy";
@@ -114,6 +127,7 @@ in {
 
     startup.symlink-configs.text = ''
       ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
+      ln -sfn ${internal.dolos-configs} $PRJ_ROOT/dolos-configs
     '';
   };
 }

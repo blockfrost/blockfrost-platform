@@ -31,6 +31,8 @@ result-*
 /cardano-node-configs
 /cardano-node
 
+/dolos-configs
+
 testgen-hs
 testgen-hs.exe
 
