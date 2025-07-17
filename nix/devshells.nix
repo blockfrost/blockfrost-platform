@@ -126,8 +126,11 @@ in {
     '';
 
     startup.symlink-configs.text = ''
-      ln -sfn ${internal.cardano-node-configs} $PRJ_ROOT/cardano-node-configs
-      ln -sfn ${internal.dolos-configs} $PRJ_ROOT/dolos-configs
+      for old_link in cardano-node-configs dolos-configs ; do
+        if [[ -L $PRJ_ROOT/$old_link ]] ; then rm -- $old_link ; fi
+      done
+
+      ln -sfn ${internal.generated-dir} $PRJ_ROOT/generated
     '';
   };
 }

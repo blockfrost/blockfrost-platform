@@ -23,6 +23,7 @@ proptest-regressions/
 # Nix
 result
 result-*
+/generated
 
 # direnv
 .direnv/
@@ -30,8 +31,6 @@ result-*
 
 /cardano-node-configs
 /cardano-node
-
-/dolos-configs
 
 testgen-hs
 testgen-hs.exe

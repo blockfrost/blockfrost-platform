@@ -214,6 +214,12 @@ in
         done
       '';
 
+    generated-dir = pkgs.runCommandNoCC "generated-dir" {} ''
+      mkdir -p $out
+      ln -s ${cardano-node-configs} $out/cardano-node-configs
+      ln -s ${dolos-configs} $out/dolos-configs
+    '';
+
     testgen-hs-flake = (import inputs.flake-compat {src = inputs.testgen-hs;}).defaultNix;
 
     testgen-hs = testgen-hs-flake.packages.${targetSystem}.default;
