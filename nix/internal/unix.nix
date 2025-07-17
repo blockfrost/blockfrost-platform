@@ -397,7 +397,7 @@ in
       mkConfig = network: let
         topology = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/topology.json");
         byronGenesis = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/byron-genesis.json");
-        peerAddr = let first = lib.head (topology.bootstrapPeers); in "${first.address}:${toString first.port}";
+        peerAddr = let first = lib.head topology.bootstrapPeers; in "${first.address}:${toString first.port}";
         magic = toString byronGenesis.protocolConsts.protocolMagic;
       in
         pkgs.writeText "dolos.toml" ''
