@@ -507,7 +507,7 @@ dependencies = [
 [[package]]
 name = "blockfrost"
 version = "1.0.6"
-source = "git+https://github.com/blockfrost/blockfrost-rust.git?branch=rework-pagination-and-more#36750455cf7a8db21076d38836666beed5c38865"
+source = "git+https://github.com/blockfrost/blockfrost-rust.git?rev=29329da8bb6668a217e115b7312968ea98e2ce58#29329da8bb6668a217e115b7312968ea98e2ce58"
 dependencies = [
  "blockfrost-openapi",
  "futures",
