@@ -15,6 +15,9 @@ mod random_eval_tx;
 #[cfg(not(feature = "tarpaulin"))]
 mod specific;
 
+#[cfg(not(feature = "tarpaulin"))]
+mod test_data;
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct CborTestCase {

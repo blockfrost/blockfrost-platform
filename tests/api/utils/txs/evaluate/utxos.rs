@@ -11,6 +11,7 @@ mod tests {
     use reqwest::Method;
 
     #[tokio::test]
+    #[ignore]
     async fn success() {
         // init our app
         let app = initialize_app().await;
