@@ -5,3 +5,5 @@ pub mod pool;
 pub mod pool_manager;
 pub mod sync_progress;
 pub mod transactions;
+pub mod utxo;
+pub mod chain_config;

@@ -1,4 +1,4 @@
-/*use std::collections::HashMap;
+use std::collections::HashMap;
 
 use pallas_primitives::{Bytes, ExUnits, KeepRaw, conway::RedeemerTag};
 use pallas_validate::phase2::EvalReport;
@@ -356,4 +356,3 @@ mod tests {
         let _req: TxEvaluationRequest = serde_json::from_value(value).unwrap();
     }
 }
-*/
