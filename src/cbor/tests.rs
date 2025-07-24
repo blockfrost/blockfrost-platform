@@ -1,5 +1,5 @@
 #[cfg(not(feature = "tarpaulin"))]
-use super::fallback_decoder::FallbackDecoder;
+use super::external::fallback_decoder::FallbackDecoder;
 #[cfg(not(feature = "tarpaulin"))]
 use num_cpus;
 
@@ -14,6 +14,9 @@ mod random;
 mod random_eval_tx;
 #[cfg(not(feature = "tarpaulin"))]
 mod specific;
+
+#[cfg(not(feature = "tarpaulin"))]
+mod test_data;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all(deserialize = "camelCase"))]
@@ -61,7 +64,7 @@ pub fn check_generated_cases<F>(
 {
     use std::io::{BufRead, BufReader};
 
-    let child_exe = super::fallback_decoder::FallbackDecoder::find_testgen_hs().unwrap();
+    let child_exe = super::external::testgen::Testgen::find_testgen_hs().unwrap();
 
     let mut child = Command::new(&child_exe)
         .arg("generate")

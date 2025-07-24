@@ -1,9 +1,11 @@
+pub mod chain_config;
 pub mod logging;
 pub mod metrics;
 pub mod routes;
 pub mod state;
 
 use crate::{
+    cbor::external::fallback_evaluator,
     config::Config,
     errors::{AppError, BlockfrostError},
     health_monitor,
@@ -57,6 +59,14 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
+    // Initialize chain configurations
+    let chain_config_cache: chain_config::ChainConfigCache =
+        chain_config::ChainConfigCache::init_caches(node_conn_pool.clone()).await?;
+
+    // Initialize the Haskell-based tx evaluator
+    let fallback_evaluator =
+        fallback_evaluator::FallbackEvaluator::spawn(chain_config_cache).await?;
+
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
     let hidden_api_routes = get_hidden_api_routes(!config.no_metrics);
@@ -68,6 +78,7 @@ pub async fn build(
     let app_state = AppState {
         config: config.clone(),
         genesis,
+        //    chain_config: Arc::new(chain_config_cache)
     };
 
     // Add layers
@@ -76,6 +87,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
+            .layer(Extension(fallback_evaluator))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
 

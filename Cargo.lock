@@ -202,12 +202,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "az"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
-
-[[package]]
 name = "backtrace"
 version = "0.3.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1337,16 +1331,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
-name = "gmp-mpfr-sys"
-version = "1.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66d61197a68f6323b9afa616cf83d55d69191e1bf364d4eb7d35ae18defe776"
-dependencies = [
- "libc",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "h2"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1600,7 +1584,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.57.0",
+ "windows-core 0.58.0",
 ]
 
 [[package]]
@@ -1610,6 +1594,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "ibig"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1fcc7f316b2c079dde77564a1360639c1a956a23fa96122732e416cb10717bb"
+dependencies = [
+ "cfg-if",
+ "num-traits",
+ "static_assertions",
 ]
 
 [[package]]
@@ -1899,12 +1894,6 @@ dependencies = [
  "cfg-if",
  "windows-targets 0.48.5",
 ]
-
-[[package]]
-name = "libm"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "libproc"
@@ -2404,7 +2393,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 [[package]]
 name = "pallas-addresses"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "base58",
  "bech32 0.9.1",
@@ -2419,7 +2408,7 @@ dependencies = [
 [[package]]
 name = "pallas-codec"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "minicbor 0.26.4",
@@ -2430,7 +2419,7 @@ dependencies = [
 [[package]]
 name = "pallas-crypto"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -2443,7 +2432,7 @@ dependencies = [
 [[package]]
 name = "pallas-hardano"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "binary-layout",
  "hex",
@@ -2463,7 +2452,7 @@ dependencies = [
 [[package]]
 name = "pallas-network"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "byteorder",
  "hex",
@@ -2480,7 +2469,7 @@ dependencies = [
 [[package]]
 name = "pallas-primitives"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "pallas-codec",
@@ -2492,7 +2481,7 @@ dependencies = [
 [[package]]
 name = "pallas-traverse"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "itertools 0.13.0",
@@ -2508,7 +2497,7 @@ dependencies = [
 [[package]]
 name = "pallas-validate"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha3#00acd70a069cfeb1913148ab7b38cf3a1bbd4668"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "chrono",
  "hex",
@@ -2518,7 +2507,6 @@ dependencies = [
  "pallas-crypto",
  "pallas-primitives",
  "pallas-traverse",
- "rug",
  "serde",
  "thiserror 1.0.69",
  "tracing",
@@ -3087,18 +3075,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rug"
-version = "1.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4207e8d668e5b8eb574bda8322088ccd0d7782d3d03c7e8d562e82ed82bdcbc3"
-dependencies = [
- "az",
- "gmp-mpfr-sys",
- "libc",
- "libm",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3657,6 +3633,12 @@ dependencies = [
  "psm",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"
@@ -4236,16 +4218,16 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 [[package]]
 name = "uplc-turbo"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214465664561ad67daf411e1d575a67cf25107369191f26c16243ac98073c0a8"
+source = "git+https://github.com/txpipe/uplc-turbo.git?rev=bd174b3#bd174b318a69b09d4b67642e60b60cc2be51b087"
 dependencies = [
  "blst",
  "bumpalo",
  "chumsky",
  "cryptoxide",
+ "ibig",
  "minicbor 0.25.1",
+ "num-traits",
  "once_cell",
- "rug",
  "secp256k1",
  "thiserror 1.0.69",
 ]

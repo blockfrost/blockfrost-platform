@@ -6,10 +6,15 @@ use chrono::DateTime;
 use chrono::NaiveDate;
 use chrono::NaiveDateTime;
 use chrono::NaiveTime;
+use pallas_addresses::Address;
+use pallas_codec::utils::AnyUInt;
+use pallas_codec::utils::NonEmptyKeyValuePairs;
+use pallas_network::miniprotocols::localstate::queries_v16;
 use pallas_network::miniprotocols::localstate::queries_v16::CurrentProtocolParam;
 use pallas_network::miniprotocols::localstate::queries_v16::GenesisConfig;
 use pallas_network::miniprotocols::localstate::queries_v16::SystemStart;
 use pallas_primitives::AssetName;
+use pallas_primitives::Bytes;
 use pallas_primitives::ExUnitPrices;
 use pallas_primitives::ExUnits;
 use pallas_primitives::PolicyId;
@@ -37,6 +42,9 @@ use pallas_primitives::{
 use pallas_traverse::MultiEraInput;
 use pallas_validate::utils::EraCbor;
 
+//* This implementation uses pallas validate.
+//  Since pallas validate behaves differently from the ogmios validation (which uses ledger)
+//  this implementation is not used at the moment  */
 pub async fn evaluate_binary_tx(
     node_pool: NodePool,
     tx_cbor_binary: &[u8],
@@ -62,126 +70,201 @@ pub async fn evaluate_tx(
     slot_config: &SlotConfig,
     utxo_set: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
-    let mut node: deadpool::managed::Object<crate::node::pool_manager::NodePoolManager> =
-        node_pool.get().await?;
+    let mut node = node_pool.get().await?;
 
     match node.genesis_config_and_pp().await {
         Ok((genesis_config, protocol_params)) => {
             let protocol_params: MultiEraProtocolParameters =
                 convert_protocol_param(protocol_params, genesis_config)?;
-            /*
-             * Prepare transaction
-             */
-            let minted_tx: conway::Tx =
-                pallas_codec::minicbor::decode::<conway::Tx>(tx_cbor_binary).unwrap();
-            let multi_era_tx: MultiEraTx = MultiEraTx::from_conway(&minted_tx);
-
-            /*
-             * make codec safe utxo for conway
-             * with inputs, script and datum option
-             */
-            let mut utxos: UtxoMap = UtxoMap::new();
-            for (tx_in, tx_out) in utxo_set.unwrap_or_default() {
-                let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
-                    transaction_id: pallas_primitives::Hash::<32>::from_str(&tx_in.tx_id)
-                        .expect("Invalid tx_id in additional utxo set"),
-                    index: tx_in.index,
-                };
-
-                let multi_era_in: MultiEraInput =
-                    MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
-
-                /*
-                 * Prepare transaction output
-                 */
-                let address: pallas_codec::utils::Bytes = hex::decode(tx_out.address.clone())
-                    .expect("Invalid address in additional utxo output set")
-                    .into();
-
-                let value: pallas_primitives::conway::Value = match &tx_out.value {
-                    Value {
-                        coins,
-                        assets: None,
-                    } => pallas_primitives::conway::Value::Coin(*coins),
-                    Value {
-                        coins,
-                        assets: Some(assets_map),
-                    } => {
-                        let mut assets = BTreeMap::new();
-                        for (id_name, number) in assets_map {
-                            let mut asset_detail = BTreeMap::new();
-                            let coin: PositiveCoin = number.to_owned().try_into().expect(
-                                "Invalid number for PositiveCoin in additional utxo output set",
-                            );
-                            let (asset_id, asset_name) = parse_asset_string(id_name);
-
-                            asset_detail.insert(asset_name, coin);
-                            assets.insert(asset_id, asset_detail);
-                        }
-                        pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
-                    },
-                };
-
-                let datum_vec: Vec<u8>;
-
-                let datum_option = match &tx_out.datum {
-                    Some(d) => {
-                        let datum_bytes = hex::decode(d).unwrap();
-                        let datum_option = DatumOption::Data(CborWrap(
-                            pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
-                        ));
-                        datum_vec = pallas_codec::minicbor::to_vec(datum_option).unwrap();
-
-                        let datum_option: KeepRaw<'_, DatumOption> =
-                            pallas_codec::minicbor::decode(&datum_vec).unwrap();
-
-                        Some(datum_option)
-                    },
-                    None => None,
-                };
-
-                let script_ref: Option<CborWrap<ScriptRef>> =
-                    tx_out.script.map(|script| CborWrap(script.into()));
-
-                let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
-                    address,
-                    value,
-                    datum_option,
-                    script_ref,
-                };
-
-                //let tx_out_cbor  = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
-                let tx_out_cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
-                //tx_out_cbors.push(tx_out_cbor.clone());
-                let post_alonzo = pallas_codec::minicbor::decode::<
-                    pallas_codec::utils::KeepRaw<
-                        '_,
-                        pallas_primitives::conway::PostAlonzoTransactionOutput,
-                    >,
-                >(&tx_out_cbor)
-                .unwrap();
-                let tx_out =
-                    pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
-                let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
-
-                utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
-            }
-
-            match pallas_validate::phase2::evaluate_tx(
-                &multi_era_tx,
-                &protocol_params,
-                &utxos,
-                slot_config,
-            ) {
-                Ok(report) => Ok(report),
-                Err(e) => Err(BlockfrostError::custom_400(
-                    "Error evaluating transaction: ".to_string() + &e.to_string(),
-                )),
-            }
+            evaluate_tx_with_pp(tx_cbor_binary, slot_config, utxo_set, protocol_params)
         },
         Err(e) => Err(BlockfrostError::custom_400(
             "Error fetching protocol parameters: ".to_string() + &e.to_string(),
         )),
+    }
+}
+
+pub fn evaluate_tx_with_pp(
+    tx_cbor_binary: &[u8],
+    slot_config: &SlotConfig,
+    utxo_set: Option<AdditionalUtxoSet>,
+    protocol_params: MultiEraProtocolParameters,
+) -> Result<EvalReport, BlockfrostError> {
+    /*
+     * Prepare transaction
+     */
+    let multi_era_tx = MultiEraTx::decode(tx_cbor_binary).unwrap();
+
+    //let multi_era_tx: MultiEraTx =  pallas_codec::minicbor::decode(tx_cbor_binary).unwrap();
+    /*
+     * make codec safe utxo for conway
+     * with inputs, script and datum option
+     */
+    let mut utxos: UtxoMap = UtxoMap::new();
+    for (tx_in, tx_out) in utxo_set.unwrap_or_default() {
+        let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
+            transaction_id: pallas_primitives::Hash::<32>::from_str(&tx_in.tx_id)
+                .expect("Invalid tx_id in additional utxo set"),
+            index: tx_in.index,
+        };
+
+        let multi_era_in: MultiEraInput =
+            MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
+
+        /*
+         * Prepare transaction output
+         */
+
+        let address = create_address(&tx_out.address);
+
+        let value: pallas_primitives::conway::Value = convert_to_primitive_value(&tx_out.value);
+
+        let datum_vec = convert_to_datum_option(&tx_out.datum);
+        let datum_option = create_raw_datum_option(&datum_vec);
+
+        let script_ref: Option<CborWrap<ScriptRef>> =
+            tx_out.script.map(|script| CborWrap(script.into()));
+
+        let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
+            address,
+            value,
+            datum_option,
+            script_ref,
+        };
+
+        //let tx_out_cbor  = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
+        let tx_out_cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
+        //tx_out_cbors.push(tx_out_cbor.clone());
+        let post_alonzo = pallas_codec::minicbor::decode::<
+            pallas_codec::utils::KeepRaw<
+                '_,
+                pallas_primitives::conway::PostAlonzoTransactionOutput,
+            >,
+        >(&tx_out_cbor)
+        .unwrap();
+        let tx_out = pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
+        let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
+
+        utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
+    }
+
+    match pallas_validate::phase2::evaluate_tx(&multi_era_tx, &protocol_params, &utxos, slot_config)
+    {
+        Ok(report) => Ok(report),
+        Err(e) => Err(BlockfrostError::custom_400(
+            "Error evaluating transaction: ".to_string() + &e.to_string(),
+        )),
+    }
+}
+
+pub fn create_address(addr: &str) -> Bytes {
+    Address::from_bech32(addr)
+        .unwrap_or_else(|_| Address::from_hex(addr).unwrap())
+        .to_vec()
+        .into()
+}
+
+pub fn convert_to_datum_option(datum: &Option<String>) -> Vec<u8> {
+    {
+        match datum {
+            Some(d) => {
+                println!("Datum: {}", d);
+                let datum_bytes = hex::decode(d).unwrap();
+                let datum_option = DatumOption::Data(CborWrap(
+                    pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
+                ));
+                pallas_codec::minicbor::to_vec(datum_option).unwrap()
+            },
+            None => Vec::new(),
+        }
+    }
+}
+
+pub fn convert_to_datum_option_network(
+    datum: &Option<String>,
+) -> Option<pallas_network::miniprotocols::localstate::queries_v16::DatumOption> {
+    {
+        match datum {
+            Some(d) => {
+                println!("Datum: {}", d);
+                let datum_bytes = hex::decode(d).unwrap();
+                let datum_option =
+                    pallas_network::miniprotocols::localstate::queries_v16::DatumOption::Data(
+                        CborWrap(pallas_codec::minicbor::decode(&datum_bytes).unwrap()),
+                    );
+                Some(datum_option)
+            },
+            None => None,
+        }
+    }
+}
+
+pub fn create_raw_datum_option<'a>(datum_vec: &'a [u8]) -> Option<KeepRaw<'a, DatumOption<'a>>> {
+    if datum_vec.is_empty() {
+        None
+    } else {
+        let raw: KeepRaw<'a, DatumOption<'a>> = pallas_codec::minicbor::decode(datum_vec).unwrap();
+        Some(raw)
+    }
+}
+
+pub fn convert_to_primitive_value(value: &Value) -> pallas_primitives::conway::Value {
+    match &value {
+        Value {
+            coins,
+            assets: None,
+        } => pallas_primitives::conway::Value::Coin(*coins),
+        Value {
+            coins,
+            assets: Some(assets_map),
+        } => {
+            let mut assets = BTreeMap::new();
+            for (id_name, number) in assets_map {
+                let mut asset_detail = BTreeMap::new();
+                let coin: PositiveCoin = number
+                    .to_owned()
+                    .try_into()
+                    .expect("Invalid number for PositiveCoin in additional utxo output set");
+                let (asset_id, asset_name) = parse_asset_string(id_name);
+
+                asset_detail.insert(asset_name, coin);
+                assets.insert(asset_id, asset_detail);
+            }
+            pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
+        },
+    }
+}
+
+pub fn convert_to_network_value(value: &Value) -> queries_v16::Value {
+    match &value {
+        Value {
+            coins,
+            assets: None,
+        } => pallas_network::miniprotocols::localstate::queries_v16::Value::Coin(AnyUInt::U64(
+            *coins,
+        )),
+        Value {
+            coins,
+            assets: Some(assets_map),
+        } => {
+            let mut assets = vec![];
+            for (id_name, number) in assets_map {
+                let mut asset_detail = vec![];
+                let coin = AnyUInt::U64(*number);
+
+                let (asset_id, asset_name) = parse_asset_string(id_name);
+
+                asset_detail.push((asset_name, coin));
+                assets.push((
+                    asset_id,
+                    NonEmptyKeyValuePairs::from_vec(asset_detail).unwrap(),
+                ));
+            }
+            queries_v16::Value::Multiasset(
+                AnyUInt::U64(*coins),
+                NonEmptyKeyValuePairs::from_vec(assets).unwrap(),
+            )
+        },
     }
 }
 

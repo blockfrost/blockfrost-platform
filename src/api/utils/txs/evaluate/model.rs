@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use pallas_primitives::{
-    Bytes, ExUnits, KeepRaw, PlutusScript,
-    conway::{NativeScript, RedeemerTag, ScriptRef},
-};
+use pallas_primitives::{Bytes, ExUnits, KeepRaw, conway::RedeemerTag};
 use pallas_validate::phase2::EvalReport;
 use pallas_validate::phase2::tx::TxEvalResult;
 use serde::{Deserialize, Serialize, ser::SerializeMap};
@@ -33,8 +30,10 @@ pub struct TxOut {
     pub script: Option<Script>, // script type and details
 }
 
-impl From<Script> for ScriptRef<'_> {
+impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
     fn from(script: Script) -> Self {
+        use pallas_primitives::PlutusScript;
+        use pallas_primitives::conway::ScriptRef;
         match script {
             Script::PlutusV1(s) => {
                 ScriptRef::PlutusV1Script(PlutusScript::<1>(Bytes::from(hex::decode(s).unwrap())))
@@ -46,6 +45,7 @@ impl From<Script> for ScriptRef<'_> {
                 ScriptRef::PlutusV3Script(PlutusScript::<3>(Bytes::from(hex::decode(s).unwrap())))
             },
             Script::Native(script_native) => {
+                use pallas_primitives::conway::NativeScript;
                 let script: NativeScript = script_native.into();
                 let r_script: KeepRaw<'_, NativeScript> = script.into(); // @todo: does not generate a valid raw CBOR 
                 ScriptRef::NativeScript(r_script)
@@ -54,8 +54,57 @@ impl From<Script> for ScriptRef<'_> {
     }
 }
 
-impl From<ScriptNative> for NativeScript {
+impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
+    fn from(script: Script) -> Self {
+        use pallas_network::miniprotocols::localtxsubmission::primitives::PlutusScript;
+        use pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef;
+        match script {
+            Script::PlutusV1(s) => {
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(Bytes::from(hex::decode(s).unwrap())))
+            },
+            Script::PlutusV2(s) => {
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(Bytes::from(hex::decode(s).unwrap())))
+            },
+            Script::PlutusV3(s) => {
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(Bytes::from(hex::decode(s).unwrap())))
+            },
+            Script::Native(script_native) => {
+                let script: pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript = script_native.into();
+                ScriptRef::NativeScript(script)
+            },
+        }
+    }
+}
+
+impl From<ScriptNative>
+    for pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript
+{
     fn from(script: ScriptNative) -> Self {
+        use pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript;
+        match script {
+            ScriptNative::Any(scripts) => {
+                NativeScript::ScriptAny(scripts.into_iter().map(|s| s.into()).collect())
+            },
+            ScriptNative::All(scripts) => {
+                NativeScript::ScriptAll(scripts.into_iter().map(|s| s.into()).collect())
+            },
+            ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
+            ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
+            ScriptNative::NOf(n, scripts) => {
+                NativeScript::ScriptNOfK(n, scripts.into_iter().map(|s| s.into()).collect())
+            },
+            ScriptNative::String(st) => {
+                let mut bytes = [0; 28];
+                hex::decode_to_slice(st, &mut bytes).unwrap();
+                NativeScript::ScriptPubkey(bytes.into())
+            },
+        }
+    }
+}
+
+impl From<ScriptNative> for pallas_primitives::conway::NativeScript {
+    fn from(script: ScriptNative) -> Self {
+        use pallas_primitives::conway::NativeScript;
         match script {
             ScriptNative::Any(scripts) => {
                 NativeScript::ScriptAny(scripts.into_iter().map(|s| s.into()).collect())
@@ -91,7 +140,7 @@ pub struct Value {
 }
 
 // This is originally missing PlutusV3 since blockfrost uses Ogmios v5.6 which has slightly different data structure
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 //#[serde(untagged)]
 pub enum Script {
     #[serde(rename = "plutus:v1")]
@@ -104,7 +153,7 @@ pub enum Script {
     Native(ScriptNative),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum ScriptNative {
     #[serde(rename = "any")]
     Any(Vec<ScriptNative>),
@@ -145,6 +194,7 @@ pub struct TxEvalResultResponse {
 
 impl From<TxEvalResultResponse> for TxEvalResult {
     fn from(value: TxEvalResultResponse) -> Self {
+        // pallas-validate is rapidly evolving. logs and success are new fields, not yet handled.
         TxEvalResult {
             tag: value.tag,
             index: value.index,
@@ -152,6 +202,8 @@ impl From<TxEvalResultResponse> for TxEvalResult {
                 mem: value.units.memory,
                 steps: value.units.cpu,
             },
+            logs: Vec::new(),
+            success: true
         }
     }
 }

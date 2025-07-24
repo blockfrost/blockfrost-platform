@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub struct AppState {
     pub config: Arc<Config>,
     pub genesis: Arc<Vec<(Network, GenesisContent)>>,
+    //   pub chain_config: Arc<ChainConfigCache>,
 }
 
 pub type AppStateExt = State<AppState>;

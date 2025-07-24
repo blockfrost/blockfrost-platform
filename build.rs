@@ -81,7 +81,7 @@ mod testgen_hs {
             return;
         }
 
-        let testgen_lib_version = "10.4.1.1";
+        let testgen_lib_version = "10.4.1.2";
 
         let suffix = if target_os == "windows" {
             ".zip"
