@@ -12,3 +12,6 @@ use async_trait::async_trait;
 /// Serves as a general abstraction layer over all backend services.
 #[async_trait]
 pub trait ApiProvider: AccountsApi + AddressesApi + Send + Sync + 'static {}
+
+#[async_trait]
+impl<T> ApiProvider for T where T: AccountsApi + AddressesApi + Send + Sync + 'static {}
