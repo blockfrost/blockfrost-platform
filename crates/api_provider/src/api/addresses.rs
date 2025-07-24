@@ -1,4 +1,4 @@
-use crate::api::types::AddressUtxos;
+use crate::types::AddressUtxos;
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 

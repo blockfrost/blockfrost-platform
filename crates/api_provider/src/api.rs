@@ -1,6 +1,8 @@
 pub mod accounts;
 pub mod addresses;
-pub mod types;
+pub mod assets;
+pub mod blocks;
+pub mod epochs;
 
 use crate::ApiProvider;
 use std::sync::Arc;

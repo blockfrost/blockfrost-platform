@@ -1,23 +1,21 @@
-use crate::api::ApiResult;
-use axum::{
-    Extension,
-    extract::{Path, Query},
-};
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::{Path, Query, State};
 use blockfrost_openapi::models::block_content::BlockContent;
 use common::{
     blocks::BlocksPath,
     pagination::{Pagination, PaginationQuery},
 };
-use dolos::client::Dolos;
 
 pub async fn route(
-    Extension(dolos): Extension<Dolos>,
+    State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(blocks_path): Path<BlocksPath>,
 ) -> ApiResult<Vec<BlockContent>> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
-    dolos
+    state
+        .api
+        .dolos
         .blocks_next(&blocks_path.hash_or_number, &pagination)
         .await
 }

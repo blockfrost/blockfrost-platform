@@ -1,4 +1,4 @@
-use crate::api::types::{
+use crate::types::{
     AccountAddresses, AccountDelegations, AccountRegistrations, AccountResponse, AccountRewards,
 };
 use async_trait::async_trait;

@@ -1,5 +1,5 @@
 use crate::client::Dolos;
-use api_provider::api::{addresses::AddressesApi, types::AddressUtxos};
+use api_provider::{api::addresses::AddressesApi, types::AddressUtxos};
 use async_trait::async_trait;
 use common::{pagination::Pagination, types::ApiResult};
 

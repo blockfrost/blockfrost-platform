@@ -1,7 +1,6 @@
-use crate::api::ApiResult;
-use axum::Extension;
-use dolos::client::Dolos;
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::State;
 
-pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<Vec<String>> {
-    dolos.blocks_latest_txs().await
+pub async fn route(State(state): State<AppState>) -> ApiResult<Vec<String>> {
+    state.api.dolos.blocks_latest_txs().await
 }

@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::api::{
-    accounts::AccountsApi,
+use api_provider::{
+    api::accounts::AccountsApi,
     types::{
         AccountAddresses, AccountDelegations, AccountRegistrations, AccountResponse, AccountRewards,
     },
