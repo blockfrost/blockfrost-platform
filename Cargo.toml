@@ -63,7 +63,7 @@ pretty_assertions = "1.4.1"
 proptest = "1.6"
 cardano-serialization-lib = "12.1.1"
 bip39 = "2.1.0"
-blockfrost = "1.0.6"
+blockfrost = { git = "https://github.com/blockfrost/blockfrost-rust.git", rev = "137e5b23d679c34f28d33500d01099035f9f7043" }
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

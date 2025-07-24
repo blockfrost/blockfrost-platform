@@ -506,19 +506,16 @@ dependencies = [
 
 [[package]]
 name = "blockfrost"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7eddca8d8a28e5080c7b64421efda06661f6a712cfa5e8ecd01edbdedfe81bc"
+version = "1.1.0"
+source = "git+https://github.com/blockfrost/blockfrost-rust.git?rev=137e5b23d679c34f28d33500d01099035f9f7043#137e5b23d679c34f28d33500d01099035f9f7043"
 dependencies = [
  "blockfrost-openapi",
  "futures",
  "futures-timer",
- "paste",
  "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
- "toml 0.8.23",
  "url",
 ]
 
