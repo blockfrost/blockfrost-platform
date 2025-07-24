@@ -1,24 +1,155 @@
-/*
+use common::errors::AppError;
+use testgen::testgen::Testgen;
 
-You can generate them from a set of JSON files with something like:
 
-```shell
-idx=1; for f in *.json ; do
-  symb=$(jq -r '.testCases[0].json.contents.contents.contents.error' "$f" | grep -Eo '([A-Z][a-z]*)+' | head -n 4 | tr '\n' '_' | sed -r 's/(^_+|_+$)//g')
-  cbor=$(jq -r '.testCases[0].cbor' "$f")
-  numb=$(printf '%04d' "$idx")
-  echo '#[tokio::test]'
-  echo '#[allow(non_snake_case)]'
-  echo 'async fn test_cbor_'"$numb"'_'"$symb"'() {'
-  echo '    verify_one("'"$cbor"'").await'
-  echo '}'
-  echo
-  idx=$((idx + 1))
-done
-```
-*/
+#[derive(Clone)]
+pub struct ExternalDecoder {
+    testgen: Testgen,
+}
+impl ExternalDecoder {
+    pub fn spawn() -> Result<Self, AppError> {
+        let testgen = Testgen::spawn("deserialize-stream")
+            .map_err(|err| AppError::Server(format!("Failed to spawn ExternalDecoder: {err}")))?;
 
-use super::verify_one;
+        Ok(Self { testgen })
+    }
+
+    pub async fn decode(&self, input: &[u8]) -> Result<serde_json::Value, String> {
+        self.testgen.decode(input).await
+    }
+
+    /// This function is called at startup, so that we make sure that the worker is reasonable.
+    pub async fn startup_sanity_test(&self) -> Result<(), String> {
+        let input = hex::decode("8182068182028200a0").map_err(|err| err.to_string())?;
+        let result = self.testgen.decode(&input).await;
+        let expected = serde_json::json!({
+          "contents": {
+            "contents": {
+              "contents": {
+                "era": "ShelleyBasedEraConway",
+                "error": [
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
+                ],
+                "kind": "ShelleyTxValidationError"
+              },
+              "tag": "TxValidationErrorInCardanoMode"
+            },
+            "tag": "TxCmdTxSubmitValidationError"
+          },
+          "tag": "TxSubmitFail"
+        });
+
+        if result == Ok(expected) {
+            Ok(())
+        } else {
+            Err(format!(
+                "ExternalDecoder: startup_sanity_test failed: {result:?}"
+            ))
+        }
+    }
+
+    #[cfg(test)]
+    /// A single global [`ExternalDecoder`] that you can cheaply use in tests.
+    pub fn instance() -> Self {
+        GLOBAL_INSTANCE.clone()
+    }
+}
+
+#[cfg(test)]
+static GLOBAL_INSTANCE: std::sync::LazyLock<ExternalDecoder> =
+    std::sync::LazyLock::new(|| ExternalDecoder::spawn().expect("Failed to spawn ExternalDecoder"));
+
+#[cfg(test)]
+mod tests {
+    use pallas_hardano::display::haskell_error::serialize_error;
+    #[cfg(test)]
+use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
+
+    #[cfg(not(feature = "tarpaulin"))]
+    use super::*;
+    #[tokio::test]
+    //#[tracing_test::traced_test]
+    #[cfg(not(feature = "tarpaulin"))]
+    async fn test_sanity() {
+        let decoder = ExternalDecoder::spawn().unwrap();
+
+        // Wait for it to come up:
+        decoder.startup_sanity_test().await.unwrap();
+
+        // Now, kill our child to test the restart logic:
+        sysinfo::System::new_all()
+            .process(sysinfo::Pid::from_u32(decoder.testgen.child_pid().unwrap()))
+            .unwrap()
+            .kill();
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        let input = hex::decode("8182068183051a000c275b1a000b35ec").unwrap();
+        let result = decoder.decode(&input).await;
+
+        assert_eq!(
+            result,
+            Ok(serde_json::json!({"contents":
+                 {"contents":
+                  {"contents":
+                   {"era": "ShelleyBasedEraConway", "error":
+                    ["ConwayTreasuryValueMismatch (Mismatch {mismatchSupplied = Coin 734700, mismatchExpected = Coin 796507})"],
+                    "kind": "ShelleyTxValidationError"
+                    },
+                    "tag": "TxValidationErrorInCardanoMode"
+                }, "tag": "TxCmdTxSubmitValidationError"
+            },
+                "tag": "TxSubmitFail"
+                }
+            ))
+        );
+    }
+
+/// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
+/// deserializer against the Haskell one. Use it for specific cases.
+#[cfg(test)]
+async fn verify_one(cbor: &str) {
+    use crate::external::ExternalDecoder;
+ 
+    let cbor = hex::decode(cbor).unwrap();
+    let reference_json = ExternalDecoder::instance().decode(&cbor).await.unwrap();
+
+    let our_decoding = decode_error(&cbor);
+
+    let our_json = serialize_error(our_decoding);
+    assert_json_eq!(reference_json, our_json)
+}
+
+
+#[cfg(test)]
+fn decode_error(cbor: &[u8]) -> TxValidationError {
+    use pallas_codec::minicbor;
+
+    let mut decoder = minicbor::Decoder::new(cbor);
+    decoder.decode().unwrap()
+}
+
+
+#[cfg(test)]
+macro_rules! assert_json_eq {
+    ($left:expr, $right:expr) => {
+        if $left != $right {
+            let left_pretty = serde_json::to_string_pretty(&$left).unwrap();
+            let right_pretty = serde_json::to_string_pretty(&$right).unwrap();
+            panic!(
+                concat!(
+                    "assertion `left == right` failed\n",
+                    "  left:\n    {}\n  right:\n    {}",
+                ),
+                left_pretty.replace("\n", "\n    "),
+                right_pretty.replace("\n", "\n    "),
+            );
+        }
+    };
+}
+
+#[cfg(test)]
+pub(crate) use assert_json_eq; // export it
 
 #[tokio::test]
 #[allow(non_snake_case)]
@@ -1419,4 +1550,6 @@ async fn test_cbor_0099_ConwayWdrlNotDelegatedToDRep_KeyHash_KeyHash() {
 async fn test_cbor_0100_ConwayUtxowFailure_InvalidMetadata_ConwayGovFailure_DisallowedProposalDuringBootstrap()
  {
     verify_one("81820682820181088203820c841a000236ae581df0552d969928f472c24f005ce4aaeb1a888ecc58f6e75ce0ac65a6be41810682783568747470733a2f2f3975576958314e416b6a6d764e7551775759525131705a75415059416e312d705974514568577249392e636f6d5820f70f8c1b6b57c2d9483bc98f062b088723b3f74e760419ccd4232abba36b75d3").await
+}
+
 }

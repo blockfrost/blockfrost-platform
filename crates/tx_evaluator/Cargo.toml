@@ -1,11 +1,13 @@
 [package]
-name = "node"
-version = "0.0.3-rc.3"
+name = "tx-evaluator"
+version = "0.1.0"
 license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
 common = { path = "../common" }
+testgen = { path = "../testgen" }
+node = { path = "../node" }
 serde = { version = "1.0.218", features = ["derive"] }
 reqwest = { version = "0.12", features = ["blocking"] }
 toml = "0.8"
@@ -25,6 +27,10 @@ pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "block
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
 pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5", features = [
+  "phase2",
+] }
 chrono = "0.4"
 
 [features]
