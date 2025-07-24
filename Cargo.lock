@@ -273,6 +273,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "api-provider"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blockfrost-openapi",
+ "common",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -539,13 +548,14 @@ name = "blockfrost-platform"
 version = "0.0.2"
 dependencies = [
  "anyhow",
+ "api-provider",
  "axum",
  "base64 0.22.1",
  "bech32 0.9.1",
  "bip39",
  "blockfrost",
  "blockfrost-openapi",
- "build_utils",
+ "build-utils",
  "cardano-serialization-lib",
  "chrono",
  "clap",
@@ -595,7 +605,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "build_utils"
+name = "build-utils"
 version = "0.1.0"
 dependencies = [
  "bzip2",
@@ -826,7 +836,7 @@ dependencies = [
  "axum",
  "bech32 0.9.1",
  "blockfrost-openapi",
- "build_utils",
+ "build-utils",
  "cardano-serialization-lib",
  "clap",
  "dirs 5.0.1",
@@ -1217,6 +1227,7 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 name = "dolos"
 version = "0.0.1"
 dependencies = [
+ "api-provider",
  "async-trait",
  "axum",
  "blockfrost-openapi",

@@ -12,6 +12,7 @@ build = "build.rs"
 common = { path = "crates/common" }
 node = { path = "crates/node" }
 dolos = { path = "crates/dolos" }
+api-provider = { path = "crates/api_provider" }
 axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"
@@ -69,10 +70,16 @@ blockfrost = "1.0.6"
 jemalloc = "0.3"
 
 [build-dependencies]
-build_utils = { path = "crates/build_utils" }
+build-utils = { path = "crates/build_utils" }
 
 [workspace]
-members = ["crates/common", "crates/dolos", "crates/build_utils", "crates/node"]
+members = [
+  "crates/build_utils",
+  "crates/common",
+  "crates/api_provider",
+  "crates/node",
+  "crates/dolos",
+]
 
 [lints.clippy]
 uninlined_format_args = "deny"

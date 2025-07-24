@@ -34,7 +34,7 @@ rstest = "0.24.0"
 pretty_assertions = "1.4.1"
 
 [build-dependencies]
-build_utils = { path = "../build_utils" }
+build-utils = { path = "../build_utils" }
 
 [lints.clippy]
 uninlined_format_args = "deny"

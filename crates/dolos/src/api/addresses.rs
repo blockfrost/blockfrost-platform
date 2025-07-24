@@ -1,13 +1,15 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::address_utxo_content_inner::AddressUtxoContentInner;
+use api_provider::api::{addresses::AddressesApi, types::AddressUtxos};
+use async_trait::async_trait;
 use common::{pagination::Pagination, types::ApiResult};
 
-impl Dolos {
-    pub async fn addresses_address_utxos(
+#[async_trait]
+impl AddressesApi for Dolos {
+    async fn addresses_address_utxos(
         &self,
         address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<AddressUtxoContentInner>> {
+    ) -> ApiResult<AddressUtxos> {
         let path = format!("addresses/{address}/utxos");
 
         self.client.get(&path, Some(pagination)).await
