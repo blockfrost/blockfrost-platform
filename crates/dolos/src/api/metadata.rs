@@ -1,31 +1,32 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::{
-    tx_metadata_label_cbor_inner::TxMetadataLabelCborInner,
-    tx_metadata_label_json_inner::TxMetadataLabelJsonInner,
-    tx_metadata_labels_inner::TxMetadataLabelsInner,
+use api_provider::{
+    api::metadata::MetadataApi,
+    types::{MetadataLabelCborResponse, MetadataLabelJsonResponse, MetadataLabelsResponse},
 };
+use async_trait::async_trait;
 use common::{pagination::Pagination, types::ApiResult};
 
-impl Dolos {
-    pub async fn metadata_txs_labels(&self) -> ApiResult<Vec<TxMetadataLabelsInner>> {
+#[async_trait]
+impl MetadataApi for Dolos {
+    async fn metadata_txs_labels(&self) -> ApiResult<MetadataLabelsResponse> {
         self.client.get("metadata/txs/labels", None).await
     }
 
-    pub async fn metadata_txs_labels_label(
+    async fn metadata_txs_labels_label(
         &self,
         label: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxMetadataLabelJsonInner>> {
+    ) -> ApiResult<MetadataLabelJsonResponse> {
         let path = format!("metadata/txs/labels/{label}");
 
         self.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn metadata_txs_labels_label_cbor(
+    async fn metadata_txs_labels_label_cbor(
         &self,
         label: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxMetadataLabelCborInner>> {
+    ) -> ApiResult<MetadataLabelCborResponse> {
         let path = format!("metadata/txs/labels/{label}/cbor");
 
         self.client.get(&path, Some(pagination)).await
