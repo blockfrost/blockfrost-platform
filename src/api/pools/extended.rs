@@ -1,8 +1,7 @@
-use crate::api::ApiResult;
-use axum::Extension;
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::State;
 use blockfrost_openapi::models::pool_list_extended_inner::PoolListExtendedInner;
-use dolos::client::Dolos;
 
-pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<Vec<PoolListExtendedInner>> {
-    dolos.pools_extended().await
+pub async fn route(State(state): State<AppState>) -> ApiResult<Vec<PoolListExtendedInner>> {
+    state.api.dolos.pools_extended().await
 }

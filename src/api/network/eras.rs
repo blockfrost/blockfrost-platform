@@ -1,8 +1,7 @@
-use crate::api::ApiResult;
-use axum::Extension;
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::State;
 use blockfrost_openapi::models::network_eras_inner::NetworkErasInner;
-use dolos::client::Dolos;
 
-pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<Vec<NetworkErasInner>> {
-    dolos.network_eras().await
+pub async fn route(State(state): State<AppState>) -> ApiResult<Vec<NetworkErasInner>> {
+    state.api.dolos.network_eras().await
 }
