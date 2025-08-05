@@ -1,13 +1,18 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::{network::Network, network_eras_inner::NetworkErasInner};
+use api_provider::{
+    api::network::NetworkApi,
+    types::{NetworkErasResponse, NetworkResponse},
+};
+use async_trait::async_trait;
 use common::types::ApiResult;
 
-impl Dolos {
-    pub async fn network(&self) -> ApiResult<Network> {
+#[async_trait]
+impl NetworkApi for Dolos {
+    async fn network(&self) -> ApiResult<NetworkResponse> {
         self.client.get("network", None).await
     }
 
-    pub async fn network_eras(&self) -> ApiResult<Vec<NetworkErasInner>> {
+    async fn network_eras(&self) -> ApiResult<NetworkErasResponse> {
         self.client.get("network/eras", None).await
     }
 }

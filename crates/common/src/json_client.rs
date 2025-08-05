@@ -14,22 +14,31 @@ use tracing::info;
 pub struct JsonClient {
     base_url: Url,
     client: Client,
+    is_disabled: bool,
 }
 
 impl JsonClient {
-    pub fn new(base_url: Url, timeout_secs: Duration) -> Result<Self, AppError> {
+    pub fn new(base_url: Url, timeout_secs: Duration, is_disabled: bool) -> Result<Self, AppError> {
         let client = Client::builder()
             .timeout(timeout_secs)
             .build()
             .map_err(|e| AppError::Server(format!("failed to build client: {e}")))?;
 
-        Ok(Self { base_url, client })
+        Ok(Self {
+            base_url,
+            client,
+            is_disabled,
+        })
     }
 
     pub async fn get<T>(&self, path: &str, pagination: Option<&Pagination>) -> ApiResult<T>
     where
         T: DeserializeOwned,
     {
+        if self.is_disabled {
+            return Err(BlockfrostError::not_found());
+        }
+
         let mut url = self.base_url.join(path)?;
 
         if let Some(pag) = pagination {
