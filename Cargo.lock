@@ -507,7 +507,8 @@ dependencies = [
 [[package]]
 name = "blockfrost"
 version = "1.1.0"
-source = "git+https://github.com/blockfrost/blockfrost-rust.git?rev=137e5b23d679c34f28d33500d01099035f9f7043#137e5b23d679c34f28d33500d01099035f9f7043"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a3f18d436df2ac619d7cfa04f883b5f241619d3ef43c893d3c035012a271f81"
 dependencies = [
  "blockfrost-openapi",
  "futures",
