@@ -529,7 +529,10 @@ in
         rev = "cdf7ba052fcd09f60132af183ce2b1388566cc75";
         hash = "sha256-QkVEECnUmEROZNzczKHLYTjSyoLz3V8v2uhuJWntgog=";
       };
-      patches = [./dmgbuild--force-badge.diff];
+      patches = [
+        ./dmgbuild--force-badge.diff
+        ./dmgbuild--tmp-mount-root.diff
+      ];
       buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
       propagatedBuildInputs = (with pythonPackages; [setuptools]) ++ [ds_store pyobjc.framework-Quartz];
       format = "pyproject";
