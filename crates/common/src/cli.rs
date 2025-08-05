@@ -22,7 +22,7 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
 }
 
-#[derive(Parser, Debug, Serialize, Clone, Deserialize)]
+#[derive(Parser, Debug, Serialize, Clone, Deserialize, Default)]
 pub struct DataSources {
     #[clap(flatten)]
     pub dolos: DolosArgs,
@@ -35,6 +35,15 @@ pub struct DolosArgs {
 
     #[clap(long = "dolos-timeout-sec", default_value = "30")]
     pub request_timeout: u64,
+}
+
+impl Default for DolosArgs {
+    fn default() -> Self {
+        DolosArgs {
+            endpoint: None,
+            request_timeout: 30,
+        }
+    }
 }
 
 #[derive(Parser, Debug, Serialize, Clone)]
@@ -85,6 +94,7 @@ pub struct Args {
     pub custom_genesis_config: Option<PathBuf>,
 
     #[clap(flatten)]
+    #[serde(default)]
     pub data_sources: DataSources,
 }
 
