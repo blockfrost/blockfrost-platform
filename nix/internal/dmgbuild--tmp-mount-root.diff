@@ -1,0 +1,16 @@
+diff --git a/src/dmgbuild/core.py b/src/dmgbuild/core.py
+index 5fbe9be..2aa5d1f 100644
+--- a/src/dmgbuild/core.py
++++ b/src/dmgbuild/core.py
+@@ -502,8 +502,10 @@ def build_dmg(  # noqa; C901
+     # IDME was deprecated in macOS 10.15/Catalina; as a result, use of -noidme
+     # started raising a warning.
+     if MACOS_VERSION >= (10, 15):
++        # For Sonoma+:
++        mount_root = os.environ.get("TMPDIR", tempfile.gettempdir())
+         ret, output = hdiutil(
+-            "attach", "-nobrowse", "-owners", "off", writableFile.name
++            "attach", "-nobrowse", "-mountroot", mount_root, "-owners", "off", writableFile.name
+         )
+     else:
+         ret, output = hdiutil(
