@@ -148,8 +148,10 @@ impl LoadBalancerState {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             let now = std::time::Instant::now();
+
             access_tokens.lock().await.retain(|_, state| {
                 let still_valid = state.expires > now;
+
                 if !still_valid {
                     warn!(
                         "load balancer: {}: unused WebSocket access token expired",
@@ -173,7 +175,7 @@ impl Drop for LoadBalancerState {
 }
 
 /// Generates a random Base64-encoded string. Used for generating access tokens.
-fn random_token() -> AccessToken {
+pub fn random_token() -> AccessToken {
     use base64::{engine::general_purpose, Engine as _};
     use rand::RngCore;
     let mut bytes = [0u8; 32];
