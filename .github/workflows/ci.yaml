@@ -38,3 +38,9 @@ jobs:
 
       - name: Lint with Clippy
         run: cargo clippy --all-targets --all-features
+
+      - name: Unit tests
+        run: cargo test --lib --bins --all-features --verbose -- --nocapture
+
+      - name: Integration tests
+        run: cargo test --tests --all-features --verbose -- --nocapture
