@@ -1,8 +1,9 @@
 use blockfrost_icebreakers_api::{
     blockfrost::AssetName,
     errors::APIError,
-    load_balancer::{random_token, AccessTokenState, LoadBalancerState},
+    load_balancer::{api, random_token, AccessTokenState, LoadBalancerState},
 };
+use std::net::SocketAddr;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -44,7 +45,6 @@ async fn test_register_expired_token() {
     let prefix = Uuid::new_v4();
     let token = random_token();
     let expires = std::time::Instant::now() - std::time::Duration::from_secs(1);
-
     lb.access_tokens.lock().await.insert(
         token.clone(),
         AccessTokenState {
@@ -53,9 +53,7 @@ async fn test_register_expired_token() {
             expires,
         },
     );
-
     let res = lb.register(&token.0).await;
-
     assert!(matches!(res, Err(APIError::Unauthorized())));
 }
 
@@ -64,11 +62,9 @@ async fn test_clean_up_expired_tokens_logic() {
     let lb = LoadBalancerState::new().await;
     let name = AssetName("x-asset-x".to_string());
     let prefix = Uuid::new_v4();
-
     // insert expired token
     let token_expired = random_token();
     let expires_expired = std::time::Instant::now() - std::time::Duration::from_secs(1);
-
     lb.access_tokens.lock().await.insert(
         token_expired.clone(),
         AccessTokenState {
@@ -99,4 +95,38 @@ async fn test_clean_up_expired_tokens_logic() {
     assert_eq!(tokens.len(), 1);
     assert!(tokens.contains_key(&token_valid));
     assert!(!tokens.contains_key(&token_expired));
+}
+
+#[tokio::test]
+async fn test_websocket_connection_invalid_token() {
+    let lb = LoadBalancerState::new().await;
+    let app = axum::Router::new()
+        .route("/ws", axum::routing::get(api::websocket_route))
+        .layer(axum::Extension(lb.clone()));
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        .unwrap();
+    });
+
+    let url = format!("ws://{}", addr);
+
+    let request = hyper::Request::builder()
+        .uri(&url)
+        .header("Authorization", "Bearer invalid")
+        .body(())
+        .unwrap();
+
+    let connect_result = tokio_tungstenite::connect_async(request).await;
+
+    assert!(connect_result.is_err());
+
+    server_handle.abort();
 }
