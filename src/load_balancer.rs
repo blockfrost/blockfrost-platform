@@ -20,38 +20,38 @@ pub struct AccessToken(pub String);
 pub struct RequestId(Uuid);
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonRequest {
-    id: RequestId,
+pub struct JsonRequest {
+    pub id: RequestId,
     method: JsonRequestMethod,
     path: String,
-    header: Vec<JsonHeader>,
+    pub header: Vec<JsonHeader>,
     body_base64: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonResponse {
-    id: RequestId,
-    code: u16,
-    header: Vec<JsonHeader>,
-    body_base64: String,
+pub struct JsonResponse {
+    pub id: RequestId,
+    pub code: u16,
+    pub header: Vec<JsonHeader>,
+    pub body_base64: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonHeader {
+pub struct JsonHeader {
     name: String,
     value: String,
 }
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Serialize, Deserialize, Debug)]
-enum JsonRequestMethod {
+pub enum JsonRequestMethod {
     GET,
     POST,
 }
 
 /// The WebSocket messages that we send.
 #[derive(Serialize, Deserialize, Debug)]
-enum LoadBalancerMessage {
+pub enum LoadBalancerMessage {
     Request(JsonRequest),
     Ping(u64),
     Pong(u64),
@@ -59,7 +59,7 @@ enum LoadBalancerMessage {
 
 /// The WebSocket messages that we receive.
 #[derive(Serialize, Deserialize, Debug)]
-enum RelayMessage {
+pub enum RelayMessage {
     Response(JsonResponse),
     Ping(u64),
     Pong(u64),
