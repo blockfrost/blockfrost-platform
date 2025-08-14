@@ -1,4 +1,4 @@
-use crate::types::AddressUtxos;
+use crate::types::AddressesUtxosResponse;
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 
@@ -8,7 +8,7 @@ pub trait AddressesApi: Send + Sync + 'static {
         &self,
         _address: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<AddressUtxos> {
+    ) -> ApiResult<AddressesUtxosResponse> {
         Err(BlockfrostError::not_found())
     }
 }

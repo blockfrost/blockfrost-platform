@@ -554,7 +554,6 @@ dependencies = [
  "bech32 0.9.1",
  "bip39",
  "blockfrost",
- "blockfrost-openapi",
  "build-utils",
  "cardano-serialization-lib",
  "chrono",

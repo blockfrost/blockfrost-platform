@@ -1,10 +1,10 @@
-use crate::types::{PoolDelegatorsResponse, PoolListExtendedResponse};
+use crate::types::{PoolsDelegatorsResponse, PoolsListExtendedResponse};
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 pub trait PoolsApi: Send + Sync + 'static {
-    async fn pools_extended(&self) -> ApiResult<PoolListExtendedResponse> {
+    async fn pools_extended(&self) -> ApiResult<PoolsListExtendedResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -12,7 +12,7 @@ pub trait PoolsApi: Send + Sync + 'static {
         &self,
         _pool_id: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<PoolDelegatorsResponse> {
+    ) -> ApiResult<PoolsDelegatorsResponse> {
         Err(BlockfrostError::not_found())
     }
 }

@@ -1,7 +1,7 @@
 use crate::types::{
-    TxCborResponse, TxDelegationsResponse, TxMetadataCborResponse, TxMetadataResponse,
-    TxMirsResponse, TxPoolCertsResponse, TxPoolRetiresResponse, TxResponse, TxStakeAddrResponse,
-    TxUtxosResponse, TxWithdrawalsResponse,
+    TxCborResponse, TxResponse, TxUtxosResponse, TxsDelegationsResponse, TxsMetadataCborResponse,
+    TxsMetadataResponse, TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse,
+    TxsStakeAddrResponse, TxsWithdrawalsResponse,
 };
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
@@ -24,7 +24,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxMetadataResponse> {
+    ) -> ApiResult<TxsMetadataResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -32,7 +32,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxMetadataCborResponse> {
+    ) -> ApiResult<TxsMetadataCborResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -40,7 +40,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxWithdrawalsResponse> {
+    ) -> ApiResult<TxsWithdrawalsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -48,7 +48,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxDelegationsResponse> {
+    ) -> ApiResult<TxsDelegationsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -56,7 +56,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxMirsResponse> {
+    ) -> ApiResult<TxsMirsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -64,7 +64,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxPoolCertsResponse> {
+    ) -> ApiResult<TxsPoolCertsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -72,7 +72,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxPoolRetiresResponse> {
+    ) -> ApiResult<TxsPoolRetiresResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -80,7 +80,7 @@ pub trait TxsApi: Send + Sync + 'static {
         &self,
         _hash: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<TxStakeAddrResponse> {
+    ) -> ApiResult<TxsStakeAddrResponse> {
         Err(BlockfrostError::not_found())
     }
 }

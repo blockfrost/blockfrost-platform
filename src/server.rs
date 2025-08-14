@@ -54,7 +54,7 @@ pub async fn build(
 
     // Create API
     let api = Arc::new(Api {
-        dolos: Arc::new(dolos),
+        dolos: Box::new(dolos),
     });
 
     // Health monitor

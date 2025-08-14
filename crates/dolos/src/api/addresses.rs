@@ -1,5 +1,5 @@
 use crate::client::Dolos;
-use api_provider::{api::addresses::AddressesApi, types::AddressUtxos};
+use api_provider::{api::addresses::AddressesApi, types::AddressesUtxosResponse};
 use async_trait::async_trait;
 use common::{pagination::Pagination, types::ApiResult};
 
@@ -9,7 +9,7 @@ impl AddressesApi for Dolos {
         &self,
         address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<AddressUtxos> {
+    ) -> ApiResult<AddressesUtxosResponse> {
         let path = format!("addresses/{address}/utxos");
 
         self.client.get(&path, Some(pagination)).await

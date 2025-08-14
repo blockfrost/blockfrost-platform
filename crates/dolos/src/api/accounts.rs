@@ -2,7 +2,8 @@ use crate::client::Dolos;
 use api_provider::{
     api::accounts::AccountsApi,
     types::{
-        AccountAddresses, AccountDelegations, AccountRegistrations, AccountResponse, AccountRewards,
+        AccountResponse, AccountsAddressesResponse, AccountsDelegationsResponse,
+        AccountsRegistrationsResponse, AccountsRewardsResponse,
     },
 };
 use async_trait::async_trait;
@@ -19,7 +20,7 @@ impl AccountsApi for Dolos {
     async fn accounts_stake_address_rewards(
         &self,
         stake_address: &str,
-    ) -> ApiResult<AccountRewards> {
+    ) -> ApiResult<AccountsRewardsResponse> {
         let path = format!("accounts/{stake_address}/rewards");
 
         self.client.get(&path, None).await
@@ -29,7 +30,7 @@ impl AccountsApi for Dolos {
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<AccountAddresses> {
+    ) -> ApiResult<AccountsAddressesResponse> {
         let path = format!("accounts/{stake_address}/addresses");
 
         self.client.get(&path, Some(pagination)).await
@@ -39,7 +40,7 @@ impl AccountsApi for Dolos {
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<AccountDelegations> {
+    ) -> ApiResult<AccountsDelegationsResponse> {
         let path = format!("accounts/{stake_address}/delegations");
 
         self.client.get(&path, Some(pagination)).await
@@ -49,7 +50,7 @@ impl AccountsApi for Dolos {
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<AccountRegistrations> {
+    ) -> ApiResult<AccountsRegistrationsResponse> {
         let path = format!("accounts/{stake_address}/registrations");
 
         self.client.get(&path, Some(pagination)).await

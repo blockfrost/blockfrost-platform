@@ -1,5 +1,6 @@
 use crate::types::{
-    AccountAddresses, AccountDelegations, AccountRegistrations, AccountResponse, AccountRewards,
+    AccountResponse, AccountsAddressesResponse, AccountsDelegationsResponse,
+    AccountsRegistrationsResponse, AccountsRewardsResponse,
 };
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
@@ -13,7 +14,7 @@ pub trait AccountsApi: Send + Sync + 'static {
     async fn accounts_stake_address_rewards(
         &self,
         _stake_address: &str,
-    ) -> ApiResult<AccountRewards> {
+    ) -> ApiResult<AccountsRewardsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -21,7 +22,7 @@ pub trait AccountsApi: Send + Sync + 'static {
         &self,
         _stake_address: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<AccountAddresses> {
+    ) -> ApiResult<AccountsAddressesResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -29,7 +30,7 @@ pub trait AccountsApi: Send + Sync + 'static {
         &self,
         _stake_address: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<AccountDelegations> {
+    ) -> ApiResult<AccountsDelegationsResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -37,7 +38,7 @@ pub trait AccountsApi: Send + Sync + 'static {
         &self,
         _stake_address: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<AccountRegistrations> {
+    ) -> ApiResult<AccountsRegistrationsResponse> {
         Err(BlockfrostError::not_found())
     }
 }

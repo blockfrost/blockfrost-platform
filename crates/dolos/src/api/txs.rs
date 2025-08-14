@@ -2,9 +2,9 @@ use crate::client::Dolos;
 use api_provider::{
     api::txs::TxsApi,
     types::{
-        TxCborResponse, TxDelegationsResponse, TxMetadataCborResponse, TxMetadataResponse,
-        TxMirsResponse, TxPoolCertsResponse, TxPoolRetiresResponse, TxResponse,
-        TxStakeAddrResponse, TxUtxosResponse, TxWithdrawalsResponse,
+        TxCborResponse, TxResponse, TxUtxosResponse, TxsDelegationsResponse,
+        TxsMetadataCborResponse, TxsMetadataResponse, TxsMirsResponse, TxsPoolCertsResponse,
+        TxsPoolRetiresResponse, TxsStakeAddrResponse, TxsWithdrawalsResponse,
     },
 };
 use async_trait::async_trait;
@@ -34,7 +34,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxMetadataResponse> {
+    ) -> ApiResult<TxsMetadataResponse> {
         let path = format!("txs/{hash}/metadata");
 
         self.client.get(&path, Some(pagination)).await
@@ -44,7 +44,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxMetadataCborResponse> {
+    ) -> ApiResult<TxsMetadataCborResponse> {
         let path = format!("txs/{hash}/metadata/cbor");
 
         self.client.get(&path, Some(pagination)).await
@@ -54,7 +54,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxWithdrawalsResponse> {
+    ) -> ApiResult<TxsWithdrawalsResponse> {
         let path = format!("txs/{hash}/withdrawals");
 
         self.client.get(&path, Some(pagination)).await
@@ -64,7 +64,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxDelegationsResponse> {
+    ) -> ApiResult<TxsDelegationsResponse> {
         let path = format!("txs/{hash}/delegations");
 
         self.client.get(&path, Some(pagination)).await
@@ -74,7 +74,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxMirsResponse> {
+    ) -> ApiResult<TxsMirsResponse> {
         let path = format!("txs/{hash}/mirs");
 
         self.client.get(&path, Some(pagination)).await
@@ -84,7 +84,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxPoolCertsResponse> {
+    ) -> ApiResult<TxsPoolCertsResponse> {
         let path = format!("txs/{hash}/pool_updates");
 
         self.client.get(&path, Some(pagination)).await
@@ -94,7 +94,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxPoolRetiresResponse> {
+    ) -> ApiResult<TxsPoolRetiresResponse> {
         let path = format!("txs/{hash}/pool_retires");
 
         self.client.get(&path, Some(pagination)).await
@@ -104,7 +104,7 @@ impl TxsApi for Dolos {
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<TxStakeAddrResponse> {
+    ) -> ApiResult<TxsStakeAddrResponse> {
         let path = format!("txs/{hash}/stakes");
 
         self.client.get(&path, Some(pagination)).await
