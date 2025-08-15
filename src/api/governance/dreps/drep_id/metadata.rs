@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::drep_metadata::DrepMetadata;
+use api_provider::types::DrepMetadataResponse;
 
-pub async fn route() -> ApiResult<DrepMetadata> {
+pub async fn route() -> ApiResult<DrepMetadataResponse> {
     Err(BlockfrostError::not_found())
 }

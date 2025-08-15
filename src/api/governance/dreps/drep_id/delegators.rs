@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::drep_delegators_inner::DrepDelegatorsInner;
+use api_provider::types::DrepDelegatorsResponse;
 
-pub async fn route() -> ApiResult<Vec<DrepDelegatorsInner>> {
+pub async fn route() -> ApiResult<DrepDelegatorsResponse> {
     Err(BlockfrostError::not_found())
 }

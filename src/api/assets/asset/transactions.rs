@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
+use api_provider::types::AssetsTransactionsResponse;
 use axum::extract::{Path, Query};
-use blockfrost_openapi::models::asset_transactions_inner::AssetTransactionsInner;
 use common::{
     assets::{AssetData, AssetsPath},
     pagination::{Pagination, PaginationQuery},
@@ -9,7 +9,7 @@ use common::{
 pub async fn route(
     Path(path): Path<AssetsPath>,
     Query(pagination_query): Query<PaginationQuery>,
-) -> ApiResult<Vec<AssetTransactionsInner>> {
+) -> ApiResult<AssetsTransactionsResponse> {
     let _ = AssetData::from_query(path.asset)?;
     let _ = Pagination::from_query(pagination_query).await?;
 

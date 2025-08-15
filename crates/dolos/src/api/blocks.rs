@@ -1,11 +1,11 @@
 use crate::client::Dolos;
-use api_provider::{api::blocks::BlocksApi, types::BlockResponse};
+use api_provider::{api::blocks::BlocksApi, types::BlocksSingleResponse};
 use async_trait::async_trait;
 use common::{pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 impl BlocksApi for Dolos {
-    async fn blocks_latest(&self) -> ApiResult<BlockResponse> {
+    async fn blocks_latest(&self) -> ApiResult<BlocksSingleResponse> {
         self.client.get("blocks/latest", None).await
     }
 
@@ -13,7 +13,7 @@ impl BlocksApi for Dolos {
         self.client.get("blocks/latest/txs", None).await
     }
 
-    async fn blocks_hash_or_number(&self, hash_or_number: &str) -> ApiResult<BlockResponse> {
+    async fn blocks_hash_or_number(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/{hash_or_number}");
 
         self.client.get(&path, None).await
@@ -33,7 +33,7 @@ impl BlocksApi for Dolos {
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<BlockResponse>> {
+    ) -> ApiResult<Vec<BlocksSingleResponse>> {
         let path = format!("blocks/{hash_or_number}/previous");
 
         self.client.get(&path, Some(pagination)).await
@@ -43,13 +43,13 @@ impl BlocksApi for Dolos {
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<BlockResponse>> {
+    ) -> ApiResult<Vec<BlocksSingleResponse>> {
         let path = format!("blocks/{hash_or_number}/next");
 
         self.client.get(&path, Some(pagination)).await
     }
 
-    async fn blocks_slot_slot(&self, slot: &str) -> ApiResult<BlockResponse> {
+    async fn blocks_slot_slot(&self, slot: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/slot/{slot}");
 
         self.client.get(&path, None).await

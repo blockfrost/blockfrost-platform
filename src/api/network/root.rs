@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::NetworkResponse;
 use axum::extract::State;
-use blockfrost_openapi::models::network::Network;
 
-pub async fn route(State(state): State<AppState>) -> ApiResult<Network> {
+pub async fn route(State(state): State<AppState>) -> ApiResult<NetworkResponse> {
     state.api.dolos.network().await
 }

@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::epoch_stake_content_inner::EpochStakeContentInner;
+use api_provider::types::EpochsStakeResponse;
 
-pub async fn route() -> ApiResult<Vec<EpochStakeContentInner>> {
+pub async fn route() -> ApiResult<EpochsStakeResponse> {
     Err(BlockfrostError::not_found())
 }

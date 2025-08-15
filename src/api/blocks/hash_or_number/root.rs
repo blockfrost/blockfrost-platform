@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::block_content::BlockContent;
+use api_provider::types::BlocksSingleResponse;
 
-pub async fn route() -> ApiResult<BlockContent> {
+use crate::{BlockfrostError, api::ApiResult};
+
+pub async fn route() -> ApiResult<BlocksSingleResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -2,8 +2,8 @@ use crate::client::Dolos;
 use api_provider::{
     api::accounts::AccountsApi,
     types::{
-        AccountResponse, AccountsAddressesResponse, AccountsDelegationsResponse,
-        AccountsRegistrationsResponse, AccountsRewardsResponse,
+        AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
+        AccountsResponse, AccountsRewardsResponse,
     },
 };
 use async_trait::async_trait;
@@ -11,7 +11,7 @@ use common::{pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 impl AccountsApi for Dolos {
-    async fn accounts_stake_address(&self, stake_address: &str) -> ApiResult<AccountResponse> {
+    async fn accounts_stake_address(&self, stake_address: &str) -> ApiResult<AccountsResponse> {
         let path = format!("accounts/{stake_address}");
 
         self.client.get(&path, None).await

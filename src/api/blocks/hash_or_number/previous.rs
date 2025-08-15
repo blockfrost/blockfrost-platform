@@ -1,6 +1,6 @@
 use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::BlocksResponse;
 use axum::extract::{Path, Query, State};
-use blockfrost_openapi::models::block_content::BlockContent;
 use common::{
     blocks::BlocksPath,
     pagination::{Pagination, PaginationQuery},
@@ -10,7 +10,7 @@ pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(blocks_path): Path<BlocksPath>,
-) -> ApiResult<Vec<BlockContent>> {
+) -> ApiResult<BlocksResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state

@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::PoolsListExtendedResponse;
 use axum::extract::State;
-use blockfrost_openapi::models::pool_list_extended_inner::PoolListExtendedInner;
 
-pub async fn route(State(state): State<AppState>) -> ApiResult<Vec<PoolListExtendedInner>> {
+pub async fn route(State(state): State<AppState>) -> ApiResult<PoolsListExtendedResponse> {
     state.api.dolos.pools_extended().await
 }

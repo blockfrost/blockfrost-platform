@@ -1,10 +1,10 @@
-use crate::types::BlockResponse;
+use crate::types::{BlocksResponse, BlocksSingleResponse};
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 pub trait BlocksApi: Send + Sync + 'static {
-    async fn blocks_latest(&self) -> ApiResult<BlockResponse> {
+    async fn blocks_latest(&self) -> ApiResult<BlocksSingleResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -12,7 +12,10 @@ pub trait BlocksApi: Send + Sync + 'static {
         Err(BlockfrostError::not_found())
     }
 
-    async fn blocks_hash_or_number(&self, _hash_or_number: &str) -> ApiResult<BlockResponse> {
+    async fn blocks_hash_or_number(
+        &self,
+        _hash_or_number: &str,
+    ) -> ApiResult<BlocksSingleResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -28,7 +31,7 @@ pub trait BlocksApi: Send + Sync + 'static {
         &self,
         _hash_or_number: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<Vec<BlockResponse>> {
+    ) -> ApiResult<BlocksResponse> {
         Err(BlockfrostError::not_found())
     }
 
@@ -36,11 +39,11 @@ pub trait BlocksApi: Send + Sync + 'static {
         &self,
         _hash_or_number: &str,
         _pagination: &Pagination,
-    ) -> ApiResult<Vec<BlockResponse>> {
+    ) -> ApiResult<BlocksResponse> {
         Err(BlockfrostError::not_found())
     }
 
-    async fn blocks_slot_slot(&self, _slot: &str) -> ApiResult<BlockResponse> {
+    async fn blocks_slot_slot(&self, _slot: &str) -> ApiResult<BlocksSingleResponse> {
         Err(BlockfrostError::not_found())
     }
 }

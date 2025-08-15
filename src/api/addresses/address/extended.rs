@@ -1,5 +1,5 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::AddressContentExtendedResponse;
+use api_provider::types::AddressesContentExtendedResponse;
 use axum::{Extension, extract::Path};
 use common::{
     addresses::{AddressInfo, AddressesPath},
@@ -9,7 +9,7 @@ use common::{
 pub async fn route(
     Path(address_path): Path<AddressesPath>,
     Extension(config): Extension<Config>,
-) -> ApiResult<AddressContentExtendedResponse> {
+) -> ApiResult<AddressesContentExtendedResponse> {
     let AddressesPath { address, asset: _ } = address_path;
     let _ = AddressInfo::from_address(&address, config.network)?;
 

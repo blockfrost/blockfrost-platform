@@ -1,13 +1,12 @@
-use api_provider::api::Api;
+use api_provider::{api::Api, types::GenesisResponse};
 use axum::extract::State;
-use blockfrost_openapi::models::genesis_content::GenesisContent;
 use common::{config::Config, types::Network};
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub genesis: Arc<Vec<(Network, GenesisContent)>>,
+    pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
     pub api: Arc<Api>,
 }
 

@@ -1,6 +1,6 @@
 use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::PoolsDelegatorsResponse;
 use axum::extract::{Path, Query, State};
-use blockfrost_openapi::models::pool_delegators_inner::PoolDelegatorsInner;
 use common::{
     pagination::{Pagination, PaginationQuery},
     pools::PoolsPath,
@@ -10,7 +10,7 @@ pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(pools_path): Path<PoolsPath>,
-) -> ApiResult<Vec<PoolDelegatorsInner>> {
+) -> ApiResult<PoolsDelegatorsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state

@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::pool_list_retire_inner::PoolListRetireInner;
+use api_provider::types::PoolsRetiresResponse;
 
-pub async fn route() -> ApiResult<Vec<PoolListRetireInner>> {
+pub async fn route() -> ApiResult<PoolsRetiresResponse> {
     Err(BlockfrostError::not_found())
 }

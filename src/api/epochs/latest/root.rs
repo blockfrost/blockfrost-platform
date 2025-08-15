@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::epoch_content::EpochContent;
+use api_provider::types::EpochsResponse;
 
-pub async fn route() -> ApiResult<EpochContent> {
+pub async fn route() -> ApiResult<EpochsResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -1,13 +1,13 @@
 use crate::types::{
-    AccountResponse, AccountsAddressesResponse, AccountsDelegationsResponse,
-    AccountsRegistrationsResponse, AccountsRewardsResponse,
+    AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
+    AccountsResponse, AccountsRewardsResponse,
 };
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 pub trait AccountsApi: Send + Sync + 'static {
-    async fn accounts_stake_address(&self, _stake_address: &str) -> ApiResult<AccountResponse> {
+    async fn accounts_stake_address(&self, _stake_address: &str) -> ApiResult<AccountsResponse> {
         Err(BlockfrostError::not_found())
     }
 
