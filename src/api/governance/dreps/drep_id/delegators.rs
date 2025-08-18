@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::DrepDelegatorsResponse;
+use api_provider::types::DrepsDelegatorsResponse;
 
-pub async fn route() -> ApiResult<DrepDelegatorsResponse> {
+use crate::{BlockfrostError, api::ApiResult};
+
+pub async fn route() -> ApiResult<DrepsDelegatorsResponse> {
     Err(BlockfrostError::not_found())
 }

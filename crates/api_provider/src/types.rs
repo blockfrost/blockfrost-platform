@@ -93,7 +93,7 @@ pub type DrepsDelegatorsResponse = Vec<DrepDelegatorsInner>;
 pub type DrepsMetadataResponse = DrepMetadata;
 pub type DrepsUpdatesResponse = Vec<DrepUpdatesInner>;
 pub type DrepsVotesResponse = Vec<DrepVotesInner>;
-pub type ProposalsResponse = Vec<ProposalsInner>;
+pub type DrepsProposalsResponse = Vec<ProposalsInner>;
 
 // metadata
 pub type MetadataLabelsResponse = Vec<TxMetadataLabelsInner>;

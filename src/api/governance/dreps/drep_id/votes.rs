@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::DrepVotesResponse;
+use api_provider::types::DrepsVotesResponse;
 
-pub async fn route() -> ApiResult<DrepVotesResponse> {
+pub async fn route() -> ApiResult<DrepsVotesResponse> {
     Err(BlockfrostError::not_found())
 }

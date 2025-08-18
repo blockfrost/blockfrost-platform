@@ -1,22 +1,22 @@
 use crate::types::{
-    TxCborResponse, TxResponse, TxUtxosResponse, TxsDelegationsResponse, TxsMetadataCborResponse,
-    TxsMetadataResponse, TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse,
-    TxsStakeAddrResponse, TxsWithdrawalsResponse,
+    TxsCborResponse, TxsDelegationsResponse, TxsMetadataCborResponse, TxsMetadataResponse,
+    TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsSingleResponse,
+    TxsStakeAddrResponse, TxsUtxosResponse, TxsWithdrawalsResponse,
 };
 use async_trait::async_trait;
 use common::{errors::BlockfrostError, pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 pub trait TxsApi: Send + Sync + 'static {
-    async fn txs_hash(&self, _hash: &str) -> ApiResult<TxResponse> {
+    async fn txs_hash(&self, _hash: &str) -> ApiResult<TxsSingleResponse> {
         Err(BlockfrostError::not_found())
     }
 
-    async fn txs_hash_cbor(&self, _hash: &str) -> ApiResult<TxCborResponse> {
+    async fn txs_hash_cbor(&self, _hash: &str) -> ApiResult<TxsCborResponse> {
         Err(BlockfrostError::not_found())
     }
 
-    async fn txs_hash_utxos(&self, _hash: &str) -> ApiResult<TxUtxosResponse> {
+    async fn txs_hash_utxos(&self, _hash: &str) -> ApiResult<TxsUtxosResponse> {
         Err(BlockfrostError::not_found())
     }
 

@@ -2,9 +2,9 @@ use crate::client::Dolos;
 use api_provider::{
     api::txs::TxsApi,
     types::{
-        TxCborResponse, TxResponse, TxUtxosResponse, TxsDelegationsResponse,
-        TxsMetadataCborResponse, TxsMetadataResponse, TxsMirsResponse, TxsPoolCertsResponse,
-        TxsPoolRetiresResponse, TxsStakeAddrResponse, TxsWithdrawalsResponse,
+        TxsCborResponse, TxsDelegationsResponse, TxsMetadataCborResponse, TxsMetadataResponse,
+        TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsSingleResponse,
+        TxsStakeAddrResponse, TxsUtxosResponse, TxsWithdrawalsResponse,
     },
 };
 use async_trait::async_trait;
@@ -12,19 +12,19 @@ use common::{pagination::Pagination, types::ApiResult};
 
 #[async_trait]
 impl TxsApi for Dolos {
-    async fn txs_hash(&self, hash: &str) -> ApiResult<TxResponse> {
+    async fn txs_hash(&self, hash: &str) -> ApiResult<TxsSingleResponse> {
         let path = format!("txs/{hash}");
 
         self.client.get(&path, None).await
     }
 
-    async fn txs_hash_cbor(&self, hash: &str) -> ApiResult<TxCborResponse> {
+    async fn txs_hash_cbor(&self, hash: &str) -> ApiResult<TxsCborResponse> {
         let path = format!("txs/{hash}/cbor");
 
         self.client.get(&path, None).await
     }
 
-    async fn txs_hash_utxos(&self, hash: &str) -> ApiResult<TxUtxosResponse> {
+    async fn txs_hash_utxos(&self, hash: &str) -> ApiResult<TxsUtxosResponse> {
         let path = format!("txs/{hash}/utxos");
 
         self.client.get(&path, None).await
