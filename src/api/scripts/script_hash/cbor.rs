@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::script_cbor::ScriptCbor;
+use api_provider::types::ScriptsCborResponse;
 
-pub async fn route() -> ApiResult<Vec<ScriptCbor>> {
+pub async fn route() -> ApiResult<ScriptsCborResponse> {
     Err(BlockfrostError::not_found())
 }

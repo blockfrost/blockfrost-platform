@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::DrepSingleResponse;
+use api_provider::types::DrepsSingleResponse;
 
-pub async fn route() -> ApiResult<DrepSingleResponse> {
+pub async fn route() -> ApiResult<DrepsSingleResponse> {
     Err(BlockfrostError::not_found())
 }

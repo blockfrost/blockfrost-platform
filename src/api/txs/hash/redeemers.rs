@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::tx_content_redeemers_inner::TxContentRedeemersInner;
+use api_provider::types::TxsRedeemersResponse;
 
-pub async fn route() -> ApiResult<TxContentRedeemersInner> {
+pub async fn route() -> ApiResult<TxsRedeemersResponse> {
     Err(BlockfrostError::not_found())
 }

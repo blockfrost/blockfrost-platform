@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::pool_metadata::PoolMetadata;
+use api_provider::types::PoolsMetadataResponse;
 
-pub async fn route() -> ApiResult<PoolMetadata> {
+pub async fn route() -> ApiResult<PoolsMetadataResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::script::Script;
+use api_provider::types::ScriptsSingleResponse;
 
-pub async fn route() -> ApiResult<Script> {
+pub async fn route() -> ApiResult<ScriptsSingleResponse> {
     Err(BlockfrostError::not_found())
 }

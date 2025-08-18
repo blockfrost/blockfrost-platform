@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::proposal::Proposal;
+use api_provider::types::DrepsSingleProposalResponse;
 
-pub async fn route() -> ApiResult<Proposal> {
+pub async fn route() -> ApiResult<DrepsSingleProposalResponse> {
     Err(BlockfrostError::not_found())
 }

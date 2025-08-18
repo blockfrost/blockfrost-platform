@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::proposal_withdrawals_inner::ProposalWithdrawalsInner;
+use api_provider::types::DrepsProposalWithdrawalsResponse;
 
-pub async fn route() -> ApiResult<Vec<ProposalWithdrawalsInner>> {
+pub async fn route() -> ApiResult<DrepsProposalWithdrawalsResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::script_json::ScriptJson;
+use api_provider::types::ScriptsJsonResponse;
 
-pub async fn route() -> ApiResult<Vec<ScriptJson>> {
+pub async fn route() -> ApiResult<ScriptsJsonResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -1,11 +1,11 @@
 use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::TxsCborResponse;
 use axum::extract::{Path, State};
-use blockfrost_openapi::models::tx_content_cbor::TxContentCbor;
 use common::txs::TxsPath;
 
 pub async fn route(
     State(state): State<AppState>,
     Path(path): Path<TxsPath>,
-) -> ApiResult<TxContentCbor> {
+) -> ApiResult<TxsCborResponse> {
     state.api.dolos.txs_hash_cbor(&path.hash).await
 }
