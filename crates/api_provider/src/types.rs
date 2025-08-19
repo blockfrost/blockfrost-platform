@@ -150,3 +150,6 @@ pub type TxsContentRequiredSignersInner = Vec<TxContentRequiredSignersInner>;
 
 // genesis
 pub type GenesisResponse = GenesisContent;
+
+// tests
+pub type TestsAddressUtxoResponse = AddressUtxoContentInner;

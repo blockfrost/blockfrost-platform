@@ -1,9 +1,6 @@
 use anyhow::{Result, anyhow};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Order, Pagination};
-use blockfrost_openapi::models::{
-    address_utxo_content_inner::AddressUtxoContentInner, epoch_param_content::EpochParamContent,
-};
 use cardano_serialization_lib::{
     Address, BaseAddress, BigNum, Bip32PrivateKey, CoinSelectionStrategyCIP2, Credential,
     LinearFee, NetworkId, PrivateKey, Transaction, TransactionBody, TransactionBuilder,
@@ -72,8 +69,8 @@ pub fn compose_transaction(
     address: &str,
     output_address: &str,
     output_amount: BigNum,
-    utxos: &[AddressUtxoContentInner],
-    params: &EpochParamContent,
+    utxos: &[TestsAddressUtxoResponse],
+    params: &EpochsParamResponse,
     current_slot: u64,
 ) -> Result<(String, TransactionBody)> {
     if utxos.is_empty() {
