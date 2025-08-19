@@ -13,9 +13,5 @@ pub async fn route(
 ) -> ApiResult<TxsDelegationsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
-    state
-        .api
-        .dolos
-        .txs_hash_delegations(&path.hash, &pagination)
-        .await
+    state.dolos.txs().delegations(&path.hash, &pagination).await
 }

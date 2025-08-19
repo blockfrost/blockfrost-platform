@@ -1,13 +1,21 @@
 use crate::client::Dolos;
-use api_provider::{api::assets::AssetsApi, types::AssetsSingleResponse};
-use async_trait::async_trait;
+use api_provider::types::AssetsSingleResponse;
 use common::types::ApiResult;
 
-#[async_trait]
-impl AssetsApi for Dolos {
-    async fn assets_asset(&self, asset_id: &str) -> ApiResult<AssetsSingleResponse> {
+pub struct DolosAssets<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
+impl Dolos {
+    pub fn assets(&self) -> DolosAssets<'_> {
+        DolosAssets { inner: self }
+    }
+}
+
+impl DolosAssets<'_> {
+    pub async fn asset(&self, asset_id: &str) -> ApiResult<AssetsSingleResponse> {
         let path = format!("assets/{asset_id}");
 
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 }

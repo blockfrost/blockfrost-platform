@@ -3,5 +3,5 @@ use api_provider::types::PoolsListExtendedResponse;
 use axum::extract::State;
 
 pub async fn route(State(state): State<AppState>) -> ApiResult<PoolsListExtendedResponse> {
-    state.api.dolos.pools_extended().await
+    state.dolos.pools().extended().await
 }

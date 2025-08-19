@@ -10,8 +10,8 @@ pub async fn route(
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
 
     state
-        .api
         .dolos
-        .accounts_stake_address(&account.stake_address)
+        .accounts()
+        .stake_address(&account.stake_address)
         .await
 }

@@ -14,8 +14,8 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state
-        .api
         .dolos
-        .txs_hash_metadata_cbor(&path.hash, &pagination)
+        .txs()
+        .metadata_cbor(&path.hash, &pagination)
         .await
 }

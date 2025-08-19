@@ -1,57 +1,60 @@
 use crate::client::Dolos;
-use api_provider::{api::blocks::BlocksApi, types::BlocksSingleResponse};
-use async_trait::async_trait;
+use api_provider::types::BlocksSingleResponse;
 use common::{pagination::Pagination, types::ApiResult};
 
-#[async_trait]
-impl BlocksApi for Dolos {
-    async fn blocks_latest(&self) -> ApiResult<BlocksSingleResponse> {
-        self.client.get("blocks/latest", None).await
+pub struct DolosBlocks<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
+impl Dolos {
+    pub fn blocks(&self) -> DolosBlocks<'_> {
+        DolosBlocks { inner: self }
+    }
+}
+
+impl DolosBlocks<'_> {
+    pub async fn latest(&self) -> ApiResult<BlocksSingleResponse> {
+        self.inner.client.get("blocks/latest", None).await
     }
 
-    async fn blocks_latest_txs(&self) -> ApiResult<Vec<String>> {
-        self.client.get("blocks/latest/txs", None).await
+    pub async fn latest_txs(&self) -> ApiResult<Vec<String>> {
+        self.inner.client.get("blocks/latest/txs", None).await
     }
 
-    async fn blocks_hash_or_number(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
+    pub async fn by(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/{hash_or_number}");
-
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    async fn blocks_hash_or_number_txs(
+    pub async fn txs(
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
     ) -> ApiResult<Vec<String>> {
         let path = format!("blocks/{hash_or_number}/txs");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    async fn blocks_previous(
+    pub async fn previous(
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
     ) -> ApiResult<Vec<BlocksSingleResponse>> {
         let path = format!("blocks/{hash_or_number}/previous");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    async fn blocks_next(
+    pub async fn next(
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
     ) -> ApiResult<Vec<BlocksSingleResponse>> {
         let path = format!("blocks/{hash_or_number}/next");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    async fn blocks_slot_slot(&self, slot: &str) -> ApiResult<BlocksSingleResponse> {
+    pub async fn by_slot(&self, slot: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/slot/{slot}");
-
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 }

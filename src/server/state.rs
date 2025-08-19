@@ -1,13 +1,14 @@
-use api_provider::{api::Api, types::GenesisResponse};
+use api_provider::types::GenesisResponse;
 use axum::extract::State;
 use common::{config::Config, types::Network};
+use dolos::client::Dolos;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
     pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
-    pub api: Arc<Api>,
+    pub dolos: Dolos,
 }
 
 pub type AppStateExt = State<AppState>;

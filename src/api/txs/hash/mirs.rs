@@ -13,5 +13,5 @@ pub async fn route(
 ) -> ApiResult<TxsMirsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
-    state.api.dolos.txs_hash_mirs(&path.hash, &pagination).await
+    state.dolos.txs().mirs(&path.hash, &pagination).await
 }

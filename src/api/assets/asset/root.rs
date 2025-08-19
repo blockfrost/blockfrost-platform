@@ -9,5 +9,5 @@ pub async fn route(
 ) -> ApiResult<AssetsSingleResponse> {
     let asset_data = AssetData::from_query(path.asset)?;
 
-    state.api.dolos.assets_asset(&asset_data.asset).await
+    state.dolos.assets().asset(&asset_data.asset).await
 }

@@ -14,8 +14,8 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state
-        .api
         .dolos
-        .pools_pool_id_delegators(&pools_path.pool_id, &pagination)
+        .pools()
+        .delegators(&pools_path.pool_id, &pagination)
         .await
 }

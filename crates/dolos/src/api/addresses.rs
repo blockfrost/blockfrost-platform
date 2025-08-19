@@ -1,17 +1,25 @@
 use crate::client::Dolos;
-use api_provider::{api::addresses::AddressesApi, types::AddressesUtxosResponse};
-use async_trait::async_trait;
+use api_provider::types::AddressesUtxosResponse;
 use common::{pagination::Pagination, types::ApiResult};
 
-#[async_trait]
-impl AddressesApi for Dolos {
-    async fn addresses_address_utxos(
+pub struct DolosAddresses<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
+impl Dolos {
+    pub fn addresses(&self) -> DolosAddresses<'_> {
+        DolosAddresses { inner: self }
+    }
+}
+
+impl DolosAddresses<'_> {
+    pub async fn utxos(
         &self,
         address: &str,
         pagination: &Pagination,
     ) -> ApiResult<AddressesUtxosResponse> {
         let path = format!("addresses/{address}/utxos");
 
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }

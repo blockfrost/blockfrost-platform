@@ -14,8 +14,8 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state
-        .api
         .dolos
-        .txs_hash_pool_retires(&path.hash, &pagination)
+        .txs()
+        .pool_retires(&path.hash, &pagination)
         .await
 }

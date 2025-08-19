@@ -8,8 +8,8 @@ pub async fn route(
     Path(epochs_path): Path<EpochsPath>,
 ) -> ApiResult<EpochsParamResponse> {
     state
-        .api
         .dolos
-        .epoch_number_parameters(&epochs_path.epoch_number)
+        .epochs()
+        .parameters(&epochs_path.epoch_number)
         .await
 }

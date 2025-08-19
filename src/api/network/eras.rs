@@ -3,5 +3,5 @@ use api_provider::types::NetworkErasResponse;
 use axum::extract::State;
 
 pub async fn route(State(state): State<AppState>) -> ApiResult<NetworkErasResponse> {
-    state.api.dolos.network_eras().await
+    state.dolos.network().eras().await
 }

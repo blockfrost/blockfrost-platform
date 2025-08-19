@@ -1,18 +1,23 @@
 use crate::client::Dolos;
-use api_provider::{
-    api::network::NetworkApi,
-    types::{NetworkErasResponse, NetworkResponse},
-};
-use async_trait::async_trait;
+use api_provider::types::{NetworkErasResponse, NetworkResponse};
 use common::types::ApiResult;
 
-#[async_trait]
-impl NetworkApi for Dolos {
-    async fn network(&self) -> ApiResult<NetworkResponse> {
-        self.client.get("network", None).await
+pub struct DolosNetwork<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
+impl Dolos {
+    pub fn network(&self) -> DolosNetwork<'_> {
+        DolosNetwork { inner: self }
+    }
+}
+
+impl DolosNetwork<'_> {
+    pub async fn get(&self) -> ApiResult<NetworkResponse> {
+        self.inner.client.get("network", None).await
     }
 
-    async fn network_eras(&self) -> ApiResult<NetworkErasResponse> {
-        self.client.get("network/eras", None).await
+    pub async fn eras(&self) -> ApiResult<NetworkErasResponse> {
+        self.inner.client.get("network/eras", None).await
     }
 }

@@ -15,8 +15,8 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state
-        .api
         .dolos
-        .accounts_stake_address_delegations(&account.stake_address, &pagination)
+        .accounts()
+        .delegations(&account.stake_address, &pagination)
         .await
 }

@@ -13,9 +13,5 @@ pub async fn route(
 ) -> ApiResult<TxsMetadataResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
 
-    state
-        .api
-        .dolos
-        .txs_hash_metadata(&path.hash, &pagination)
-        .await
+    state.dolos.txs().metadata(&path.hash, &pagination).await
 }

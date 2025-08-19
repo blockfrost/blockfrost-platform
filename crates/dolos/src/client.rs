@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use common::{config::DolosConfig, errors::AppError, json_client::JsonClient};
 use reqwest::Url;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct Dolos {

@@ -14,8 +14,8 @@ pub async fn route(
     let pagination = Pagination::from_query(pagination_query).await?;
 
     state
-        .api
         .dolos
-        .metadata_txs_labels_label(&matadata_path.label, &pagination)
+        .metadata()
+        .label_json(&matadata_path.label, &pagination)
         .await
 }

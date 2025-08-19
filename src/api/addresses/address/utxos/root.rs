@@ -22,8 +22,8 @@ pub async fn route(
     let address_info = AddressInfo::from_address(&address, config.network)?;
 
     state
-        .api
         .dolos
-        .addresses_address_utxos(&address_info.address, &pagination)
+        .addresses()
+        .utxos(&address_info.address, &pagination)
         .await
 }

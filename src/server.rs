@@ -5,7 +5,6 @@ pub mod state;
 use crate::{
     health_monitor, icebreakers_api::IcebreakersAPI, middlewares::errors::error_middleware,
 };
-use api_provider::api::Api;
 use axum::{Extension, Router, middleware::from_fn};
 use common::{
     config::Config,
@@ -52,11 +51,6 @@ pub async fn build(
     // Dolos
     let dolos = Dolos::new(&config.data_sources.dolos)?;
 
-    // Create API
-    let api = Arc::new(Api {
-        dolos: Box::new(dolos),
-    });
-
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 
@@ -79,7 +73,7 @@ pub async fn build(
     let app_state = AppState {
         config: config.clone(),
         genesis,
-        api,
+        dolos,
     };
 
     // Add layers

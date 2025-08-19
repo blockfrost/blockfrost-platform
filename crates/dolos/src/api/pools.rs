@@ -1,24 +1,28 @@
 use crate::client::Dolos;
-use api_provider::{
-    api::pools::PoolsApi,
-    types::{PoolsDelegatorsResponse, PoolsListExtendedResponse},
-};
-use async_trait::async_trait;
+use api_provider::types::{PoolsDelegatorsResponse, PoolsListExtendedResponse};
 use common::{pagination::Pagination, types::ApiResult};
 
-#[async_trait]
-impl PoolsApi for Dolos {
-    async fn pools_extended(&self) -> ApiResult<PoolsListExtendedResponse> {
-        self.client.get("pools/extended", None).await
+pub struct DolosPools<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
+impl Dolos {
+    pub fn pools(&self) -> DolosPools<'_> {
+        DolosPools { inner: self }
+    }
+}
+
+impl DolosPools<'_> {
+    pub async fn extended(&self) -> ApiResult<PoolsListExtendedResponse> {
+        self.inner.client.get("pools/extended", None).await
     }
 
-    async fn pools_pool_id_delegators(
+    pub async fn delegators(
         &self,
         pool_id: &str,
         pagination: &Pagination,
     ) -> ApiResult<PoolsDelegatorsResponse> {
         let path = format!("pools/{pool_id}/delegators");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }
