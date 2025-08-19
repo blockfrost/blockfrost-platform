@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use api_provider::types::{EpochsParamResponse, TestsAddressUtxoResponse};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Order, Pagination};
 use cardano_serialization_lib::{
@@ -112,7 +113,7 @@ pub fn compose_transaction(
     let tx_output = TransactionOutput::new(&output_addr, &output_value);
     tx_builder.add_output(&tx_output)?;
 
-    let lovelace_utxos: Vec<&AddressUtxoContentInner> = utxos
+    let lovelace_utxos: Vec<&TestsAddressUtxoResponse> = utxos
         .iter()
         .filter(|u| u.amount.iter().all(|a| a.unit == "lovelace"))
         .collect();
