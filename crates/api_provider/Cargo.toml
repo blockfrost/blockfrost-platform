@@ -5,6 +5,7 @@ edition = "2024"
 license = "Apache-2.0"
 
 [dependencies]
-common = { path = "../common" }
 blockfrost-openapi = "0.1.75"
-async-trait = "0.1.88"
+
+[lints.clippy]
+uninlined_format_args = "deny"

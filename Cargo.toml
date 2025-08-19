@@ -57,6 +57,7 @@ cardano-serialization-lib = "12.1.1"
 ntest = "0.9.3"
 
 [dev-dependencies]
+api-provider = { path = "crates/api_provider" }
 tracing-test = "0.2.5"
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
