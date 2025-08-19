@@ -1,5 +1,5 @@
 use crate::client::Dolos;
-use api_provider::types::BlocksSingleResponse;
+use api_provider::types::{BlocksResponse, BlocksSingleResponse};
 use common::{pagination::Pagination, types::ApiResult};
 
 pub struct DolosBlocks<'a> {
@@ -39,7 +39,7 @@ impl DolosBlocks<'_> {
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<BlocksSingleResponse>> {
+    ) -> ApiResult<BlocksResponse> {
         let path = format!("blocks/{hash_or_number}/previous");
         self.inner.client.get(&path, Some(pagination)).await
     }
@@ -48,7 +48,7 @@ impl DolosBlocks<'_> {
         &self,
         hash_or_number: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<BlocksSingleResponse>> {
+    ) -> ApiResult<BlocksResponse> {
         let path = format!("blocks/{hash_or_number}/next");
         self.inner.client.get(&path, Some(pagination)).await
     }
