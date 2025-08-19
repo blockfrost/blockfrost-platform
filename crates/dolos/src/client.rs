@@ -10,7 +10,7 @@ impl Dolos {
     pub fn new(config: Option<&DolosConfig>) -> Result<Option<Self>, AppError> {
         if let Some(cfg) = config {
             let url = Url::parse(&cfg.endpoint).map_err(|e| AppError::Dolos(e.to_string()))?;
-            let client = JsonClient::new(url, cfg.request_timeout, false)?;
+            let client = JsonClient::new(url, cfg.request_timeout)?;
             let dolos = Dolos { client };
 
             return Ok(Some(dolos));
