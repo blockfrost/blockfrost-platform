@@ -3,5 +3,7 @@ use api_provider::types::BlocksSingleResponse;
 use axum::extract::State;
 
 pub async fn route(State(state): State<AppState>) -> ApiResult<BlocksSingleResponse> {
-    state.dolos.blocks().latest().await
+    let dolos = state.get_dolos()?;
+
+    dolos.blocks().latest().await
 }

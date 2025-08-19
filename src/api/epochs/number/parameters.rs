@@ -7,9 +7,7 @@ pub async fn route(
     State(state): State<AppState>,
     Path(epochs_path): Path<EpochsPath>,
 ) -> ApiResult<EpochsParamResponse> {
-    state
-        .dolos
-        .epochs()
-        .parameters(&epochs_path.epoch_number)
-        .await
+    let dolos = state.get_dolos()?;
+
+    dolos.epochs().parameters(&epochs_path.epoch_number).await
 }

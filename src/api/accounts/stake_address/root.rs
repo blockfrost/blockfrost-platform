@@ -8,10 +8,7 @@ pub async fn route(
     Path(path): Path<AccountsPath>,
 ) -> ApiResult<AccountsResponse> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
+    let dolos = state.get_dolos()?;
 
-    state
-        .dolos
-        .accounts()
-        .stake_address(&account.stake_address)
-        .await
+    dolos.accounts().stake_address(&account.stake_address).await
 }

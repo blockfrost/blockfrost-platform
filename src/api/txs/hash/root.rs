@@ -7,5 +7,7 @@ pub async fn route(
     State(state): State<AppState>,
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsSingleResponse> {
-    state.dolos.txs().by_hash(&path.hash).await
+    let dolos = state.get_dolos()?;
+
+    dolos.txs().by_hash(&path.hash).await
 }

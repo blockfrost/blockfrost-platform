@@ -12,9 +12,9 @@ pub async fn route(
     Path(pools_path): Path<PoolsPath>,
 ) -> ApiResult<PoolsDelegatorsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    state
-        .dolos
+    dolos
         .pools()
         .delegators(&pools_path.pool_id, &pagination)
         .await

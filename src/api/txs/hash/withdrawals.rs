@@ -12,6 +12,7 @@ pub async fn route(
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsWithdrawalsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    state.dolos.txs().withdrawals(&path.hash, &pagination).await
+    dolos.txs().withdrawals(&path.hash, &pagination).await
 }

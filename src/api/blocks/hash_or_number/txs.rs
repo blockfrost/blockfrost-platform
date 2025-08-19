@@ -11,9 +11,9 @@ pub async fn route(
     Path(blocks_path): Path<BlocksPath>,
 ) -> ApiResult<Vec<String>> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    state
-        .dolos
+    dolos
         .blocks()
         .txs(&blocks_path.hash_or_number, &pagination)
         .await

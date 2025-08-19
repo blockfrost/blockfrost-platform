@@ -12,9 +12,9 @@ pub async fn route(
     Path(matadata_path): Path<MetadataPath>,
 ) -> ApiResult<MetadataLabelCborResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    state
-        .dolos
+    dolos
         .metadata()
         .label_cbor(&matadata_path.label, &pagination)
         .await

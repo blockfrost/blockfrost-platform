@@ -20,9 +20,9 @@ pub async fn route(
     let AddressesPath { address, asset: _ } = address_path;
     let pagination = Pagination::from_query(pagination_query).await?;
     let address_info = AddressInfo::from_address(&address, config.network)?;
+    let dolos = state.get_dolos()?;
 
-    state
-        .dolos
+    dolos
         .addresses()
         .utxos(&address_info.address, &pagination)
         .await

@@ -1,6 +1,6 @@
 use api_provider::types::GenesisResponse;
 use axum::extract::State;
-use common::{config::Config, types::Network};
+use common::{config::Config, errors::BlockfrostError, types::Network};
 use dolos::client::Dolos;
 use std::sync::Arc;
 
@@ -8,7 +8,15 @@ use std::sync::Arc;
 pub struct AppState {
     pub config: Arc<Config>,
     pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
-    pub dolos: Dolos,
+    pub dolos: Option<Dolos>,
+}
+
+impl AppState {
+    pub fn get_dolos(&self) -> Result<&Dolos, BlockfrostError> {
+        self.dolos.as_ref().ok_or_else(|| {
+            BlockfrostError::internal_server_error("Dolos is not configured".to_string())
+        })
+    }
 }
 
 pub type AppStateExt = State<AppState>;
