@@ -22,18 +22,9 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
 }
 
-#[derive(Parser, Debug, Serialize, Clone, Deserialize)]
-pub struct DataSources {
-    #[clap(flatten)]
-    pub dolos: DolosArgs,
-}
-
-#[derive(Parser, Debug, Clone, Serialize, Deserialize)]
+#[derive(Parser, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DolosArgs {
-    #[clap(long = "dolos-endpoint")]
     pub endpoint: Option<String>,
-
-    #[clap(long = "dolos-timeout-sec", default_value = "30")]
     pub request_timeout: u64,
 }
 
@@ -84,8 +75,11 @@ pub struct Args {
     #[arg(long, help = "Path to an configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
 
-    #[clap(flatten)]
-    pub data_sources: DataSources,
+    #[clap(long = "dolos-endpoint")]
+    pub dolos_endpoint: Option<String>,
+
+    #[clap(long = "dolos-timeout-sec", default_value = "30")]
+    pub dolos_request_timeout: Option<u64>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -241,7 +235,7 @@ impl Args {
                     request_timeout: 0,
                 }
             } else {
-                let to = Text::new("Dolos timeout (s):")
+                let dolors_request_timeout = Text::new("Dolos timeout (s):")
                     .with_default("30")
                     .with_validator(|i: &str| match i.parse::<u64>() {
                         Ok(t) if t > 0 => Ok(Validation::Valid),
@@ -254,7 +248,7 @@ impl Args {
 
                 DolosArgs {
                     endpoint: Some(dolos_endpoint),
-                    request_timeout: to,
+                    request_timeout: dolors_request_timeout,
                 }
             }
         };
@@ -272,7 +266,8 @@ impl Args {
             reward_address: None,
             secret: None,
             custom_genesis_config: None,
-            data_sources: DataSources { dolos },
+            dolos_endpoint: dolos.endpoint,
+            dolos_request_timeout: Some(dolos.request_timeout),
         };
 
         if !is_solitary {
@@ -485,5 +480,74 @@ mod tests {
         );
 
         assert_eq!(maybe_config.unwrap_err().to_string(), "Server startup error: Cannot set --reward-address or --secret in solitary mode (--solitary)".to_string());
+    }
+
+    #[tokio::test]
+    async fn test_dolos_cli_both_values() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+            "--dolos-endpoint",
+            "http://localhost:3000",
+            "--dolos-timeout-sec",
+            "45",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+        assert_eq!(
+            args.dolos_endpoint.as_deref(),
+            Some("http://localhost:3000")
+        );
+        assert_eq!(args.dolos_request_timeout, Some(45));
+    }
+
+    #[tokio::test]
+    async fn test_dolos_cli_only_endpoint_default_timeout() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+            "--dolos-endpoint",
+            "http://localhost:8080",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+        assert_eq!(
+            args.dolos_endpoint.as_deref(),
+            Some("http://localhost:8080")
+        );
+        assert_eq!(args.dolos_request_timeout, Some(30));
+    }
+
+    #[tokio::test]
+    async fn test_dolos_cli_absent_means_none_endpoint_and_default_timeout() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+        assert!(args.dolos_endpoint.is_none());
+        assert_eq!(args.dolos_request_timeout, Some(30));
+    }
+
+    #[tokio::test]
+    async fn test_dolos_cli_rejects_invalid_timeout() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+            "--dolos-timeout-sec",
+            "not-a-number",
+        ];
+
+        let err = Args::try_parse_from(inputs).unwrap_err();
+        assert!(format!("{err}").contains("invalid value"));
     }
 }

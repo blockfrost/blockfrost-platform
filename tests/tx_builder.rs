@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use api_provider::types::{EpochsParamResponse, TestsAddressUtxoResponse};
 use bip39::Mnemonic;
-use blockfrost::{BlockfrostAPI, Order, Pagination};
+use blockfrost::{BlockfrostAPI, Pagination};
 use cardano_serialization_lib::{
     Address, BaseAddress, BigNum, Bip32PrivateKey, CoinSelectionStrategyCIP2, Credential,
     LinearFee, NetworkId, PrivateKey, Transaction, TransactionBody, TransactionBuilder,
@@ -19,15 +19,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
     let protocol_parameters = blockfrost_client.epochs_latest_parameters().await?;
 
     let utxos = blockfrost_client
-        .addresses_utxos(
-            &address,
-            Pagination {
-                fetch_all: false,
-                page: 1,
-                count: 1,
-                order: Order::Desc,
-            },
-        )
+        .addresses_utxos(&address, Pagination::all())
         .await?;
 
     let has_low_balance = utxos.len() == 1 && {
