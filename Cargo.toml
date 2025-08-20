@@ -12,6 +12,7 @@ build = "build.rs"
 common = { path = "crates/common" }
 node = { path = "crates/node" }
 dolos = { path = "crates/dolos" }
+api-provider = { path = "crates/api_provider" }
 axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"
@@ -51,12 +52,12 @@ twelf = { version = "0.15.0", features = ["clap", "toml"] }
 dirs = "6.0.0"
 inquire = "0.7.5"
 anyhow = "1.0.98"
-blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 ntest = "0.9.3"
 
 [dev-dependencies]
+api-provider = { path = "crates/api_provider" }
 tracing-test = "0.2.5"
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
@@ -69,10 +70,16 @@ blockfrost = "1.1.0"
 jemalloc = "0.3"
 
 [build-dependencies]
-build_utils = { path = "crates/build_utils" }
+build-utils = { path = "crates/build_utils" }
 
 [workspace]
-members = ["crates/common", "crates/dolos", "crates/build_utils", "crates/node"]
+members = [
+  "crates/build_utils",
+  "crates/common",
+  "crates/api_provider",
+  "crates/node",
+  "crates/dolos",
+]
 
 [lints.clippy]
 uninlined_format_args = "deny"

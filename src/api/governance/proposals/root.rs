@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::proposals_inner::ProposalsInner;
+use api_provider::types::DrepsProposalsResponse;
 
-pub async fn route() -> ApiResult<Vec<ProposalsInner>> {
+use crate::{BlockfrostError, api::ApiResult};
+
+pub async fn route() -> ApiResult<DrepsProposalsResponse> {
     Err(BlockfrostError::not_found())
 }

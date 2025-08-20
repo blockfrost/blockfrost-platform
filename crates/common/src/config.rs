@@ -29,7 +29,7 @@ pub struct Config {
     pub data_sources: DataSources,
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Debug)]
 pub struct DataSources {
     pub dolos: Option<DolosConfig>,
 }

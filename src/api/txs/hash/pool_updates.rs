@@ -1,21 +1,18 @@
-use crate::api::ApiResult;
-use axum::{
-    Extension,
-    extract::{Path, Query},
-};
-use blockfrost_openapi::models::tx_content_pool_certs_inner::TxContentPoolCertsInner;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::TxsPoolCertsResponse;
+use axum::extract::{Path, Query, State};
 use common::{
     pagination::{Pagination, PaginationQuery},
     txs::TxsPath,
 };
-use dolos::client::Dolos;
 
 pub async fn route(
-    Extension(dolos): Extension<Dolos>,
+    State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(path): Path<TxsPath>,
-) -> ApiResult<Vec<TxContentPoolCertsInner>> {
+) -> ApiResult<TxsPoolCertsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    dolos.txs_hash_pool_updates(&path.hash, &pagination).await
+    dolos.txs().pool_updates(&path.hash, &pagination).await
 }

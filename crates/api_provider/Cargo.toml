@@ -1,0 +1,11 @@
+[package]
+name = "api-provider"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+blockfrost-openapi = "0.1.75"
+
+[lints.clippy]
+uninlined_format_args = "deny"

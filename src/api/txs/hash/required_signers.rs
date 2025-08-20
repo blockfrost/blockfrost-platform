@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::tx_content_required_signers_inner::TxContentRequiredSignersInner;
+use api_provider::types::TxsContentRequiredSignersInner;
 
-pub async fn route() -> ApiResult<TxContentRequiredSignersInner> {
+pub async fn route() -> ApiResult<TxsContentRequiredSignersInner> {
     Err(BlockfrostError::not_found())
 }

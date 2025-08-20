@@ -1,25 +1,22 @@
 use crate::{api::ApiResult, server::state::AppState};
-use axum::{
-    Extension,
-    extract::{Path, Query, State},
-};
-use blockfrost_openapi::models::account_addresses_content_inner::AccountAddressesContentInner;
+use api_provider::types::AccountsAddressesResponse;
+use axum::extract::{Path, Query, State};
 use common::{
     accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
 };
-use dolos::client::Dolos;
 
 pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
-    Extension(dolos): Extension<Dolos>,
     Path(path): Path<AccountsPath>,
-) -> ApiResult<Vec<AccountAddressesContentInner>> {
+) -> ApiResult<AccountsAddressesResponse> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
     dolos
-        .accounts_stake_address_addresses(&account.stake_address, &pagination)
+        .accounts()
+        .addresses(&account.stake_address, &pagination)
         .await
 }

@@ -1,14 +1,15 @@
-use crate::api::ApiResult;
-use axum::{Extension, extract::Path};
-use blockfrost_openapi::models::block_content::BlockContent;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::BlocksSingleResponse;
+use axum::extract::{Path, State};
 use common::blocks::BlocksSlotPath;
-use dolos::client::Dolos;
 
 pub async fn route(
-    Extension(dolos): Extension<Dolos>,
+    State(state): State<AppState>,
     Path(blocks_slot_path): Path<BlocksSlotPath>,
-) -> ApiResult<BlockContent> {
-    let response = dolos.blocks_slot_slot(&blocks_slot_path.slot).await?;
+) -> ApiResult<BlocksSingleResponse> {
+    let dolos = state.get_dolos()?;
+
+    let response = dolos.blocks().by_slot(&blocks_slot_path.slot).await?;
 
     Ok(response)
 }

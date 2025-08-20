@@ -1,11 +1,12 @@
 use crate::BlockfrostError;
-use axum::{Json, extract::Query};
-use blockfrost_openapi::models::assets_inner::AssetsInner;
-use common::pagination::{Pagination, PaginationQuery};
+use api_provider::types::AssetsResponse;
+use axum::extract::Query;
+use common::{
+    pagination::{Pagination, PaginationQuery},
+    types::ApiResult,
+};
 
-pub async fn route(
-    Query(pagination_query): Query<PaginationQuery>,
-) -> Result<Json<Vec<AssetsInner>>, BlockfrostError> {
+pub async fn route(Query(pagination_query): Query<PaginationQuery>) -> ApiResult<AssetsResponse> {
     let _ = Pagination::from_query(pagination_query).await?;
 
     Err(BlockfrostError::not_found())

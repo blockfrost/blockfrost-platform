@@ -1,18 +1,14 @@
 use crate::{api::ApiResult, server::state::AppState};
-use axum::{
-    Extension,
-    extract::{Path, State},
-};
-use blockfrost_openapi::models::account_content::AccountContent;
+use api_provider::types::AccountsResponse;
+use axum::extract::{Path, State};
 use common::accounts::{AccountData, AccountsPath};
-use dolos::client::Dolos;
 
 pub async fn route(
     State(state): State<AppState>,
-    Extension(dolos): Extension<Dolos>,
     Path(path): Path<AccountsPath>,
-) -> ApiResult<AccountContent> {
+) -> ApiResult<AccountsResponse> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
+    let dolos = state.get_dolos()?;
 
-    dolos.accounts_stake_address(&account.stake_address).await
+    dolos.accounts().stake_address(&account.stake_address).await
 }

@@ -1,112 +1,104 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::{
-    tx_content::TxContent, tx_content_cbor::TxContentCbor,
-    tx_content_delegations_inner::TxContentDelegationsInner,
-    tx_content_metadata_cbor_inner::TxContentMetadataCborInner,
-    tx_content_metadata_inner::TxContentMetadataInner, tx_content_mirs_inner::TxContentMirsInner,
-    tx_content_pool_certs_inner::TxContentPoolCertsInner,
-    tx_content_pool_retires_inner::TxContentPoolRetiresInner,
-    tx_content_stake_addr_inner::TxContentStakeAddrInner, tx_content_utxo::TxContentUtxo,
-    tx_content_withdrawals_inner::TxContentWithdrawalsInner,
+use api_provider::types::{
+    TxsCborResponse, TxsDelegationsResponse, TxsMetadataCborResponse, TxsMetadataResponse,
+    TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsSingleResponse,
+    TxsStakeAddrResponse, TxsUtxosResponse, TxsWithdrawalsResponse,
 };
 use common::{pagination::Pagination, types::ApiResult};
 
+/// Sub-klient pro Dolos `/txs` endpointy
+pub struct DolosTxs<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
 impl Dolos {
-    pub async fn txs_hash(&self, hash: &str) -> ApiResult<TxContent> {
+    /// Vstupní bod: `dolos.txs().by_hash("...").await`
+    pub fn txs(&self) -> DolosTxs<'_> {
+        DolosTxs { inner: self }
+    }
+}
+
+impl DolosTxs<'_> {
+    pub async fn by_hash(&self, hash: &str) -> ApiResult<TxsSingleResponse> {
         let path = format!("txs/{hash}");
-
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn txs_hash_cbor(&self, hash: &str) -> ApiResult<TxContentCbor> {
+    pub async fn cbor(&self, hash: &str) -> ApiResult<TxsCborResponse> {
         let path = format!("txs/{hash}/cbor");
-
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn txs_hash_utxos(&self, hash: &str) -> ApiResult<TxContentUtxo> {
+    pub async fn utxos(&self, hash: &str) -> ApiResult<TxsUtxosResponse> {
         let path = format!("txs/{hash}/utxos");
-
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn txs_hash_metadata(
+    pub async fn metadata(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentMetadataInner>> {
+    ) -> ApiResult<TxsMetadataResponse> {
         let path = format!("txs/{hash}/metadata");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_metadata_cbor(
+    pub async fn metadata_cbor(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentMetadataCborInner>> {
+    ) -> ApiResult<TxsMetadataCborResponse> {
         let path = format!("txs/{hash}/metadata/cbor");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_withdrawals(
+    pub async fn withdrawals(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentWithdrawalsInner>> {
+    ) -> ApiResult<TxsWithdrawalsResponse> {
         let path = format!("txs/{hash}/withdrawals");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_delegations(
+    pub async fn delegations(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentDelegationsInner>> {
+    ) -> ApiResult<TxsDelegationsResponse> {
         let path = format!("txs/{hash}/delegations");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_mirs(
-        &self,
-        hash: &str,
-        pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentMirsInner>> {
+    pub async fn mirs(&self, hash: &str, pagination: &Pagination) -> ApiResult<TxsMirsResponse> {
         let path = format!("txs/{hash}/mirs");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_pool_updates(
+    pub async fn pool_updates(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentPoolCertsInner>> {
+    ) -> ApiResult<TxsPoolCertsResponse> {
         let path = format!("txs/{hash}/pool_updates");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_pool_retires(
+    pub async fn pool_retires(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentPoolRetiresInner>> {
+    ) -> ApiResult<TxsPoolRetiresResponse> {
         let path = format!("txs/{hash}/pool_retires");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn txs_hash_stakes(
+    pub async fn stakes(
         &self,
         hash: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<TxContentStakeAddrInner>> {
+    ) -> ApiResult<TxsStakeAddrResponse> {
         let path = format!("txs/{hash}/stakes");
-
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }

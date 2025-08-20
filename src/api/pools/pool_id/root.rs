@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::pool::Pool;
+use api_provider::types::PoolsSingleResponse;
 
-pub async fn route() -> ApiResult<Vec<Pool>> {
+pub async fn route() -> ApiResult<PoolsSingleResponse> {
     Err(BlockfrostError::not_found())
 }

@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::proposal_parameters_parameters::ProposalParametersParameters;
+use api_provider::types::DrepsProposalParametersResponse;
 
-pub async fn route() -> ApiResult<ProposalParametersParameters> {
+use crate::{BlockfrostError, api::ApiResult};
+
+pub async fn route() -> ApiResult<DrepsProposalParametersResponse> {
     Err(BlockfrostError::not_found())
 }

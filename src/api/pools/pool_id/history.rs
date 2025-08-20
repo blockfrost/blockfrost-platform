@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::pool_history_inner::PoolHistoryInner;
+use api_provider::types::PoolsHistoryResponse;
 
-pub async fn route() -> ApiResult<Vec<PoolHistoryInner>> {
+pub async fn route() -> ApiResult<PoolsHistoryResponse> {
     Err(BlockfrostError::not_found())
 }

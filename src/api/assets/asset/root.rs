@@ -1,14 +1,14 @@
-use crate::api::ApiResult;
-use axum::{Extension, extract::Path};
-use blockfrost_openapi::models::asset::Asset;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::AssetsSingleResponse;
+use axum::extract::{Path, State};
 use common::assets::{AssetData, AssetsPath};
-use dolos::client::Dolos;
 
 pub async fn route(
+    State(state): State<AppState>,
     Path(path): Path<AssetsPath>,
-    Extension(dolos): Extension<Dolos>,
-) -> ApiResult<Asset> {
+) -> ApiResult<AssetsSingleResponse> {
     let asset_data = AssetData::from_query(path.asset)?;
+    let dolos = state.get_dolos()?;
 
-    dolos.assets_asset(&asset_data.asset).await
+    dolos.assets().asset(&asset_data.asset).await
 }

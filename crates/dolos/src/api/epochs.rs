@@ -1,15 +1,27 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::epoch_param_content::EpochParamContent;
+use api_provider::types::EpochsParamResponse;
 use common::types::ApiResult;
 
-impl Dolos {
-    pub async fn epoch_number_parameters(&self, number: &str) -> ApiResult<EpochParamContent> {
-        let path = format!("epochs/{number}/parameters");
+pub struct DolosEpochs<'a> {
+    pub(crate) inner: &'a Dolos,
+}
 
-        self.client.get(&path, None).await
+impl Dolos {
+    pub fn epochs(&self) -> DolosEpochs<'_> {
+        DolosEpochs { inner: self }
+    }
+}
+
+impl DolosEpochs<'_> {
+    pub async fn parameters(&self, number: &str) -> ApiResult<EpochsParamResponse> {
+        let path = format!("epochs/{number}/parameters");
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn epoch_latest_parameters(&self) -> ApiResult<EpochParamContent> {
-        self.client.get("epochs/latest/parameters", None).await
+    pub async fn latest_parameters(&self) -> ApiResult<EpochsParamResponse> {
+        self.inner
+            .client
+            .get("epochs/latest/parameters", None)
+            .await
     }
 }

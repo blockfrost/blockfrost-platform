@@ -1,6 +1,7 @@
-use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::block_content_addresses_inner::BlockContentAddressesInner;
+use api_provider::types::BlocksAddressesContentResponse;
 
-pub async fn route() -> ApiResult<Vec<BlockContentAddressesInner>> {
+use crate::{BlockfrostError, api::ApiResult};
+
+pub async fn route() -> ApiResult<BlocksAddressesContentResponse> {
     Err(BlockfrostError::not_found())
 }

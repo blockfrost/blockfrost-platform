@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::drep_votes_inner::DrepVotesInner;
+use api_provider::types::DrepsVotesResponse;
 
-pub async fn route() -> ApiResult<Vec<DrepVotesInner>> {
+pub async fn route() -> ApiResult<DrepsVotesResponse> {
     Err(BlockfrostError::not_found())
 }

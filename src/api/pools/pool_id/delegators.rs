@@ -1,23 +1,21 @@
-use crate::api::ApiResult;
-use axum::{
-    Extension,
-    extract::{Path, Query},
-};
-use blockfrost_openapi::models::pool_delegators_inner::PoolDelegatorsInner;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::PoolsDelegatorsResponse;
+use axum::extract::{Path, Query, State};
 use common::{
     pagination::{Pagination, PaginationQuery},
     pools::PoolsPath,
 };
-use dolos::client::Dolos;
 
 pub async fn route(
-    Extension(dolos): Extension<Dolos>,
+    State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(pools_path): Path<PoolsPath>,
-) -> ApiResult<Vec<PoolDelegatorsInner>> {
+) -> ApiResult<PoolsDelegatorsResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
     dolos
-        .pools_pool_id_delegators(&pools_path.pool_id, &pagination)
+        .pools()
+        .delegators(&pools_path.pool_id, &pagination)
         .await
 }

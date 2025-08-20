@@ -7,20 +7,17 @@ pub struct Dolos {
 }
 
 impl Dolos {
-    pub fn new(cfg: &Option<DolosConfig>) -> Result<Option<Self>, AppError> {
-        // no dolos configuration
-        let Some(cfg) = cfg else {
-            return Ok(None);
-        };
+    pub fn new(config: Option<&DolosConfig>) -> Result<Option<Self>, AppError> {
+        if let Some(cfg) = config {
+            if let Some(endpoint) = &cfg.endpoint {
+                let url = Url::parse(endpoint).map_err(|e| AppError::Dolos(e.to_string()))?;
+                let client = JsonClient::new(url, cfg.request_timeout)?;
+                let dolos = Dolos { client };
 
-        // no dolos endpoint
-        let Some(endpoint) = cfg.endpoint.as_deref() else {
-            return Ok(None);
-        };
+                return Ok(Some(dolos));
+            }
+        }
 
-        let url = Url::parse(endpoint).map_err(|e| AppError::Dolos(e.to_string()))?;
-        let client = JsonClient::new(url, cfg.request_timeout)?;
-
-        Ok(Some(Dolos { client }))
+        Ok(None)
     }
 }

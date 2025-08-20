@@ -49,7 +49,7 @@ pub async fn build(
     let node_conn_pool = NodePool::new(&config)?;
 
     // Dolos
-    let dolos = Dolos::new(&config.data_sources.dolos)?;
+    let dolos = Dolos::new(config.data_sources.dolos.as_ref())?;
 
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
@@ -68,9 +68,12 @@ pub async fn build(
     let api_routes = nest_routes(&api_prefix, regular_api_routes, hidden_api_routes);
 
     let genesis = Arc::new(config.with_custom_genesis()?);
+
+    // Initialize the app state
     let app_state = AppState {
         config: config.clone(),
         genesis,
+        dolos,
     };
 
     // Add layers
@@ -79,7 +82,6 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
-            .layer(Extension(dolos.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found_with_uri);
 

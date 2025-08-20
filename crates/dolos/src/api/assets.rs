@@ -1,11 +1,21 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::asset::Asset;
+use api_provider::types::AssetsSingleResponse;
 use common::types::ApiResult;
 
+pub struct DolosAssets<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
 impl Dolos {
-    pub async fn assets_asset(&self, asset_id: &str) -> ApiResult<Asset> {
+    pub fn assets(&self) -> DolosAssets<'_> {
+        DolosAssets { inner: self }
+    }
+}
+
+impl DolosAssets<'_> {
+    pub async fn asset(&self, asset_id: &str) -> ApiResult<AssetsSingleResponse> {
         let path = format!("assets/{asset_id}");
 
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 }

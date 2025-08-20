@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::script_redeemers_inner::ScriptRedeemersInner;
+use api_provider::types::ScriptsRedeemersInnerResponse;
 
-pub async fn route() -> ApiResult<Vec<ScriptRedeemersInner>> {
+pub async fn route() -> ApiResult<ScriptsRedeemersInnerResponse> {
     Err(BlockfrostError::not_found())
 }

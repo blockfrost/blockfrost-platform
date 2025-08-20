@@ -1,9 +1,9 @@
 use crate::{BlockfrostError, api::ApiResult};
+use api_provider::types::AddressesTransactionsResponse;
 use axum::{
     Extension,
     extract::{Path, Query},
 };
-use blockfrost_openapi::models::address_transactions_content_inner::AddressTransactionsContentInner;
 use common::{
     addresses::{AddressInfo, AddressesPath},
     config::Config,
@@ -14,7 +14,7 @@ pub async fn route(
     Path(address_path): Path<AddressesPath>,
     Extension(config): Extension<Config>,
     Query(pagination_query): Query<PaginationQuery>,
-) -> ApiResult<Vec<AddressTransactionsContentInner>> {
+) -> ApiResult<AddressesTransactionsResponse> {
     let AddressesPath { address, asset: _ } = address_path;
     let _ = Pagination::from_query(pagination_query).await?;
     let _ = AddressInfo::from_address(&address, config.network)?;

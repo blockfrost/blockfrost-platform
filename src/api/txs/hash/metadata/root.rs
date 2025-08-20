@@ -1,21 +1,18 @@
-use crate::api::ApiResult;
-use axum::{
-    Extension,
-    extract::{Path, Query},
-};
-use blockfrost_openapi::models::tx_content_metadata_inner::TxContentMetadataInner;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::TxsMetadataResponse;
+use axum::extract::{Path, Query, State};
 use common::{
     pagination::{Pagination, PaginationQuery},
     txs::TxsPath,
 };
-use dolos::client::Dolos;
 
 pub async fn route(
-    Extension(dolos): Extension<Dolos>,
+    State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
     Path(path): Path<TxsPath>,
-) -> ApiResult<Vec<TxContentMetadataInner>> {
+) -> ApiResult<TxsMetadataResponse> {
     let pagination = Pagination::from_query(pagination_query).await?;
+    let dolos = state.get_dolos()?;
 
-    dolos.txs_hash_metadata(&path.hash, &pagination).await
+    dolos.txs().metadata(&path.hash, &pagination).await
 }

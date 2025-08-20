@@ -1,8 +1,10 @@
-use axum::Extension;
-use blockfrost_openapi::models::epoch_param_content::EpochParamContent;
+use crate::server::state::AppState;
+use api_provider::types::EpochsParamResponse;
+use axum::extract::State;
 use common::types::ApiResult;
-use dolos::client::Dolos;
 
-pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<EpochParamContent> {
-    dolos.epoch_latest_parameters().await
+pub async fn route(State(state): State<AppState>) -> ApiResult<EpochsParamResponse> {
+    let dolos = state.get_dolos()?;
+
+    dolos.epochs().latest_parameters().await
 }

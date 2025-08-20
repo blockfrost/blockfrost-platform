@@ -1,8 +1,9 @@
-use crate::api::ApiResult;
-use axum::Extension;
-use blockfrost_openapi::models::block_content::BlockContent;
-use dolos::client::Dolos;
+use crate::{api::ApiResult, server::state::AppState};
+use api_provider::types::BlocksSingleResponse;
+use axum::extract::State;
 
-pub async fn route(Extension(dolos): Extension<Dolos>) -> ApiResult<BlockContent> {
-    dolos.blocks_latest().await
+pub async fn route(State(state): State<AppState>) -> ApiResult<BlocksSingleResponse> {
+    let dolos = state.get_dolos()?;
+
+    dolos.blocks().latest().await
 }

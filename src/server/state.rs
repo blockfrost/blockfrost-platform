@@ -1,12 +1,22 @@
+use api_provider::types::GenesisResponse;
 use axum::extract::State;
-use blockfrost_openapi::models::genesis_content::GenesisContent;
-use common::{config::Config, types::Network};
+use common::{config::Config, errors::BlockfrostError, types::Network};
+use dolos::client::Dolos;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub genesis: Arc<Vec<(Network, GenesisContent)>>,
+    pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
+    pub dolos: Option<Dolos>,
+}
+
+impl AppState {
+    pub fn get_dolos(&self) -> Result<&Dolos, BlockfrostError> {
+        self.dolos.as_ref().ok_or_else(|| {
+            BlockfrostError::internal_server_error("Dolos is not configured".to_string())
+        })
+    }
 }
 
 pub type AppStateExt = State<AppState>;

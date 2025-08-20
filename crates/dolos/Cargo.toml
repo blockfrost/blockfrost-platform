@@ -9,6 +9,7 @@ version = "v0.24.0"
 
 [dependencies]
 common = { path = "../common" }
+api-provider = { path = "../api_provider" }
 serde = { version = "1.0.218", features = ["derive"] }
 reqwest = { version = "0.12", features = ["blocking"] }
 toml = "0.8"

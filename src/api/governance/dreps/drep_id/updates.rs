@@ -1,6 +1,6 @@
 use crate::{BlockfrostError, api::ApiResult};
-use blockfrost_openapi::models::drep_updates_inner::DrepUpdatesInner;
+use api_provider::types::DrepsUpdatesResponse;
 
-pub async fn route() -> ApiResult<Vec<DrepUpdatesInner>> {
+pub async fn route() -> ApiResult<DrepsUpdatesResponse> {
     Err(BlockfrostError::not_found())
 }

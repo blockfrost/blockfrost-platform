@@ -1,55 +1,60 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::{
-    account_addresses_content_inner::AccountAddressesContentInner, account_content::AccountContent,
-    account_delegation_content_inner::AccountDelegationContentInner,
-    account_registration_content_inner::AccountRegistrationContentInner,
-    account_reward_content_inner::AccountRewardContentInner,
+use api_provider::types::{
+    AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
+    AccountsResponse, AccountsRewardsResponse,
 };
 use common::{pagination::Pagination, types::ApiResult};
 
+pub struct DolosAccounts<'a> {
+    pub(crate) inner: &'a Dolos,
+}
+
 impl Dolos {
-    pub async fn accounts_stake_address(&self, stake_address: &str) -> ApiResult<AccountContent> {
+    pub fn accounts(&self) -> DolosAccounts<'_> {
+        DolosAccounts { inner: self }
+    }
+}
+
+impl DolosAccounts<'_> {
+    pub async fn stake_address(&self, stake_address: &str) -> ApiResult<AccountsResponse> {
         let path = format!("accounts/{stake_address}");
 
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn accounts_stake_address_rewards(
-        &self,
-        stake_address: &str,
-    ) -> ApiResult<Vec<AccountRewardContentInner>> {
+    pub async fn rewards(&self, stake_address: &str) -> ApiResult<AccountsRewardsResponse> {
         let path = format!("accounts/{stake_address}/rewards");
 
-        self.client.get(&path, None).await
+        self.inner.client.get(&path, None).await
     }
 
-    pub async fn accounts_stake_address_addresses(
+    pub async fn addresses(
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<AccountAddressesContentInner>> {
+    ) -> ApiResult<AccountsAddressesResponse> {
         let path = format!("accounts/{stake_address}/addresses");
 
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn accounts_stake_address_delegations(
+    pub async fn delegations(
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<AccountDelegationContentInner>> {
+    ) -> ApiResult<AccountsDelegationsResponse> {
         let path = format!("accounts/{stake_address}/delegations");
 
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
-    pub async fn accounts_stake_address_registrations(
+    pub async fn registrations(
         &self,
         stake_address: &str,
         pagination: &Pagination,
-    ) -> ApiResult<Vec<AccountRegistrationContentInner>> {
+    ) -> ApiResult<AccountsRegistrationsResponse> {
         let path = format!("accounts/{stake_address}/registrations");
 
-        self.client.get(&path, Some(pagination)).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }
