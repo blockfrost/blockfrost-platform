@@ -6,13 +6,11 @@ use api_provider::types::{
 };
 use common::{pagination::Pagination, types::ApiResult};
 
-/// Sub-klient pro Dolos `/txs` endpointy
 pub struct DolosTxs<'a> {
     pub(crate) inner: &'a Dolos,
 }
 
 impl Dolos {
-    /// Vstupní bod: `dolos.txs().by_hash("...").await`
     pub fn txs(&self) -> DolosTxs<'_> {
         DolosTxs { inner: self }
     }
