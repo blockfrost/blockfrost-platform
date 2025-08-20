@@ -144,9 +144,7 @@ impl LoadBalancerState {
         Ok(state)
     }
 
-    pub async fn clean_up_expired_tokens_periodically(
-        access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    ) {
+    async fn clean_up_expired_tokens_periodically(access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>) {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             Self::clean_up_expired_tokens(&access_tokens).await;
