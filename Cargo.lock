@@ -429,6 +429,7 @@ dependencies = [
  "dotenvy",
  "futures",
  "futures-util",
+ "gmp-mpfr-sys",
  "hex",
  "hyper",
  "inquire",

@@ -34,9 +34,13 @@ in
           ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
         buildInputs =
-          lib.optionals pkgs.stdenv.isLinux [
+          [
+            pkgs.gmp
+            pkgs.mpfr
+            pkgs.libmpc
+          ]
+          ++ lib.optionals pkgs.stdenv.isLinux [
             pkgs.openssl
-            pkgs.gnum4
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv

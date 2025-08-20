@@ -38,6 +38,9 @@ pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockf
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3" }
 pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3" }
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3", features = [
+  "phase2",
+] }
 reqwest = "0.12.12"
 hex = "0.4.3"
 metrics = { version = "0.24.1", default-features = false }
@@ -57,9 +60,10 @@ blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
 
-[target.'cfg(not(target_os = "windows"))'.dependencies]
-pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha3", features = [
-  "phase2",
+[target.'cfg(target_os = "windows")'.dependencies]
+gmp-mpfr-sys = { version = "1.6.5", features = [
+  "force-cross",
+  "use-system-libs",
 ] }
 
 [features]
@@ -73,7 +77,6 @@ proptest = "1.6"
 cardano-serialization-lib = "12.1.1"
 bip39 = "2.1.0"
 blockfrost = "1.0.5"
-
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

@@ -20,18 +20,78 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
-  commonArgs = {
+  commonArgs = let
+    TARGET_CC = "${pkgsCross.stdenv.cc}/bin/${pkgsCross.stdenv.cc.targetPrefix}cc";
+    pkgconf-pkg-config = pkgs.writeShellScriptBin "pkg-config" ''
+      exec ${pkgs.pkgconf}/bin/pkgconf "$@"
+    '';
+    gcc-target-gcc = let
+      command = ''
+        ${TARGET_CC} \
+          -I${pkgsCross.gmp.dev}/include \
+          -L${pkgsCross.gmp.out}/lib \
+          -I${pkgsCross.mpfr.dev}/include \
+          -L${pkgsCross.mpfr.out}/lib \
+          -I${pkgsCross.libmpc}/include \
+          -L${pkgsCross.libmpc}/lib \
+          "$@"
+      '';
+    in
+      pkgs.writeShellScriptBin "gcc" ''
+        set -euo pipefail
+        echo >&2 ";;; gcc called with" "$@"
+
+        if (( $# )) && [[ ''${@: -1} =~ ^system_(gmp|mpfr|mpc)\.exe$ ]]; then
+          exe_name=''${@: -1}
+          ${command}
+          mv $exe_name wrapped_$exe_name
+
+          cat >$exe_name << EOF
+        #! ${pkgs.stdenv.shell}
+        set -euo pipefail
+        export HOME=$(realpath $NIX_BUILD_TOP/home)
+        mkdir -p \$HOME
+        cd $(pwd)
+        exec ${pkgs.xvfb-run}/bin/xvfb-run \
+            --server-args="-screen 0 1920x1080x24 +extension GLX +extension RENDER -ac -noreset" \
+            ${pkgs.wine64}/bin/wine64 wrapped_$exe_name
+        EOF
+
+          chmod +x $exe_name
+        else
+          exec ${command}
+        fi
+      '';
+  in rec {
     inherit src;
     strictDeps = true;
 
     CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
-    TARGET_CC = "${pkgsCross.stdenv.cc}/bin/${pkgsCross.stdenv.cc.targetPrefix}cc";
+    inherit TARGET_CC;
 
     TESTGEN_HS_PATH = "unused"; # Don’t try to download it in `build.rs`.
 
     OPENSSL_DIR = "${pkgs.openssl.dev}";
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
+
+    CC = TARGET_CC;
+
+    nativeBuildInputs = [
+      pkgconf-pkg-config
+      gcc-target-gcc
+    ];
+
+    buildInputs = with pkgsCross; [
+      gmp
+      mpfr
+      libmpc
+    ];
+
+    PKG_CONFIG = lib.getExe pkgconf-pkg-config;
+    PKG_CONFIG_ALLOW_CROSS = "1";
+    PKG_CONFIG_LIBDIR = lib.makeSearchPath "lib/pkgconfig" (with pkgs; [gmp.dev mpfr.dev libmpc]);
+    PKG_CONFIG_LIBDIR_x86_64_pc_windows_gnu = lib.makeSearchPath "lib/pkgconfig" (with pkgsCross; [gmp.dev mpfr.dev libmpc]);
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc
