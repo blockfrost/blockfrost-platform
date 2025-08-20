@@ -1,5 +1,6 @@
 mod common;
 
+use crate::common::{build_router, start_server};
 use base64::Engine;
 use blockfrost_icebreakers_api::{
     blockfrost::AssetName,
@@ -9,8 +10,6 @@ use futures::{SinkExt, StreamExt};
 use std::vec;
 use tungstenite::{handshake::client::generate_key, Message};
 use uuid::Uuid;
-
-use crate::common::{build_router, start_server};
 
 #[tokio::test]
 async fn test_websocket_connection_invalid_token() {

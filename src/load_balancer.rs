@@ -144,23 +144,28 @@ impl LoadBalancerState {
         Ok(state)
     }
 
-    async fn clean_up_expired_tokens_periodically(access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>) {
+    pub async fn clean_up_expired_tokens_periodically(
+        access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
+    ) {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            let now = std::time::Instant::now();
-
-            access_tokens.lock().await.retain(|_, state| {
-                let still_valid = state.expires > now;
-
-                if !still_valid {
-                    warn!(
-                        "load balancer: {}: unused WebSocket access token expired",
-                        state.name.as_str(),
-                    )
-                }
-                still_valid
-            });
+            Self::clean_up_expired_tokens(&access_tokens).await;
         }
+    }
+
+    async fn clean_up_expired_tokens(access_tokens: &Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>) {
+        let now = std::time::Instant::now();
+
+        access_tokens.lock().await.retain(|_, state| {
+            let still_valid = state.expires > now;
+            if !still_valid {
+                warn!(
+                    "load balancer: {}: unused WebSocket access token expired",
+                    state.name.as_str(),
+                )
+            }
+            still_valid
+        });
     }
 }
 
@@ -1026,6 +1031,7 @@ mod tests {
         // insert valid token
         let token_valid = random_token();
         let expires_valid = std::time::Instant::now() + std::time::Duration::from_secs(300);
+
         lb.access_tokens.lock().await.insert(
             token_valid.clone(),
             AccessTokenState {
@@ -1036,8 +1042,7 @@ mod tests {
         );
 
         // cleanup
-        let now = std::time::Instant::now();
-        lb.access_tokens.lock().await.retain(|_, state| state.expires > now);
+        LoadBalancerState::clean_up_expired_tokens(&lb.access_tokens).await;
         let tokens = lb.access_tokens.lock().await;
 
         assert_eq!(tokens.len(), 1);
