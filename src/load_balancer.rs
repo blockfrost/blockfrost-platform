@@ -14,44 +14,44 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AccessToken(String);
+pub struct AccessToken(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RequestId(Uuid);
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonRequest {
-    id: RequestId,
+pub struct JsonRequest {
+    pub id: RequestId,
     method: JsonRequestMethod,
     path: String,
-    header: Vec<JsonHeader>,
+    pub header: Vec<JsonHeader>,
     body_base64: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonResponse {
-    id: RequestId,
-    code: u16,
-    header: Vec<JsonHeader>,
-    body_base64: String,
+pub struct JsonResponse {
+    pub id: RequestId,
+    pub code: u16,
+    pub header: Vec<JsonHeader>,
+    pub body_base64: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct JsonHeader {
+pub struct JsonHeader {
     name: String,
     value: String,
 }
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Serialize, Deserialize, Debug)]
-enum JsonRequestMethod {
+pub enum JsonRequestMethod {
     GET,
     POST,
 }
 
 /// The WebSocket messages that we send.
 #[derive(Serialize, Deserialize, Debug)]
-enum LoadBalancerMessage {
+pub enum LoadBalancerMessage {
     Request(JsonRequest),
     Ping(u64),
     Pong(u64),
@@ -59,41 +59,43 @@ enum LoadBalancerMessage {
 
 /// The WebSocket messages that we receive.
 #[derive(Serialize, Deserialize, Debug)]
-enum RelayMessage {
+pub enum RelayMessage {
     Response(JsonResponse),
     Ping(u64),
     Pong(u64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LoadBalancerState {
-    access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
-    background_worker: Arc<JoinHandle<()>>,
+    pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
+    pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
+    pub background_worker: Arc<JoinHandle<()>>,
 }
 
+#[derive(Debug)]
 pub struct AccessTokenState {
-    name: AssetName,
-    api_prefix: Uuid,
-    expires: std::time::Instant,
+    pub name: AssetName,
+    pub api_prefix: Uuid,
+    pub expires: std::time::Instant,
 }
 
-#[derive(Clone)]
-struct RelayState {
-    name: AssetName,
-    new_request_channel: mpsc::Sender<RequestState>,
+#[derive(Clone, Debug)]
+pub struct RelayState {
+    pub name: AssetName,
+    pub new_request_channel: mpsc::Sender<RequestState>,
     /// Send this to end the event loop of the connection, and disconnect the
     /// relay, with the [`String`] as the reason. It’s a little controversial
     /// for this to be an MPSC, but also the cleanest. You can’t clone [`oneshot`].
-    do_finish: mpsc::Sender<String>,
-    requests_in_progress: Arc<Mutex<HashMap<RequestId, RequestState>>>,
-    network_rtt: Arc<Mutex<Option<std::time::Duration>>>,
-    connected_since: std::time::Instant,
-    requests_sent: Arc<atomic::AtomicU64>,
-    responses_received: Arc<atomic::AtomicU64>,
+    pub do_finish: mpsc::Sender<String>,
+    pub requests_in_progress: Arc<Mutex<HashMap<RequestId, RequestState>>>,
+    pub network_rtt: Arc<Mutex<Option<std::time::Duration>>>,
+    pub connected_since: std::time::Instant,
+    pub requests_sent: Arc<atomic::AtomicU64>,
+    pub responses_received: Arc<atomic::AtomicU64>,
 }
 
-struct RequestState {
+#[derive(Debug)]
+pub struct RequestState {
     respond_to: oneshot::Sender<JsonResponse>,
     expires: std::time::Instant, // never read, do we need it?
     underlying: JsonRequest,
@@ -145,18 +147,23 @@ impl LoadBalancerState {
     async fn clean_up_expired_tokens_periodically(access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>) {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            let now = std::time::Instant::now();
-            access_tokens.lock().await.retain(|_, state| {
-                let still_valid = state.expires > now;
-                if !still_valid {
-                    warn!(
-                        "load balancer: {}: unused WebSocket access token expired",
-                        state.name.as_str(),
-                    )
-                }
-                still_valid
-            });
+            Self::clean_up_expired_tokens(&access_tokens).await;
         }
+    }
+
+    async fn clean_up_expired_tokens(access_tokens: &Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>) {
+        let now = std::time::Instant::now();
+
+        access_tokens.lock().await.retain(|_, state| {
+            let still_valid = state.expires > now;
+            if !still_valid {
+                warn!(
+                    "load balancer: {}: unused WebSocket access token expired",
+                    state.name.as_str(),
+                )
+            }
+            still_valid
+        });
     }
 }
 
@@ -171,7 +178,7 @@ impl Drop for LoadBalancerState {
 }
 
 /// Generates a random Base64-encoded string. Used for generating access tokens.
-fn random_token() -> AccessToken {
+pub fn random_token() -> AccessToken {
     use base64::{engine::general_purpose, Engine as _};
     use rand::RngCore;
     let mut bytes = [0u8; 32];
@@ -940,4 +947,105 @@ async fn json_to_response(
             ),
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_new_creates_empty_state() {
+        let lb = LoadBalancerState::new().await;
+
+        let tokens = lb.access_tokens.lock().await;
+        assert!(tokens.is_empty());
+
+        let relays = lb.active_relays.lock().await;
+        assert!(relays.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_new_access_token_register() {
+        let lb = LoadBalancerState::new().await;
+        let name = AssetName("x-asset-x".to_string());
+        let prefix = Uuid::new_v4();
+        let token = lb.new_access_token(name.clone(), prefix).await;
+        let state = lb.register(&token.0).await.expect("should register");
+
+        assert_eq!(state.name, name);
+        assert_eq!(state.api_prefix, prefix);
+
+        // token should be removed after register
+        let tokens = lb.access_tokens.lock().await;
+        assert!(tokens.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_invalid_token() {
+        let lb = LoadBalancerState::new().await;
+        let res = lb.register("invalid").await;
+        assert!(matches!(res, Err(APIError::Unauthorized())));
+    }
+
+    #[tokio::test]
+    async fn test_register_expired_token() {
+        let lb = LoadBalancerState::new().await;
+        let name = AssetName("x-asset-x".to_string());
+        let prefix = Uuid::new_v4();
+        let token = random_token();
+        let expires = std::time::Instant::now() - std::time::Duration::from_secs(1);
+
+        lb.access_tokens.lock().await.insert(
+            token.clone(),
+            AccessTokenState {
+                name,
+                api_prefix: prefix,
+                expires,
+            },
+        );
+        let res = lb.register(&token.0).await;
+
+        assert!(matches!(res, Err(APIError::Unauthorized())));
+    }
+
+    #[tokio::test]
+    async fn test_clean_up_expired_tokens_logic() {
+        let lb = LoadBalancerState::new().await;
+        let name = AssetName("x-asset-x".to_string());
+        let prefix = Uuid::new_v4();
+
+        // insert expired token
+        let token_expired = random_token();
+        let expires_expired = std::time::Instant::now() - std::time::Duration::from_secs(1);
+        lb.access_tokens.lock().await.insert(
+            token_expired.clone(),
+            AccessTokenState {
+                name: name.clone(),
+                api_prefix: prefix,
+                expires: expires_expired,
+            },
+        );
+
+        // insert valid token
+        let token_valid = random_token();
+        let expires_valid = std::time::Instant::now() + std::time::Duration::from_secs(300);
+
+        lb.access_tokens.lock().await.insert(
+            token_valid.clone(),
+            AccessTokenState {
+                name,
+                api_prefix: prefix,
+                expires: expires_valid,
+            },
+        );
+
+        // cleanup
+        LoadBalancerState::clean_up_expired_tokens(&lb.access_tokens).await;
+        let tokens = lb.access_tokens.lock().await;
+
+        assert_eq!(tokens.len(), 1);
+
+        assert!(tokens.contains_key(&token_valid));
+        assert!(!tokens.contains_key(&token_expired));
+    }
 }
