@@ -35,8 +35,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable]
+        include:
+          - os: ubuntu-latest
+            rust: stable
+          - os: macos-latest
+            rust: stable
+          - os: windows-latest
+            # We need to target GNU MinGW on Windows for the `gmp-mpfr-sys` dependency of Pallas’ `phase2`
+            rust: stable-x86_64-pc-windows-gnu
       fail-fast: true
 
     steps:
@@ -50,17 +56,17 @@ jobs:
           components: rustfmt, rust-src, clippy
 
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo +${{ matrix.rust }} build --release --verbose
 
       - name: Test
-        run: cargo test --lib --verbose
+        run: cargo +${{ matrix.rust }} test --lib --verbose
         timeout-minutes: 10
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo +${{ matrix.rust }} fmt --all -- --check
 
       - name: Lint with Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo +${{ matrix.rust }} clippy --all-targets --all-features -- -D warnings
 
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
