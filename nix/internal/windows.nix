@@ -65,6 +65,7 @@ in rec {
   in rec {
     inherit src;
     strictDeps = true;
+    cargoExtraArgs = "--locked --features nix-cross";
 
     CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
     inherit TARGET_CC;

@@ -59,15 +59,11 @@ anyhow = "1.0.95"
 blockfrost-openapi = "0.1.75"
 bech32 = "0.9.1"
 cardano-serialization-lib = "12.1.1"
-
-[target.'cfg(target_os = "windows")'.dependencies]
-gmp-mpfr-sys = { version = "1.6.5", features = [
-  "force-cross",
-  "use-system-libs",
-] }
+gmp-mpfr-sys = "1.6.5"
 
 [features]
 tarpaulin = []
+nix-cross = ["gmp-mpfr-sys/force-cross", "gmp-mpfr-sys/use-system-libs"]
 
 [dev-dependencies]
 tracing-test = "0.2.5"
