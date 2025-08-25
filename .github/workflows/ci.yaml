@@ -55,7 +55,29 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
+      - name: Install MSYS2 (Windows-only)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >
+            m4
+            make
+            patch
+            diffutils
+            tar
+            gzip
+            mingw-w64-x86_64-toolchain
+          path-type: inherit
+
       - name: Build
+        if: runner.os != 'Windows'
+        run: cargo +${{ matrix.rust }} build --release --verbose
+
+      - name: Build (Windows-only)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: cargo +${{ matrix.rust }} build --release --verbose
 
       - name: Test
