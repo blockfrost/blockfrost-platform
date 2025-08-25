@@ -38,12 +38,18 @@ jobs:
         include:
           - os: ubuntu-latest
             rust: stable
+            shell: bash
           - os: macos-latest
             rust: stable
+            shell: bash
           - os: windows-latest
             # We need to target GNU MinGW on Windows for the `gmp-mpfr-sys` dependency of Pallas’ `phase2`
             rust: stable-x86_64-pc-windows-gnu
+            shell: "msys2 {0}"
       fail-fast: true
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
 
     steps:
       - name: Checkout repository
@@ -62,28 +68,21 @@ jobs:
           msystem: MINGW64
           update: true
           install: >
-            m4
-            make
-            patch
-            diffutils
-            tar
-            gzip
-            mingw-w64-x86_64-clang
-            mingw-w64-x86_64-llvm
+            m4 make patch diffutils tar gzip mingw-w64-x86_64-clang mingw-w64-x86_64-llvm
           path-type: inherit
 
-      - name: Build
-        if: runner.os != 'Windows'
-        run: cargo +${{ matrix.rust }} build --release --verbose
-
-      - name: Build (Windows-only)
+      - name: Set env for rest of job (Windows-only)
         if: runner.os == 'Windows'
-        shell: msys2 {0}
-        env:
-          CC: clang
-          AR: llvm-ar
-          RANLIB: llvm-ranlib
-          ABI: 64
+        shell: bash
+        run: |
+          {
+            echo "CC=clang"
+            echo "AR=llvm-ar"
+            echo "RANLIB=llvm-ranlib"
+            echo "ABI=64"
+          } >> "$GITHUB_ENV"
+
+      - name: Build
         run: cargo +${{ matrix.rust }} build --release --verbose
 
       - name: Test
