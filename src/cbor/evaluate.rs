@@ -143,7 +143,7 @@ pub fn evaluate_tx_with_pp(
 
         let datum_option = match &tx_out.datum {
             Some(d) => {
-                println!("Datum: {}", d);
+                println!("Datum: {d}");
                 let datum_bytes = hex::decode(d).unwrap();
                 let datum_option = DatumOption::Data(CborWrap(
                     pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
