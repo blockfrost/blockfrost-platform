@@ -68,7 +68,8 @@ jobs:
             diffutils
             tar
             gzip
-            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-clang
+            mingw-w64-x86_64-llvm
           path-type: inherit
 
       - name: Build
@@ -79,9 +80,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         env:
-          CC: x86_64-w64-mingw32-gcc
-          AR: x86_64-w64-mingw32-gcc-ar
-          RANLIB: x86_64-w64-mingw32-gcc-ranlib
+          CC: clang
+          AR: llvm-ar
+          RANLIB: llvm-ranlib
+          ABI: 64
         run: cargo +${{ matrix.rust }} build --release --verbose
 
       - name: Test
