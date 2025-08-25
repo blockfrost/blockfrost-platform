@@ -88,7 +88,7 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
+          cargoClippyExtraArgs = "--all-targets --features tarpaulin -- --deny warnings";
         });
 
       cargo-doc = craneLib.cargoDoc (commonArgs
