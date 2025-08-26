@@ -34,9 +34,13 @@ in
           ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
         buildInputs =
-          lib.optionals pkgs.stdenv.isLinux [
+          [
+            pkgs.gmp
+            pkgs.mpfr
+            pkgs.libmpc
+          ]
+          ++ lib.optionals pkgs.stdenv.isLinux [
             pkgs.openssl
-            pkgs.gnum4
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
@@ -84,7 +88,7 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
+          cargoClippyExtraArgs = "--all-targets --features tarpaulin -- --deny warnings";
         });
 
       cargo-doc = craneLib.cargoDoc (commonArgs
