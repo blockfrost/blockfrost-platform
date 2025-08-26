@@ -235,7 +235,8 @@ mod features {
     pub fn evaluate(target_os: &str, target_arch: &str) {
         println!("cargo::rustc-check-cfg=cfg(evaluate)");
 
-        if target_os == "windows" {
+        // FIXME: @michalrus reenabled `#[cfg(evaluate)]` on Windows in this dirty way:
+        if false && target_os == "windows" {
             println!("cargo:warning=Skipping 'evaluate' cfg for {target_os}-{target_arch}");
         } else {
             println!(
