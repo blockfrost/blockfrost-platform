@@ -102,12 +102,18 @@ pub async fn route(
         .parse()
         .map_err(|_| APIError::Validation(format!("Invalid IP address: {}", ip_string)))?;
 
+    let skip_port_check_secret = std::env::var("SKIP_PORT_CHECK_SECRET").ok();
+
     // Allow bypassing check for open port via header X-SKIP-PORT-CHECK=1
     let skip_port_check = headers
         .get("X-SKIP-PORT-CHECK")
         .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.eq_ignore_ascii_case("1"));
-
+        .and_then(|header_val| {
+            skip_port_check_secret
+                .as_ref()
+                .map(|secret| header_val.eq_ignore_ascii_case(secret))
+        })
+        .unwrap_or(false);
     if skip_port_check {
         info!("Skipping port check. Client passed X-SKIP-PORT-CHECK header.");
     } else {
