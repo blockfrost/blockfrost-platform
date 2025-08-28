@@ -63,7 +63,11 @@ impl IntoResponse for APIError {
                 ApiError {
                     status: "failed".to_string(),
                     reason: "not_accessible".to_string(),
-                    details: format!("The server at {}:{} is not publicly accessible.", ip.ip(), port),
+                    details: format!(
+                        "The server at {}:{} is not publicly accessible.",
+                        ip.ip(),
+                        port
+                    ),
                 },
             ),
             APIError::Unauthorized() => (
@@ -71,7 +75,7 @@ impl IntoResponse for APIError {
                 ApiError {
                     status: "failed".to_string(),
                     reason: "unauthorized".to_string(),
-                    details: "You are not authorized to access the registration. Please contact our support at https://blockfrost.io".to_string(),
+                    details: "You are not authorized to access the registration.".to_string(),
                 },
             ),
             APIError::DatabaseConnection(_) | APIError::DatabaseQuery(_) | APIError::DatabaseInteraction(_) => (

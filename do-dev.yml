@@ -2,7 +2,7 @@ alerts:
   - rule: DEPLOYMENT_FAILED
   - rule: DOMAIN_FAILED
 domains:
-  - domain: api-dev.icebreakers.blockfrost.io
+  - domain: api-dev.domain.com
     type: PRIMARY
 features:
   - buildpack-stack=ubuntu-22
