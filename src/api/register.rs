@@ -104,7 +104,7 @@ pub async fn route(
 
     let skip_port_check_secret = std::env::var("SKIP_PORT_CHECK_SECRET").ok();
 
-    // Allow bypassing check for open port via header X-SKIP-PORT-CHECK=1
+    // Allow bypassing check for open port via header X-SKIP-PORT-CHECK = env SKIP_PORT_CHECK_SECRET
     let skip_port_check = headers
         .get("X-SKIP-PORT-CHECK")
         .and_then(|v| v.to_str().ok())

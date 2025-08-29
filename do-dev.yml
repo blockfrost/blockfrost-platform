@@ -9,11 +9,11 @@ features:
 ingress:
   rules:
     - component:
-        name: blockfrost-icebreakers-api
+        name: blockfrost-gateway
       match:
         path:
           prefix: /
-name: blockfrost-icebreakers-api-dev
+name: blockfrost-gateway-dev
 region: fra
 services:
   - dockerfile_path: Dockerfile
@@ -24,9 +24,9 @@ services:
     github:
       branch: master
       deploy_on_push: true
-      repo: blockfrost/blockfrost-icebreakers-api
+      repo: blockfrost/blockfrost-gateway
     http_port: 3000
     instance_count: 2
     instance_size_slug: apps-s-1vcpu-1gb
-    name: blockfrost-icebreakers-api
+    name: blockfrost-gateway
     source_dir: /

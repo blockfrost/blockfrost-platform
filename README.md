@@ -1,10 +1,10 @@
-# Blockfrost Icebreakers API
+# Blockfrost Gateway
 
-The Blockfrost Icebreakers API provides a root endpoint to check the status and version of the API.
+The Blockfrost Gateway provides a root endpoint to check the status and version of the API.
 
 ### Registration Process
 
-When registering via the `/register` endpoint, the Blockfrost Icebreakers API (`icebreakers.blockfrost.io/api/`) performs the following checks:
+When registering via the `/register` endpoint, the Blockfrost Gateway performs the following checks:
 
 - **Secret Verification:** Confirms that the provided secret is registered with Blockfrost.io.
 - **NFT License Validation:** Ensures that the reward address contains an NFT issued by Blockfrost.io, which serves as a license.
@@ -15,7 +15,7 @@ When registering via the `/register` endpoint, the Blockfrost Icebreakers API (`
 
 ```toml
 [server]
-address = '0.0.0.0:3000'
+address = '0.0.0.0:3001'
 log_level = 'info'
 
 [database]
@@ -24,6 +24,7 @@ connection_string = 'postgresql://user:pass@host:port/db'
 [blockfrost]
 project_id = 'BLOCKFROST_PROJECT_ID'
 nft_asset = 'b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f696e'
+
 ```
 
 #### Environment Variables
@@ -65,15 +66,15 @@ Notice: App created
 ID                                      Spec Name
 Default Ingress    Active Deployment ID    In Progress Deployment ID    Created
 At                                 Updated At
-8877f0a6-f553-4a49-aa08-9683fbb4c610    blockfrost-icebreakers-api-dev
+8877f0a6-f553-4a49-aa08-9683fbb4c610    blockfrost-gateway-dev
 ```
 
 After that, you can view the logs.
 
 ```
 $ doctl apps logs 8877f0a6-f553-4a49-aa08-9683fbb4c610
-blockfrost-icebreakers-api 2024-08-20T18:48:18.346927157Z
-blockfrost-icebreakers-api 2024-08-20T18:48:18.346977091Z Address:
+blockfrost-gateway 2024-08-20T18:48:18.346927157Z
+blockfrost-gateway 2024-08-20T18:48:18.346977091Z Address:
 🌍 http://0.0.0.0:3000
-blockfrost-icebreakers-api 2024-08-20T18:48:18.346982280Z Log Level: 📘 INFO
+blockfrost-gateway 2024-08-20T18:48:18.346982280Z Log Level: 📘 INFO
 ```

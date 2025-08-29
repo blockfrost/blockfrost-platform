@@ -6,7 +6,7 @@
   inherit (pkgs) lib;
   internal = inputs.self.internal.${pkgs.system};
 in {
-  name = "blockfrost-icebreakers-api-devshell";
+  name = "blockfrost-gateway-devshell";
 
   imports = [
     "${inputs.devshell}/extra/language/c.nix"

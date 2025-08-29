@@ -2,7 +2,7 @@ mod common;
 use common::*;
 
 use base64::Engine;
-use blockfrost_icebreakers_api::{
+use blockfrost_gateway::{
     blockfrost::AssetName,
     load_balancer::{JsonResponse, LoadBalancerMessage, LoadBalancerState, RelayMessage},
 };

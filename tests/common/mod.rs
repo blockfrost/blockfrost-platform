@@ -2,7 +2,7 @@ use axum::{
     routing::{any, get},
     Extension, Router,
 };
-use blockfrost_icebreakers_api::load_balancer::{api, LoadBalancerState};
+use blockfrost_gateway::load_balancer::{api, LoadBalancerState};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
