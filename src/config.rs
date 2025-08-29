@@ -19,6 +19,7 @@ pub struct Args {
 pub struct ServerInput {
     pub address: String,
     pub log_level: String,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -46,6 +47,7 @@ pub struct Server {
     #[serde(deserialize_with = "deserialize_log_level")]
     pub log_level: Level,
     pub is_testnet: bool,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -92,6 +94,7 @@ pub fn load_config(path: PathBuf) -> Config {
             address: toml_config.server.address,
             log_level,
             is_testnet,
+            url: toml_config.server.url,
         },
         database: Db {
             connection_string: toml_config.database.connection_string,
@@ -106,6 +109,7 @@ pub fn load_config(path: PathBuf) -> Config {
 }
 
 fn override_with_env(config: Config) -> Config {
+    let server_url = var("SERVER_URL").ok().or(config.server.url.clone());
     let server_address = var("SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str = var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
@@ -127,6 +131,7 @@ fn override_with_env(config: Config) -> Config {
             address: server_address,
             log_level: final_log_level,
             is_testnet,
+            url: server_url,
         },
         database: Db {
             connection_string: db_connection,

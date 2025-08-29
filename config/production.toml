@@ -1,6 +1,7 @@
 [server]
 address = '0.0.0.0:3000'
 log_level = 'info'
+url = 'https://api.domain.com'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'
