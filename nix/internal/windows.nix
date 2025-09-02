@@ -177,6 +177,7 @@ in rec {
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.
+    cp -r ${dolos}/bin/. $out/.
   '';
 
   archive =

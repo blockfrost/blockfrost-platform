@@ -49,11 +49,18 @@ in
           mkdir -p $out/libexec
           mv $out/{${unix.packageName},lib} $out/libexec
           mkdir -p $out/bin
-          ( cd $out/bin ; ln -s ../libexec/${unix.packageName} ./ ; )
+
+          chmod -R +w $out
+          ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
+          chmod -R +w $out
+
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName},dolos} ./ ; )
         '';
     });
 
     bundle-testgen-hs = nix-bundle-exe-lib-subdir (lib.getExe unix.testgen-hs);
+
+    bundle-dolos = nix-bundle-exe-lib-subdir "${unix.dolos}/bin/dolos";
 
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
