@@ -239,9 +239,9 @@ in
 
     make-dmg = {doSign ? false}: let
       outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
-      credentials = "/var/lib/buildkite-agent/signing.sh";
-      codeSigningConfig = "/var/lib/buildkite-agent/code-signing-config.json";
-      signingConfig = "/var/lib/buildkite-agent/signing-config.json";
+      credentials = "/var/lib/buildkite-agent-default/signing.sh";
+      codeSigningConfig = "/var/lib/buildkite-agent-default/code-signing-config.json";
+      signingConfig = "/var/lib/buildkite-agent-default/signing-config.json";
       packAndSign = pkgs.writeShellApplication {
         name = "pack-and-sign";
         runtimeInputs = with pkgs; [bash coreutils jq];
@@ -317,7 +317,7 @@ in
           ${
             if doSign
             then ''
-              # FIXME: this doesn’t work outside of `buildkite-agent`, it seems:
+              # FIXME: this doesn’t work outside of `buildkite-agent-default`, it seems:
               #(
               #  source ${credentials}
               #  security unlock-keychain -p "$SIGNING" "$signingKeyChain"
@@ -360,7 +360,7 @@ in
           ${
             if doSign
             then ''
-              exec sudo -u buildkite-agent \
+              exec sudo -u buildkite-agent-default \
                 "NOTARY_USER=''${NOTARY_USER:-}" \
                 "NOTARY_PASSWORD=''${NOTARY_PASSWORD:-}" \
                 "NOTARY_TEAM_ID=''${NOTARY_TEAM_ID:-}" \
