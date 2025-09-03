@@ -1,14 +1,15 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
 use blockfrost_platform::{
-    AppError, load_balancer,
+    AppError,
+    icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
 use common::cli::Args;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -64,45 +65,16 @@ async fn main() -> Result<(), AppError> {
     // so it’s best to have future-compatibility in the messaging now.
     if let Some(icebreakers_api) = icebreakers_api {
         let health_errors = Arc::new(Mutex::new(vec![]));
+
         health_monitor
             .register_error_source(health_errors.clone())
             .await;
 
+        let manager =
+            IcebreakersManager::new(Some(icebreakers_api), health_errors, app, api_prefix);
+
         tokio::spawn(async move {
-            'load_balancers: loop {
-                match icebreakers_api.register().await {
-                    Ok(response) => {
-                        let configs: Vec<_> =
-                            response.load_balancers.into_iter().flatten().collect();
-                        if configs.is_empty() {
-                            warn!("IceBreakers: no WebSocket load balancers to connect to");
-                            // If there are no load balancers, only register once, nothing to monitor:
-                            break 'load_balancers;
-                        }
-
-                        load_balancer::run_all(
-                            configs,
-                            app.clone(),
-                            health_errors.clone(),
-                            api_prefix.clone(),
-                        )
-                        .await;
-
-                        let delay = std::time::Duration::from_secs(1);
-                        info!("IceBreakers: will re-register in {:?}", delay);
-                        tokio::time::sleep(delay).await;
-                    },
-                    Err(err) => {
-                        let delay = std::time::Duration::from_secs(10);
-                        error!(
-                            "IceBreakers registration failed: {}, will re-register in {:?}",
-                            err, delay
-                        );
-                        *health_errors.lock().await = vec![err.into()];
-                        tokio::time::sleep(delay).await;
-                    },
-                }
-            }
+            manager.run().await;
         });
     }
 

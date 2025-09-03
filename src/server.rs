@@ -3,7 +3,7 @@ pub mod metrics;
 pub mod routes;
 pub mod state;
 use crate::{
-    health_monitor, icebreakers_api::IcebreakersAPI, middlewares::errors::error_middleware,
+    health_monitor, icebreakers::api::IcebreakersAPI, middlewares::errors::error_middleware,
 };
 use axum::{Extension, Router, middleware::from_fn};
 use common::{
