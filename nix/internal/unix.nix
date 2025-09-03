@@ -547,7 +547,7 @@ in
           cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
-          cat ${../../blockfrost-tests-endpoints-allowlist.json} >endpoints-allowlist.json
+          cat ${../../tests/data/supported_endpoints.json} >endpoints-allowlist.json
 
           set -x
           node --version
