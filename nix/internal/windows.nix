@@ -177,6 +177,7 @@ in rec {
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.
+    cp -r ${dolos}/bin/. $out/.
   '';
 
   archive =
@@ -214,6 +215,27 @@ in rec {
     url = "http://www.angusj.com/resourcehacker/resource_hacker.zip";
     hash = "sha256-W5TmyjNNXE3nvn37XYbTM+DBeupPijE4M70LJVKJupU=";
     stripRoot = false;
+  };
+
+  dolos = craneLib.buildPackage {
+    src = inputs.dolos;
+    strictDeps = true;
+
+    CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
+    TARGET_CC = "${pkgsCross.stdenv.cc}/bin/${pkgsCross.stdenv.cc.targetPrefix}cc";
+
+    TESTGEN_HS_PATH = "unused"; # Don’t try to download it in `build.rs`.
+
+    OPENSSL_DIR = "${pkgs.openssl.dev}";
+    OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+    OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
+
+    depsBuildBuild = [
+      pkgsCross.stdenv.cc
+      pkgsCross.windows.pthreads
+    ];
+
+    doCheck = false; # we run Windows tests on real Windows on GHA
   };
 
   packageWithIcon =

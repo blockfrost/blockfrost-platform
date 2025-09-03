@@ -38,7 +38,17 @@ in
         buildCommand =
           drv.buildCommand
           + ''
-            ( cd $out ; ln -s bin/${unix.packageName} . ; )
+            chmod -R +w $out
+            ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/.
+            chmod -R +w $out
+            ( cd $out ; ln -s bin/{${unix.packageName},dolos} ./ ; )
           '';
       });
+
+    bundle-dolos = nix-bundle-exe {
+      inherit pkgs;
+      bin_dir = "bin";
+      exe_dir = "exe";
+      lib_dir = "lib";
+    } "${unix.dolos}/bin/dolos";
   }

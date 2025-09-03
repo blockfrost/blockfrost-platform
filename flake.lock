@@ -3,11 +3,11 @@
     "advisory-db": {
       "flake": false,
       "locked": {
-        "lastModified": 1750151065,
-        "narHash": "sha256-il+CAqChFIB82xP6bO43dWlUVs+NlG7a4g8liIP5HcI=",
+        "lastModified": 1756731353,
+        "narHash": "sha256-OylOWF5AASqDHsvZGiLCwBGI1wMvL4gaEMpAM88XqKY=",
         "owner": "rustsec",
         "repo": "advisory-db",
-        "rev": "7573f55ba337263f61167dbb0ea926cdc7c8eb5d",
+        "rev": "97dec1d752d5ce500b6db833350c13acd02b17cf",
         "type": "github"
       },
       "original": {
@@ -103,16 +103,16 @@
     "dolos": {
       "flake": false,
       "locked": {
-        "lastModified": 1751915048,
-        "narHash": "sha256-GKSSOfxqx0TqW0RpB4+0Bv1J5jJRqYviQ3zrRbkBoy4=",
+        "lastModified": 1756144956,
+        "narHash": "sha256-uXKJA4nnVqC8SU7LOUSJm62GSOKcQdlvwgY+Ex1/KB8=",
         "owner": "txpipe",
         "repo": "dolos",
-        "rev": "42d955835d9c210af1f5ab270ca1d31182511bde",
+        "rev": "7996419d71eb7083fb74268a7f176b76ce9d63f2",
         "type": "github"
       },
       "original": {
         "owner": "txpipe",
-        "ref": "v0.26.0",
+        "ref": "v0.31.1",
         "repo": "dolos",
         "type": "github"
       }
