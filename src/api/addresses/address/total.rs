@@ -1,17 +1,14 @@
-use crate::{BlockfrostError, api::ApiResult};
+use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
 use api_provider::types::AddressesContentTotalResponse;
-use axum::{Extension, extract::Path};
-use common::{
-    addresses::{AddressInfo, AddressesPath},
-    config::Config,
-};
+use axum::extract::{Path, State};
+use common::addresses::{AddressInfo, AddressesPath};
 
 pub async fn route(
     Path(address_path): Path<AddressesPath>,
-    Extension(config): Extension<Config>,
+    State(app_state): State<AppState>,
 ) -> ApiResult<AddressesContentTotalResponse> {
     let AddressesPath { address, asset: _ } = address_path;
-    let _ = AddressInfo::from_address(&address, config.network)?;
+    let _ = AddressInfo::from_address(&address, app_state.config.network.clone())?;
 
     Err(BlockfrostError::not_found())
 }
