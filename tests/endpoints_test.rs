@@ -4,6 +4,8 @@ mod tx_builder;
 
 mod tests {
     use std::net::{IpAddr, SocketAddr};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     use crate::asserts;
     use crate::common::{
@@ -16,7 +18,9 @@ mod tests {
         extract::Request as AxumExtractRequest,
         http::Request,
     };
+    use blockfrost_platform::BlockfrostError;
     use blockfrost_platform::api::root::RootResponse;
+    use blockfrost_platform::icebreakers::manager::IcebreakersManager;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
     use tokio::sync::oneshot;
@@ -264,7 +268,8 @@ mod tests {
         let (ready_tx, ready_rx) = oneshot::channel();
 
         let spawn_task = tokio::spawn({
-            let app = app;
+            let app = app.clone();
+
             async move {
                 let server_future = axum::serve(
                     listener,
@@ -282,8 +287,19 @@ mod tests {
         if ready_rx.await.is_ok() {
             info!("Server is listening on http://{}{}", address, api_prefix);
 
-            if let Some(api) = &icebreakers_api {
-                api.register().await?;
+            if let Some(icebreakers_api) = icebreakers_api {
+                let health_errors: Arc<Mutex<Vec<BlockfrostError>>> = Arc::new(Mutex::new(vec![]));
+
+                let manager = IcebreakersManager::new(
+                    Some(icebreakers_api),
+                    health_errors,
+                    app.clone(),
+                    api_prefix,
+                );
+
+                tokio::spawn(async move {
+                    manager.run().await;
+                });
             }
         }
 
