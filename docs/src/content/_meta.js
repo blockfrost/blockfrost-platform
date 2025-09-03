@@ -16,4 +16,5 @@ export default {
     type: "separator",
   },
   roadmap: "Roadmap",
+  budget: "Community budget",
 };
