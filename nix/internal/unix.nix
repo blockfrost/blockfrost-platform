@@ -479,7 +479,7 @@ in
     blockfrost-tests = make-blockfrost-tests "preview";
 
     make-blockfrost-tests = network: let
-      nodePackages = pkgs.nodePackages;
+      inherit (pkgs) nodePackages;
     in
       pkgs.writeShellApplication {
         name = "blockfrost-tests";
