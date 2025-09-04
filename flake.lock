@@ -16,6 +16,22 @@
         "type": "github"
       }
     },
+    "blockfrost-tests": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756389051,
+        "narHash": "sha256-IWbguTXZliBq+rd8MdQIrM3F1o7SIRuzkQpc4dRxe3A=",
+        "owner": "blockfrost",
+        "repo": "blockfrost-tests",
+        "rev": "dc33312126e9d7c49836d7605ab72224a337bc91",
+        "type": "github"
+      },
+      "original": {
+        "owner": "blockfrost",
+        "repo": "blockfrost-tests",
+        "type": "github"
+      }
+    },
     "cardano-node": {
       "flake": false,
       "locked": {
@@ -310,6 +326,7 @@
     "root": {
       "inputs": {
         "advisory-db": "advisory-db",
+        "blockfrost-tests": "blockfrost-tests",
         "cardano-node": "cardano-node",
         "cardano-playground": "cardano-playground",
         "crane": "crane",

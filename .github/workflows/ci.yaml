@@ -84,8 +84,8 @@ jobs:
           name: ${{ runner.os }}-binary
           path: artifacts/
 
-  integration_tests:
-    name: Integration Tests
+  platform_integration_tests:
+    name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: build_and_test
     steps:
@@ -94,6 +94,22 @@ jobs:
 
       - name: Run Integration Tests
         run: nix develop .# --command cargo test --verbose --test endpoints_test
+
+  blockfrost_integration_tests:
+    name: Blockfrost Integration Tests
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: build_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Blockfrost Tests
+        continue-on-error: true
+        env:
+          PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
+          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+        run: |
+          nix run -L .#internal.x86_64-linux.blockfrost-tests
 
   coverage:
     name: Coverage

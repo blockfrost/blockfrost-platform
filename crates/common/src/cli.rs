@@ -30,6 +30,8 @@ pub struct DolosArgs {
 
 #[derive(Parser, Debug, Serialize, Clone)]
 #[command(author,
+          name = "blockfrost-platform", // otherwise it’s `common`
+          bin_name = "blockfrost-platform",
           version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_REVISION"), ")"),
           about,
           long_about = None)]

@@ -475,4 +475,86 @@ in
           "$@"
       ''
       // {meta.description = "Runs Dolos on ${network}";};
+
+    blockfrost-tests = make-blockfrost-tests "preview";
+
+    make-blockfrost-tests = network: let
+      inherit (pkgs) nodePackages;
+    in
+      pkgs.writeShellApplication {
+        name = "blockfrost-tests";
+        runtimeInputs = with pkgs; [
+          bash
+          coreutils
+          nodePackages.nodejs
+          nodePackages.yarn
+          (python3.withPackages (ps: with ps; [portpicker]))
+          wait4x
+        ];
+        text = ''
+          set -euo pipefail
+
+          err() { printf "error: %s\n" "$1" >&2; }
+
+          platform_pid=""
+          tmpdir="$(mktemp -d)"
+          cleanup() {
+            cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
+            if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
+              kill -TERM "$platform_pid"
+              wait "$platform_pid"
+            fi
+          }
+          trap cleanup EXIT HUP INT TERM
+
+          require_env() {
+            local name="$1"
+            local val="''${!name-}"
+            if [[ -z "$val" ]]; then
+              err "$name is not set."
+              missing=1
+            fi
+          }
+          missing=0
+          for v in PROJECT_ID SUBMIT_MNEMONIC ; do
+            require_env "$v"
+          done
+          if (( missing )); then
+            exit 1
+          fi
+
+          export NETWORK=${lib.escapeShellArg network}
+
+          platform_port=$(python3 -m portpicker)
+
+          ${lib.getExe package} \
+            --server-address 127.0.0.1 \
+            --server-port "$platform_port" \
+            --log-level info \
+            --node-socket-path "''${CARDANO_NODE_SOCKET_PATH:-/run/cardano-node/node.socket}" \
+            --mode compact \
+            --solitary \
+            --dolos-endpoint "''${DOLOS_ENDPOINT:-http://127.0.0.1:3010}" \
+            --dolos-timeout-sec 30 \
+            &
+          platform_pid=$!
+
+          export SERVER_URL="http://127.0.0.1:$platform_port"
+
+          sleep 1
+          wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
+
+          cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
+          chmod -R u+w,g+w "$tmpdir"
+          cd "$tmpdir"
+          cat ${../../tests/data/supported_endpoints.json} >endpoints-allowlist.json
+
+          set -x
+          node --version
+          yarn --version
+
+          yarn install
+          yarn test:preview
+        '';
+      };
   }
