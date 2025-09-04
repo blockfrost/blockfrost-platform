@@ -289,39 +289,28 @@ mod tests {
                 let health_errors = Arc::new(Mutex::new(vec![]));
 
                 let manager = IcebreakersManager::new(
-                    Some(icebreakers_api.clone()),
+                    icebreakers_api.clone(),
                     health_errors.clone(),
                     app.clone(),
                     api_prefix.clone(),
                 );
 
                 let response = manager.run_once().await?;
+                let resp = response;
 
-                match response {
-                    Some(resp) => {
-                        info!("run_once response: {}", resp);
-                        let errors = health_errors.lock().await;
+                {
+                    info!("run_once response: {}", resp);
+                    let errors = health_errors.lock().await;
 
-                        assert!(
-                            errors.is_empty(),
-                            "Expected no WebSocket errors, but found: {:?}",
-                            *errors
-                        );
-                        assert!(
-                            resp.contains("Started"),
-                            "Expected successful registration, but got: {resp}",
-                        );
-                    },
-                    None => {
-                        info!("No IceBreakers API available");
-
-                        let errors = health_errors.lock().await;
-                        assert!(
-                            errors.is_empty(),
-                            "Expected no WebSocket errors when no API is available, but found: {:?}",
-                            *errors
-                        );
-                    },
+                    assert!(
+                        errors.is_empty(),
+                        "Expected no WebSocket errors, but found: {:?}",
+                        *errors
+                    );
+                    assert!(
+                        resp.contains("Started"),
+                        "Expected successful registration, but got: {resp}",
+                    );
                 }
 
                 tokio::spawn(async move {

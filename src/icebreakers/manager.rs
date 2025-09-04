@@ -1,6 +1,7 @@
 use crate::icebreakers::api::IcebreakersAPI;
 use crate::load_balancer;
 use crate::server::state::ApiPrefix;
+use axum::Router;
 use common::errors::BlockfrostError;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -8,17 +9,17 @@ use tokio::time::{Duration, sleep};
 use tracing::{error, info, warn};
 
 pub struct IcebreakersManager {
-    icebreakers_api: Option<Arc<IcebreakersAPI>>,
+    icebreakers_api: Arc<IcebreakersAPI>,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
-    app: axum::Router,
+    app: Router,
     api_prefix: ApiPrefix,
 }
 
 impl IcebreakersManager {
     pub fn new(
-        icebreakers_api: Option<Arc<IcebreakersAPI>>,
+        icebreakers_api: Arc<IcebreakersAPI>,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
-        app: axum::Router,
+        app: Router,
         api_prefix: ApiPrefix,
     ) -> Self {
         Self {
@@ -31,57 +32,42 @@ impl IcebreakersManager {
 
     /// Executes a single registration attempt and runs load balancers if successful.
     /// Returns a string describing the registration outcome.
-    pub async fn run_once(&self) -> Result<Option<String>, BlockfrostError> {
-        if let Some(icebreakers_api) = &self.icebreakers_api {
-            let response = icebreakers_api.register().await?;
-            let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
+    pub async fn run_once(&self) -> Result<String, BlockfrostError> {
+        let response = self.icebreakers_api.register().await?;
+        let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
 
-            if configs.is_empty() {
-                warn!("IceBreakers: no WebSocket load balancers to connect to");
-                return Ok(Some("No load balancers available".to_string()));
-            }
-            let config_count = configs.len();
+        if configs.is_empty() {
+            warn!("IceBreakers: no WebSocket load balancers to connect to");
 
-            tokio::spawn(load_balancer::run_all(
-                configs,
-                self.app.clone(),
-                self.health_errors.clone(),
-                self.api_prefix.clone(),
-            ));
+            return Ok("No load balancers available".to_string());
+        }
+        let config_count = configs.len();
 
-            let health_errors = self.health_errors.lock().await;
+        tokio::spawn(load_balancer::run_all(
+            configs,
+            self.app.clone(),
+            self.health_errors.clone(),
+            self.api_prefix.clone(),
+        ));
 
-            if health_errors.is_empty() {
-                Ok(Some(format!(
-                    "Started {config_count} load balancer connections"
-                )))
-            } else {
-                Ok(Some(format!("Load balancer errors: {:?}", *health_errors)))
-            }
+        let health_errors = self.health_errors.lock().await;
+
+        if health_errors.is_empty() {
+            Ok(format!("Started {config_count} load balancer connections"))
         } else {
-            Ok(None)
+            Ok(format!("Load balancer errors: {:?}", *health_errors))
         }
     }
 
     /// Runs the registration process periodically
     pub async fn run(self) {
-        if self.icebreakers_api.is_none() {
-            return;
-        }
-
         loop {
             match self.run_once().await {
-                Ok(Some(response)) => {
+                Ok(response) => {
                     info!("IceBreakers: registration outcome: {}", response);
 
                     let delay = Duration::from_secs(1);
                     info!("IceBreakers: will re-register in {:?}", delay);
-                    sleep(delay).await;
-                },
-                Ok(None) => {
-                    info!("IceBreakers: no API available, skipping registration");
-
-                    let delay = Duration::from_secs(1);
                     sleep(delay).await;
                 },
                 Err(err) => {
