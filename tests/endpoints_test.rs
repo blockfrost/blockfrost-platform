@@ -285,6 +285,7 @@ mod tests {
 
         if ready_rx.await.is_ok() {
             info!("Server is listening on http://{}{}", address, api_prefix);
+
             if let Some(icebreakers_api) = icebreakers_api {
                 let health_errors = Arc::new(Mutex::new(vec![]));
 
@@ -297,21 +298,20 @@ mod tests {
 
                 let response = manager.run_once().await?;
                 let resp = response;
+                let errors = health_errors.lock().await;
 
-                {
-                    info!("run_once response: {}", resp);
-                    let errors = health_errors.lock().await;
+                info!("run_once response: {}", resp);
 
-                    assert!(
-                        errors.is_empty(),
-                        "Expected no WebSocket errors, but found: {:?}",
-                        *errors
-                    );
-                    assert!(
-                        resp.contains("Started"),
-                        "Expected successful registration, but got: {resp}",
-                    );
-                }
+                assert!(
+                    errors.is_empty(),
+                    "Expected no WebSocket errors, but found: {:?}",
+                    *errors
+                );
+
+                assert!(
+                    resp.contains("Started"),
+                    "Expected successful registration, but got: {resp}",
+                );
 
                 tokio::spawn(async move {
                     manager.run().await;
