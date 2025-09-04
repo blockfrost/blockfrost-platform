@@ -308,7 +308,7 @@ mod tests {
                             *errors
                         );
                         assert!(
-                            resp.contains("Started"),
+                            resp.contains("aaaaaaaaaaaaaaaaa"),
                             "Expected successful registration, but got: {resp}",
                         );
                     },
