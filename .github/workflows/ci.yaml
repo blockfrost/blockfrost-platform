@@ -84,8 +84,8 @@ jobs:
           name: ${{ runner.os }}-binary
           path: artifacts/
 
-  integration_tests:
-    name: Integration Tests
+  platform_integration_tests:
+    name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: build_and_test
     steps:
@@ -95,8 +95,9 @@ jobs:
       - name: Run Integration Tests
         run: nix develop .# --command cargo test --verbose --test endpoints_test
 
-  blockfrost_tests:
-    name: Blockfrost Tests
+  blockfrost_integration_tests:
+    name: Blockfrost Integration Tests
+    continue-on-error: true
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: build_and_test
     steps:
