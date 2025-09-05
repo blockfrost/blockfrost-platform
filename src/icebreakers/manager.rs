@@ -5,7 +5,6 @@ use axum::Router;
 use common::errors::BlockfrostError;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::time::{Duration, sleep};
 use tracing::{error, info, warn};
 
 pub struct IcebreakersManager {
@@ -30,7 +29,7 @@ impl IcebreakersManager {
         }
     }
 
-    /// Executes a single registration attempt and runs load balancers if successful.
+    /// Executes a single registration attempt and runs load balancers synchronously.
     /// Returns a string describing the registration outcome.
     pub async fn run_once(&self) -> Result<String, BlockfrostError> {
         let response = self.icebreakers_api.register().await?;
@@ -38,17 +37,18 @@ impl IcebreakersManager {
 
         if configs.is_empty() {
             warn!("IceBreakers: no WebSocket load balancers to connect to");
-
             return Ok("No load balancers available".to_string());
         }
+
         let config_count = configs.len();
 
-        tokio::spawn(load_balancer::run_all(
+        load_balancer::run_all(
             configs,
             self.app.clone(),
             self.health_errors.clone(),
             self.api_prefix.clone(),
-        ));
+        )
+        .await;
 
         let health_errors = self.health_errors.lock().await;
 
@@ -59,29 +59,44 @@ impl IcebreakersManager {
         }
     }
 
-    /// Runs the registration process periodically
+    /// Runs the registration process periodically in a single spawned task.
     pub async fn run(self) {
-        loop {
-            match self.run_once().await {
-                Ok(response) => {
-                    info!("IceBreakers: registration outcome: {}", response);
+        tokio::spawn(async move {
+            'load_balancers: loop {
+                match self.icebreakers_api.register().await {
+                    Ok(response) => {
+                        let configs: Vec<_> =
+                            response.load_balancers.into_iter().flatten().collect();
+                        if configs.is_empty() {
+                            warn!("IceBreakers: no WebSocket load balancers to connect to");
+                            // If there are no load balancers, only register once, nothing to monitor:
+                            break 'load_balancers;
+                        }
 
-                    let delay = Duration::from_secs(1);
-                    info!("IceBreakers: will re-register in {:?}", delay);
-                    sleep(delay).await;
-                },
-                Err(err) => {
-                    let delay = Duration::from_secs(10);
+                        load_balancer::run_all(
+                            configs,
+                            self.app.clone(),
+                            self.health_errors.clone(),
+                            self.api_prefix.clone(),
+                        )
+                        .await;
 
-                    error!(
-                        "IceBreakers registration failed: {}, will re-register in {:?}",
-                        err, delay
-                    );
+                        let delay = std::time::Duration::from_secs(1);
+                        info!("IceBreakers: will re-register in {:?}", delay);
+                        tokio::time::sleep(delay).await;
+                    },
+                    Err(err) => {
+                        let delay = std::time::Duration::from_secs(10);
+                        error!(
+                            "IceBreakers registration failed: {}, will re-register in {:?}",
+                            err, delay
+                        );
 
-                    *self.health_errors.lock().await = vec![err];
-                    sleep(delay).await;
-                },
+                        *self.health_errors.lock().await = vec![err.into()];
+                        tokio::time::sleep(delay).await;
+                    },
+                }
             }
-        }
+        });
     }
 }

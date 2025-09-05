@@ -72,7 +72,7 @@ async fn main() -> Result<(), AppError> {
 
         let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
 
-        tokio::spawn(manager.run());
+        manager.run().await;
     }
 
     spawn_task
