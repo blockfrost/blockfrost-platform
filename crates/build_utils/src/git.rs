@@ -1,9 +1,8 @@
 use std::env;
+use std::process::Command;
 const GIT_REVISION: &str = "GIT_REVISION";
 
 pub fn set_git_env() {
-    use std::process::Command;
-
     if env::var(GIT_REVISION).is_ok() {
         println!("Environment variable {GIT_REVISION} is set. Not setting.");
         return;
@@ -21,6 +20,7 @@ pub fn set_git_env() {
             .args(["rev-parse", "HEAD"])
             .output()
             .expect("git-rev-parse");
+
         String::from_utf8_lossy(&git_rev_parse.stdout)
             .trim()
             .to_string()
