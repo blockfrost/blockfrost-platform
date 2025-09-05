@@ -29,8 +29,6 @@ impl IcebreakersManager {
         }
     }
 
-    /// Executes a single registration attempt and runs load balancers synchronously.
-    /// Returns a string describing the registration outcome.
     pub async fn run_once(&self) -> Result<String, BlockfrostError> {
         let response = self.icebreakers_api.register().await?;
         let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
@@ -42,13 +40,12 @@ impl IcebreakersManager {
 
         let config_count = configs.len();
 
-        load_balancer::run_all(
+        tokio::spawn(load_balancer::run_all(
             configs,
             self.app.clone(),
             self.health_errors.clone(),
             self.api_prefix.clone(),
-        )
-        .await;
+        ));
 
         let health_errors = self.health_errors.lock().await;
 
