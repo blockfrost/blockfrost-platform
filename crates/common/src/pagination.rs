@@ -204,29 +204,31 @@ pub trait ApplyPagination {
 
 impl ApplyPagination for Url {
     fn apply_pagination(&mut self, pagination: &Pagination) {
-        self.query_pairs_mut()
+        let mut query_pairs = self.query_pairs_mut();
+
+        query_pairs
             .append_pair("page", &pagination.page.to_string())
             .append_pair("count", &pagination.count.to_string())
-            .append_pair("order", &pagination.order.as_str().to_lowercase());
+            .append_pair("order", pagination.order.as_str());
 
         if let Some(from_height) = pagination.from.height {
-            self.query_pairs_mut()
-                .append_pair("from", &from_height.to_string());
+            let from_value = if let Some(from_index) = pagination.from.index {
+                format!("{from_height}:{from_index}")
+            } else {
+                from_height.to_string()
+            };
 
-            if let Some(from_index) = pagination.from.index {
-                self.query_pairs_mut()
-                    .append_pair("from", &format!("{from_height}:{from_index}"));
-            }
+            query_pairs.append_pair("from", &from_value);
         }
 
         if let Some(to_height) = pagination.to.height {
-            self.query_pairs_mut()
-                .append_pair("to", &to_height.to_string());
+            let to_value = if let Some(to_index) = pagination.to.index {
+                format!("{to_height}:{to_index}",)
+            } else {
+                to_height.to_string()
+            };
 
-            if let Some(to_index) = pagination.to.index {
-                self.query_pairs_mut()
-                    .append_pair("to", &format!("{to_height}:{to_index}"));
-            }
+            query_pairs.append_pair("to", &to_value);
         }
     }
 }
@@ -301,10 +303,51 @@ mod tests {
         None,
         "https://blockfrost.io/?page=2&count=50&order=desc"
     )]
-    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  Some((123, None)), None, "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123")]
-    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  Some((123, Some(7))), None, "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123&from=123%3A7")]
-    #[case("https://blockfrost.io/endpoint", 1, 100, Order::Asc,  None, Some((200, Some(5))), "https://blockfrost.io/endpoint?page=1&count=100&order=asc&to=200&to=200%3A5")]
-    #[case("https://blockfrost.io/endpoint", 3,  20, Order::Desc, Some((10, Some(2))), Some((50, Some(8))), "https://blockfrost.io/endpoint?page=3&count=20&order=desc&from=10&from=10%3A2&to=50&to=50%3A8")]
+    #[case(
+            "https://blockfrost.io/endpoint",
+            1,
+            100,
+            Order::Asc,
+            Some((123, None)),
+            None,
+            "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123"
+        )]
+    #[case(
+            "https://blockfrost.io/endpoint",
+            1,
+            100,
+            Order::Asc,
+            Some((123, Some(7))),
+            None,
+            "https://blockfrost.io/endpoint?page=1&count=100&order=asc&from=123%3A7"
+        )]
+    #[case(
+            "https://blockfrost.io/endpoint",
+            1,
+            100,
+            Order::Asc,
+            None,
+            Some((200, Some(5))),
+            "https://blockfrost.io/endpoint?page=1&count=100&order=asc&to=200%3A5"
+        )]
+    #[case(
+            "https://blockfrost.io/endpoint",
+            3,
+            20,
+            Order::Desc,
+            Some((10, Some(2))),
+            Some((50, Some(8))),
+            "https://blockfrost.io/endpoint?page=3&count=20&order=desc&from=10%3A2&to=50%3A8"
+        )]
+    #[case(
+            "https://example.com/transactions",
+            1,
+            6,
+            Order::Asc,
+            Some((723665, Some(24))),
+            Some((723665, Some(29))),
+            "https://example.com/transactions?page=1&count=6&order=asc&from=723665%3A24&to=723665%3A29"
+        )]
     fn test_apply_pagination(
         #[case] base: &str,
         #[case] page: i32,
