@@ -2,7 +2,7 @@ use axum::Router;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     AppError, health_monitor,
-    icebreakers_api::IcebreakersAPI,
+    icebreakers::api::IcebreakersAPI,
     server::{build, state::ApiPrefix},
 };
 use common::{
