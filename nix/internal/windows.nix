@@ -219,6 +219,7 @@ in rec {
 
   dolos = craneLib.buildPackage {
     src = inputs.dolos;
+    GIT_REVISION = inputs.dolos.rev;
     strictDeps = true;
 
     CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";

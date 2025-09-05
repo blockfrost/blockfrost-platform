@@ -365,6 +365,7 @@ in
     dolos = craneLib.buildPackage (
       {
         src = inputs.dolos;
+        GIT_REVISION = inputs.dolos.rev;
         strictDeps = true;
         nativeBuildInputs =
           [pkgs.gnum4]
