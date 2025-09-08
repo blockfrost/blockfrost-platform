@@ -296,7 +296,7 @@ mod tests {
                     api_prefix.clone(),
                 );
 
-                let response = manager.run(RunMode::Once { detach: false }).await?.unwrap();
+                let response = manager.run(RunMode::Once).await?.unwrap();
                 let errors = health_errors.lock().await;
 
                 info!("run_once response: {}", response);

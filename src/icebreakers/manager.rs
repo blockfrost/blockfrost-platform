@@ -4,7 +4,7 @@ use crate::server::state::ApiPrefix;
 use axum::Router;
 use common::errors::{AppError, BlockfrostError};
 use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::sleep};
 use tracing::{error, info, warn};
 
 pub struct IcebreakersManager {
@@ -16,9 +16,7 @@ pub struct IcebreakersManager {
 
 #[derive(Clone, Copy, Debug)]
 pub enum RunMode {
-    Once {
-        detach: bool,
-    },
+    Once,
     Periodic {
         ok_delay_secs: u64,
         err_delay_secs: u64,
@@ -42,8 +40,8 @@ impl IcebreakersManager {
 
     pub async fn run(self, mode: RunMode) -> Result<Option<String>, AppError> {
         match mode {
-            RunMode::Once { detach } => {
-                let msg = self.tick(detach).await?;
+            RunMode::Once => {
+                let msg = self.perform_registration().await?;
 
                 Ok(Some(msg))
             },
@@ -53,12 +51,13 @@ impl IcebreakersManager {
             } => {
                 tokio::spawn(async move {
                     loop {
-                        match self.tick(false).await {
+                        match self.perform_registration().await {
                             Ok(_msg) => {
                                 let delay = Duration::from_secs(ok_delay_secs);
+
                                 info!("IceBreakers: will re-register in {:?}", delay);
 
-                                tokio::time::sleep(delay).await;
+                                sleep(delay).await;
                             },
                             Err(err) => {
                                 let delay = Duration::from_secs(err_delay_secs);
@@ -70,7 +69,7 @@ impl IcebreakersManager {
 
                                 *self.health_errors.lock().await = vec![err.into()];
 
-                                tokio::time::sleep(delay).await;
+                                sleep(delay).await;
                             },
                         }
                     }
@@ -81,7 +80,7 @@ impl IcebreakersManager {
         }
     }
 
-    async fn tick(&self, detach: bool) -> Result<String, AppError> {
+    async fn perform_registration(&self) -> Result<String, AppError> {
         let response = self.icebreakers_api.register().await?;
         let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
 
@@ -92,22 +91,12 @@ impl IcebreakersManager {
 
         let config_count = configs.len();
 
-        if detach {
-            tokio::spawn(load_balancer::run_all(
-                configs,
-                self.app.clone(),
-                self.health_errors.clone(),
-                self.api_prefix.clone(),
-            ));
-        } else {
-            load_balancer::run_all(
-                configs,
-                self.app.clone(),
-                self.health_errors.clone(),
-                self.api_prefix.clone(),
-            )
-            .await;
-        }
+        tokio::spawn(load_balancer::run_all(
+            configs,
+            self.app.clone(),
+            self.health_errors.clone(),
+            self.api_prefix.clone(),
+        ));
 
         let health_errors = self.health_errors.lock().await;
 
