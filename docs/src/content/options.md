@@ -15,7 +15,7 @@ Possible values: mainnet, preprod, preview
 Default: info\
 Possible values: debug, info, warn, error, trace
 
-`--node-socket-path <NODE_SOCKET_PATH>` (required)
+`--node-socket-path <CARDANO_NODE_SOCKET_PATH>` (required)
 
 `--mode <MODE>`\
 Default: compact\

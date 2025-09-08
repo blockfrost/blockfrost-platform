@@ -15,10 +15,10 @@ It won't work if you just copy and paste it.
 # NETWORK=mainnet
 SECRET=my_icebreaker_secret_i_have_received_from_the_blockfrost_team
 REWARD_ADDR=addr1_rest_of_my_reward_address_that_holds_my_nft_license_provided_by_the_blockfrost_team
-NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
+CARDANO_NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
 
 /usr/local/bin/blockfrost-platform --network ${NEWORK:=mainnet} \
-                                   --node-socket-path $NODE_SOCKET_PATH \
+                                   --node-socket-path $CARDANO_NODE_SOCKET_PATH \
                                    --secret $SECRET \
                                    --reward-address $REWARD_ADDR
 ```
