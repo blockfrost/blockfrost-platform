@@ -2,8 +2,8 @@ use crate::icebreakers::api::IcebreakersAPI;
 use crate::load_balancer;
 use crate::server::state::ApiPrefix;
 use axum::Router;
-use common::errors::BlockfrostError;
-use std::sync::Arc;
+use common::errors::{AppError, BlockfrostError};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
@@ -12,6 +12,17 @@ pub struct IcebreakersManager {
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     app: Router,
     api_prefix: ApiPrefix,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum RunMode {
+    Once {
+        detach: bool,
+    },
+    Periodic {
+        ok_delay_secs: u64,
+        err_delay_secs: u64,
+    },
 }
 
 impl IcebreakersManager {
@@ -29,7 +40,48 @@ impl IcebreakersManager {
         }
     }
 
-    pub async fn run_once(&self) -> Result<String, BlockfrostError> {
+    pub async fn run(self, mode: RunMode) -> Result<Option<String>, AppError> {
+        match mode {
+            RunMode::Once { detach } => {
+                let msg = self.tick(detach).await?;
+
+                Ok(Some(msg))
+            },
+            RunMode::Periodic {
+                ok_delay_secs,
+                err_delay_secs,
+            } => {
+                tokio::spawn(async move {
+                    loop {
+                        match self.tick(false).await {
+                            Ok(_msg) => {
+                                let delay = Duration::from_secs(ok_delay_secs);
+                                info!("IceBreakers: will re-register in {:?}", delay);
+
+                                tokio::time::sleep(delay).await;
+                            },
+                            Err(err) => {
+                                let delay = Duration::from_secs(err_delay_secs);
+
+                                error!(
+                                    "IceBreakers registration failed: {}, will re-register in {:?}",
+                                    err, delay
+                                );
+
+                                *self.health_errors.lock().await = vec![err.into()];
+
+                                tokio::time::sleep(delay).await;
+                            },
+                        }
+                    }
+                });
+
+                Ok(None)
+            },
+        }
+    }
+
+    async fn tick(&self, detach: bool) -> Result<String, AppError> {
         let response = self.icebreakers_api.register().await?;
         let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
 
@@ -40,12 +92,22 @@ impl IcebreakersManager {
 
         let config_count = configs.len();
 
-        tokio::spawn(load_balancer::run_all(
-            configs,
-            self.app.clone(),
-            self.health_errors.clone(),
-            self.api_prefix.clone(),
-        ));
+        if detach {
+            tokio::spawn(load_balancer::run_all(
+                configs,
+                self.app.clone(),
+                self.health_errors.clone(),
+                self.api_prefix.clone(),
+            ));
+        } else {
+            load_balancer::run_all(
+                configs,
+                self.app.clone(),
+                self.health_errors.clone(),
+                self.api_prefix.clone(),
+            )
+            .await;
+        }
 
         let health_errors = self.health_errors.lock().await;
 
@@ -54,46 +116,5 @@ impl IcebreakersManager {
         } else {
             Ok(format!("Load balancer errors: {:?}", *health_errors))
         }
-    }
-
-    /// Runs the registration process periodically in a single spawned task.
-    pub async fn run(self) {
-        tokio::spawn(async move {
-            'load_balancers: loop {
-                match self.icebreakers_api.register().await {
-                    Ok(response) => {
-                        let configs: Vec<_> =
-                            response.load_balancers.into_iter().flatten().collect();
-                        if configs.is_empty() {
-                            warn!("IceBreakers: no WebSocket load balancers to connect to");
-                            // If there are no load balancers, only register once, nothing to monitor:
-                            break 'load_balancers;
-                        }
-
-                        load_balancer::run_all(
-                            configs,
-                            self.app.clone(),
-                            self.health_errors.clone(),
-                            self.api_prefix.clone(),
-                        )
-                        .await;
-
-                        let delay = std::time::Duration::from_secs(1);
-                        info!("IceBreakers: will re-register in {:?}", delay);
-                        tokio::time::sleep(delay).await;
-                    },
-                    Err(err) => {
-                        let delay = std::time::Duration::from_secs(10);
-                        error!(
-                            "IceBreakers registration failed: {}, will re-register in {:?}",
-                            err, delay
-                        );
-
-                        *self.health_errors.lock().await = vec![err.into()];
-                        tokio::time::sleep(delay).await;
-                    },
-                }
-            }
-        });
     }
 }

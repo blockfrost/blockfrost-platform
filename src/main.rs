@@ -2,7 +2,7 @@
 
 use blockfrost_platform::{
     AppError,
-    icebreakers::manager::IcebreakersManager,
+    icebreakers::manager::{IcebreakersManager, RunMode},
     server::{build, logging::setup_tracing},
 };
 use common::cli::Args;
@@ -72,7 +72,12 @@ async fn main() -> Result<(), AppError> {
 
         let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
 
-        manager.run().await;
+        manager
+            .run(RunMode::Periodic {
+                ok_delay_secs: 1,
+                err_delay_secs: 10,
+            })
+            .await?;
     }
 
     spawn_task

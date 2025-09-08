@@ -20,7 +20,7 @@ mod tests {
         http::Request,
     };
     use blockfrost_platform::api::root::RootResponse;
-    use blockfrost_platform::icebreakers::manager::IcebreakersManager;
+    use blockfrost_platform::icebreakers::manager::{IcebreakersManager, RunMode};
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
     use tokio::sync::oneshot;
@@ -296,11 +296,10 @@ mod tests {
                     api_prefix.clone(),
                 );
 
-                let response = manager.run_once().await?;
-                let resp = response;
+                let response = manager.run(RunMode::Once { detach: false }).await?.unwrap();
                 let errors = health_errors.lock().await;
 
-                info!("run_once response: {}", resp);
+                info!("run_once response: {}", response);
 
                 assert!(
                     errors.is_empty(),
@@ -309,13 +308,9 @@ mod tests {
                 );
 
                 assert!(
-                    resp.contains("Started"),
-                    "Expected successful registration, but got: {resp}",
+                    response.contains("Started"),
+                    "Expected successful registration, but got: {response}",
                 );
-
-                tokio::spawn(async move {
-                    manager.run().await;
-                });
             }
         }
 
