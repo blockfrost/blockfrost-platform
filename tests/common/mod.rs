@@ -32,8 +32,8 @@ pub fn get_blockfrost_client() -> BlockfrostAPI {
 pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config> {
     dotenvy::dotenv().ok();
 
-    let node_socket_path_env =
-        env::var("NODE_SOCKET_PATH").unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
+    let node_socket_path_env = env::var("CARDANO_NODE_SOCKET_PATH")
+        .unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
 
     let config = Config {
         server_address: "0.0.0.0".parse().unwrap(),
