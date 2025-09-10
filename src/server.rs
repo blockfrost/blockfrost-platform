@@ -83,7 +83,7 @@ pub async fn build(
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
             .layer(from_fn(error_middleware))
-            .fallback(BlockfrostError::not_found_with_uri);
+            .fallback(BlockfrostError::not_found());
 
         if let Some(prom_handler) = metrics_handle {
             routes = routes.layer(Extension(prom_handler));
