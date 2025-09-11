@@ -50,7 +50,7 @@ pub struct Pagination {
 }
 
 impl Pagination {
-    pub async fn from_query(query: PaginationQuery) -> Result<Self, BlockfrostError> {
+    pub fn from_query(query: PaginationQuery) -> Result<Self, BlockfrostError> {
         let count = get_count_param(query.count.clone());
         let count = match count {
             Ok(count) => count,

@@ -10,7 +10,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
     Path(blocks_path): Path<BlocksPath>,
 ) -> ApiResult<Vec<String>> {
-    let pagination = Pagination::from_query(pagination_query).await?;
+    let pagination = Pagination::from_query(pagination_query)?;
     let dolos = state.get_dolos()?;
 
     dolos

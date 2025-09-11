@@ -12,7 +12,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<AccountsRewardsResponse> {
     let _ = AccountData::from_account_path(path.stake_address, &state.config.network)?;
-    let _ = Pagination::from_query(pagination_query).await?;
+    let _ = Pagination::from_query(pagination_query)?;
 
     Err(BlockfrostError::not_found())
 }

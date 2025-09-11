@@ -13,7 +13,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<AddressesTransactionsResponse> {
     let AddressesPath { address, asset: _ } = address_path;
-    let pagination = Pagination::from_query(pagination_query).await?;
+    let pagination = Pagination::from_query(pagination_query)?;
     let address_info = AddressInfo::from_address(&address, state.config.network.clone())?;
     let dolos = state.get_dolos()?;
 
