@@ -23,6 +23,7 @@ impl DolosPools<'_> {
         pagination: &Pagination,
     ) -> ApiResult<PoolsDelegatorsResponse> {
         let path = format!("pools/{pool_id}/delegators");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 }

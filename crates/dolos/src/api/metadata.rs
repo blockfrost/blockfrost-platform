@@ -25,6 +25,7 @@ impl DolosMetadata<'_> {
         pagination: &Pagination,
     ) -> ApiResult<MetadataLabelJsonResponse> {
         let path = format!("metadata/txs/labels/{label}");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -34,6 +35,7 @@ impl DolosMetadata<'_> {
         pagination: &Pagination,
     ) -> ApiResult<MetadataLabelCborResponse> {
         let path = format!("metadata/txs/labels/{label}/cbor");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 }
