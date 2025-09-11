@@ -1,7 +1,13 @@
+use crate::{api::ApiResult, server::state::AppState};
 use api_provider::types::BlocksSingleResponse;
+use axum::extract::{Path, State};
+use common::blocks::BlocksPath;
 
-use crate::{BlockfrostError, api::ApiResult};
+pub async fn route(
+    State(state): State<AppState>,
+    Path(blocks_path): Path<BlocksPath>,
+) -> ApiResult<BlocksSingleResponse> {
+    let dolos = state.get_dolos()?;
 
-pub async fn route() -> ApiResult<BlocksSingleResponse> {
-    Err(BlockfrostError::not_found())
+    dolos.blocks().by(&blocks_path.hash_or_number).await
 }
