@@ -1,6 +1,18 @@
-use crate::{BlockfrostError, api::ApiResult};
+use crate::{api::ApiResult, server::state::AppState};
 use api_provider::types::TxsRedeemersResponse;
+use axum::extract::{Path, Query, State};
+use common::{
+    pagination::{Pagination, PaginationQuery},
+    txs::TxsPath,
+};
 
-pub async fn route() -> ApiResult<TxsRedeemersResponse> {
-    Err(BlockfrostError::not_found())
+pub async fn route(
+    State(state): State<AppState>,
+    Query(pagination_query): Query<PaginationQuery>,
+    Path(path): Path<TxsPath>,
+) -> ApiResult<TxsRedeemersResponse> {
+    let pagination = Pagination::from_query(pagination_query)?;
+    let dolos = state.get_dolos()?;
+
+    dolos.txs().redeemers(&path.hash, &pagination).await
 }
