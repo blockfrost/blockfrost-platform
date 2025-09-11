@@ -1,4 +1,4 @@
-use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
+use crate::{api::ApiResult, server::state::AppState};
 use api_provider::types::AccountsRewardsResponse;
 use axum::extract::{Path, Query, State};
 use common::{
