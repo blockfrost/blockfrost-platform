@@ -22,10 +22,14 @@ impl DolosAccounts<'_> {
         self.inner.client.get(&path, None).await
     }
 
-    pub async fn rewards(&self, stake_address: &str) -> ApiResult<AccountsRewardsResponse> {
+    pub async fn rewards(
+        &self,
+        stake_address: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<AccountsRewardsResponse> {
         let path = format!("accounts/{stake_address}/rewards");
 
-        self.inner.client.get(&path, None).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
     pub async fn addresses(
