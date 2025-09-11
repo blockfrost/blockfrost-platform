@@ -28,15 +28,17 @@ impl BlockData {
 }
 
 pub fn validate_hash_or_number(hash_or_number: &str) -> Result<(), String> {
-    if is_number(hash_or_number) && !validate_positive_in_range_signed_int(hash_or_number) {
-        return Err("Missing, out of range or malformed block number.".to_string());
+    if is_number(hash_or_number) {
+        if validate_positive_in_range_signed_int(hash_or_number) {
+            Ok(())
+        } else {
+            Err("Missing, out of range or malformed block number.".to_string())
+        }
+    } else if validate_block_hash(hash_or_number) {
+        Ok(())
+    } else {
+        Err("Missing or malformed block hash.".to_string())
     }
-
-    if !validate_block_hash(hash_or_number) {
-        return Err("Missing or malformed block hash.".to_string());
-    }
-
-    Ok(())
 }
 
 pub fn validate_positive_in_range_signed_int(possible_positive_int: &str) -> bool {
@@ -55,6 +57,10 @@ pub fn is_number(value: &str) -> bool {
 }
 
 pub fn validate_block_hash(input: &str) -> bool {
+    if input.len() != 64 {
+        return false;
+    }
+
     hex::decode(input).is_ok()
 }
 
@@ -100,7 +106,7 @@ mod tests {
         "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
         true
     )]
-    #[case("12345", true)]
+    #[case("12345", false)]
     #[case("invalid hex!", false)]
     #[case("", false)]
     fn test_validate_block_hash(#[case] input: &str, #[case] expected: bool) {
