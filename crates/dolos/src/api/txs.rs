@@ -29,10 +29,10 @@ impl DolosTxs<'_> {
         self.inner.client.get(&path, None).await
     }
 
-    pub async fn utxos(&self, hash: &str) -> ApiResult<TxsUtxosResponse> {
+    pub async fn utxos(&self, hash: &str, pagination: &Pagination) -> ApiResult<TxsUtxosResponse> {
         let path = format!("txs/{hash}/utxos");
 
-        self.inner.client.get(&path, None).await
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
     pub async fn metadata(

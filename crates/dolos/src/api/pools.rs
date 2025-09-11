@@ -13,8 +13,11 @@ impl Dolos {
 }
 
 impl DolosPools<'_> {
-    pub async fn extended(&self) -> ApiResult<PoolsListExtendedResponse> {
-        self.inner.client.get("pools/extended", None).await
+    pub async fn extended(&self, pagination: &Pagination) -> ApiResult<PoolsListExtendedResponse> {
+        self.inner
+            .client
+            .get("pools/extended", Some(pagination))
+            .await
     }
 
     pub async fn delegators(
