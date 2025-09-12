@@ -15,8 +15,11 @@ impl Dolos {
 }
 
 impl DolosMetadata<'_> {
-    pub async fn labels(&self) -> ApiResult<MetadataLabelsResponse> {
-        self.inner.client.get("metadata/txs/labels", None).await
+    pub async fn labels(&self, pagination: &Pagination) -> ApiResult<MetadataLabelsResponse> {
+        self.inner
+            .client
+            .get("metadata/txs/labels", Some(pagination))
+            .await
     }
 
     pub async fn label_json(
@@ -25,6 +28,7 @@ impl DolosMetadata<'_> {
         pagination: &Pagination,
     ) -> ApiResult<MetadataLabelJsonResponse> {
         let path = format!("metadata/txs/labels/{label}");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -34,6 +38,7 @@ impl DolosMetadata<'_> {
         pagination: &Pagination,
     ) -> ApiResult<MetadataLabelCborResponse> {
         let path = format!("metadata/txs/labels/{label}/cbor");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 }

@@ -13,8 +13,9 @@ impl Dolos {
 }
 
 impl DolosEpochs<'_> {
-    pub async fn parameters(&self, number: &str) -> ApiResult<EpochsParamResponse> {
+    pub async fn parameters(&self, number: &i32) -> ApiResult<EpochsParamResponse> {
         let path = format!("epochs/{number}/parameters");
+
         self.inner.client.get(&path, None).await
     }
 

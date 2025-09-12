@@ -11,7 +11,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsStakeAddrResponse> {
-    let pagination = Pagination::from_query(pagination_query).await?;
+    let pagination = Pagination::from_query(pagination_query)?;
     let dolos = state.get_dolos()?;
 
     dolos.txs().stakes(&path.hash, &pagination).await

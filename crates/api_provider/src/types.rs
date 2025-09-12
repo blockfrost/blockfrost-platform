@@ -70,6 +70,7 @@ pub type AccountsWithdrawalsResponse = Vec<AccountWithdrawalContentInner>;
 pub type AddressesResponse = AddressContent;
 pub type AddressesContentExtendedResponse = AddressContentExtended;
 pub type AddressesUtxosResponse = Vec<AddressUtxoContentInner>;
+pub type AddressesUtxosAssetResponse = Vec<AddressUtxoContentInner>;
 pub type AddressesContentTotalResponse = AddressContentTotal;
 pub type AddressesTransactionsResponse = Vec<AddressTransactionsContentInner>;
 

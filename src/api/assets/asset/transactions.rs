@@ -11,7 +11,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<AssetsTransactionsResponse> {
     let _ = AssetData::from_query(path.asset)?;
-    let _ = Pagination::from_query(pagination_query).await?;
+    let _ = Pagination::from_query(pagination_query)?;
 
     Err(BlockfrostError::not_found())
 }

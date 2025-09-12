@@ -23,6 +23,7 @@ impl DolosBlocks<'_> {
 
     pub async fn by(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/{hash_or_number}");
+
         self.inner.client.get(&path, None).await
     }
 
@@ -32,6 +33,7 @@ impl DolosBlocks<'_> {
         pagination: &Pagination,
     ) -> ApiResult<Vec<String>> {
         let path = format!("blocks/{hash_or_number}/txs");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -41,6 +43,7 @@ impl DolosBlocks<'_> {
         pagination: &Pagination,
     ) -> ApiResult<BlocksResponse> {
         let path = format!("blocks/{hash_or_number}/previous");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -50,11 +53,13 @@ impl DolosBlocks<'_> {
         pagination: &Pagination,
     ) -> ApiResult<BlocksResponse> {
         let path = format!("blocks/{hash_or_number}/next");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
     pub async fn by_slot(&self, slot: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/slot/{slot}");
+
         self.inner.client.get(&path, None).await
     }
 }

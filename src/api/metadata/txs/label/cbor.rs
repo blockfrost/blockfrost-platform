@@ -11,7 +11,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
     Path(matadata_path): Path<MetadataPath>,
 ) -> ApiResult<MetadataLabelCborResponse> {
-    let pagination = Pagination::from_query(pagination_query).await?;
+    let pagination = Pagination::from_query(pagination_query)?;
     let dolos = state.get_dolos()?;
 
     dolos

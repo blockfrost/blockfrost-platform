@@ -1,8 +1,8 @@
 use crate::client::Dolos;
 use api_provider::types::{
     TxsCborResponse, TxsDelegationsResponse, TxsMetadataCborResponse, TxsMetadataResponse,
-    TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsSingleResponse,
-    TxsStakeAddrResponse, TxsUtxosResponse, TxsWithdrawalsResponse,
+    TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsRedeemersResponse,
+    TxsSingleResponse, TxsStakeAddrResponse, TxsUtxosResponse, TxsWithdrawalsResponse,
 };
 use common::{pagination::Pagination, types::ApiResult};
 
@@ -19,17 +19,20 @@ impl Dolos {
 impl DolosTxs<'_> {
     pub async fn by_hash(&self, hash: &str) -> ApiResult<TxsSingleResponse> {
         let path = format!("txs/{hash}");
+
         self.inner.client.get(&path, None).await
     }
 
     pub async fn cbor(&self, hash: &str) -> ApiResult<TxsCborResponse> {
         let path = format!("txs/{hash}/cbor");
+
         self.inner.client.get(&path, None).await
     }
 
-    pub async fn utxos(&self, hash: &str) -> ApiResult<TxsUtxosResponse> {
+    pub async fn utxos(&self, hash: &str, pagination: &Pagination) -> ApiResult<TxsUtxosResponse> {
         let path = format!("txs/{hash}/utxos");
-        self.inner.client.get(&path, None).await
+
+        self.inner.client.get(&path, Some(pagination)).await
     }
 
     pub async fn metadata(
@@ -38,6 +41,7 @@ impl DolosTxs<'_> {
         pagination: &Pagination,
     ) -> ApiResult<TxsMetadataResponse> {
         let path = format!("txs/{hash}/metadata");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -47,6 +51,7 @@ impl DolosTxs<'_> {
         pagination: &Pagination,
     ) -> ApiResult<TxsMetadataCborResponse> {
         let path = format!("txs/{hash}/metadata/cbor");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -56,6 +61,7 @@ impl DolosTxs<'_> {
         pagination: &Pagination,
     ) -> ApiResult<TxsWithdrawalsResponse> {
         let path = format!("txs/{hash}/withdrawals");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
@@ -65,11 +71,23 @@ impl DolosTxs<'_> {
         pagination: &Pagination,
     ) -> ApiResult<TxsDelegationsResponse> {
         let path = format!("txs/{hash}/delegations");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
     pub async fn mirs(&self, hash: &str, pagination: &Pagination) -> ApiResult<TxsMirsResponse> {
         let path = format!("txs/{hash}/mirs");
+
+        self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn redeemers(
+        &self,
+        hash: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<TxsRedeemersResponse> {
+        let path = format!("txs/{hash}/redeemers");
+
         self.inner.client.get(&path, Some(pagination)).await
     }
 
