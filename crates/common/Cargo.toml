@@ -7,7 +7,8 @@ build = "build.rs"
 
 [dependencies]
 axum = { version = "0.8.2", features = ["ws"] }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
 thiserror = "2.0.11"
 serde = { version = "1.0.218", features = ["derive"] }
 tracing = "0.1.41"
@@ -27,11 +28,11 @@ anyhow = "1.0.95"
 futures-util = "0.3"
 blockfrost-openapi = "0.1.75"
 clap = { version = "4.5.26", features = ["derive"] }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 
 [dev-dependencies]
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
+proptest = "1.6"
 
 [build-dependencies]
 build-utils = { path = "../build_utils" }

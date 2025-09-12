@@ -52,13 +52,21 @@ pub async fn build(
     let dolos = Dolos::new(config.data_sources.dolos.as_ref())?;
 
     // Health monitor
-    let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
+    let health_monitor = crate::health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
 
     // Build a prefix
     let api_prefix = ApiPrefix(config.icebreakers_config.as_ref().map(|_| Uuid::new_v4()));
 
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
+
+    // Initialize chain configurations
+    let chain_config_cache =
+        node::chain_config::ChainConfigCache::init_caches(node_conn_pool.clone()).await?;
+
+    // Initialize the Haskell-based tx evaluator
+    let fallback_evaluator =
+    tx_evaluator::external::ExternalEvaluator::spawn(chain_config_cache).await?;
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
@@ -82,6 +90,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
+            .layer(Extension(fallback_evaluator))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found());
 
