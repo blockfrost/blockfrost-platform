@@ -286,17 +286,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
-name = "async-trait"
-version = "0.1.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -595,7 +584,6 @@ dependencies = [
  "pallas-traverse",
  "pallas-validate",
  "pretty_assertions",
- "proptest",
  "reqwest",
  "rstest",
  "sentry",
@@ -611,7 +599,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "tracing-test",
  "tungstenite",
  "twelf",
  "tx-evaluator",
@@ -637,7 +624,6 @@ dependencies = [
  "bzip2",
  "reqwest",
  "tar",
- "toml 0.8.23",
  "zip",
 ]
 
@@ -1269,14 +1255,11 @@ name = "dolos"
 version = "0.0.1"
 dependencies = [
  "api-provider",
- "async-trait",
  "axum",
  "blockfrost-openapi",
  "common",
- "dirs 5.0.1",
  "reqwest",
  "serde",
- "toml 0.8.23",
 ]
 
 [[package]]
@@ -1344,27 +1327,15 @@ dependencies = [
 name = "error-decoder"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "common",
- "crossbeam",
- "deadpool",
- "dirs 5.0.1",
  "hex",
- "num_cpus",
  "pallas-codec",
- "pallas-crypto",
  "pallas-hardano",
  "pallas-network",
- "pallas-primitives",
- "pallas-traverse",
- "reqwest",
- "serde",
  "serde_json",
  "sysinfo",
  "testgen",
  "tokio",
- "toml 0.8.23",
- "tracing",
 ]
 
 [[package]]
@@ -2480,24 +2451,17 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "common",
- "crossbeam",
  "deadpool",
- "dirs 5.0.1",
  "hex",
  "metrics",
- "num_cpus",
  "pallas-codec",
  "pallas-crypto",
  "pallas-hardano",
  "pallas-network",
  "pallas-primitives",
  "pallas-traverse",
- "reqwest",
  "serde",
- "serde_json",
- "sysinfo",
  "tokio",
- "toml 0.8.23",
  "tracing",
 ]
 
@@ -4232,22 +4196,11 @@ dependencies = [
  "common",
  "crossbeam",
  "deadpool",
- "dirs 5.0.1",
  "hex",
- "metrics",
  "num_cpus",
- "pallas-codec",
- "pallas-crypto",
- "pallas-hardano",
- "pallas-network",
- "pallas-primitives",
- "pallas-traverse",
- "reqwest",
  "serde",
  "serde_json",
- "sysinfo",
  "tokio",
- "toml 0.8.23",
  "tracing",
 ]
 
@@ -4595,27 +4548,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-test"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
-dependencies = [
- "tracing-core",
- "tracing-subscriber",
- "tracing-test-macro",
-]
-
-[[package]]
-name = "tracing-test-macro"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
-dependencies = [
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4661,29 +4593,19 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "common",
- "crossbeam",
- "deadpool",
- "dirs 5.0.1",
  "hex",
- "metrics",
  "node",
- "num_cpus",
  "pallas-addresses",
  "pallas-codec",
  "pallas-crypto",
- "pallas-hardano",
  "pallas-network",
  "pallas-primitives",
  "pallas-traverse",
  "pallas-validate",
- "reqwest",
  "serde",
  "serde_json",
- "sysinfo",
  "testgen",
  "tokio",
- "toml 0.8.23",
- "tracing",
 ]
 
 [[package]]
