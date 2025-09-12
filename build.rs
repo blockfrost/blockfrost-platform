@@ -4,7 +4,6 @@ fn main() {
 
     build_utils::git::set_git_env();
     build_utils::testgen_hs::ensure(os, arch);
-    build_utils::features::evaluate(os, arch);
 }
 
 fn target_os() -> &'static str {
