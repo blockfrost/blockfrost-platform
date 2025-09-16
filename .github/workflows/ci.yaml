@@ -1,4 +1,4 @@
-name: Platform CI
+name: CI
 
 on:
   push:
