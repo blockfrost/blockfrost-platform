@@ -382,6 +382,7 @@ in
             pkgs.darwin.apple_sdk_12_3.frameworks.Security
             pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
           ];
+        doCheck = false; # some unit tests seem to require network access, so they’re failing in the sandbox
         meta = {
           mainProgram = "dolos";
           description = "Cardano Data Node";
