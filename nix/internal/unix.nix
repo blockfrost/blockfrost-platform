@@ -489,6 +489,8 @@ in
           coreutils
           nodePackages.nodejs
           nodePackages.yarn
+          curl
+          jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
         ];
