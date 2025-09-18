@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: CI
 
 on:
   push:
@@ -109,6 +109,7 @@ jobs:
           PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
         run: |
+          curl -fsSL http://127.0.0.1:3010/ | jq .version
           nix run -L .#internal.x86_64-linux.blockfrost-tests
 
   coverage:
