@@ -21,7 +21,7 @@ services:
       init-node:
         condition: service_completed_successfully
   dolos:
-    image: ghcr.io/txpipe/dolos:1.0.0-beta.0
+    image: ghcr.io/txpipe/dolos:1.0.0-beta.1
     entrypoint: /entrypoint.sh
     environment:
       NETWORK: $NETWORK
@@ -29,7 +29,7 @@ services:
       - 3010:3010
     volumes:
       - ./docker/dolos-entrypoint.sh:/entrypoint.sh
-      - ./docker/dolos-config.toml.tpl:/config.toml
+      - ./docker/dolos-config.toml.tpl:/config.toml.tpl
       - dolos-db:/data
   blockfrost-platform:
     image: ghcr.io/blockfrost/blockfrost-platform:edge
