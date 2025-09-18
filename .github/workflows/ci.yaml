@@ -109,7 +109,6 @@ jobs:
           PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
         run: |
-          curl -fsSL "''${DOLOS_ENDPOINT:-http://127.0.0.1:3010}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
           nix run -L .#internal.x86_64-linux.blockfrost-tests
 
   coverage:
