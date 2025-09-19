@@ -490,11 +490,15 @@ in
           coreutils
           nodePackages.nodejs
           nodePackages.yarn
+          curl
+          jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
         ];
         text = ''
           set -euo pipefail
+
+          curl -fsSL "''${DOLOS_ENDPOINT:-http://127.0.0.1:3010}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
 
           err() { printf "error: %s\n" "$1" >&2; }
 
