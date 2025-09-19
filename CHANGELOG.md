@@ -1,4 +1,4 @@
-## Unreleased
+## [0.0.3-rc.1] - 2025-09-18
 
 ### Removed
 
@@ -9,6 +9,9 @@
 - Set custom genesis config
 - Load balancing over a WebSocket (eliminating the need for public IP in the future)
 - Expose a `health_errors_total` gauge in metrics
+- More comprehensive error reporting under `GET /`
+- NixOS service (module)
+- Run original `blockfrost-tests` against the Platform
 
 #### New endpoints from Dolos
 
@@ -81,6 +84,9 @@
 ### Fixed
 
 - Trailing slash in `GET /{uuid}/` works again
+- Health reporting while still syncing in the Byron era
+- Native (not cross-compiled) `aarch64-linux` builds
+- Docs improvements
 
 ## [0.0.2] - 2025-03-20
 

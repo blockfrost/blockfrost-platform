@@ -1,6 +1,6 @@
 [package]
 name = "blockfrost-platform"
-version = "0.0.2"
+version = "0.0.3-rc.1"
 license = "Apache-2.0"
 edition = "2021"
 description = "The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint."
