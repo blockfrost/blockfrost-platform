@@ -10,6 +10,7 @@ in {
 
   imports = [
     "${inputs.devshell}/extra/language/c.nix"
+    "${inputs.devshell}/extra/language/rust.nix"
   ];
 
   commands = [
@@ -82,15 +83,17 @@ in {
     includes = internal.commonArgs.buildInputs;
   };
 
+  language.rust = {
+    packageSet = internal.rustPackages;
+    tools = ["cargo" "rustfmt"]; # The rest is provided below.
+    enableDefaultToolchain = true;
+  };
+
   env =
     [
       {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
-      }
-      {
-        name = "RUST_SRC_PATH";
-        value = "${internal.rustPackages.rust-src}/lib/rustlib/src/rust/library";
       }
     ]
     ++ lib.optionals pkgs.stdenv.isDarwin [
@@ -98,9 +101,12 @@ in {
         name = "LIBCLANG_PATH";
         value = internal.commonArgs.LIBCLANG_PATH;
       }
+    ]
+    ++ lib.optionals pkgs.stdenv.isLinux [
+      # Embed `openssl` in `RPATH`:
       {
-        name = "LIBRARY_PATH";
-        value = "${pkgs.libiconv}/lib";
+        name = "RUSTFLAGS";
+        eval = ''"-C link-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl)"'';
       }
     ];
 
