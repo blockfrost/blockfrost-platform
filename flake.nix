@@ -11,7 +11,7 @@
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.4.1";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    dolos.url = "github:txpipe/dolos/v1.0.0-beta.1";
+    dolos.url = "github:txpipe/dolos/v1.0.0-beta.2";
     dolos.flake = false;
     blockfrost-tests.url = "github:blockfrost/blockfrost-tests";
     blockfrost-tests.flake = false;
