@@ -45,6 +45,10 @@ in
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
         # for bindgen, used by libproc, used by metrics_process
         LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+      }
+      // lib.optionalAttrs pkgs.stdenv.isLinux {
+        # The linker bundled with Fenix has wrong interpreter path, and it fails with ENOENT, so:
+        RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
       };
 
     # For better caching:
@@ -387,6 +391,10 @@ in
           mainProgram = "dolos";
           description = "Cardano Data Node";
         };
+      }
+      // lib.optionalAttrs pkgs.stdenv.isLinux {
+        # The linker bundled with Fenix has wrong interpreter path, and it fails with ENOENT, so:
+        RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
       }
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
         # for bindgen, used by libproc, used by metrics_process

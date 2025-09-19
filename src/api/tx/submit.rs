@@ -49,7 +49,7 @@ pub async fn route(
 /// string that only _looked_ like a hex-encoded one, but it’s rare enough
 /// to ignore it.
 pub fn binary_or_hex_heuristic(xs: &[u8]) -> Vec<u8> {
-    let even_length = xs.len() % 2 == 0;
+    let even_length = xs.len().is_multiple_of(2);
 
     if !even_length || xs.iter().any(|&x| !x.is_ascii_hexdigit()) {
         xs.to_vec()
