@@ -1,8 +1,6 @@
 #[cfg(not(feature = "tarpaulin"))]
 use num_cpus;
 
-#[cfg(not(feature = "tarpaulin"))]
-use pallas_hardano::display::haskell_error::serialize_error;
 use serde::Deserialize;
 use std::process::Command;
 
