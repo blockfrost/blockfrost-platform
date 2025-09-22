@@ -12,7 +12,7 @@ use tracing::{debug, error, info};
 
 #[derive(Clone)]
 pub struct Testgen {
-    pub sender: mpsc::Sender<TestgenRequest>,
+    sender: mpsc::Sender<TestgenRequest>,
     pub current_child_pid: Arc<AtomicU32>,
 }
 
