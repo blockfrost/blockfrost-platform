@@ -17,8 +17,8 @@ axum = { version = "0.8.2", features = ["ws"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 futures = "0.3"
 futures-util = "0.3"
-tungstenite = "0.26"
-tokio-tungstenite = "0.26"
+tungstenite = { version = "0.26", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 serde = { version = "1.0.219", features = ["derive"] }
