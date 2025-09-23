@@ -48,10 +48,32 @@ mod tests {
         let root_response: RootResponse =
             serde_json::from_slice(&body_bytes).expect("Response body is not valid JSON");
 
-        assert!(root_response.errors.is_empty());
-        assert_eq!(root_response.name, "blockfrost-platform");
-        assert!(root_response.healthy);
-        assert_eq!(root_response.node_info.unwrap().sync_progress, 100.0);
+        assert!(
+            root.errors.is_empty(),
+            "Expected no errors, got: {:?}",
+            root.errors
+        );
+        assert_eq!(root.name, "blockfrost-platform");
+        assert!(root.healthy, "Platform should be healthy in test fixtures");
+        assert_eq!(
+            root.node_info.as_ref().unwrap().sync_progress,
+            100.0,
+            "Node should be fully synced in test fixtures"
+        );
+
+        let maybe_dolos = root.data_nodes.iter().find(|dn| dn.name == "dolos");
+        assert!(
+            maybe_dolos.is_some(),
+            "Expected at least one data node with name=dolos"
+        );
+
+        let dolos = maybe_dolos.unwrap();
+        assert!(!dolos.name.is_empty(), "Dolos name should be present");
+        assert!(!dolos.version.is_empty(), "Dolos version should be present");
+        assert!(
+            !dolos.revision.is_empty(),
+            "Dolos revision should be present"
+        );
     }
 
     // Test: `/metrics` route sanity check and trailing slash
