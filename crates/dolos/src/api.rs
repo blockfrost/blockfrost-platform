@@ -8,4 +8,5 @@ pub mod governance;
 pub mod metadata;
 pub mod network;
 pub mod pools;
+pub mod root;
 pub mod txs;
