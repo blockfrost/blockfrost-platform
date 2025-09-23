@@ -213,7 +213,7 @@ in rec {
   resource-hacker = pkgs.fetchzip {
     name = "resource-hacker-5.1.7";
     url = "http://www.angusj.com/resourcehacker/resource_hacker.zip";
-    hash = "sha256-W5TmyjNNXE3nvn37XYbTM+DBeupPijE4M70LJVKJupU=";
+    hash = "sha256-PUY1e5DtfqYiwcYol+JTkCXu5Al++WQONnTFxcN6Ass=";
     stripRoot = false;
   };
 
