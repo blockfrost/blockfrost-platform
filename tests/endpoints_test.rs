@@ -62,6 +62,9 @@ mod tests {
         );
 
         let maybe_dolos = root.data_nodes.iter().find(|dn| dn.name == "dolos");
+
+        println!("{root:?}");
+
         assert!(
             maybe_dolos.is_some(),
             "Expected at least one data node with name=dolos"
