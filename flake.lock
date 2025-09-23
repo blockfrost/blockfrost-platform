@@ -119,16 +119,16 @@
     "dolos": {
       "flake": false,
       "locked": {
-        "lastModified": 1758249572,
-        "narHash": "sha256-3xCxn10Uq4WHRKipvgkOXtnSqz71fhVV/7t0OH5rqcw=",
+        "lastModified": 1758544483,
+        "narHash": "sha256-P3IoN9JIqHS2ngwiQzbBKOcTfOc9psO4GA0OGrSTTFo=",
         "owner": "txpipe",
         "repo": "dolos",
-        "rev": "3bb0468c83ebc26f1a232edc2cfc3c2e4391527f",
+        "rev": "fcb1807640972d76fd0646376d27f79a4b661ed0",
         "type": "github"
       },
       "original": {
         "owner": "txpipe",
-        "ref": "v1.0.0-beta.2",
+        "ref": "v1.0.0-beta.3",
         "repo": "dolos",
         "type": "github"
       }
