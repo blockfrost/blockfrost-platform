@@ -45,7 +45,7 @@ mod tests {
         let body_bytes = to_bytes(response.into_body(), usize::MAX)
             .await
             .expect("Failed to read response body");
-        let root_response: RootResponse =
+        let root: RootResponse =
             serde_json::from_slice(&body_bytes).expect("Response body is not valid JSON");
 
         assert!(
