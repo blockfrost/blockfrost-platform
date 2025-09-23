@@ -87,6 +87,7 @@
 - Health reporting while still syncing in the Byron era
 - Native (not cross-compiled) `aarch64-linux` builds
 - Docs improvements
+- TLS support for the WebSocket connection with the Gateway
 
 ## [0.0.2] - 2025-03-20
 
