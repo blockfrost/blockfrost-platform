@@ -42,13 +42,13 @@ RECEIVING_ADDRESS="$3"
 
 case "$NETWORK" in
 mainnet)
-  NETWORK_FLAG=("--mainnet")
+  export CARDANO_NODE_NETWORK_ID="mainnet"
   ;;
 preprod)
-  NETWORK_FLAG=("--testnet-magic" "1")
+  export CARDANO_NODE_NETWORK_ID="1"
   ;;
 preview)
-  NETWORK_FLAG=("--testnet-magic" "2")
+  export CARDANO_NODE_NETWORK_ID="2"
   ;;
 *)
   log fatal "invalid network, choose one from: mainnet, preprod, preview"
@@ -122,7 +122,7 @@ cardano-cli key non-extended-key \
   --verification-key-file "$TEMP_DIR/stake.vkey"
 
 # Generate base address using non-extended verification keys
-MY_ADDRESS=$(cardano-cli address build "${NETWORK_FLAG[@]}" \
+MY_ADDRESS=$(cardano-cli address build \
   --payment-verification-key-file "$TEMP_DIR/payment.vkey" \
   --stake-verification-key-file "$TEMP_DIR/stake.vkey")
 echo "$MY_ADDRESS" >"$TEMP_DIR/payment.addr"
@@ -130,7 +130,7 @@ log info "your address: $MY_ADDRESS"
 
 # Query UTxOs
 log info "querying UTxOs…"
-cardano-cli query utxo "${NETWORK_FLAG[@]}" --address "$MY_ADDRESS" --out-file "$TEMP_DIR/utxos.json"
+cardano-cli query utxo --address "$MY_ADDRESS" --out-file "$TEMP_DIR/utxos.json"
 
 UTXO_COUNT=$(jq length "$TEMP_DIR/utxos.json")
 if [ "$UTXO_COUNT" -eq 0 ]; then
@@ -166,7 +166,6 @@ fi
 # Build final transaction
 FINAL_TX="$TEMP_DIR/tx.raw"
 build_output=$(cardano-cli conway transaction build \
-  "${NETWORK_FLAG[@]}" \
   "${TX_INS[@]}" \
   --tx-out "$RECEIVING_ADDRESS+$AMOUNT_LOVELACE" \
   --change-address "$MY_ADDRESS" \
@@ -183,7 +182,6 @@ SIGNED_TX="$TEMP_DIR/tx.signed"
 cardano-cli >&2 conway transaction sign \
   --tx-body-file "$FINAL_TX" \
   --signing-key-file "$TEMP_DIR/payment.skey" \
-  "${NETWORK_FLAG[@]}" \
   --out-file "$SIGNED_TX"
 
 log info "all done, outputting transaction CBOR to stdout…"
