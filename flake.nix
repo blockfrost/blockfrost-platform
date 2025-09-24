@@ -9,7 +9,7 @@
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     flake-compat.url = "github:input-output-hk/flake-compat";
     flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.4.1";
+    cardano-node.url = "github:IntersectMBO/cardano-node/10.5.1";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
     dolos.url = "github:txpipe/dolos/v1.0.0-beta.3";
     dolos.flake = false;
@@ -20,7 +20,7 @@
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
-    cardano-playground.url = "github:input-output-hk/cardano-playground/4c5800d0f32f586be270c7e3679c7f5e8d01d3d5";
+    cardano-playground.url = "github:input-output-hk/cardano-playground/56ebfef5595c43014029b039ade01b0ef06233e0";
     cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
     advisory-db.url = "github:rustsec/advisory-db";
     advisory-db.flake = false;
