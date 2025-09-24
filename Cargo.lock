@@ -274,7 +274,7 @@ checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
 name = "api-provider"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "blockfrost-openapi",
 ]
@@ -540,7 +540,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "anyhow",
  "api-provider",
@@ -600,7 +600,7 @@ dependencies = [
 
 [[package]]
 name = "build-utils"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "bzip2",
  "reqwest",
@@ -824,7 +824,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "common"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "anyhow",
  "axum",
@@ -1219,7 +1219,7 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "dolos"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "api-provider",
  "async-trait",
@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "node"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 dependencies = [
  "chrono",
  "common",

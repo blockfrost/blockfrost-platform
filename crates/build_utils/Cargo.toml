@@ -1,6 +1,6 @@
 [package]
 name = "build-utils"
-version = "0.0.3-rc.2"
+version = "0.0.3-rc.3"
 license = "Apache-2.0"
 edition = "2021"
 
