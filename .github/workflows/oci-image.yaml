@@ -26,12 +26,16 @@ jobs:
         run: |
           image=ghcr.io/blockfrost/blockfrost-platform
           docker push $image:edge
-      - name: 📤 Push the image (release, latest)
+      - name: 📤 Push the image (version tag)
         if: github.event_name == 'release' && github.event.action == 'published'
         run: |
           image=ghcr.io/blockfrost/blockfrost-platform
           docker push $image:edge
           docker tag  $image:edge $image:${{ github.event.release.tag_name }}
-          docker tag  $image:edge $image:latest
           docker push $image:${{ github.event.release.tag_name }}
+      - name: 📤 Push the image (latest tag)
+        if: github.event_name == 'release' && github.event.action == 'published' && !github.event.release.prerelease
+        run: |
+          image=ghcr.io/blockfrost/blockfrost-platform
+          docker tag  $image:edge $image:latest
           docker push $image:latest
