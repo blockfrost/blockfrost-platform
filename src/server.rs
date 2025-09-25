@@ -66,7 +66,7 @@ pub async fn build(
 
     // Initialize the Haskell-based tx evaluator
     let fallback_evaluator =
-    tx_evaluator::external::ExternalEvaluator::spawn(chain_config_cache).await?;
+        tx_evaluator::external::ExternalEvaluator::spawn(chain_config_cache).await?;
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);

@@ -134,7 +134,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/txs/{hash}/redeemers", get(txs::hash::redeemers::route))
         .route("/txs/{hash}/required_signers", get(txs::hash::required_signers::route))
         .route("/txs/{hash}/cbor", get(txs::hash::cbor::route))
-        
+
         // tx evaluate
         .route("/utils/tx/evaluate",post(utils::txs::evaluate::root::route))
         .route("/utils/tx/evaluate/utxos",post(utils::txs::evaluate::utxos::route));

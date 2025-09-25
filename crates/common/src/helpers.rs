@@ -1,5 +1,5 @@
-use pallas_network::miniprotocols::localstate::queries_v16::BigInt;
 use crate::errors::BlockfrostError;
+use pallas_network::miniprotocols::localstate::queries_v16::BigInt;
 
 /// This function allows us to take both hex-encoded and raw bytes. It has
 /// to be a heuristic: if there are input bytes that are not `[0-9a-f]`,

@@ -55,10 +55,9 @@ mod tests {
     }
 
     /// This test is identical to the Blockfrost test:
-    /// https://github.com/blockfrost/blockfrost-tests/blob/7a847bc41b8153844a2643d817559367cc4ffd4d/src/fixtures/preview/utils/txs-evaluate.ts#L5
+    /// https://github.com/blockfrost/blockfrost-tests/blob/dc33312126e9d7c49836d7605ab72224a337bc91/src/fixtures/preview/utils/txs-evaluate-utxos.ts#L43
     ///
     #[tokio::test]
-    #[ignore = "not implemented yet"]
     async fn fail_missing_input() {
         // init our app
         let app = initialize_app().await;

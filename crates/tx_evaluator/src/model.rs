@@ -6,20 +6,127 @@ use pallas_validate::phase2::tx::TxEvalResult;
 use serde::{Deserialize, Serialize, ser::SerializeMap};
 
 // JSON request
-#[derive(Deserialize)]
-pub struct TxEvaluationRequest {
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum TxEvaluationRequest {
+    V6(TxEvaluationRequestV6),
+    V5Cbor(TxEvaluationRequestV5Cbor),
+    V5Evaluate(TxEvaluationRequestV5Evaluate),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TxEvaluationRequestV5Cbor {
     pub cbor: String, // @todo can be base16 or base64 CBOR
     #[serde(rename = "additionalUtxoSet")]
     pub additional_utxo_set: Option<AdditionalUtxoSet>,
 }
 
-pub type AdditionalUtxoSet = Vec<(TxIn, TxOut)>;
+#[derive(Debug, Deserialize)]
+pub struct TxEvaluationRequestV5Evaluate {
+    pub evaluate: String,
+    #[serde(rename = "additionalUtxoSet")]
+    pub additional_utxo_set: Option<AdditionalUtxoSet>,
+}
+// JSON request
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TxEvaluationRequestV6 {
+    pub transaction: TransactionCborV6,
+    pub additional_utxo: Option<Vec<AdditionalUtxoV6>>,
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdditionalUtxoV6 {
+    pub transaction: TransactionIdV6,
+    // @todo can be base16 or base64 CBOR
+    pub index: u64,
+    pub address: String,
+    pub value: MultiAssetV6,
+    #[serde(rename = "datumHash")]
+    pub datum_hash: Option<String>,
+    pub datum: Option<String>,
+    pub script: ScriptV6,
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MultiAssetV6 {
+    ada: LovelaceV6,
+    #[serde(flatten)]
+    assets: HashMap<String, serde_json::Value>,
+}
+
+/// If language is native, the json structure can be one of cbor or json
+/// If language is plutus, only cbor field is expected
+///  "script": {
+///       "language": "native",
+///       "json": {
+///         "clause": "signature",
+///         "from": "3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"
+///       },
+///       "cbor": "string"
+///  }
+#[derive(Debug, Deserialize)]
+#[serde(tag = "language", rename_all = "camelCase")]
+pub enum ScriptV6 {
+    #[serde(rename = "plutus:v1")]
+    PlutusV1 { cbor: String },
+    #[serde(rename = "plutus:v2")]
+    PlutusV2 { cbor: String },
+    #[serde(rename = "plutus:v3")]
+    PlutusV3 { cbor: String },
+    Native {
+        json: Option<ScriptNativeV6>,
+        cbor: Option<String>,
+    },
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(tag = "clause", rename_all = "camelCase")]
+pub enum ScriptNativeV6 {
+    Signature {
+        from: String,
+    },
+    Any {
+        from: Vec<ScriptNativeV6>,
+    },
+    All {
+        from: Vec<ScriptNativeV6>,
+    },
+    Some {
+        at_least: u64,
+        from: Vec<ScriptNativeV6>,
+    },
+    Before {
+        slot: u64,
+    },
+    After {
+        slot: u64,
+    },
+}
+
 #[derive(Deserialize, Debug)]
 pub struct TxIn {
     #[serde(rename = "txId")]
     pub tx_id: String,
     pub index: u64,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct TransactionCborV6 {
+    pub cbor: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TransactionIdV6 {
+    pub id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LovelaceV6 {
+    pub lovelace: u64,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct TxOut {
     pub address: String,
@@ -29,6 +136,8 @@ pub struct TxOut {
     pub datum: Option<String>,
     pub script: Option<Script>, // script type and details
 }
+
+pub type AdditionalUtxoSet = Vec<(TxIn, TxOut)>;
 
 impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
     fn from(script: Script) -> Self {
@@ -90,10 +199,14 @@ impl From<ScriptNative>
             },
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
-            ScriptNative::NOf(n, scripts) => {
-                NativeScript::ScriptNOfK(n, scripts.into_iter().map(|s| s.into()).collect())
+            ScriptNative::NOf(h_map) => {
+                let (n_str, scripts) = h_map.into_iter().next().unwrap();
+                NativeScript::ScriptNOfK(
+                    n_str.parse::<u32>().unwrap(),
+                    scripts.into_iter().map(|s| s.into()).collect(),
+                )
             },
-            ScriptNative::String(st) => {
+            ScriptNative::Signature(st) => {
                 let mut bytes = [0; 28];
                 hex::decode_to_slice(st, &mut bytes).unwrap();
                 NativeScript::ScriptPubkey(bytes.into())
@@ -114,10 +227,14 @@ impl From<ScriptNative> for pallas_primitives::conway::NativeScript {
             },
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
-            ScriptNative::NOf(n, scripts) => {
-                NativeScript::ScriptNOfK(n, scripts.into_iter().map(|s| s.into()).collect())
+            ScriptNative::NOf(h_map) => {
+                let (n_str, scripts) = h_map.into_iter().next().unwrap();
+                NativeScript::ScriptNOfK(
+                    n_str.parse::<u32>().unwrap(),
+                    scripts.into_iter().map(|s| s.into()).collect(),
+                )
             },
-            ScriptNative::String(st) => {
+            ScriptNative::Signature(st) => {
                 let mut bytes = [0; 28];
                 hex::decode_to_slice(st, &mut bytes).unwrap();
                 NativeScript::ScriptPubkey(bytes.into())
@@ -154,19 +271,16 @@ pub enum Script {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum ScriptNative {
-    #[serde(rename = "any")]
     Any(Vec<ScriptNative>),
-    #[serde(rename = "all")]
     All(Vec<ScriptNative>),
-    #[serde(rename = "expiresAt")]
     ExpiresAt(u64),
-    #[serde(rename = "startsAt")]
     StartsAt(u64),
-    #[serde(rename = "NOf")]
-    NOf(u32, Vec<ScriptNative>),
     #[serde(untagged)]
-    String(String),
+    NOf(HashMap<String, Vec<ScriptNative>>),
+    #[serde(untagged)]
+    Signature(String),
 }
 
 // JSON response
@@ -203,7 +317,7 @@ impl From<TxEvalResultResponse> for TxEvalResult {
                 steps: value.units.cpu,
             },
             logs: Vec::new(),
-            success: true
+            success: true,
         }
     }
 }
@@ -310,7 +424,7 @@ mod tests {
                 ]
         });
 
-        let req: TxEvaluationRequest = serde_json::from_value(value).unwrap();
+        let req: TxEvaluationRequestV5Cbor = serde_json::from_value(value).unwrap();
         assert_eq!(req.cbor, "enocodedcbor");
         let utxo_set = req.additional_utxo_set.unwrap();
         assert_eq!(utxo_set.len(), 1);
@@ -324,6 +438,48 @@ mod tests {
             "addr_test1qz66ue36465w2qq40005h2hadad6pnjht8mu6sgplsfj74qdjnshguewlx4ww0eet26y2pal4xpav5prcydf28cvxtjqx46x7f"
         );
         assert_eq!(utxo_set[0].1.value.coins, 2);
+    }
+
+    #[test]
+    fn test_json_request_native_mof() {
+        let value = json!({
+            "cbor": "enocodedcbor",
+            "additionalUtxoSet": [
+                [
+                  {
+                    "txId": "stringstringstringstringstringstringstringstringstringstringstri",
+                    "index": 4294967295u64
+                  },
+                  {
+                    "address": "addr_test1qz66ue36465w2qq40005h2hadad6pnjht8mu6sgplsfj74qdjnshguewlx4ww0eet26y2pal4xpav5prcydf28cvxtjqx46x7f",
+                    "value": {
+                      "coins": 2,
+                      "assets": {
+                        "3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e": 42,
+                        "b5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f54.706174617465": 1337
+                      }
+                    },
+                    "datumHash": "iamadatumhash",
+                    "datum": "base16datum",
+                    "script": {"native": {"2":[{"startsAt": 1234567890u64},"ec09e5293d384637cd2f004356ef320f3fe3c07030e36bfffe67e2e2","3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"]}}
+                  }
+                ]
+                ]
+        });
+
+        let req: TxEvaluationRequestV5Cbor = serde_json::from_value(value).unwrap();
+        assert_eq!(req.cbor, "enocodedcbor");
+        let utxo_set = req.additional_utxo_set.unwrap();
+        match &utxo_set[0].1.script {
+            Some(Script::Native(script_native)) => match script_native {
+                ScriptNative::NOf(h_map) => {
+                    let (k, _v) = h_map.iter().next().unwrap();
+                    assert_eq!(k, "2");
+                },
+                _ => panic!("Expected ScriptNative::NOf"),
+            },
+            _ => panic!("Expected Script::Native"),
+        }
     }
 
     #[test]
@@ -354,5 +510,182 @@ mod tests {
         });
 
         let _req: TxEvaluationRequest = serde_json::from_value(value).unwrap();
+    }
+
+    #[test]
+    fn test_json_request_native_v6() {
+        let value = json!({
+          "transaction": {
+            "cbor": "transaction-cbor"
+          },
+          "additionalUtxo": [
+            {
+              "transaction": {
+                "id": "stringstringstringstringstringstringstringstringstringstringstri"
+              },
+              "index": 4294967295u64,
+              "address": "addr1q9d34spgg2kdy47n82e7x9pdd6vql6d2engxmpj20jmhuc2047yqd4xnh7u6u5jp4t0q3fkxzckph4tgnzvamlu7k5psuahzcp",
+              "value": {
+                "ada": {
+                  "lovelace": 3
+                },
+                "property1": {
+                  "property1": 0,
+                  "property2": 0
+                },
+                "property2": {
+                  "property1": 0,
+                  "property2": 0
+                }
+              },
+              "datumHash": "c248757d390181c517a5beadc9c3fe64bf821d3e889a963fc717003ec248757d",
+              "datum": "string",
+              "script": {
+                "language": "native",
+                "json": {
+                  "clause": "signature",
+                  "from": "3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"
+                },
+                "cbor": "string"
+              }
+            }
+          ]
+        });
+
+        let req: TxEvaluationRequestV6 = serde_json::from_value(value).unwrap();
+
+        assert_eq!(req.transaction.cbor, "transaction-cbor");
+
+        let utxo_set = req.additional_utxo.unwrap();
+
+        assert_eq!(utxo_set.len(), 1);
+        assert_eq!(
+            utxo_set[0].transaction.id,
+            "stringstringstringstringstringstringstringstringstringstringstri"
+        );
+        assert_eq!(utxo_set[0].index, 4294967295u64);
+        assert_eq!(
+            utxo_set[0].address,
+            "addr1q9d34spgg2kdy47n82e7x9pdd6vql6d2engxmpj20jmhuc2047yqd4xnh7u6u5jp4t0q3fkxzckph4tgnzvamlu7k5psuahzcp"
+        );
+        assert_eq!(utxo_set[0].value.ada.lovelace, 3);
+        assert_eq!(utxo_set[0].value.assets.len(), 2);
+    }
+
+    #[test]
+    fn test_json_request_versions() {
+        let version5_cbor = json!({
+            "cbor": "enocodedcbor",
+            "additionalUtxoSet": [
+                [
+                  {
+                    "txId": "stringstringstringstringstringstringstringstringstringstringstri",
+                    "index": 4294967295u64
+                  },
+                  {
+                    "address": "addr_test1qz66ue36465w2qq40005h2hadad6pnjht8mu6sgplsfj74qdjnshguewlx4ww0eet26y2pal4xpav5prcydf28cvxtjqx46x7f",
+                    "value": {
+                      "coins": 2,
+                      "assets": {
+                        "3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e": 42,
+                        "b5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f54.706174617465": 1337
+                      }
+                    },
+                    "datumHash": "iamadatumhash",
+                    "datum": "base16datum",
+                    "script": {"native": {"all":[{"startsAt": 1234567890u64},"ec09e5293d384637cd2f004356ef320f3fe3c07030e36bfffe67e2e2","3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"]}}
+                  }
+                ]
+                ]
+        });
+
+        let version5_evaluate = json!({
+            "evaluate": "enocodedcbor",
+            "additionalUtxoSet": [
+                [
+                  {
+                    "txId": "stringstringstringstringstringstringstringstringstringstringstri",
+                    "index": 4294967295u64
+                  },
+                  {
+                    "address": "addr_test1qz66ue36465w2qq40005h2hadad6pnjht8mu6sgplsfj74qdjnshguewlx4ww0eet26y2pal4xpav5prcydf28cvxtjqx46x7f",
+                    "value": {
+                      "coins": 2,
+                      "assets": {
+                        "3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e": 42,
+                        "b5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f54.706174617465": 1337
+                      }
+                    },
+                    "datumHash": "iamadatumhash",
+                    "datum": "base16datum",
+                    "script": {"native": {"all":[{"startsAt": 1234567890u64},"ec09e5293d384637cd2f004356ef320f3fe3c07030e36bfffe67e2e2","3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"]}}
+                  }
+                ]
+                ]
+        });
+
+        let version6 = json!({
+          "transaction": {
+            "cbor": "transaction-cbor"
+          },
+          "additionalUtxo": [
+            {
+              "transaction": {
+                "id": "stringstringstringstringstringstringstringstringstringstringstri"
+              },
+              "index": 4294967295u64,
+              "address": "addr1q9d34spgg2kdy47n82e7x9pdd6vql6d2engxmpj20jmhuc2047yqd4xnh7u6u5jp4t0q3fkxzckph4tgnzvamlu7k5psuahzcp",
+              "value": {
+                "ada": {
+                  "lovelace": 3
+                },
+                "property1": {
+                  "property1": 0,
+                  "property2": 0
+                },
+                "property2": {
+                  "property1": 0,
+                  "property2": 0
+                }
+              },
+              "datumHash": "c248757d390181c517a5beadc9c3fe64bf821d3e889a963fc717003ec248757d",
+              "datum": "string",
+              "script": {
+                "language": "native",
+                "json": {
+                  "clause": "signature",
+                  "from": "3c07030e36bfff7cd2f004356ef320f3fe3c07030e7cd2f004356437"
+                },
+                "cbor": "string"
+              }
+            }
+          ]
+        });
+
+        let v5_cbor: TxEvaluationRequest = serde_json::from_value(version5_cbor).unwrap();
+        let v5_evaluate: TxEvaluationRequest = serde_json::from_value(version5_evaluate).unwrap();
+        let v6: TxEvaluationRequest = serde_json::from_value(version6).unwrap();
+
+        match v5_cbor {
+            TxEvaluationRequest::V6(_) => panic!("Expected V5 request, got V6"),
+            TxEvaluationRequest::V5Evaluate(_) => {
+                panic!("Expected V5 cbor request, got V5 evaluate")
+            },
+            TxEvaluationRequest::V5Cbor(_) => (),
+        }
+
+        match v5_evaluate {
+            TxEvaluationRequest::V6(_) => panic!("Expected V5 request, got V6"),
+            TxEvaluationRequest::V5Evaluate(_) => (),
+            TxEvaluationRequest::V5Cbor(_) => panic!("Expected V5 evaluate request, got V5 cbor"),
+        }
+
+        match v6 {
+            TxEvaluationRequest::V6(_) => (),
+            TxEvaluationRequest::V5Evaluate(_) => {
+                panic!("Expected V5 cbor request, got V5 evaluate")
+            },
+            TxEvaluationRequest::V5Cbor(_) => panic!("Expected V6 request, got V5 cbor"),
+        }
     }
 }

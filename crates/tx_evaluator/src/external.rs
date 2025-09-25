@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use node::{chain_config::{ChainConfigCache, SlotConfig}, pool::NodePool};
+use node::{
+    chain_config::{ChainConfigCache, SlotConfig},
+    pool::NodePool,
+};
 use pallas_codec::{
     minicbor::to_vec,
     utils::{AnyUInt, CborWrap},
@@ -17,7 +20,11 @@ use serde::Serialize;
 use common::errors::{AppError, BlockfrostError};
 use testgen::testgen::Testgen;
 
-use crate::{model::AdditionalUtxoSet, native::{convert_to_datum_option_network, convert_to_network_value, create_address}};
+use crate::{
+    model::AdditionalUtxoSet,
+    native::{convert_to_datum_option_network, convert_to_network_value, create_address},
+    version_convertor::convert_to_v5,
+};
 
 #[derive(Clone)]
 pub struct ExternalEvaluator {
@@ -44,7 +51,7 @@ struct EvalPayload {
 impl ExternalEvaluator {
     /// Spawn testgen with specific command 'evaluate-stream'
     pub async fn spawn(config: ChainConfigCache) -> Result<Self, AppError> {
-        let testgen =  testgen::testgen::Testgen::spawn("evaluate-stream")
+        let testgen = testgen::testgen::Testgen::spawn("evaluate-stream")
             .map_err(|err| AppError::Server(format!("Failed to spawn ExternalEvaluator: {err}")))?;
 
         let evaluator = Self { testgen };
@@ -141,6 +148,7 @@ impl ExternalEvaluator {
         node_pool: NodePool,
         tx_cbor_binary: &[u8],
         additional_utxos: Option<AdditionalUtxoSet>,
+        version: String,
     ) -> Result<serde_json::Value, BlockfrostError> {
         let mut node = node_pool.get().await?;
 
@@ -187,7 +195,9 @@ impl ExternalEvaluator {
             KeyValuePairs::from_iter(user_utxos.chain(utxos_from_node.to_vec().into_iter()));
 
         let utxos_cbor = hex::encode(to_vec(&utxos).map_err(|err| {
-            BlockfrostError::internal_server_error(format!("ExternalEvaluator: Failed to serialize UTxOs: {err}"))
+            BlockfrostError::internal_server_error(format!(
+                "ExternalEvaluator: Failed to serialize UTxOs: {err}"
+            ))
         })?);
 
         let payload = EvalPayload {
@@ -196,13 +206,21 @@ impl ExternalEvaluator {
         };
 
         let json = serde_json::to_string(&payload).map_err(|err| {
-            BlockfrostError::internal_server_error(format!("ExternalEvaluator: Failed to serialize payload: {err}"))
+            BlockfrostError::internal_server_error(format!(
+                "ExternalEvaluator: Failed to serialize payload: {err}"
+            ))
         })?;
 
         let response = self.testgen.send(json).await.map_err(|err| {
-            BlockfrostError::internal_server_error(format!("ExternalEvaluator: Failed to send payload: {err}"))
+            BlockfrostError::internal_server_error(format!(
+                "ExternalEvaluator: Failed to send payload: {err}"
+            ))
         })?;
 
-        Ok(response)
+        if version == "5" {
+            Ok(convert_to_v5(response))
+        } else {
+            Ok(response)
+        }
     }
 }
