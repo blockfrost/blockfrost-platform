@@ -32,7 +32,6 @@ use pallas_validate::{
     utils::{ConwayProtParams, MultiEraProtocolParameters, UtxoMap},
 };
 
-
 use pallas_codec::utils::CborWrap;
 use pallas_primitives::{
     KeepRaw,

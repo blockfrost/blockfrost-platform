@@ -30,7 +30,7 @@ async fn verify_one(cbor: &str) {
     use crate::external::ExternalDecoder;
 
     let cbor = hex::decode(cbor).unwrap();
-    let reference_json =  ExternalDecoder::instance().decode(&cbor).await.unwrap();
+    let reference_json = ExternalDecoder::instance().decode(&cbor).await.unwrap();
 
     let our_decoding = decode_error(&cbor);
 

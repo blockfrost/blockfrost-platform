@@ -1,7 +1,6 @@
 use pallas_hardano::display::haskell_error::serialize_error;
 use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
-use testgen::tests::{check_generated_cases, CaseType};
-
+use testgen::tests::{CaseType, check_generated_cases};
 
 #[test]
 #[allow(non_snake_case)]

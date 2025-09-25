@@ -48,8 +48,7 @@ impl ChainConfigCache {
     async fn init_genesis_config(
         node_pool: NodePool,
     ) -> Result<(GenesisConfig, CurrentProtocolParam), AppError> {
-        let mut node =
-            node_pool.get().await?;
+        let mut node = node_pool.get().await?;
         match node.genesis_config_and_pp().await {
             Ok((genesis_config, protocol_params)) => Ok((genesis_config, protocol_params)),
             Err(e) => Err(AppError::Server(format!(
