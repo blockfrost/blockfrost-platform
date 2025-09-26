@@ -19,7 +19,7 @@ pub async fn route(
     let tx_cbor_binary = binary_or_hex_heuristic(body.as_ref());
 
     let result = fallback_evaluator
-        .evaluate_binary_tx(node, tx_cbor_binary.as_slice(), None, query.version)
+        .evaluate_binary_tx_v5(node, tx_cbor_binary.as_slice(), None)
         .await?;
 
     Ok(Json(result))

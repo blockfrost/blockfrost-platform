@@ -42,18 +42,18 @@ pub struct AdditionalUtxoV6 {
     // @todo can be base16 or base64 CBOR
     pub index: u64,
     pub address: String,
-    pub value: MultiAssetV6,
+    pub value: ValueV6,
     #[serde(rename = "datumHash")]
     pub datum_hash: Option<String>,
     pub datum: Option<String>,
-    pub script: ScriptV6,
+    pub script: Option<ScriptV6>,
 }
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MultiAssetV6 {
-    ada: LovelaceV6,
+pub struct ValueV6 {
+    pub ada: LovelaceV6,
     #[serde(flatten)]
-    assets: HashMap<String, serde_json::Value>,
+    pub assets: HashMap<String, Vec<(String, u64)>>,
 }
 
 /// If language is native, the json structure can be one of cbor or json
@@ -94,7 +94,7 @@ pub enum ScriptNativeV6 {
         from: Vec<ScriptNativeV6>,
     },
     Some {
-        at_least: u64,
+        at_least: u32,
         from: Vec<ScriptNativeV6>,
     },
     Before {
@@ -185,6 +185,36 @@ impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitiv
     }
 }
 
+impl From<&ScriptV6> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
+    fn from(script: &ScriptV6) -> Self {
+        use pallas_network::miniprotocols::localtxsubmission::primitives::PlutusScript;
+        use pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef;
+        match script {
+            ScriptV6::PlutusV1 { cbor } => ScriptRef::PlutusV1Script(PlutusScript::<1>(
+                Bytes::from(hex::decode(cbor).unwrap()),
+            )),
+            ScriptV6::PlutusV2 { cbor } => ScriptRef::PlutusV2Script(PlutusScript::<2>(
+                Bytes::from(hex::decode(cbor).unwrap()),
+            )),
+            ScriptV6::PlutusV3 { cbor } => ScriptRef::PlutusV3Script(PlutusScript::<3>(
+                Bytes::from(hex::decode(cbor).unwrap()),
+            )),
+            ScriptV6::Native { cbor, json } => cbor.clone().map_or_else(
+                || {
+                    json.clone()
+                        .map(|j| ScriptRef::NativeScript(j.into()))
+                        .unwrap()
+                },
+                |c| {
+                    ScriptRef::NativeScript(
+                        pallas_codec::minicbor::decode(&hex::decode(c).unwrap()).unwrap(),
+                    )
+                },
+            ),
+        }
+    }
+}
+
 impl From<ScriptNative>
     for pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript
 {
@@ -211,6 +241,29 @@ impl From<ScriptNative>
                 hex::decode_to_slice(st, &mut bytes).unwrap();
                 NativeScript::ScriptPubkey(bytes.into())
             },
+        }
+    }
+}
+
+impl From<ScriptNativeV6>
+    for pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript
+{
+    fn from(script: ScriptNativeV6) -> Self {
+        use ScriptNativeV6::*;
+        use pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript;
+        match script {
+            Signature { from } => {
+                let mut bytes = [0; 28];
+                hex::decode_to_slice(from, &mut bytes).unwrap();
+                NativeScript::ScriptPubkey(bytes.into())
+            },
+            Any { from } => NativeScript::ScriptAny(from.into_iter().map(|s| s.into()).collect()),
+            All { from } => NativeScript::ScriptAll(from.into_iter().map(|s| s.into()).collect()),
+            Some { at_least, from } => {
+                NativeScript::ScriptNOfK(at_least, from.into_iter().map(|s| s.into()).collect())
+            },
+            Before { slot } => NativeScript::InvalidHereafter(slot),
+            After { slot } => NativeScript::InvalidBefore(slot),
         }
     }
 }
