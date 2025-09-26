@@ -38,12 +38,7 @@ pub async fn route(
                 let tx_cbor = hex::decode(request.cbor).unwrap();
 
                 let result = fallback_evaluator
-                    .evaluate_binary_tx(
-                        node,
-                        tx_cbor.as_slice(),
-                        request.additional_utxo_set,
-                        query.version,
-                    )
+                    .evaluate_binary_tx_v5(node, tx_cbor.as_slice(), request.additional_utxo_set)
                     .await?;
                 Ok(Json(result))
             }
@@ -55,12 +50,7 @@ pub async fn route(
                 let tx_cbor = hex::decode(request.evaluate).unwrap();
 
                 let result = fallback_evaluator
-                    .evaluate_binary_tx(
-                        node,
-                        tx_cbor.as_slice(),
-                        request.additional_utxo_set,
-                        query.version,
-                    )
+                    .evaluate_binary_tx_v5(node, tx_cbor.as_slice(), request.additional_utxo_set)
                     .await?;
                 Ok(Json(result))
             }

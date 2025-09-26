@@ -21,9 +21,11 @@ use common::errors::{AppError, BlockfrostError};
 use testgen::testgen::Testgen;
 
 use crate::{
-    model::AdditionalUtxoSet,
-    native::{convert_to_datum_option_network, convert_to_network_value, create_address},
-    version_convertor::convert_to_v5,
+    model::{AdditionalUtxoSet, AdditionalUtxoV6},
+    native::{
+        convert_to_datum_option_network, convert_to_network_value, convert_to_network_value_v6,
+        create_address,
+    }
 };
 
 #[derive(Clone)]
@@ -147,8 +149,7 @@ impl ExternalEvaluator {
         &self,
         node_pool: NodePool,
         tx_cbor_binary: &[u8],
-        additional_utxos: Option<AdditionalUtxoSet>,
-        version: String,
+        additional_utxos: Vec<(UTxO, TransactionOutput)>,
     ) -> Result<serde_json::Value, BlockfrostError> {
         let mut node = node_pool.get().await?;
 
@@ -160,39 +161,12 @@ impl ExternalEvaluator {
 
         let utxos_from_node = node.get_utxos_for_txins(txins).await?;
 
-        let incoming_user_utxos = additional_utxos.unwrap_or_default();
-
-        let user_utxos = incoming_user_utxos.iter().map(|(utxo, tout)| {
-            let inline_datum = convert_to_datum_option_network(&tout.datum);
-
-            let txin = UTxO {
-                transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.tx_id).unwrap(),
-                index: AnyUInt::U64(utxo.index),
-            };
-
-            // A Cardano address (either legacy format or new format).
-            let address = create_address(&tout.address);
-
-            let script_ref: Option<CborWrap<ScriptRef>> = tout.script.as_ref().map(|script| {
-                let script_ref = ScriptRef::from(script.clone());
-                CborWrap(script_ref)
-            });
-
-            let value = convert_to_network_value(&tout.value);
-
-            let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
-                address,
-                script_ref,
-                amount: value,
-                inline_datum,
-            });
-
-            (txin, txout)
-        });
-
         // Merge utxos from node and user
-        let utxos =
-            KeyValuePairs::from_iter(user_utxos.chain(utxos_from_node.to_vec().into_iter()));
+        let utxos = KeyValuePairs::from_iter(
+            additional_utxos
+                .into_iter()
+                .chain(utxos_from_node.to_vec().into_iter()),
+        );
 
         let utxos_cbor = hex::encode(to_vec(&utxos).map_err(|err| {
             BlockfrostError::internal_server_error(format!(
@@ -217,10 +191,90 @@ impl ExternalEvaluator {
             ))
         })?;
 
-        if version == "5" {
-            Ok(convert_to_v5(response))
-        } else {
-            Ok(response)
-        }
+        Ok(response)
+    }
+    pub async fn evaluate_binary_tx_v5(
+        &self,
+        node_pool: NodePool,
+        tx_cbor_binary: &[u8],
+        additional_utxos: Option<AdditionalUtxoSet>,
+    ) -> Result<serde_json::Value, BlockfrostError> {
+        let user_utxos = additional_utxos
+            .unwrap_or_default()
+            .iter()
+            .map(|(utxo, tout)| {
+                let inline_datum = convert_to_datum_option_network(&tout.datum);
+
+                let txin = UTxO {
+                    transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.tx_id).unwrap(),
+                    index: AnyUInt::U64(utxo.index),
+                };
+
+                // A Cardano address (either legacy format or new format).
+                let address = create_address(&tout.address);
+
+                let script_ref: Option<CborWrap<ScriptRef>> = tout.script.as_ref().map(|script| {
+                    let script_ref = ScriptRef::from(script.clone());
+                    CborWrap(script_ref)
+                });
+
+                let amount = convert_to_network_value(&tout.value);
+
+                let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
+                    address,
+                    script_ref,
+                    amount,
+                    inline_datum,
+                });
+
+                (txin, txout)
+            })
+            .collect();
+
+        self.evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
+            .await
+    }
+
+    pub async fn evaluate_binary_tx_v6(
+        &self,
+        node_pool: NodePool,
+        tx_cbor_binary: &[u8],
+        additional_utxos: Option<Vec<AdditionalUtxoV6>>,
+    ) -> Result<serde_json::Value, BlockfrostError> {
+        let user_utxos = additional_utxos
+            .unwrap_or_default()
+            .iter()
+            .map(|utxo| {
+                let inline_datum = convert_to_datum_option_network(&utxo.datum);
+
+                let txin = UTxO {
+                    transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.transaction.id)
+                        .unwrap(),
+                    index: AnyUInt::U64(utxo.index),
+                };
+
+                // A Cardano address (either legacy format or new format).
+                let address = create_address(&utxo.address);
+
+                let script_ref: Option<CborWrap<ScriptRef>> = utxo.script.as_ref().map(|script| {
+                    let script_ref = ScriptRef::from(script);
+                    CborWrap(script_ref)
+                });
+
+                let amount = convert_to_network_value_v6(&utxo.value);
+
+                let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
+                    address,
+                    script_ref,
+                    amount,
+                    inline_datum,
+                });
+
+                (txin, txout)
+            })
+            .collect();
+
+        self.evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
+            .await
     }
 }

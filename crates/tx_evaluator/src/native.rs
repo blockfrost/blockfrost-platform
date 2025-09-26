@@ -42,6 +42,7 @@ use pallas_validate::utils::EraCbor;
 
 use crate::model::AdditionalUtxoSet;
 use crate::model::Value;
+use crate::model::ValueV6;
 
 //* This implementation uses pallas validate.
 //  Since pallas validate behaves differently from the ogmios validation (which uses ledger)
@@ -184,7 +185,6 @@ pub fn convert_to_datum_option_network(
     {
         match datum {
             Some(d) => {
-                println!("Datum: {}", d);
                 let datum_bytes = hex::decode(d).unwrap();
                 let datum_option =
                     pallas_network::miniprotocols::localstate::queries_v16::DatumOption::Data(
@@ -261,6 +261,43 @@ pub fn convert_to_network_value(value: &Value) -> queries_v16::Value {
             queries_v16::Value::Multiasset(
                 AnyUInt::U64(*coins),
                 NonEmptyKeyValuePairs::from_vec(assets).unwrap(),
+            )
+        },
+    }
+}
+
+pub fn convert_to_network_value_v6(value: &ValueV6) -> queries_v16::Value {
+    match &value {
+        ValueV6 { ada, assets } if assets.is_empty() => {
+            queries_v16::Value::Coin(AnyUInt::U64(ada.lovelace))
+        },
+        ValueV6 { ada, assets } => {
+            let mut assets_mut = vec![];
+            for (id, name_amount) in assets {
+                let policy_id_bytes: [u8; 28] = hex::decode(id)
+                    .expect("Invalid policy id in asset string")
+                    .try_into()
+                    .expect("Policy id is not valid in additional utxo output set");
+
+                let policy_id = PolicyId::from(policy_id_bytes);
+
+                let details = name_amount
+                    .iter()
+                    .map(|(name, amount)| {
+                        let asset_name_bytes =
+                            hex::decode(name).expect("Invalid asset name in asset string");
+                        (
+                            pallas_primitives::AssetName::from(asset_name_bytes),
+                            AnyUInt::U64(*amount),
+                        )
+                    })
+                    .collect();
+
+                assets_mut.push((policy_id, NonEmptyKeyValuePairs::from_vec(details).unwrap()));
+            }
+            queries_v16::Value::Multiasset(
+                AnyUInt::U64(ada.lovelace),
+                NonEmptyKeyValuePairs::from_vec(assets_mut).unwrap(),
             )
         },
     }
