@@ -25,7 +25,7 @@ use crate::{
     native::{
         convert_to_datum_option_network, convert_to_network_value, convert_to_network_value_v6,
         create_address,
-    }
+    },
 };
 
 #[derive(Clone)]

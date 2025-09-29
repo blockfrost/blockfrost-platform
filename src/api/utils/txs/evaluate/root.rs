@@ -18,9 +18,19 @@ pub async fn route(
     // Allow both hex-encoded and raw binary bodies
     let tx_cbor_binary = binary_or_hex_heuristic(body.as_ref());
 
-    let result = fallback_evaluator
-        .evaluate_binary_tx_v5(node, tx_cbor_binary.as_slice(), None)
-        .await?;
-
-    Ok(Json(result))
+    match query.version.parse().unwrap() {
+        5 => Ok(Json(
+            fallback_evaluator
+                .evaluate_binary_tx_v5(node, tx_cbor_binary.as_slice(), None)
+                .await?,
+        )),
+        6 => Ok(Json(
+            fallback_evaluator
+                .evaluate_binary_tx_v6(node, tx_cbor_binary.as_slice(), None)
+                .await?,
+        )),
+        version => Err(BlockfrostError::custom_400(format!(
+            "invalid version {version}"
+        ))),
+    }
 }
