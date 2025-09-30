@@ -33,6 +33,7 @@ in {
     }
     {package = internal.dolos;}
     {package = internal.mithril-client;}
+    {package = internal.hydra-node;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
@@ -72,6 +73,14 @@ in {
       category = "handy";
       name = "testgen-hs";
       package = internal.testgen-hs;
+    }
+    {
+      category = "handy";
+      package = internal.run-blockfrost-tests;
+    }
+    {
+      category = "handy";
+      package = internal.hydra-test;
     }
   ];
 
@@ -115,6 +124,7 @@ in {
       [
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
+        pkgs.websocat
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
