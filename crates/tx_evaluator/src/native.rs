@@ -167,7 +167,6 @@ pub fn convert_to_datum_option(datum: &Option<String>) -> Vec<u8> {
     {
         match datum {
             Some(d) => {
-                println!("Datum: {}", d);
                 let datum_bytes = hex::decode(d).unwrap();
                 let datum_option = DatumOption::Data(CborWrap(
                     pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
