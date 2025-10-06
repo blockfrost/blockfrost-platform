@@ -18,7 +18,7 @@ use pallas_traverse::MultiEraTx;
 use serde::Serialize;
 
 use common::errors::{AppError, BlockfrostError};
-use testgen::testgen::Testgen;
+use testgen::testgen::{Testgen, TestgenResponse};
 
 use crate::{
     model::{AdditionalUtxoSet, AdditionalUtxoV6},
@@ -26,6 +26,8 @@ use crate::{
         convert_to_datum_option_network, convert_to_network_value, convert_to_network_value_v6,
         create_address,
     },
+    wrapper::wrap_response_v5,
+    wrapper::wrap_response_v6,
 };
 
 #[derive(Clone)]
@@ -92,9 +94,22 @@ impl ExternalEvaluator {
             ))
         })?;
 
+        /*
         (self.testgen.send(payload).await).map_err(|err| {
             AppError::Server(format!("ExternalEvaluator: Failed to initialize: {err}"))
         })
+        */
+        match self.testgen.send(payload).await {
+            Ok(response) => match response {
+                TestgenResponse::Ok(value) => Ok(value),
+                TestgenResponse::Err(err) => Err(AppError::Server(format!(
+                    "ExternalEvaluator: Failed to initialize: {err}"
+                ))),
+            },
+            Err(err) => Err(AppError::Server(format!(
+                "ExternalEvaluator: Failed to initialize: {err}"
+            ))),
+        }
     }
 
     fn convert_alonzo_txin(txin: &TransactionInput) -> queries_v16::TransactionInput {
@@ -150,7 +165,7 @@ impl ExternalEvaluator {
         node_pool: NodePool,
         tx_cbor_binary: &[u8],
         additional_utxos: Vec<(UTxO, TransactionOutput)>,
-    ) -> Result<serde_json::Value, BlockfrostError> {
+    ) -> Result<TestgenResponse, BlockfrostError> {
         let mut node = node_pool.get().await?;
 
         /*
@@ -190,7 +205,6 @@ impl ExternalEvaluator {
                 "ExternalEvaluator: Failed to send payload: {err}"
             ))
         })?;
-
         Ok(response)
     }
     pub async fn evaluate_binary_tx_v5(
@@ -231,8 +245,11 @@ impl ExternalEvaluator {
             })
             .collect();
 
-        self.evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
+        let response = self
+            .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
             .await
+            .unwrap();
+        Ok(wrap_response_v5(response, serde_json::Value::Null))
     }
 
     pub async fn evaluate_binary_tx_v6(
@@ -274,7 +291,10 @@ impl ExternalEvaluator {
             })
             .collect();
 
-        self.evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
+        let response = self
+            .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
             .await
+            .unwrap();
+        Ok(wrap_response_v6(response, serde_json::Value::Null))
     }
 }

@@ -14,13 +14,19 @@ impl ExternalDecoder {
     }
 
     pub async fn decode(&self, input: &[u8]) -> Result<serde_json::Value, String> {
-        self.testgen.decode(input).await
+        match self.testgen.decode(input).await {
+            Ok(resp) => match resp {
+                testgen::testgen::TestgenResponse::Ok(value) => Ok(value),
+                testgen::testgen::TestgenResponse::Err(err) => Err(err),
+            },
+            Err(err) => Err(err),
+        }
     }
 
     /// This function is called at startup, so that we make sure that the worker is reasonable.
     pub async fn startup_sanity_test(&self) -> Result<(), String> {
         let input = hex::decode("8182068182028200a0").map_err(|err| err.to_string())?;
-        let result = self.testgen.decode(&input).await;
+        let result = self.decode(&input).await;
         let expected = serde_json::json!({
           "contents": {
             "contents": {

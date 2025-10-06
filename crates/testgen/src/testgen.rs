@@ -1,4 +1,5 @@
 use common::errors::AppError;
+use serde::Deserialize;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};
@@ -18,9 +19,16 @@ pub struct Testgen {
 
 pub struct TestgenRequest {
     payload: String,
-    response: oneshot::Sender<Result<serde_json::Value, String>>,
+    response: oneshot::Sender<Result<TestgenResponse, String>>,
 }
 
+#[derive(Debug, Deserialize)]
+pub enum TestgenResponse {
+    #[serde(rename = "json")]
+    Ok(serde_json::Value),
+    #[serde(rename = "error")]
+    Err(String),
+}
 /// Testgen is an executable that we use to run some functionality that are readily/easily available
 /// in Haskell codebase like the ledger.
 /// The name is 'testgen' since it was initially implemented to generate test cases.
@@ -70,12 +78,12 @@ impl Testgen {
     }
 
     /// Sends the payload to the child process.
-    pub async fn decode(&self, cbor: &[u8]) -> Result<serde_json::Value, String> {
+    pub async fn decode(&self, cbor: &[u8]) -> Result<TestgenResponse, String> {
         self.send(hex::encode(cbor)).await
     }
 
     /// Sends the payload to the child process.
-    pub async fn send(&self, payload: String) -> Result<serde_json::Value, String> {
+    pub async fn send(&self, payload: String) -> Result<TestgenResponse, String> {
         let (response, response_rx) = oneshot::channel();
 
         self.sender
@@ -213,12 +221,14 @@ impl Testgen {
             let payload = request.payload.clone();
             *last_unfulfilled_request = Some(request);
 
-            let mut ask_and_receive = || -> Result<Result<serde_json::Value, String>, String> {
+            let mut ask_and_receive = || -> Result<Result<TestgenResponse, String>, String> {
                 writeln!(stdin, "{payload}")
                     .map_err(|err| format!("couldn’t write to stdin: {err:?}"))?;
 
                 match stdout_lines.next() {
-                    Some(Ok(line)) => Ok(Self::parse_json(&line)),
+                    Some(Ok(line)) => Ok(Ok(serde_json::from_str::<TestgenResponse>(&line)
+                        .map_err(|e| e.to_string())?)),
+
                     Some(Err(e)) => Err(format!("failed to read from subprocess: {e}")),
                     None => Err("no output from subprocess".to_string()),
                 }
@@ -251,29 +261,6 @@ impl Testgen {
         }
 
         Err("request channel closed, won’t happen".to_string())
-    }
-
-    fn parse_json(input: &str) -> Result<serde_json::Value, String> {
-        let mut parsed: serde_json::Value =
-            serde_json::from_str(input).map_err(|e| e.to_string())?;
-
-        parsed
-            .as_object()
-            .and_then(|obj| {
-                if obj.len() == 1 {
-                    obj.get("error")
-                        .and_then(|v| v.as_str())
-                        .map(|s| Err(s.to_string()))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                parsed
-                    .get_mut("json")
-                    .map(serde_json::Value::take)
-                    .ok_or_else(|| "Missing 'json' field".to_string())
-            })
     }
 }
 

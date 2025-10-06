@@ -7,6 +7,152 @@ mod tests {
     use axum::{body::Body, http::Request};
     use reqwest::Method;
 
+    #[tokio::test]
+    async fn test_success_no_version() {
+        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
+        // init our app
+        let app = initialize_app().await;
+
+        // prepare the request
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/utils/tx/evaluate")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx_hex))
+            .unwrap();
+
+        // send the request and get the response
+        let response = app
+            .oneshot(request)
+            .await
+            .expect("Request to /utils/tx/evaluate failed");
+        assert!(
+            response.status().is_success(),
+            "Response was not successful"
+        );
+
+        // Convert the response body to bytes
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        // Convert the bytes to a string and print
+        let body_str = String::from_utf8_lossy(&body_bytes);
+
+        assert_eq!(
+            body_str,
+            "{\"methodname\":\"EvaluateTx\",\"reflection\":null,\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}],\"servicename\":\"ogmios\",\"type\":\"jsonwsp/response\",\"version\":\"1.0\"}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_success_v5() {
+        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
+        // init our app
+        let app = initialize_app().await;
+
+        // prepare the request
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/utils/tx/evaluate?version=5")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx_hex))
+            .unwrap();
+
+        // send the request and get the response
+        let response = app
+            .oneshot(request)
+            .await
+            .expect("Request to /utils/tx/evaluate failed");
+        assert!(
+            response.status().is_success(),
+            "Response was not successful"
+        );
+
+        // Convert the response body to bytes
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        // Convert the bytes to a string and print
+        let body_str = String::from_utf8_lossy(&body_bytes);
+
+        assert_eq!(
+            body_str,
+            "{\"methodname\":\"EvaluateTx\",\"reflection\":null,\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}],\"servicename\":\"ogmios\",\"type\":\"jsonwsp/response\",\"version\":\"1.0\"}"
+        );
+    }
+    #[tokio::test]
+    async fn test_success_v6() {
+        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
+        // init our app
+        let app = initialize_app().await;
+
+        // prepare the request
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/utils/tx/evaluate?version=6")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx_hex))
+            .unwrap();
+
+        // send the request and get the response
+        let response = app
+            .oneshot(request)
+            .await
+            .expect("Request to /utils/tx/evaluate failed");
+        assert!(
+            response.status().is_success(),
+            "Response was not successful"
+        );
+
+        // Convert the response body to bytes
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        // Convert the bytes to a string and print
+        let body_str = String::from_utf8_lossy(&body_bytes);
+
+        assert_eq!(
+            body_str,
+            "{\"id\":null,\"jsonrpc\":\"2.0\",\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_success_invalid_version() {
+        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
+        // init our app
+        let app = initialize_app().await;
+
+        // prepare the request
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/utils/tx/evaluate?version=53")
+            .header("Content-Type", "application/cbor")
+            .body(Body::from(tx_hex))
+            .unwrap();
+
+        // send the request and get the response
+        let response = app
+            .oneshot(request)
+            .await
+            .expect("Request to /utils/tx/evaluate failed");
+
+        assert_eq!(response.status(), 400, "Response was successful");
+
+        // Convert the response body to bytes
+        let body_bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body");
+
+        // Convert the bytes to a string and print
+        let body_str = String::from_utf8_lossy(&body_bytes);
+
+        assert!(body_str.contains("invalid version 53"));
+    }
+
     ///
     /// Currently not working since we are not handling desirializing the tx for old eras on Haskell side.
     /// This test is identical to the Blockfrost test:
@@ -89,158 +235,6 @@ mod tests {
         assert_eq!(
             body_str,
             "[Invalid request: Deserialisation failure while decoding serialised transaction. CBOR failed with error: DeserialiseFailure 0 \"expected tag\"."
-        );
-    }
-
-    #[tokio::test]
-    async fn test_success_no_version() {
-        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
-        // init our app
-        let app = initialize_app().await;
-
-        // prepare the request
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/utils/tx/evaluate")
-            .header("Content-Type", "application/cbor")
-            .body(Body::from(tx_hex))
-            .unwrap();
-
-        // send the request and get the response
-        let response = app
-            .oneshot(request)
-            .await
-            .expect("Request to /utils/tx/evaluate failed");
-        assert!(
-            response.status().is_success(),
-            "Response was not successful"
-        );
-
-        // Convert the response body to bytes
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-
-        // Convert the bytes to a string and print
-        let body_str = String::from_utf8_lossy(&body_bytes);
-
-        assert_eq!(
-            body_str,
-            "[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_success_v5() {
-        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
-        // init our app
-        let app = initialize_app().await;
-
-        // prepare the request
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=5")
-            .header("Content-Type", "application/cbor")
-            .body(Body::from(tx_hex))
-            .unwrap();
-
-        // send the request and get the response
-        let response = app
-            .oneshot(request)
-            .await
-            .expect("Request to /utils/tx/evaluate failed");
-        assert!(
-            response.status().is_success(),
-            "Response was not successful"
-        );
-
-        // Convert the response body to bytes
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-
-        // Convert the bytes to a string and print
-        let body_str = String::from_utf8_lossy(&body_bytes);
-
-        assert_eq!(
-            body_str,
-            "[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]"
-        );
-    }
-    #[tokio::test]
-    async fn test_success_v6() {
-        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
-        // init our app
-        let app = initialize_app().await;
-
-        // prepare the request
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=6")
-            .header("Content-Type", "application/cbor")
-            .body(Body::from(tx_hex))
-            .unwrap();
-
-        // send the request and get the response
-        let response = app
-            .oneshot(request)
-            .await
-            .expect("Request to /utils/tx/evaluate failed");
-        assert!(
-            response.status().is_success(),
-            "Response was not successful"
-        );
-
-        // Convert the response body to bytes
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-
-        // Convert the bytes to a string and print
-        let body_str = String::from_utf8_lossy(&body_bytes);
-
-        assert_eq!(
-            body_str,
-            "[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_success_invalid_version() {
-        let tx_hex = "84A300818258204E9A66B7E310F004893EEF615E11F8AE6C3328CF2BFDB32F6E40063636D42D7C00018182581D70C40F9129C2684046EB02325B96CA2899A6FA6478C1DDE9B5C53206A51A00D59F800200A10581840000D8799F4D48656C6C6F2C20576F726C6421FF820000F5F6";
-        // init our app
-        let app = initialize_app().await;
-
-        // prepare the request
-        let request = Request::builder()
-            .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=53")
-            .header("Content-Type", "application/cbor")
-            .body(Body::from(tx_hex))
-            .unwrap();
-
-        // send the request and get the response
-        let response = app
-            .oneshot(request)
-            .await
-            .expect("Request to /utils/tx/evaluate failed");
-
-        assert_eq!(
-            response.status(),
-            400,
-            "Response was successful"
-        );
-
-        // Convert the response body to bytes
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-
-        // Convert the bytes to a string and print
-        let body_str = String::from_utf8_lossy(&body_bytes);
-
-        assert!(
-            body_str.contains("invalid version 53")
         );
     }
 }

@@ -28,7 +28,6 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.transaction.cbor.as_bytes());
-
                 let result = fallback_evaluator
                     .evaluate_binary_tx_v6(node, tx_cbor.as_slice(), request.additional_utxo)
                     .await?;
@@ -40,7 +39,6 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.cbor.as_bytes());
-
                 let result = fallback_evaluator
                     .evaluate_binary_tx_v5(node, tx_cbor.as_slice(), request.additional_utxo_set)
                     .await?;
@@ -52,7 +50,6 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.evaluate.as_bytes());
-
                 let result = fallback_evaluator
                     .evaluate_binary_tx_v5(node, tx_cbor.as_slice(), request.additional_utxo_set)
                     .await?;
