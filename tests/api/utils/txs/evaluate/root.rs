@@ -116,7 +116,7 @@ mod tests {
 
         assert_eq!(
             body_str,
-            "{\"id\":null,\"jsonrpc\":\"2.0\",\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]}"
+            "{\"id\":null,\"jsonrpc\":\"2.0\",\"method\":\"evaluateTransaction\",\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}]}"
         );
     }
 
