@@ -65,7 +65,7 @@
 
         hydraJobs = let
           allJobs = {
-            blockfrost-gateway = lib.genAttrs (config.systems) (
+            blockfrost-gateway = lib.genAttrs config.systems (
               targetSystem: inputs.self.internal.${targetSystem}.package
             );
             devshell = lib.genAttrs config.systems (
