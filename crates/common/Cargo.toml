@@ -22,7 +22,7 @@ toml = "0.8"
 futures = "0.3"
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
-inquire = "0.7.5"
+inquire = "0.9"
 anyhow = "1.0.95"
 futures-util = "0.3"
 blockfrost-openapi = "0.1.75"
