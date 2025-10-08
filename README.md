@@ -37,7 +37,6 @@ The following environment variables can be used to override config file:
 - `BLOCKFROST_PROJECT_ID` — The Blockfrost project ID
 - `BLOCKFROST_NFT_ASSET` — Hex of the NFT asset used for validating license
 
-
 ### Development
 
 This repository has a [devshell](https://github.com/numtide/devshell) configured for Linux and macOS machines (both x86-64 and AArch64). To use it, please install [Nix](https://nixos.org/download/), [direnv](https://direnv.net/), enter the cloned directory, and run `direnv allow`
