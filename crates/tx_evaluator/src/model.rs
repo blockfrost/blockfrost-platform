@@ -1,8 +1,11 @@
+use core::fmt;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use pallas_primitives::{Bytes, ExUnits, KeepRaw, conway::RedeemerTag};
 use pallas_validate::phase2::EvalReport;
 use pallas_validate::phase2::tx::TxEvalResult;
+use serde::de;
 use serde::{Deserialize, Serialize, ser::SerializeMap};
 
 // JSON request
@@ -345,23 +348,41 @@ pub struct TxEvaluationResponse {
     pub mint: ExecCost,
 }
 
-#[derive(Serialize)]
-
+#[derive(Serialize, Deserialize)]
 pub struct ExecCost {
     pub memory: u64,
     pub cpu: u64,
 }
 
 // Create a wrapper type for TxEvalResult
-pub struct TxEvalResultResponse {
+pub struct TxEvalResultV5 {
     pub tag: RedeemerTag,
     pub index: u32,
-    pub units: ExUnitsResponse,
+    pub units: ExecCost,
 }
 
-impl From<TxEvalResultResponse> for TxEvalResult {
-    fn from(value: TxEvalResultResponse) -> Self {
-        // pallas-validate is rapidly evolving. logs and success are new fields, not yet handled.
+pub struct TxValidator {
+    pub tag: RedeemerTag,
+    pub index: u32,
+}
+
+// This is also the format ledger responses
+#[derive(Serialize, Deserialize)]
+pub struct TxEvalResultV6 {
+    pub validator: TxValidator,
+    pub budget: ExecCost,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum TxValidatorV6 {
+    #[serde(rename = "spend:1")]
+    SPEND,
+    #[serde(rename = "mint:0")]
+    MINT,
+}
+
+impl From<TxEvalResultV5> for TxEvalResult {
+    fn from(value: TxEvalResultV5) -> Self {
         TxEvalResult {
             tag: value.tag,
             index: value.index,
@@ -375,12 +396,12 @@ impl From<TxEvalResultResponse> for TxEvalResult {
     }
 }
 
-impl From<TxEvalResult> for TxEvalResultResponse {
+impl From<TxEvalResult> for TxEvalResultV5 {
     fn from(value: TxEvalResult) -> Self {
-        TxEvalResultResponse {
+        TxEvalResultV5 {
             tag: value.tag,
             index: value.index, // @todo fix this in pallas to be u64
-            units: ExUnitsResponse {
+            units: ExecCost {
                 memory: value.units.mem,
                 cpu: value.units.steps,
             },
@@ -388,39 +409,109 @@ impl From<TxEvalResult> for TxEvalResultResponse {
     }
 }
 
+impl From<TxEvalResultV6> for TxEvalResultV5 {
+    fn from(value: TxEvalResultV6) -> Self {
+        TxEvalResultV5 {
+            tag: value.validator.tag,
+            index: value.validator.index, // @todo can this take different values?
+            units: value.budget,
+        }
+    }
+}
+
+pub fn reedemer_tag_to_string(tag: RedeemerTag) -> String {
+    match tag {
+        pallas_primitives::conway::RedeemerTag::Spend => "spend".to_string(),
+        pallas_primitives::conway::RedeemerTag::Mint => "mint".to_string(),
+        pallas_primitives::conway::RedeemerTag::Cert => "cert".to_string(),
+        pallas_primitives::conway::RedeemerTag::Reward => "reward".to_string(),
+        pallas_primitives::conway::RedeemerTag::Vote => "vote".to_string(),
+        pallas_primitives::conway::RedeemerTag::Propose => "propose".to_string(),
+    }
+}
+
 use serde::ser::Serializer;
 
-impl Serialize for TxEvalResultResponse {
+impl Serialize for TxEvalResultV5 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(1))?;
 
-        let tag = match self.tag {
-            pallas_primitives::conway::RedeemerTag::Spend => "spend",
-            pallas_primitives::conway::RedeemerTag::Mint => "mint",
-            pallas_primitives::conway::RedeemerTag::Cert => "cert",
-            pallas_primitives::conway::RedeemerTag::Reward => "reward",
-            pallas_primitives::conway::RedeemerTag::Vote => "vote",
-            pallas_primitives::conway::RedeemerTag::Propose => "propose",
-        };
-
-        let tag = format!("{}:{}", tag, self.index);
+        let tag = format!("{}:{}", reedemer_tag_to_string(self.tag), self.index);
         map.serialize_entry(&tag, &self.units)?;
         map.end()
     }
 }
 
-#[derive(Serialize)]
-//#[serde(remote = "ExUnits")]
-pub struct ExUnitsResponse {
-    memory: u64,
-    cpu: u64,
+impl Serialize for TxValidator {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let str = format!("{}:{}", reedemer_tag_to_string(self.tag), self.index);
+
+        serializer.serialize_str(&str)
+    }
+}
+impl FromStr for TxValidator {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<_> = s.split(":").collect();
+
+        if parts.len() == 2 {
+            let tag: RedeemerTag = match parts[0] {
+                "spend" => RedeemerTag::Spend,
+                "mint" => RedeemerTag::Mint,
+                "cert" => RedeemerTag::Cert,
+                "reward" => RedeemerTag::Reward,
+                "vote" => RedeemerTag::Vote,
+                "propose" => RedeemerTag::Propose,
+                _ => return Err("Invalid tag".to_string()),
+            };
+
+            let index: u32 = parts[1]
+                .parse()
+                .map_err(|_| "Invalid index format".to_string())?;
+
+            Ok(TxValidator { tag, index })
+        } else {
+            Err("Invalid input format for TxValidator: {s}".to_string())
+        }
+    }
 }
 
-impl From<ExUnitsResponse> for ExUnits {
-    fn from(value: ExUnitsResponse) -> Self {
+impl<'de> Deserialize<'de> for TxValidator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Visitor;
+
+        struct TxValidatorVisitor;
+
+        impl Visitor<'_> for TxValidatorVisitor {
+            type Value = TxValidator;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string representing a TxValidator")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                FromStr::from_str(v).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_str(TxValidatorVisitor)
+    }
+}
+
+impl From<ExecCost> for ExUnits {
+    fn from(value: ExecCost) -> Self {
         ExUnits {
             mem: value.memory,
             steps: value.cpu,
@@ -428,16 +519,16 @@ impl From<ExUnitsResponse> for ExUnits {
     }
 }
 
-impl From<ExUnits> for ExUnitsResponse {
+impl From<ExUnits> for ExecCost {
     fn from(value: ExUnits) -> Self {
-        ExUnitsResponse {
+        ExecCost {
             memory: value.mem,
             cpu: value.steps,
         }
     }
 }
 
-pub fn convert_eval_report(pallas_report: EvalReport) -> Vec<TxEvalResultResponse> {
+pub fn convert_eval_report_v5(pallas_report: EvalReport) -> Vec<TxEvalResultV5> {
     pallas_report
         .into_iter()
         .map(|pallas_result| pallas_result.into())

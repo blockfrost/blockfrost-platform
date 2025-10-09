@@ -16,6 +16,7 @@ use pallas_network::miniprotocols::localstate::queries_v16;
 use pallas_network::miniprotocols::localstate::queries_v16::CurrentProtocolParam;
 use pallas_network::miniprotocols::localstate::queries_v16::GenesisConfig;
 use pallas_network::miniprotocols::localstate::queries_v16::SystemStart;
+use pallas_network::miniprotocols::localstate::queries_v16::TxIns;
 use pallas_primitives::AssetName;
 use pallas_primitives::Bytes;
 use pallas_primitives::ExUnitPrices;
@@ -23,6 +24,8 @@ use pallas_primitives::ExUnits;
 use pallas_primitives::PolicyId;
 use pallas_primitives::PositiveCoin;
 use pallas_primitives::RationalNumber;
+use pallas_primitives::TransactionInput;
+use pallas_primitives::byron;
 use pallas_primitives::conway;
 use pallas_traverse::MultiEraOutput;
 use pallas_traverse::MultiEraTx;
@@ -78,7 +81,14 @@ pub async fn evaluate_tx(
         Ok((genesis_config, protocol_params)) => {
             let protocol_params: MultiEraProtocolParameters =
                 convert_protocol_param(protocol_params, genesis_config)?;
-            evaluate_tx_with_pp(tx_cbor_binary, slot_config, utxo_set, protocol_params)
+            evaluate_tx_with_pp(
+                tx_cbor_binary,
+                slot_config,
+                utxo_set,
+                protocol_params,
+                node_pool,
+            )
+            .await
         },
         Err(e) => Err(BlockfrostError::custom_400(
             "Error fetching protocol parameters: ".to_string() + &e.to_string(),
@@ -86,11 +96,12 @@ pub async fn evaluate_tx(
     }
 }
 
-pub fn evaluate_tx_with_pp(
+pub async fn evaluate_tx_with_pp(
     tx_cbor_binary: &[u8],
     slot_config: &SlotConfig,
     utxo_set: Option<AdditionalUtxoSet>,
     protocol_params: MultiEraProtocolParameters,
+    node_pool: NodePool,
 ) -> Result<EvalReport, BlockfrostError> {
     /*
      * Prepare transaction
@@ -142,6 +153,58 @@ pub fn evaluate_tx_with_pp(
         >(&tx_out_cbor)
         .unwrap();
         let tx_out = pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
+        let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
+
+        utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
+    }
+    let mut node = node_pool.get().await?;
+
+    let txins = extract_inputs(multi_era_tx.clone());
+
+    let utxos_from_node = node.get_utxos_for_txins(txins).await?;
+
+    // merge utxo from node with user
+    for (utxo, txout) in utxos_from_node.iter() {
+        let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
+            transaction_id: utxo.transaction_id,
+            index: utxo.index.into(),
+        };
+
+        let multi_era_in: MultiEraInput =
+            MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
+        /*
+        let datum_cbor;
+        let script_ref_cbor;
+
+
+        let post_alonzo = match txout {
+            queries_v16::TransactionOutput::Current(o) => {
+                  datum_cbor =  pallas_codec::minicbor::to_vec(&o.inline_datum).unwrap();
+                  script_ref_cbor =  pallas_codec::minicbor::to_vec(&o.script_ref).unwrap();
+
+                pallas_primitives::conway::PostAlonzoTransactionOutput {
+                    address: o.address.to_owned(),
+                    value: convert_to_primitive_value_from_network_value(&o.amount),
+                    datum_option: pallas_codec::minicbor::decode(&datum_cbor).unwrap(),
+                    script_ref: pallas_codec::minicbor::decode(&script_ref_cbor).unwrap(),
+                }
+            },
+            queries_v16::TransactionOutput::Legacy(legacy_transaction_output) => {
+                todo!("legacy transactions not supported")
+            },
+        };
+        */
+        let tx_out_cbor = pallas_codec::minicbor::to_vec(txout).unwrap();
+        let post_alonzo = pallas_codec::minicbor::decode::<
+            pallas_codec::utils::KeepRaw<
+                '_,
+                pallas_primitives::conway::PostAlonzoTransactionOutput,
+            >,
+        >(&tx_out_cbor)
+        .unwrap();
+
+        let tx_out = pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
+
         let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
 
         utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
@@ -228,6 +291,29 @@ pub fn convert_to_primitive_value(value: &Value) -> pallas_primitives::conway::V
                 assets.insert(asset_id, asset_detail);
             }
             pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
+        },
+    }
+}
+
+pub fn convert_to_primitive_value_from_network_value(
+    value: &queries_v16::Value,
+) -> pallas_primitives::conway::Value {
+    match &value {
+        queries_v16::Value::Coin(c) => pallas_primitives::conway::Value::Coin(c.into()),
+        queries_v16::Value::Multiasset(c, multiasset) => {
+            let mut assets = BTreeMap::new();
+            for (asset_id, assets_kv) in multiasset.iter() {
+                let mut asset_detail = BTreeMap::new();
+
+                for (asset_name, asset_coin) in assets_kv.iter() {
+                    let an: AssetName = asset_name.to_owned();
+                    let coin: u64 = asset_coin.into();
+                    let pc: PositiveCoin = coin.try_into().unwrap();
+                    asset_detail.insert(an, pc);
+                }
+                assets.insert(*asset_id, asset_detail);
+            }
+            pallas_primitives::conway::Value::Multiasset(c.into(), assets)
         },
     }
 }
@@ -512,6 +598,54 @@ fn convert_protocol_param(
     };
 
     Ok(MultiEraProtocolParameters::Conway(conway_pp))
+}
+
+pub fn extract_inputs(tx: MultiEraTx) -> TxIns {
+    let txins = match tx {
+        MultiEraTx::AlonzoCompatible(x, _) => x
+            .transaction_body
+            .inputs
+            .iter()
+            .map(convert_alonzo_txin)
+            .collect(),
+        MultiEraTx::Babbage(x) => x
+            .transaction_body
+            .inputs
+            .iter()
+            .map(convert_alonzo_txin)
+            .collect(),
+        MultiEraTx::Byron(x) => x
+            .transaction
+            .inputs
+            .iter()
+            .map(convert_byron_txin)
+            .collect(),
+        MultiEraTx::Conway(x) => x
+            .transaction_body
+            .inputs
+            .iter()
+            .map(convert_alonzo_txin)
+            .collect(),
+        _ => unreachable!("unknown era transaction"),
+    };
+    txins
+}
+
+fn convert_alonzo_txin(txin: &TransactionInput) -> queries_v16::TransactionInput {
+    queries_v16::TransactionInput {
+        transaction_id: txin.transaction_id,
+        index: txin.index,
+    }
+}
+
+fn convert_byron_txin(txin: &byron::TxIn) -> queries_v16::TransactionInput {
+    match txin {
+        byron::TxIn::Variant0(CborWrap((tx, idx))) => queries_v16::TransactionInput {
+            transaction_id: *tx,
+            index: *idx as u64,
+        },
+        _ => unreachable!(),
+    }
 }
 
 #[cfg(test)]

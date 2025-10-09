@@ -10,10 +10,10 @@ use pallas_codec::{
 };
 
 use pallas_network::miniprotocols::{
-    localstate::queries_v16::{self, PostAlonsoTransactionOutput, TransactionOutput, TxIns, UTxO},
+    localstate::queries_v16::{PostAlonsoTransactionOutput, TransactionOutput, UTxO},
     localtxsubmission::primitives::ScriptRef,
 };
-use pallas_primitives::{KeyValuePairs, TransactionInput, byron};
+use pallas_primitives::KeyValuePairs;
 use pallas_traverse::MultiEraTx;
 use serde::Serialize;
 
@@ -24,10 +24,9 @@ use crate::{
     model::{AdditionalUtxoSet, AdditionalUtxoV6},
     native::{
         convert_to_datum_option_network, convert_to_network_value, convert_to_network_value_v6,
-        create_address,
+        create_address, extract_inputs,
     },
-    wrapper::wrap_response_v5,
-    wrapper::wrap_response_v6,
+    wrapper::{wrap_response_v5, wrap_response_v6},
 };
 
 #[derive(Clone)]
@@ -112,54 +111,6 @@ impl ExternalEvaluator {
         }
     }
 
-    fn convert_alonzo_txin(txin: &TransactionInput) -> queries_v16::TransactionInput {
-        queries_v16::TransactionInput {
-            transaction_id: txin.transaction_id,
-            index: txin.index,
-        }
-    }
-
-    fn convert_byron_txin(txin: &byron::TxIn) -> queries_v16::TransactionInput {
-        match txin {
-            byron::TxIn::Variant0(CborWrap((tx, idx))) => queries_v16::TransactionInput {
-                transaction_id: *tx,
-                index: *idx as u64,
-            },
-            _ => unreachable!(),
-        }
-    }
-
-    fn extract_inputs(tx: MultiEraTx) -> TxIns {
-        let txins = match tx {
-            MultiEraTx::AlonzoCompatible(x, _) => x
-                .transaction_body
-                .inputs
-                .iter()
-                .map(Self::convert_alonzo_txin)
-                .collect(),
-            MultiEraTx::Babbage(x) => x
-                .transaction_body
-                .inputs
-                .iter()
-                .map(Self::convert_alonzo_txin)
-                .collect(),
-            MultiEraTx::Byron(x) => x
-                .transaction
-                .inputs
-                .iter()
-                .map(Self::convert_byron_txin)
-                .collect(),
-            MultiEraTx::Conway(x) => x
-                .transaction_body
-                .inputs
-                .iter()
-                .map(Self::convert_alonzo_txin)
-                .collect(),
-            _ => unreachable!("unknown era transaction"),
-        };
-        txins
-    }
-
     pub async fn evaluate_binary_tx(
         &self,
         node_pool: NodePool,
@@ -172,7 +123,7 @@ impl ExternalEvaluator {
          * Prepare txins
          */
         let multi_era_tx = MultiEraTx::decode(tx_cbor_binary).unwrap();
-        let txins = Self::extract_inputs(multi_era_tx);
+        let txins = extract_inputs(multi_era_tx);
 
         let utxos_from_node = node.get_utxos_for_txins(txins).await?;
 

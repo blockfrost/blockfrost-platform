@@ -1,11 +1,18 @@
 //! Wraps the evaluation result compatible with the relevant Ogmios version
 
-use serde_json::json;
+use serde_json::{Map, json};
 use testgen::testgen::TestgenResponse;
+
+use crate::model::{TxEvalResultV5, TxEvalResultV6};
 
 pub fn wrap_response_v5(resp: TestgenResponse, mirror: serde_json::Value) -> serde_json::Value {
     match resp {
-        TestgenResponse::Ok(value) => wrap_success_response_v5(value, mirror),
+        TestgenResponse::Ok(value) => {
+            // The external evaluator returns a v6-like structure, but we need to convert it to v5.
+            let v6_results: Vec<TxEvalResultV6> = serde_json::from_value(value).unwrap();
+            let v5: Vec<TxEvalResultV5> = v6_results.into_iter().map(|r| r.into()).collect();
+            wrap_success_response_v5(v5, mirror)
+        },
         // @todo fault format needs to be crafted
         TestgenResponse::Err(err) => json!({
             "type": "jsonwsp/fault",
@@ -19,16 +26,30 @@ pub fn wrap_response_v5(resp: TestgenResponse, mirror: serde_json::Value) -> ser
         }),
     }
 }
+
 pub fn wrap_success_response_v5(
-    value: serde_json::Value,
+    response: Vec<TxEvalResultV5>,
     mirror: serde_json::Value,
 ) -> serde_json::Value {
+    // flatten objects
+    let mut result_map = Map::with_capacity(response.len());
+    for r in response {
+        serde_json::to_value(r)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .iter()
+            .for_each(|(key, val)| {
+                result_map.insert(key.to_string(), val.clone());
+            });
+    }
+
     json!({
         "type": "jsonwsp/response",
         "version": "1.0",
         "servicename": "ogmios",
         "methodname": "EvaluateTx",
-        "result": value,
+        "result": result_map,
         "reflection": mirror,
     })
 }

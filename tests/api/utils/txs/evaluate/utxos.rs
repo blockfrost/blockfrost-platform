@@ -50,7 +50,7 @@ mod tests {
 
         assert_eq!(
             body_str,
-            "{\"methodname\":\"EvaluateTx\",\"reflection\":null,\"result\":[{\"budget\":{\"cpu\":3776833,\"memory\":15694},\"validator\":\"spend:0\"}],\"servicename\":\"ogmios\",\"type\":\"jsonwsp/response\",\"version\":\"1.0\"}"
+            "{\"methodname\":\"EvaluateTx\",\"reflection\":null,\"result\":{\"spend:0\":{\"cpu\":3776833,\"memory\":15694}},\"servicename\":\"ogmios\",\"type\":\"jsonwsp/response\",\"version\":\"1.0\"}"
         );
     }
 
