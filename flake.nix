@@ -13,7 +13,7 @@
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
     dolos.url = "github:txpipe/dolos/v1.0.0-beta.5";
     dolos.flake = false;
-    blockfrost-tests.url = "github:blockfrost/blockfrost-tests";
+    blockfrost-tests.url = "github:blockfrost/blockfrost-tests/f6a742f2046e80139c1ddbc519ed3750253de8e6";
     blockfrost-tests.flake = false;
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
