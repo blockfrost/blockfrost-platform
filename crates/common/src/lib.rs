@@ -9,6 +9,7 @@ pub mod dreps;
 pub mod epochs;
 pub mod errors;
 pub mod genesis;
+pub mod helpers;
 pub mod json_client;
 pub mod metadata;
 pub mod pagination;

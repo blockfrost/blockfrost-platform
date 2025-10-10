@@ -5,7 +5,6 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-toml = "0.8"
 bzip2 = "0.4.3"
 tar = "0.4.38"
 zip = "0.6.6"

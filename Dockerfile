@@ -7,7 +7,7 @@ RUN apt-get update \
   libssl-dev=3.5.1-1+deb13u1 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
-
+  
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
