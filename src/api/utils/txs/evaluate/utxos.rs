@@ -6,13 +6,12 @@ use axum::{
     extract::{self, Query, State},
     response::IntoResponse,
 };
-use common::{
-    config::Evaluator, helpers::binary_or_hex_heuristic, validation::validate_content_type,
-};
+use common::{helpers::binary_or_hex_heuristic, validation::validate_content_type};
 use hyper::HeaderMap;
 use node::pool::NodePool;
 use tx_evaluator::{
     external::ExternalEvaluator,
+    helpers::is_external_evaluator,
     model::{TxEvaluationRequest, convert_eval_report_v5},
     native::evaluate_binary_tx,
 };
@@ -20,7 +19,7 @@ use tx_evaluator::{
 pub async fn route(
     State(app_state): State<AppState>,
     Extension(node): Extension<NodePool>,
-    Extension(fallback_evaluator): Extension<ExternalEvaluator>,
+    Extension(fallback_evaluator_opt): Extension<Option<ExternalEvaluator>>,
     headers: HeaderMap,
     Query(query): Query<EvaluateQuery>,
     extract::Json(tx_request): extract::Json<TxEvaluationRequest>,
@@ -29,11 +28,12 @@ pub async fn route(
     validate_content_type(&headers, &["application/json"])?;
 
     let version: u8 = query.version.parse().unwrap();
-    // query param overrides the config
-    let is_external_evaluator = match query.evaluator {
-        Some(v) => Evaluator::try_from(v)? == Evaluator::External,
-        None => app_state.config.evaluator == Evaluator::External,
-    };
+
+    let is_external_evaluator = is_external_evaluator(
+        query.evaluator,
+        &app_state.config.evaluator,
+        &fallback_evaluator_opt,
+    )?;
 
     // safeguarding version and input data conflicts
     match tx_request {
@@ -44,7 +44,8 @@ pub async fn route(
                 let tx_cbor = binary_or_hex_heuristic(request.transaction.cbor.as_bytes());
 
                 let result = if is_external_evaluator {
-                    fallback_evaluator
+                    fallback_evaluator_opt
+                        .unwrap()
                         .evaluate_binary_tx_v6(node, tx_cbor.as_slice(), request.additional_utxo)
                         .await?
                 } else {
@@ -59,7 +60,8 @@ pub async fn route(
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.cbor.as_bytes());
                 let result = if is_external_evaluator {
-                    fallback_evaluator
+                    fallback_evaluator_opt
+                        .unwrap()
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),
@@ -82,7 +84,8 @@ pub async fn route(
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.evaluate.as_bytes());
                 let result = if is_external_evaluator {
-                    fallback_evaluator
+                    fallback_evaluator_opt
+                        .unwrap()
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),

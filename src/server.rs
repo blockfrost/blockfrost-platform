@@ -18,6 +18,7 @@ use state::{ApiPrefix, AppState};
 use std::sync::Arc;
 use tower::Layer;
 use tower_http::normalize_path::NormalizePathLayer;
+use tx_evaluator::external::ExternalEvaluator;
 use uuid::Uuid;
 
 /// Builds and configures the Axum `Router`.
@@ -64,9 +65,12 @@ pub async fn build(
     let chain_config_cache =
         node::chain_config::ChainConfigCache::init_caches(node_conn_pool.clone()).await?;
 
-    // Initialize the Haskell-based tx evaluator
-    let fallback_evaluator =
-        tx_evaluator::external::ExternalEvaluator::spawn(chain_config_cache).await?;
+    let fallback_evaluator = if config.evaluator == common::config::Evaluator::External {
+        // Initialize the Haskell-based tx evaluator
+        Some(ExternalEvaluator::spawn(chain_config_cache).await?)
+    } else {
+        None
+    };
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
