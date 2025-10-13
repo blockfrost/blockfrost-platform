@@ -217,7 +217,7 @@ pub mod api {
         Ok(ws.on_upgrade(|socket| event_loop::run(load_balancer, token_state, socket)))
     }
 
-    /// Axum noise, a proxy to [`handle_prefix_route`].
+    /// Axum noise, a proxy to `handle_prefix_route`.
     pub async fn prefix_route_root(
         Path(uuid): Path<String>,
         Extension(load_balancer): Extension<LoadBalancerState>,
@@ -226,7 +226,7 @@ pub mod api {
         handle_prefix_route(load_balancer, uuid, "/".to_string(), req).await
     }
 
-    /// Axum noise, a proxy to [`handle_prefix_route`].
+    /// Axum noise, a proxy to `handle_prefix_route`.
     pub async fn prefix_route(
         Path((uuid, rest)): Path<(String, String)>,
         Extension(load_balancer): Extension<LoadBalancerState>,
