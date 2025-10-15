@@ -209,16 +209,16 @@
     "hydra": {
       "flake": false,
       "locked": {
-        "lastModified": 1754443312,
-        "narHash": "sha256-Y/rpdgzB/miwW7S7G241kRw0GLD3+eqE3UrwDP1R8vY=",
+        "lastModified": 1759947091,
+        "narHash": "sha256-V9VBA5cFLcZ/M8g12Bzye5tVSVW3uoUIaRm+Ws0mFbo=",
         "owner": "cardano-scaling",
         "repo": "hydra",
-        "rev": "d505ff119c4bc62f008b6fcff3416cffc3d6df5b",
+        "rev": "b5e33b55e9fba442c562f82cec6c36b1716d9847",
         "type": "github"
       },
       "original": {
         "owner": "cardano-scaling",
-        "ref": "0.22.4",
+        "ref": "1.0.0",
         "repo": "hydra",
         "type": "github"
       }

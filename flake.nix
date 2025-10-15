@@ -18,13 +18,8 @@
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
-
-    # FIXME: We might need to depend on `master` to be able to use `--blockfrost` and not a real full node.
-    # FIXME: To use `master`, we need to publish scripts for `--hydra-scripts-tx-id`.
-    # FIXME: See <https://input-output-rnd.slack.com/archives/C06J9HK7QCQ/p1758808886717269?thread_ts=1757786761.007749&cid=C06J9HK7QCQ>
-    hydra.url = "github:cardano-scaling/hydra/0.22.4";
+    hydra.url = "github:cardano-scaling/hydra/1.0.0";
     hydra.flake = false;
-
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
     cardano-playground.url = "github:input-output-hk/cardano-playground/56ebfef5595c43014029b039ade01b0ef06233e0";
