@@ -12,7 +12,7 @@ use common::{
 };
 use dolos::client::Dolos;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
-use node::pool::NodePool;
+use node::{chain_config::init_caches, pool::NodePool};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
 use std::sync::Arc;
@@ -62,8 +62,7 @@ pub async fn build(
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
     // Initialize chain configurations
-    let chain_config_cache =
-        node::chain_config::ChainConfigCache::init_caches(node_conn_pool.clone()).await?;
+    let chain_config_cache = init_caches(node_conn_pool.clone()).await?;
 
     let fallback_evaluator = if config.evaluator == common::config::Evaluator::External {
         // Initialize the Haskell-based tx evaluator

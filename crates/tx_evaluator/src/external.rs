@@ -1,9 +1,6 @@
 use std::str::FromStr;
 
-use node::{
-    chain_config::{ChainConfigCache, SlotConfig},
-    pool::NodePool,
-};
+use node::pool::NodePool;
 use pallas_codec::{
     minicbor::to_vec,
     utils::{AnyUInt, CborWrap},
@@ -17,7 +14,10 @@ use pallas_primitives::KeyValuePairs;
 use pallas_traverse::MultiEraTx;
 use serde::Serialize;
 
-use common::errors::{AppError, BlockfrostError};
+use common::{
+    chain_config::{ChainConfigCache, SlotConfig},
+    errors::{AppError, BlockfrostError},
+};
 use testgen::testgen::{Testgen, TestgenResponse};
 
 use crate::{

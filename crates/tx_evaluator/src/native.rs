@@ -172,28 +172,7 @@ pub async fn evaluate_tx_with_pp(
 
         let multi_era_in: MultiEraInput =
             MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
-        /*
-        let datum_cbor;
-        let script_ref_cbor;
 
-
-        let post_alonzo = match txout {
-            queries_v16::TransactionOutput::Current(o) => {
-                  datum_cbor =  pallas_codec::minicbor::to_vec(&o.inline_datum).unwrap();
-                  script_ref_cbor =  pallas_codec::minicbor::to_vec(&o.script_ref).unwrap();
-
-                pallas_primitives::conway::PostAlonzoTransactionOutput {
-                    address: o.address.to_owned(),
-                    value: convert_to_primitive_value_from_network_value(&o.amount),
-                    datum_option: pallas_codec::minicbor::decode(&datum_cbor).unwrap(),
-                    script_ref: pallas_codec::minicbor::decode(&script_ref_cbor).unwrap(),
-                }
-            },
-            queries_v16::TransactionOutput::Legacy(legacy_transaction_output) => {
-                todo!("legacy transactions not supported")
-            },
-        };
-        */
         let tx_out_cbor = pallas_codec::minicbor::to_vec(txout).unwrap();
         let post_alonzo = pallas_codec::minicbor::decode::<
             pallas_codec::utils::KeepRaw<
