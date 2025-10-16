@@ -186,6 +186,26 @@ done
 
 # ---------------------------------------------------------------------------- #
 
+log info "Waiting for Blockfrost to index the new addresses (so that the ‘--blockfrost’ Hydra sees it, too)"
+
+for participant in alice-funds alice-node bob-funds bob-node; do
+  while true; do
+    resp="$(curl -sS -w $'\n%{http_code}' \
+      -H "project_id: $BLOCKFROST_PROJECT_ID" \
+      "https://cardano-${NETWORK}.blockfrost.io/api/v0/addresses/$(cat "credentials/$participant/payment.addr")/utxos?count=1")"
+    body="${resp%$'\n'*}"
+    code="${resp##*$'\n'}"
+    log info "Verifying L1 participant funds with Blockfrost: $participant: http/$code…"
+    if [ "$code" = "200" ] && jq -e 'type=="array" and length>0' >/dev/null <<<"$body"; then
+      log info "… $(jq -c . <<<"$body")"
+      break
+    fi
+    sleep 5
+  done
+done
+
+# ---------------------------------------------------------------------------- #
+
 for participant in alice bob; do
   log info "Generating L2 credentials for: $participant"
 
