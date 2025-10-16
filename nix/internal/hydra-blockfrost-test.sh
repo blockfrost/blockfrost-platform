@@ -56,6 +56,10 @@ if ((missing)); then
   exit 1
 fi
 
+lovelace_to_ada() {
+  printf '%d.%06d' $(($1 / 1000000)) $(($1 % 1000000))
+}
+
 # ---------------------------------------------------------------------------- #
 
 work_dir=$(mktemp -d)
@@ -121,6 +125,37 @@ log info "Deriving keys from the ‘SUBMIT_MNEMONIC’"
 
 # ---------------------------------------------------------------------------- #
 
+log info "Verifying that ‘SUBMIT_MNEMONIC’ has enough funds…"
+
+declare -A lovelace_fund
+lovelace_fund["alice-funds"]=30000000
+lovelace_fund["alice-node"]=30000000
+lovelace_fund["bob-funds"]=30000000
+lovelace_fund["bob-node"]=30000000
+
+submit_mnemonic_funds=$(cardano-cli query utxo \
+  --address "$(cat credentials/submit-mnemonic/payment.addr)" \
+  --out-file /dev/stdout |
+  jq '[.[] | .value.lovelace] | add // 0')
+
+# 1 ADA extra for tx fees:
+required_funds=1000000
+for k in "${!lovelace_fund[@]}"; do
+  ((required_funds += lovelace_fund[$k]))
+done
+
+if ((submit_mnemonic_funds < required_funds)); then
+  log fatal "… insufficient funds on ‘SUBMIT_MNEMONIC’: have $(lovelace_to_ada "$submit_mnemonic_funds") ADA, need $(lovelace_to_ada "$required_funds") ADA."
+  exit 1
+else
+  log info "… OK, have $(lovelace_to_ada "$submit_mnemonic_funds") ADA, need $(lovelace_to_ada "$required_funds") ADA."
+fi
+
+unset submit_mnemonic_funds
+unset required_funds
+
+# ---------------------------------------------------------------------------- #
+
 log info "Generating L1 credentials…"
 
 for participant in alice-funds alice-node bob-funds bob-node; do
@@ -140,12 +175,6 @@ done
 # ---------------------------------------------------------------------------- #
 
 log info "Funding L1 participants and nodes: alice, bob"
-
-declare -A lovelace_fund
-lovelace_fund["alice-funds"]=30000000
-lovelace_fund["alice-node"]=30000000
-lovelace_fund["bob-funds"]=30000000
-lovelace_fund["bob-node"]=30000000
 
 txdir=tx-01-fund-participants
 mkdir -p $txdir
@@ -515,10 +544,6 @@ done
 # ---------------------------------------------------------------------------- #
 
 log info "Calculating how much was lost in Hydra transaction fees (excluding L1 fees from and to ‘SUBMIT_MNEMONIC’)…"
-
-lovelace_to_ada() {
-  printf '%d.%06d' $(($1 / 1000000)) $(($1 % 1000000))
-}
 
 total_cost=0
 
