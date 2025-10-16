@@ -278,6 +278,8 @@ child_pids+=($!)
 
 log info "Starting the Hydra node for: bob"
 
+printf '%s\n' "$BLOCKFROST_PROJECT_ID" >blockfrost-project.txt
+
 hydra-node \
   --node-id "bob-node" \
   --persistence-dir persistence-bob \
@@ -286,8 +288,7 @@ hydra-node \
   --hydra-scripts-tx-id "$HYDRA_SCRIPTS_TX_ID" \
   --ledger-protocol-parameters protocol-parameters.json \
   --contestation-period "$CONTESTATION_PERIOD_SECONDS"s \
-  --testnet-magic "$CARDANO_NODE_NETWORK_ID" \
-  --node-socket "$CARDANO_NODE_SOCKET_PATH" \
+  --blockfrost blockfrost-project.txt \
   --api-port "${hydra_api_port["bob"]}" \
   --listen 127.0.0.1:"${hydra_h2h_port["bob"]}" \
   --api-host 127.0.0.1 \
@@ -342,9 +343,13 @@ for participant in alice bob; do
     --address "$(cat credentials/"$participant"-funds/payment.addr)" \
     --out-file $txdir/commit-utxo-"$participant".json
 
-  curl -fsSL -X POST http://127.0.0.1:"${hydra_api_port[$participant]}"/commit \
+  curl -v -fsSL -X POST http://127.0.0.1:"${hydra_api_port[$participant]}"/commit \
     --data @$txdir/commit-utxo-"$participant".json \
-    >$txdir/commit-tx-"$participant".json
+    >$txdir/commit-tx-"$participant".json || {
+    # Sleep for a while to get a chance to see more of Hydra logs
+    sleep 15
+    exit 1
+  }
 
   cardano-cli latest transaction sign \
     --tx-file $txdir/commit-tx-"$participant".json \
