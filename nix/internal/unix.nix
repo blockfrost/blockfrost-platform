@@ -486,6 +486,78 @@ in
       ''
       // {meta.description = "Runs Dolos on ${network}";};
 
+    acropolis = let
+      commonArgs =
+        {
+          pname = "acropolis";
+          inherit (versions.omnibus) version;
+          src = inputs.acropolis;
+          strictDeps = true;
+          nativeBuildInputs =
+            [pkgs.gnum4]
+            ++ lib.optionals pkgs.stdenv.isLinux [
+              pkgs.pkg-config
+            ];
+          buildInputs =
+            lib.optionals pkgs.stdenv.isLinux [
+              pkgs.openssl
+            ]
+            ++ lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.libiconv
+              pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
+              pkgs.darwin.apple_sdk_12_3.frameworks.Security
+              pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+            ];
+          doCheck = false; # some unit tests seem to require network access, so they’re failing in the sandbox
+        }
+        // lib.optionalAttrs pkgs.stdenv.isLinux {
+          # The linker bundled with Fenix has wrong interpreter path, and it fails with ENOENT, so:
+          RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
+        }
+        // lib.optionalAttrs pkgs.stdenv.isDarwin {
+          # for bindgen, used by libproc, used by metrics_process
+          LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+        };
+      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+      sanchonet = pkgs.fetchzip {
+        url = "https://github.com/Hornan7/SanchoNet-Tutorials/archive/c4518aba61287c07aa70f4c2a8250aae0e4be57a.zip"; # `main` on 2025-10-16
+        hash = "sha256-kCoDLuvArSw6o5aPLuBjSZy1z4ByAcQRxNIX/x9aH9M=";
+      };
+      versions = {
+        omnibus = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = inputs.acropolis + "/processes/omnibus/Cargo.toml";};};
+        replayer = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = inputs.acropolis + "/processes/replayer/Cargo.toml";};};
+      };
+      package = craneLib.buildPackage (commonArgs
+        // {
+          inherit cargoArtifacts;
+          GIT_REVISION = inputs.acropolis.rev;
+          ACROPOLIS_OFFLINE_MIRROR = pkgs.writeText "offline-mirror.json" (builtins.toJSON {
+            "https://book.world.dev.cardano.org/environments/mainnet/byron-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/byron-genesis.json");
+            "https://book.world.dev.cardano.org/environments/mainnet/shelley-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/shelley-genesis.json");
+            "https://book.world.dev.cardano.org/environments/mainnet/alonzo-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/alonzo-genesis.json");
+            "https://book.world.dev.cardano.org/environments/mainnet/conway-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/conway-genesis.json");
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/byron-genesis.json" = builtins.readFile (sanchonet + "/genesis/byron-genesis.json");
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/shelley-genesis.json" = builtins.readFile (sanchonet + "/genesis/shelley-genesis.json");
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/alonzo-genesis.json" = builtins.readFile (sanchonet + "/genesis/alonzo-genesis.json");
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/conway-genesis.json" = builtins.readFile (sanchonet + "/genesis/conway-genesis.json");
+          });
+          ACROPOLIS_OMNIBUS_DEFAULT_CONFIG = builtins.path {path = inputs.acropolis + "/processes/omnibus/omnibus.toml";};
+          ACROPOLIS_REPLAYER_DEFAULT_CONFIG = builtins.path {path = inputs.acropolis + "/processes/replayer/replayer.toml";};
+        });
+    in {
+      acropolis_process_omnibus = pkgs.stdenv.mkDerivation {
+        inherit (versions.omnibus) pname version;
+        buildCommand = ''mkdir -p $out/bin && cp ${package}/bin/acropolis_process_omnibus $out/bin/'';
+        meta.description = "A kit of micro-service parts, written in Rust, which allows flexible construction of clients, services and APIs for the Cardano ecosystem";
+      };
+
+      acropolis_process_replayer = pkgs.stdenv.mkDerivation {
+        inherit (versions.replayer) pname version;
+        buildCommand = ''mkdir -p $out/bin && cp ${package}/bin/acropolis_process_replayer $out/bin/'';
+        meta.description = "Acropolis replayer process, allowing to debug any module";
+      };
+    };
+
     blockfrost-tests = make-blockfrost-tests "preview";
 
     make-blockfrost-tests = network: let

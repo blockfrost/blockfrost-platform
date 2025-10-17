@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "acropolis": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760711054,
+        "narHash": "sha256-WuUR7Y/WzD21SvtrVpJTOPshXPiqlNFD5Wy/CLNJ+QU=",
+        "owner": "input-output-hk",
+        "repo": "acropolis",
+        "rev": "180e10f9672a48079ebe9c067e5c408cc38c31ef",
+        "type": "github"
+      },
+      "original": {
+        "owner": "input-output-hk",
+        "ref": "pull/254/head",
+        "repo": "acropolis",
+        "type": "github"
+      }
+    },
     "advisory-db": {
       "flake": false,
       "locked": {
@@ -325,6 +342,7 @@
     },
     "root": {
       "inputs": {
+        "acropolis": "acropolis",
         "advisory-db": "advisory-db",
         "blockfrost-tests": "blockfrost-tests",
         "cardano-node": "cardano-node",

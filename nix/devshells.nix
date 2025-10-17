@@ -31,8 +31,10 @@ in {
       name = "cardano-address";
       package = internal.cardano-address;
     }
-    {package = internal.dolos;}
     {package = internal.mithril-client;}
+    {package = internal.dolos;}
+    {package = internal.acropolis.acropolis_process_omnibus;}
+    {package = internal.acropolis.acropolis_process_replayer;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
