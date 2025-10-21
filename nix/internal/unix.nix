@@ -532,14 +532,14 @@ in
           inherit cargoArtifacts;
           GIT_REVISION = inputs.acropolis.rev;
           ACROPOLIS_OFFLINE_MIRROR = pkgs.writeText "offline-mirror.json" (builtins.toJSON {
-            "https://book.world.dev.cardano.org/environments/mainnet/byron-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/byron-genesis.json");
-            "https://book.world.dev.cardano.org/environments/mainnet/shelley-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/shelley-genesis.json");
-            "https://book.world.dev.cardano.org/environments/mainnet/alonzo-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/alonzo-genesis.json");
-            "https://book.world.dev.cardano.org/environments/mainnet/conway-genesis.json" = builtins.readFile (cardano-node-configs + "/mainnet/conway-genesis.json");
-            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/byron-genesis.json" = builtins.readFile (sanchonet + "/genesis/byron-genesis.json");
-            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/shelley-genesis.json" = builtins.readFile (sanchonet + "/genesis/shelley-genesis.json");
-            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/alonzo-genesis.json" = builtins.readFile (sanchonet + "/genesis/alonzo-genesis.json");
-            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/conway-genesis.json" = builtins.readFile (sanchonet + "/genesis/conway-genesis.json");
+            "https://book.world.dev.cardano.org/environments/mainnet/byron-genesis.json" = cardano-node-configs + "/mainnet/byron-genesis.json";
+            "https://book.world.dev.cardano.org/environments/mainnet/shelley-genesis.json" = cardano-node-configs + "/mainnet/shelley-genesis.json";
+            "https://book.world.dev.cardano.org/environments/mainnet/alonzo-genesis.json" = cardano-node-configs + "/mainnet/alonzo-genesis.json";
+            "https://book.world.dev.cardano.org/environments/mainnet/conway-genesis.json" = cardano-node-configs + "/mainnet/conway-genesis.json";
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/byron-genesis.json" = sanchonet + "/genesis/byron-genesis.json";
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/shelley-genesis.json" = sanchonet + "/genesis/shelley-genesis.json";
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/alonzo-genesis.json" = sanchonet + "/genesis/alonzo-genesis.json";
+            "https://raw.githubusercontent.com/Hornan7/SanchoNet-Tutorials/refs/heads/main/genesis/conway-genesis.json" = sanchonet + "/genesis/conway-genesis.json";
           });
           ACROPOLIS_OMNIBUS_DEFAULT_CONFIG = builtins.path {path = inputs.acropolis + "/processes/omnibus/omnibus.toml";};
           ACROPOLIS_REPLAYER_DEFAULT_CONFIG = builtins.path {path = inputs.acropolis + "/processes/replayer/replayer.toml";};
