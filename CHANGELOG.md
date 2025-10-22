@@ -4,6 +4,7 @@
 
 - Support for optional `X-SKIP-PORT-CHECK` header. When set to the value of the `SKIP_PORT_CHECK_SECRET` environment variable, the server skips the TCP port reachability check and accepts the provided port as-is.
 - Use a WebSocket load balancer to allow connections from behind NAT(s)
+- `project_id` and `connection_string` can also be fetched from a file
 
 ## [1.3.3] - 2025-03-12
 

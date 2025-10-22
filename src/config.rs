@@ -1,6 +1,7 @@
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
+use std::fs::read_to_string;
 use std::str::FromStr;
 use std::{fs, path::PathBuf};
 use tracing::Level;
@@ -25,11 +26,13 @@ pub struct ServerInput {
 #[derive(Debug, Deserialize, Clone)]
 pub struct DbInput {
     pub connection_string: String,
+    pub connection_string_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct BlockfrostInput {
     pub project_id: String,
+    pub project_id_file: Option<String>,
     pub nft_asset: String,
 }
 
@@ -89,6 +92,16 @@ pub fn load_config(path: PathBuf) -> Config {
         _ => Level::INFO,
     };
 
+    let connection_string = match toml_config.database.connection_string_file {
+        Some(file_path) => read_to_string(file_path).expect("Failed to read connection string file"),
+        None => toml_config.database.connection_string.clone(),
+    };
+
+    let project_id = match toml_config.blockfrost.project_id_file {
+        Some(file_path) => read_to_string(file_path).expect("Failed to read project ID file"),
+        None => toml_config.blockfrost.project_id.clone(),
+    };
+
     let config = Config {
         server: Server {
             address: toml_config.server.address,
@@ -96,11 +109,9 @@ pub fn load_config(path: PathBuf) -> Config {
             is_testnet,
             url: toml_config.server.url,
         },
-        database: Db {
-            connection_string: toml_config.database.connection_string,
-        },
+        database: Db { connection_string },
         blockfrost: Blockfrost {
-            project_id: toml_config.blockfrost.project_id,
+            project_id,
             nft_asset: toml_config.blockfrost.nft_asset,
         },
     };
