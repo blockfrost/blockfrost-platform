@@ -25,13 +25,13 @@ pub struct ServerInput {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DbInput {
-    pub connection_string: String,
+    pub connection_string: Option<String>,
     pub connection_string_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct BlockfrostInput {
-    pub project_id: String,
+    pub project_id: Option<String>,
     pub project_id_file: Option<String>,
     pub nft_asset: String,
 }
@@ -81,7 +81,6 @@ pub struct Blockfrost {
 pub fn load_config(path: PathBuf) -> Config {
     let config_file_content = fs::read_to_string(path).expect("Reading config failed");
     let toml_config: ConfigInput = toml::from_str(&config_file_content).expect("Config file is invalid");
-    let is_testnet = toml_config.blockfrost.project_id.contains("preview");
 
     let log_level = match toml_config.server.log_level.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
@@ -93,14 +92,23 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     let connection_string = match toml_config.database.connection_string_file {
-        Some(file_path) => read_to_string(file_path).expect("Failed to read connection string file"),
-        None => toml_config.database.connection_string.clone(),
+        Some(file_path) => read_to_string(file_path)
+            .expect("Failed to read connection string file")
+            .to_string(),
+        None => toml_config
+            .database
+            .connection_string
+            .expect("connection_string must be provided"),
     };
 
     let project_id = match toml_config.blockfrost.project_id_file {
-        Some(file_path) => read_to_string(file_path).expect("Failed to read project ID file"),
-        None => toml_config.blockfrost.project_id.clone(),
+        Some(file_path) => read_to_string(file_path)
+            .expect("Failed to read project ID file")
+            .to_string(),
+        None => toml_config.blockfrost.project_id.expect("project_id must be provided"),
     };
+
+    let is_testnet = project_id.contains("preview");
 
     let config = Config {
         server: Server {
