@@ -3,16 +3,15 @@
     "acropolis": {
       "flake": false,
       "locked": {
-        "lastModified": 1761050893,
-        "narHash": "sha256-BjBuRlwnnMIglHhxz3AodobEU6h6lrGIaWeH4XKYycQ=",
+        "lastModified": 1761154810,
+        "narHash": "sha256-dVe6QLB2+EnkzTrubvQA9p7zxaUVUQI29CVZoaABSI8=",
         "owner": "input-output-hk",
         "repo": "acropolis",
-        "rev": "976793e75c47334176f83ad6f4fa7e6213c6ccbb",
+        "rev": "371aa46d74af8ea21cf076ed699d921dc827639b",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "pull/254/head",
         "repo": "acropolis",
         "type": "github"
       }

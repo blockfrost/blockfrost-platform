@@ -33,8 +33,8 @@ in {
     }
     {package = internal.mithril-client;}
     {package = internal.dolos;}
-    {package = internal.acropolis.acropolis_process_omnibus;}
-    {package = internal.acropolis.acropolis_process_replayer;}
+    {package = internal.acropolis-process-omnibus;}
+    {package = internal.acropolis-process-replayer;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
