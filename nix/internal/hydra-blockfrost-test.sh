@@ -349,13 +349,15 @@ log info "Opening a Hydra head"
   sleep 2 # This one works with `--one-message` and without `sleep`, but other calls don’t, so just in case.
 } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
 
-while true; do
-  sleep 3
-  status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
-  log info "Waiting for ‘Initial’; head status: $status"
-  if [ "$status" == "Initial" ]; then
-    break
-  fi
+for participant in alice bob; do
+  while true; do
+    sleep 3
+    status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port[$participant]}"/head | jq -r .tag)
+    log info "Waiting for ‘Initial’ in $participant’s node; head status: $status"
+    if [ "$status" == "Initial" ]; then
+      break
+    fi
+  done
 done
 
 # ---------------------------------------------------------------------------- #
