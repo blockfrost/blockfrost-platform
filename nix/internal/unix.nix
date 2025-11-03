@@ -486,6 +486,10 @@ in
       ''
       // {meta.description = "Runs Dolos on ${network}";};
 
+    acropolis-flake = (import inputs.flake-compat {src = inputs.acropolis;}).defaultNix;
+
+    inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
+
     blockfrost-tests = make-blockfrost-tests "preview";
 
     make-blockfrost-tests = network: let
