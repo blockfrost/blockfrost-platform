@@ -392,13 +392,15 @@ done
 
 # ---------------------------------------------------------------------------- #
 
-while true; do
-  sleep 3
-  status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
-  log info "Waiting for ‘Committed’ and ‘HeadIsOpen’; head status: $status"
-  if [ "$status" == "Open" ]; then
-    break
-  fi
+for participant in alice bob; do
+  while true; do
+    sleep 3
+    status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port[$participant]}"/head | jq -r .tag)
+    log info "Waiting for ‘Committed’ and ‘HeadIsOpen’ in $participant’s node; head status: $status"
+    if [ "$status" == "Open" ]; then
+      break
+    fi
+  done
 done
 
 # ---------------------------------------------------------------------------- #
