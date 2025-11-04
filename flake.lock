@@ -222,6 +222,40 @@
         "type": "github"
       }
     },
+    "midnight-indexer": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762183937,
+        "narHash": "sha256-Im7zSphJ/zDvpKbrHFX6PzNLgllo0ABsy+kGetQVfP8=",
+        "owner": "midnightntwrk",
+        "repo": "midnight-indexer",
+        "rev": "3c833df8130dafd1f27561e12743bb467770a668",
+        "type": "github"
+      },
+      "original": {
+        "owner": "midnightntwrk",
+        "ref": "v3.0.0-alpha.8",
+        "repo": "midnight-indexer",
+        "type": "github"
+      }
+    },
+    "midnight-node": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762197469,
+        "narHash": "sha256-GP+LkD7LND0iWbpKAikpNIoBVr5UmDP5i2bdwt2SY1M=",
+        "owner": "midnightntwrk",
+        "repo": "midnight-node",
+        "rev": "bc176747443d41806b3d4e4f0b1709f1fce0d260",
+        "type": "github"
+      },
+      "original": {
+        "owner": "midnightntwrk",
+        "ref": "node-0.18.0-rc.4",
+        "repo": "midnight-node",
+        "type": "github"
+      }
+    },
     "mithril": {
       "inputs": {
         "crane": "crane_2",
@@ -352,6 +386,8 @@
         "fenix": "fenix",
         "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",
+        "midnight-indexer": "midnight-indexer",
+        "midnight-node": "midnight-node",
         "mithril": "mithril",
         "nix-bundle-exe": "nix-bundle-exe",
         "nixpkgs": "nixpkgs_2",

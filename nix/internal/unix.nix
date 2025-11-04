@@ -575,4 +575,163 @@ in
           yarn test:preview
         '';
       };
+
+    midnight = let
+      fenix = inputs.fenix.packages.${pkgs.system};
+
+      # A toolchain with the wasm32 target available:
+      rustToolchain = fenix.combine [
+        fenix.stable.toolchain
+        fenix.targets.wasm32-unknown-unknown.stable.rust-std
+        fenix.stable.rust-src
+        fenix.stable.llvm-tools
+      ];
+
+      craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
+
+      # FIXME: remove after <https://github.com/midnightntwrk/midnight-ledger/pull/81> lands in node/indexer.
+      # Move `static/` files in `midnight-ledger` around, since they won’t be available after vendoring:
+      fixVendoring'ledger = ps: drv:
+        if lib.any (p: lib.hasPrefix "git+https://github.com/midnightntwrk/midnight-ledger" p.source) ps
+        then
+          drv.overrideAttrs (_old: {
+            postPatch = ''
+              mkdir -p ledger/static
+              mv static/dust ledger/static/
+              cp static/version ledger/static/
+
+              mkdir -p transient-crypto/static
+              mv static/bls_filecoin_2p14 transient-crypto/static/
+
+              mkdir -p zswap/static
+              mv static/zswap zswap/static/
+              cp static/version zswap/static/
+
+              find -iname '*.rs' | xargs grep -REl '!\("(\.\./)+static/' | while IFS= read -r file ; do
+                sed -re 's,(!\(\")\.\./((\.\./)*static/),\1\2,g' -i "$file"
+              done
+            '';
+          })
+        else drv;
+
+      trulyCommonArgs =
+        {
+          nativeBuildInputs =
+            [
+              pkgs.gnum4
+              pkgs.protobuf
+            ]
+            ++ lib.optionals pkgs.stdenv.isLinux [
+              pkgs.pkg-config
+            ];
+          buildInputs =
+            lib.optionals pkgs.stdenv.isLinux [
+              pkgs.openssl
+            ]
+            ++ lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.libiconv
+              pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
+              pkgs.darwin.apple_sdk_12_3.frameworks.Security
+              pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+            ];
+        }
+        // lib.optionalAttrs pkgs.stdenv.isLinux {
+          # The linker bundled with Fenix has wrong interpreter path, and it fails with ENOENT, so:
+          RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
+          # The same problem for the Wasm linker:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.llvmPackages.lld}/bin/wasm-ld";
+        }
+        // lib.optionalAttrs pkgs.stdenv.isDarwin {
+          # for bindgen
+          LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+        };
+    in {
+      midnight-node = let
+        src = inputs.midnight-node;
+        packageName = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/node/Cargo.toml";};};
+        baseArgs = {
+          inherit (packageName) version pname;
+          inherit src;
+          strictDeps = true;
+        };
+        cargoVendorDir = craneLib.vendorCargoDeps (baseArgs
+          // {
+            overrideVendorGitCheckout = fixVendoring'ledger;
+          });
+        commonArgs =
+          baseArgs
+          // trulyCommonArgs
+          // {
+            inherit cargoVendorDir;
+
+            # FIXME: `frame-storage-access-test-runtime`’s `build.rs` script fails otherwise, it’d be good to fix, see:
+            # <https://github.com/paritytech/polkadot-sdk/blob/6fd693e6d9cfa46cd2acbcb41cd5b0451a62d67c/substrate/utils/frame/storage-access-test-runtime/build.rs>
+            SKIP_WASM_BUILD = 1;
+
+            # FIXME: remove after <https://github.com/midnightntwrk/midnight-node/pull/179>.
+            postPatch = ''
+              mkdir -p docs/src
+              touch docs/src/lib.rs
+            '';
+          };
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+      in
+        craneLib.buildPackage (commonArgs
+          // {
+            inherit cargoArtifacts;
+            doCheck = false; # we run tests elsewhere
+          });
+
+      midnight-indexer = let
+        src = inputs.midnight-indexer;
+        baseArgs = {
+          pname = "midnight-indexer";
+          inherit src;
+          strictDeps = true;
+        };
+        cargoVendorDir = craneLib.vendorCargoDeps (baseArgs
+          // {
+            overrideVendorGitCheckout = fixVendoring'ledger;
+          });
+        commonArgs =
+          baseArgs
+          // trulyCommonArgs
+          // {
+            inherit cargoVendorDir;
+          };
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+        # XXX: Most of their binaries need to be build with the `cloud` feature,
+        # or you’ll hit `unimplemented!()`.
+        packagesCloud = craneLib.buildPackage (commonArgs
+          // {
+            inherit cargoArtifacts;
+            pname = commonArgs.pname + "-cloud";
+            doCheck = false; # we run tests elsewhere
+            cargoExtraArgs = "--features cloud";
+          });
+
+        # XXX: But `indexer-standalone` needs the `standalone` flag. And you can’t mix the flags.
+        packagesStandalone = craneLib.buildPackage (commonArgs
+          // {
+            inherit cargoArtifacts;
+            pname = commonArgs.pname + "-standalone";
+            doCheck = false; # we run tests elsewhere
+            cargoExtraArgs = "-p indexer-standalone --features standalone";
+          });
+
+        # XXX: But you can mix resulting binaries:
+        packages = pkgs.stdenv.mkDerivation {
+          inherit (packagesCloud) pname version;
+          buildCommand = ''
+            mkdir -p $out
+            cp -vr ${packagesCloud}/bin $out/
+            chmod -R +w $out
+            cp -vf ${packagesStandalone}/bin/indexer-standalone $out/bin/
+          '';
+          meta.mainProgram = "indexer-standalone";
+        };
+      in
+        packages;
+    };
   }
