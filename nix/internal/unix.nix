@@ -614,6 +614,16 @@ in
           })
         else drv;
 
+      fixDarwin'wasm-opt-sys = p: drv:
+        if p.name == "wasm-opt-sys" # && p.version == "0.116.0"
+        then
+          drv.overrideAttrs (_old: {
+            patches = [
+              ./midnight--wasm-opt-sys--darwin.patch
+            ];
+          })
+        else drv;
+
       trulyCommonArgs =
         {
           nativeBuildInputs =
@@ -657,6 +667,9 @@ in
         cargoVendorDir = craneLib.vendorCargoDeps (baseArgs
           // {
             overrideVendorGitCheckout = fixVendoring'ledger;
+          }
+          // lib.optionalAttrs pkgs.stdenv.isDarwin {
+            overrideVendorCargoPackage = fixDarwin'wasm-opt-sys;
           });
         commonArgs =
           baseArgs
@@ -692,6 +705,9 @@ in
         cargoVendorDir = craneLib.vendorCargoDeps (baseArgs
           // {
             overrideVendorGitCheckout = fixVendoring'ledger;
+          }
+          // lib.optionalAttrs pkgs.stdenv.isDarwin {
+            overrideVendorCargoPackage = fixDarwin'wasm-opt-sys;
           });
         commonArgs =
           baseArgs
