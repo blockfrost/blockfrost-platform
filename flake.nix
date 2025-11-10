@@ -17,6 +17,14 @@
     acropolis.flake = false;
     blockfrost-tests.url = "github:blockfrost/blockfrost-tests";
     blockfrost-tests.flake = false;
+    midnight-node = {
+      url = "github:midnightntwrk/midnight-node/node-0.18.0-rc.4";
+      flake = false;
+    };
+    midnight-indexer = {
+      url = "github:midnightntwrk/midnight-indexer/v3.0.0-alpha.8";
+      flake = false;
+    };
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use

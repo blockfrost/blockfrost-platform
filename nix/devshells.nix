@@ -35,6 +35,8 @@ in {
     {package = internal.dolos;}
     {package = internal.acropolis-process-omnibus;}
     {package = internal.acropolis-process-replayer;}
+    {package = internal.midnight.midnight-node;}
+    {package = internal.midnight.midnight-indexer;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
