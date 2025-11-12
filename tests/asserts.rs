@@ -2,6 +2,7 @@ use serde_json::Value;
 
 /// This workaround exists because the final error is a Haskell string
 /// which we don't want to bother de-serializing from string.
+#[allow(dead_code)]
 pub fn assert_submit_error_responses(bf_response: &[u8], local_response: &[u8]) {
     #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
     #[serde(untagged)]

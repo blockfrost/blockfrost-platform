@@ -6,7 +6,7 @@ use blockfrost_platform::{
     server::{build, state::ApiPrefix},
 };
 use common::{
-    config::{Config, DataSources, IcebreakersConfig, Mode},
+    config::{Config, DataSources, Evaluator, IcebreakersConfig, Mode},
     types::{LogLevel, Network},
 };
 use node::pool::NodePool;
@@ -23,6 +23,14 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
+#[allow(dead_code)]
+pub async fn initialize_app() -> Router {
+    initialize_logging();
+    let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
+    app
+}
+
+#[allow(dead_code)]
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
@@ -47,6 +55,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         no_metrics: false,
         custom_genesis_config: None,
         data_sources: DataSources { dolos: None },
+        evaluator: Evaluator::External,
     };
 
     Arc::new(config)
@@ -67,6 +76,7 @@ pub async fn build_app() -> Result<
     build(config).await
 }
 
+#[allow(dead_code)]
 pub async fn build_app_non_solitary() -> Result<
     (
         Router,
