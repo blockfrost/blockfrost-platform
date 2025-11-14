@@ -111,6 +111,22 @@ jobs:
         run: |
           nix run -L .#internal.x86_64-linux.blockfrost-tests
 
+  hydra_against_blockfrost_tests:
+    name: Hydra tests of their `--blockfrost` option
+    runs-on: [self-hosted, Linux, X64, nixos]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Hydra Tests
+        continue-on-error: true
+        env:
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node.socket
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
+          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+        run: |
+          nix run -L .#internal.x86_64-linux.hydra-test
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
