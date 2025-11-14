@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "acropolis": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761154810,
+        "narHash": "sha256-dVe6QLB2+EnkzTrubvQA9p7zxaUVUQI29CVZoaABSI8=",
+        "owner": "input-output-hk",
+        "repo": "acropolis",
+        "rev": "371aa46d74af8ea21cf076ed699d921dc827639b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "input-output-hk",
+        "repo": "acropolis",
+        "type": "github"
+      }
+    },
     "advisory-db": {
       "flake": false,
       "locked": {
@@ -119,16 +135,16 @@
     "dolos": {
       "flake": false,
       "locked": {
-        "lastModified": 1759742774,
-        "narHash": "sha256-QUfByCFCWXB6uJpnDH07tq05P48SBvSzyJ3ZRL0DifE=",
+        "lastModified": 1760607205,
+        "narHash": "sha256-fAxQEzleQ4d3RV37HSPFZ6Qgy+vr+ycc7fwqvKAtHrk=",
         "owner": "txpipe",
         "repo": "dolos",
-        "rev": "2d63979dcd4ae13a89f7d1090229a851d754b425",
+        "rev": "4b445dfb762ef1d1a0cd738910c4dd7c445c8616",
         "type": "github"
       },
       "original": {
         "owner": "txpipe",
-        "ref": "v1.0.0-beta.5",
+        "ref": "v1.0.0-beta.6",
         "repo": "dolos",
         "type": "github"
       }
@@ -220,6 +236,40 @@
         "owner": "cardano-scaling",
         "ref": "1.0.0",
         "repo": "hydra",
+        "type": "github"
+      }
+    },
+    "midnight-indexer": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762183937,
+        "narHash": "sha256-Im7zSphJ/zDvpKbrHFX6PzNLgllo0ABsy+kGetQVfP8=",
+        "owner": "midnightntwrk",
+        "repo": "midnight-indexer",
+        "rev": "3c833df8130dafd1f27561e12743bb467770a668",
+        "type": "github"
+      },
+      "original": {
+        "owner": "midnightntwrk",
+        "ref": "v3.0.0-alpha.8",
+        "repo": "midnight-indexer",
+        "type": "github"
+      }
+    },
+    "midnight-node": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1762197469,
+        "narHash": "sha256-GP+LkD7LND0iWbpKAikpNIoBVr5UmDP5i2bdwt2SY1M=",
+        "owner": "midnightntwrk",
+        "repo": "midnight-node",
+        "rev": "bc176747443d41806b3d4e4f0b1709f1fce0d260",
+        "type": "github"
+      },
+      "original": {
+        "owner": "midnightntwrk",
+        "ref": "node-0.18.0-rc.4",
+        "repo": "midnight-node",
         "type": "github"
       }
     },
@@ -342,6 +392,7 @@
     },
     "root": {
       "inputs": {
+        "acropolis": "acropolis",
         "advisory-db": "advisory-db",
         "blockfrost-tests": "blockfrost-tests",
         "cardano-node": "cardano-node",
@@ -353,6 +404,8 @@
         "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",
         "hydra": "hydra",
+        "midnight-indexer": "midnight-indexer",
+        "midnight-node": "midnight-node",
         "mithril": "mithril",
         "nix-bundle-exe": "nix-bundle-exe",
         "nixpkgs": "nixpkgs_2",

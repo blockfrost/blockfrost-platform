@@ -11,15 +11,27 @@
     flake-compat.flake = false;
     cardano-node.url = "github:IntersectMBO/cardano-node/10.5.1";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
-    dolos.url = "github:txpipe/dolos/v1.0.0-beta.5";
+    dolos.url = "github:txpipe/dolos/v1.0.0-beta.6";
     dolos.flake = false;
+    acropolis.url = "github:input-output-hk/acropolis";
+    acropolis.flake = false;
     blockfrost-tests.url = "github:blockfrost/blockfrost-tests";
     blockfrost-tests.flake = false;
+    midnight-node = {
+      url = "github:midnightntwrk/midnight-node/node-0.18.0-rc.4";
+      flake = false;
+    };
+    midnight-indexer = {
+      url = "github:midnightntwrk/midnight-indexer/v3.0.0-alpha.8";
+      flake = false;
+    };
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
-    hydra.url = "github:cardano-scaling/hydra/1.0.0";
-    hydra.flake = false;
+    hydra = {
+      url = "github:cardano-scaling/hydra/1.0.0";
+      flake = false;
+    };
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
     cardano-playground.url = "github:input-output-hk/cardano-playground/56ebfef5595c43014029b039ade01b0ef06233e0";
