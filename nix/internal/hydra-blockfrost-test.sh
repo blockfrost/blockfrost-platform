@@ -457,18 +457,23 @@ done
 
 log info "Closing the Hydra head"
 
-{
-  echo '{"tag":"Close"}'
-  sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
-} | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+# XXX: we potentially need to send the `Close` request multiple times, because
+# of a known bug: <https://github.com/cardano-scaling/hydra/issues/1039>.
 
 while true; do
-  sleep 3
-  status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
-  log info "Waiting for ‘Closed’; head status: $status"
-  if [ "$status" == "Closed" ]; then
-    break
-  fi
+  {
+    echo '{"tag":"Close"}'
+    sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
+  } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+
+  for _ in {1..10}; do
+    sleep 3
+    status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
+    log info "Waiting for ‘Closed’; head status: $status"
+    if [ "$status" == "Closed" ]; then
+      break 2
+    fi
+  done
 done
 
 # ---------------------------------------------------------------------------- #
