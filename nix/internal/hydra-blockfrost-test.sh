@@ -407,30 +407,37 @@ done
 
 log info "Using the Hydra head"
 
-txdir=tx-03-on-L2
-mkdir -p $txdir
+# Make sure you have enough funds when increasing:
+num_L2_transactions=8
 
-curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/snapshot/utxo |
-  jq "with_entries(select(.value.address == \"$(cat credentials/alice-funds/payment.addr)\"))" \
-    >$txdir/utxo.json
+for nth in $(seq 1 $num_L2_transactions); do
+  log info "Using the Hydra head – transaction $nth/$num_L2_transactions"
 
-lovelace_L2=1000000
-cardano-cli latest transaction build-raw \
-  --tx-in "$(jq <$txdir/utxo.json -r 'to_entries[0].key')" \
-  --tx-out "$(cat credentials/bob-funds/payment.addr)"+"${lovelace_L2}" \
-  --tx-out "$(cat credentials/alice-funds/payment.addr)"+"$(jq <$txdir/utxo.json "to_entries[0].value.value.lovelace - ${lovelace_L2}")" \
-  --fee 0 \
-  --out-file $txdir/tx.json
+  txdir="tx-03-$(printf '%03d' "$nth")-on-L2"
+  mkdir -p "$txdir"
 
-cardano-cli latest transaction sign \
-  --tx-body-file $txdir/tx.json \
-  --signing-key-file credentials/alice-funds/payment.sk \
-  --out-file $txdir/tx-signed.json
+  curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/snapshot/utxo |
+    jq "with_entries(select(.value.address == \"$(cat credentials/alice-funds/payment.addr)\"))" \
+      >"$txdir"/utxo.json
 
-{
-  jq <$txdir/tx-signed.json -c '{tag: "NewTx", transaction: .}'
-  sleep 2 # This one works with `--one-message` and without `sleep`, but other calls don’t, so just in case.
-} | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+  lovelace_L2=1000000
+  cardano-cli latest transaction build-raw \
+    --tx-in "$(jq <"$txdir"/utxo.json -r 'to_entries[0].key')" \
+    --tx-out "$(cat credentials/bob-funds/payment.addr)"+"${lovelace_L2}" \
+    --tx-out "$(cat credentials/alice-funds/payment.addr)"+"$(jq <"$txdir"/utxo.json "to_entries[0].value.value.lovelace - ${lovelace_L2}")" \
+    --fee 0 \
+    --out-file "$txdir"/tx.json
+
+  cardano-cli latest transaction sign \
+    --tx-body-file "$txdir"/tx.json \
+    --signing-key-file credentials/alice-funds/payment.sk \
+    --out-file "$txdir"/tx-signed.json
+
+  {
+    jq <"$txdir"/tx-signed.json -c '{tag: "NewTx", transaction: .}'
+    sleep 2 # This one works with `--one-message` and without `sleep`, but other calls don’t, so just in case.
+  } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+done
 
 # ---------------------------------------------------------------------------- #
 
@@ -439,8 +446,9 @@ log info "Verifying snapshot UTxO"
 while true; do
   sleep 3
   count=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/snapshot/utxo | jq 'length')
-  log info "UTxO count: $count"
-  if [ "$count" == "3" ]; then
+  expected=$((2 + num_L2_transactions))
+  log info "UTxO count: $count (expected: $expected)"
+  if ((count == expected)); then
     break
   fi
 done
@@ -502,8 +510,8 @@ new_bob_funds=$(cardano-cli query utxo \
   --out-file /dev/stdout |
   jq '[.[] | .value.lovelace] | add // 0')
 
-if ((new_alice_funds == "${lovelace_fund["alice-funds"]}" - lovelace_L2)) &&
-  ((new_bob_funds == "${lovelace_fund["bob-funds"]}" + lovelace_L2)); then
+if ((new_alice_funds == "${lovelace_fund["alice-funds"]}" - num_L2_transactions * lovelace_L2)) &&
+  ((new_bob_funds == "${lovelace_fund["bob-funds"]}" + num_L2_transactions * lovelace_L2)); then
   log info "… OK, funds were moved correctly on L1."
 else
   log fatal "Unexpected total UTxO, Alice: $new_alice_funds, Bob: $new_bob_funds."
