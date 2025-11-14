@@ -7,10 +7,12 @@
     crane.url = "github:ipetkov/crane";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
-    flake-compat.url = "github:input-output-hk/flake-compat";
+    flake-compat.url = "github:edolstra/flake-compat";
     flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.5.1";
-    cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
+    cardano-node = {
+      url = "github:IntersectMBO/cardano-node/10.5.1";
+      flake = false; # otherwise, +2k dependencies we don’t really use
+    };
     dolos.url = "github:txpipe/dolos/v1.0.0-beta.6";
     dolos.flake = false;
     acropolis.url = "github:input-output-hk/acropolis";
@@ -28,10 +30,16 @@
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs.url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
+    hydra = {
+      url = "github:cardano-scaling/hydra/1.0.0";
+      flake = false;
+    };
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
-    cardano-playground.url = "github:input-output-hk/cardano-playground/56ebfef5595c43014029b039ade01b0ef06233e0";
-    cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
+    cardano-playground = {
+      url = "github:input-output-hk/cardano-playground/56ebfef5595c43014029b039ade01b0ef06233e0";
+      flake = false; # otherwise, +9k dependencies in flake.lock…
+    };
     advisory-db.url = "github:rustsec/advisory-db";
     advisory-db.flake = false;
     nixpkgs-nsis.url = "github:input-output-hk/nixpkgs/be445a9074f139d63e704fa82610d25456562c3d";
