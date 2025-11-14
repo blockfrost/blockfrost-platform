@@ -374,7 +374,7 @@ for participant in alice bob; do
     --address "$(cat credentials/"$participant"-funds/payment.addr)" \
     --out-file $txdir/commit-utxo-"$participant".json
 
-  curl -v -fsSL -X POST http://127.0.0.1:"${hydra_api_port[$participant]}"/commit \
+  curl -fsSL -X POST http://127.0.0.1:"${hydra_api_port[$participant]}"/commit \
     --data @$txdir/commit-utxo-"$participant".json \
     >$txdir/commit-tx-"$participant".json || {
     # Sleep for a while to get a chance to see more of Hydra logs
