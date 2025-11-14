@@ -183,9 +183,12 @@ cardano-cli query utxo \
   --address "$(cat credentials/submit-mnemonic/payment.addr)" \
   --out-file $txdir/input-utxo.json
 
+# XXX: we’re only taking the first 200 UTxOs below, because the test address on
+# CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
+
 # shellcheck disable=SC2046
 cardano-cli latest transaction build \
-  $(jq <$txdir/input-utxo.json -j 'to_entries[].key | "--tx-in ", ., " "') \
+  $(jq <$txdir/input-utxo.json -j 'to_entries[:200][].key | "--tx-in ", ., " "') \
   --change-address "$(cat credentials/submit-mnemonic/payment.addr)" \
   --tx-out "$(cat credentials/alice-funds/payment.addr)"+"${lovelace_fund["alice-funds"]}" \
   --tx-out "$(cat credentials/alice-node/payment.addr)"+"${lovelace_fund["alice-node"]}" \
