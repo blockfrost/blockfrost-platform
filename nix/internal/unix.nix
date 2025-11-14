@@ -197,7 +197,7 @@ in
 
     cardano-node-configs-verbose = builtins.path {
       name = "cardano-playground-configs";
-      path = inputs.cardano-playground + "/static/book.play.dev.cardano.org/environments";
+      path = inputs.cardano-playground + "/docs/environments";
     };
 
     cardano-node-configs =
