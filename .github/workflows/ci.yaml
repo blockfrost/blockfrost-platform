@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - .github/workflows/oci.yml
+      - docker/**
+      - Dockerfile
   workflow_dispatch:
     inputs:
       upload_artifacts:

@@ -2,40 +2,67 @@ name: OCI
 
 on:
   push:
+    branches:
+      - main
   release:
     types:
       - published
 
+env:
+  REGISTRY_IMAGE: ${{ vars.REGISTRY_IMAGE }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+
       - name: 🧰 Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: 🚀 Build the image
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare platform
         run: |
-          docker compose build --build-arg GIT_REVISION=$(git rev-parse @)
-      - name: 📤 Push the image (edge)
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Build and push edge image
         if: github.ref == 'refs/heads/main'
-        run: |
-          image=ghcr.io/blockfrost/blockfrost-platform
-          docker push $image:edge
-      - name: 📤 Push the image (version tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ env.REGISTRY_IMAGE }}:edge
+          build-args: |
+            GIT_REVISION=${{ github.sha }}
+
+      - name: Build and push release version
         if: github.event_name == 'release' && github.event.action == 'published'
-        run: |
-          image=ghcr.io/blockfrost/blockfrost-platform
-          docker push $image:edge
-          docker tag  $image:edge $image:${{ github.event.release.tag_name }}
-          docker push $image:${{ github.event.release.tag_name }}
-      - name: 📤 Push the image (latest tag)
-        if: github.event_name == 'release' && github.event.action == 'published' && !github.event.release.prerelease
-        run: |
-          image=ghcr.io/blockfrost/blockfrost-platform
-          docker tag  $image:edge $image:latest
-          docker push $image:latest
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:edge
+            ${{ env.REGISTRY_IMAGE }}:${{ github.event.release.tag_name }}
+            ${{ github.event.release.prerelease && '' || format('{0}:latest', env.REGISTRY_IMAGE) }}

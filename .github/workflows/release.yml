@@ -1,6 +1,11 @@
 name: Release
 
 on:
+  push:
+    paths-ignore:
+      - .github/workflows/oci.yml
+      - docker/**
+      - Dockerfile
   release:
     types:
       - published
