@@ -1,10 +1,11 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS base
 
+# hadolint ignore=DL3008
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
   sccache=0.10.0-4 \
   pkgconf=1.8.1-4 \
-  libssl-dev=3.5.1-1+deb13u1 \
+  libssl-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

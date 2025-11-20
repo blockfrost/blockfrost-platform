@@ -37,7 +37,5 @@
   "/genesis",
   "/addresses/{address}/transactions",
   "/addresses/{address}/utxos",
-  "/tx/submit",
-  "/utils/txs/evaluate",
-  "/utils/txs/evaluate/utxos"
+  "/tx/submit"
 ]
