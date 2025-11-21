@@ -9,7 +9,7 @@
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     flake-compat.url = "github:input-output-hk/flake-compat";
     flake-compat.flake = false;
-    cardano-node.url = "github:IntersectMBO/cardano-node/10.5.2";
+    cardano-node.url = "github:IntersectMBO/cardano-node/10.5.3";
     cardano-node.flake = false; # otherwise, +2k dependencies we don’t really use
     dolos.url = "github:txpipe/dolos/v1.0.0-rc.2";
     dolos.flake = false;
