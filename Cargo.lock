@@ -2382,6 +2382,7 @@ dependencies = [
 name = "node"
 version = "0.0.3-rc.3"
 dependencies = [
+ "build-utils",
  "chrono",
  "common",
  "crossbeam",
