@@ -3,6 +3,7 @@ name = "node"
 version = "0.0.3-rc.3"
 license = "Apache-2.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 common = { path = "../common" }
@@ -26,6 +27,9 @@ pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blo
 pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 chrono = "0.4"
+
+[build-dependencies]
+build-utils = { path = "../build_utils" }
 
 [features]
 tarpaulin = []

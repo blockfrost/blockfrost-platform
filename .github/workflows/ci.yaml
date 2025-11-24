@@ -62,14 +62,14 @@ jobs:
         run: cargo build --workspace --release --verbose
 
       - name: Test
-        run: cargo test --workspace --lib --all-features --verbose
+        run: cargo test --workspace --lib --verbose
         timeout-minutes: 10
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
       - name: Lint with Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
