@@ -5,6 +5,7 @@ use crate::errors::BlockfrostError;
 use crate::pagination::ApplyPagination;
 use crate::pagination::Pagination;
 use crate::types::ApiResult;
+
 use axum::Json;
 use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
