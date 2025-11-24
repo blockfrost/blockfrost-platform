@@ -305,7 +305,7 @@
       },
       "original": {
         "owner": "nixos",
-        "ref": "nixpkgs-unstable",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -425,7 +425,7 @@
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "10.4.1.1",
+        "ref": "10.4.1.2",
         "repo": "testgen-hs",
         "type": "github"
       }

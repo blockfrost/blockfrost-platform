@@ -187,6 +187,11 @@ impl BlockfrostError {
         Self::custom_400("Invalid path. Please check https://docs.blockfrost.io/".to_string())
     }
 
+    /// custom method for ogmios version conflict
+    pub fn conflicting_ogmios_version() -> Self {
+        Self::custom_400("Conflicting ogmios version with provided input".to_string())
+    }
+
     /// malformed range parameter error
     pub fn malformed_range_param() -> Self {
         Self {
