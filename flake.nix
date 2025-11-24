@@ -30,7 +30,7 @@
     testgen-hs.flake = false; # otherwise, +2k dependencies we don’t really use
     devshell.url = "github:numtide/devshell";
     devshell.inputs.nixpkgs.follows = "nixpkgs";
-    cardano-playground.url = "github:input-output-hk/cardano-playground/19d0c33a7f00856727344faf011f83cf30cfb06a";
+    cardano-playground.url = "github:input-output-hk/cardano-playground/c0715c2b04628ce1946803b0a829b3e1445b5c4d";
     cardano-playground.flake = false; # otherwise, +9k dependencies in flake.lock…
     advisory-db.url = "github:rustsec/advisory-db";
     advisory-db.flake = false;
