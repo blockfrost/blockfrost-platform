@@ -51,8 +51,10 @@ in rec {
       inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
       postPatch = ''
-        sed -r '/^build = .*/d' -i Cargo.toml
-        rm build.rs
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
       '';
     });
 
