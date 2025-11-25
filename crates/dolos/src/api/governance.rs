@@ -1,5 +1,5 @@
 use crate::client::Dolos;
-use blockfrost_openapi::models::drep::Drep;
+use api_provider::types::DrepsSingleResponse;
 use common::types::ApiResult;
 
 pub struct DolosGovernance<'a> {
@@ -13,7 +13,7 @@ impl Dolos {
 }
 
 impl DolosGovernance<'_> {
-    pub async fn drep(&self, drep_id: &str) -> ApiResult<Drep> {
+    pub async fn drep(&self, drep_id: &str) -> ApiResult<DrepsSingleResponse> {
         let path = format!("governance/dreps/{drep_id}");
         self.inner.client.get(&path, None).await
     }

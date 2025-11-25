@@ -6,7 +6,10 @@ license = "Apache-2.0"
 build = "build.rs"
 
 [dependencies]
+api-provider = { path = "../api_provider" }
+
 axum = { version = "0.8.2", features = ["ws"] }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 thiserror = "2.0.11"
 serde = { version = "1.0.218", features = ["derive"] }
@@ -25,9 +28,7 @@ twelf = { version = "0.15.0", features = ["clap", "toml"] }
 inquire = "0.9"
 anyhow = "1.0.95"
 futures-util = "0.3"
-blockfrost-openapi = "0.1.75"
 clap = { version = "4.5.26", features = ["derive"] }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
 
 [dev-dependencies]
 rstest = "0.24.0"
