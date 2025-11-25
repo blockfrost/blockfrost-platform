@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::AccountsResponse;
 use axum::extract::{Path, State};
-use common::accounts::{AccountData, AccountsPath};
+use bf_api_provider::types::AccountsResponse;
+use bf_common::accounts::{AccountData, AccountsPath};
 
 pub async fn route(
     State(state): State<AppState>,

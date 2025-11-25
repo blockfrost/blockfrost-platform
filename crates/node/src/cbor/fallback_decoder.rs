@@ -1,4 +1,4 @@
-use common::errors::AppError;
+use bf_common::errors::AppError;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};

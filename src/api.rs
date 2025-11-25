@@ -1,4 +1,4 @@
-pub use common::types::ApiResult;
+pub use bf_common::types::ApiResult;
 
 pub mod accounts;
 pub mod addresses;

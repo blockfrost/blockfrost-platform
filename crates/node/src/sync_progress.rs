@@ -1,6 +1,6 @@
 use super::connection::NodeClient;
+use bf_common::errors::BlockfrostError;
 use chrono::{Duration, TimeZone, Utc};
-use common::errors::BlockfrostError;
 use pallas_network::{miniprotocols, miniprotocols::localstate};
 use pallas_traverse::wellknown;
 use serde::{Deserialize, Serialize};

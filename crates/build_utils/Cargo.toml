@@ -1,5 +1,5 @@
 [package]
-name = "build-utils"
+name = "blockfrost-platform-build-utils"
 version.workspace = true
 license.workspace = true
 edition.workspace = true

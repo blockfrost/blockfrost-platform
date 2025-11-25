@@ -1,7 +1,7 @@
 use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
-use api_provider::types::AccountsHistoryResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::AccountsHistoryResponse;
+use bf_common::{
     accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
 };

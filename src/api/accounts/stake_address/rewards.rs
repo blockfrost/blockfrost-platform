@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::AccountsRewardsResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::AccountsRewardsResponse;
+use bf_common::{
     accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
 };

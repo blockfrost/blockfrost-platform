@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::types::{BlocksResponse, BlocksSingleResponse};
-use common::{pagination::Pagination, types::ApiResult};
+use bf_api_provider::types::{BlocksResponse, BlocksSingleResponse};
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DolosBlocks<'a> {
     pub(crate) inner: &'a Dolos,

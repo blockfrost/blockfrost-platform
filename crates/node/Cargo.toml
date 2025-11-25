@@ -1,12 +1,12 @@
 [package]
-name = "node"
+name = "blockfrost-platform-node"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
 build = "build.rs"
 
 [dependencies]
-common = { path = "../common" }
+bf-common.workspace = true
 serde.workspace = true
 reqwest.workspace = true
 toml.workspace = true
@@ -29,7 +29,7 @@ pallas-primitives.workspace = true
 chrono.workspace = true
 
 [build-dependencies]
-build-utils = { path = "../build_utils" }
+bf-build-utils.workspace = true
 
 [features]
 tarpaulin = []

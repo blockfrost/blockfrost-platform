@@ -273,13 +273,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
-name = "api-provider"
-version = "0.0.3-rc.3"
-dependencies = [
- "blockfrost-openapi",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -543,19 +536,20 @@ name = "blockfrost-platform"
 version = "0.0.3-rc.3"
 dependencies = [
  "anyhow",
- "api-provider",
  "axum",
  "base64 0.22.1",
  "bech32 0.9.1",
  "bip39",
  "blockfrost",
- "build-utils",
+ "blockfrost-platform-api-provider",
+ "blockfrost-platform-build-utils",
+ "blockfrost-platform-common",
+ "blockfrost-platform-dolos",
+ "blockfrost-platform-node",
  "cardano-serialization-lib",
  "chrono",
  "clap",
- "common",
  "dirs",
- "dolos",
  "dotenvy",
  "futures",
  "futures-util",
@@ -566,7 +560,6 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "node",
  "ntest",
  "pallas",
  "pallas-addresses",
@@ -599,7 +592,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "build-utils"
+name = "blockfrost-platform-api-provider"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-openapi",
+]
+
+[[package]]
+name = "blockfrost-platform-build-utils"
 version = "0.0.3-rc.3"
 dependencies = [
  "bzip2",
@@ -607,6 +607,80 @@ dependencies = [
  "tar",
  "toml 0.8.23",
  "zip",
+]
+
+[[package]]
+name = "blockfrost-platform-common"
+version = "0.0.3-rc.3"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bech32 0.9.1",
+ "blockfrost-openapi",
+ "blockfrost-platform-build-utils",
+ "cardano-serialization-lib",
+ "clap",
+ "dirs",
+ "futures",
+ "futures-util",
+ "hex",
+ "inquire",
+ "pallas-addresses",
+ "pallas-network",
+ "pretty_assertions",
+ "reqwest",
+ "rstest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
+ "twelf",
+ "url",
+]
+
+[[package]]
+name = "blockfrost-platform-dolos"
+version = "0.0.3-rc.3"
+dependencies = [
+ "async-trait",
+ "axum",
+ "blockfrost-openapi",
+ "blockfrost-platform-api-provider",
+ "blockfrost-platform-common",
+ "dirs",
+ "reqwest",
+ "serde",
+ "toml 0.8.23",
+]
+
+[[package]]
+name = "blockfrost-platform-node"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-platform-build-utils",
+ "blockfrost-platform-common",
+ "chrono",
+ "crossbeam",
+ "deadpool",
+ "dirs",
+ "hex",
+ "metrics",
+ "num_cpus",
+ "pallas-codec",
+ "pallas-crypto",
+ "pallas-hardano",
+ "pallas-network",
+ "pallas-primitives",
+ "pallas-traverse",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
 ]
 
 [[package]]
@@ -821,37 +895,6 @@ name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
-
-[[package]]
-name = "common"
-version = "0.0.3-rc.3"
-dependencies = [
- "anyhow",
- "axum",
- "bech32 0.9.1",
- "blockfrost-openapi",
- "build-utils",
- "cardano-serialization-lib",
- "clap",
- "dirs",
- "futures",
- "futures-util",
- "hex",
- "inquire",
- "pallas-addresses",
- "pallas-network",
- "pretty_assertions",
- "reqwest",
- "rstest",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "toml 0.8.23",
- "tracing",
- "twelf",
- "url",
-]
 
 [[package]]
 name = "config-derive"
@@ -1215,21 +1258,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95249b50c6c185bee49034bcb378a49dc2b5dff0be90ff6616d31d64febab05d"
 dependencies = [
  "litrs",
-]
-
-[[package]]
-name = "dolos"
-version = "0.0.3-rc.3"
-dependencies = [
- "api-provider",
- "async-trait",
- "axum",
- "blockfrost-openapi",
- "common",
- "dirs",
- "reqwest",
- "serde",
- "toml 0.8.23",
 ]
 
 [[package]]
@@ -2355,34 +2383,6 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "node"
-version = "0.0.3-rc.3"
-dependencies = [
- "build-utils",
- "chrono",
- "common",
- "crossbeam",
- "deadpool",
- "dirs",
- "hex",
- "metrics",
- "num_cpus",
- "pallas-codec",
- "pallas-crypto",
- "pallas-hardano",
- "pallas-network",
- "pallas-primitives",
- "pallas-traverse",
- "reqwest",
- "serde",
- "serde_json",
- "sysinfo",
- "tokio",
- "toml 0.8.23",
- "tracing",
 ]
 
 [[package]]

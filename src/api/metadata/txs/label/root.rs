@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::MetadataLabelJsonResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::MetadataLabelJsonResponse;
+use bf_common::{
     metadata::MetadataPath,
     pagination::{Pagination, PaginationQuery},
 };

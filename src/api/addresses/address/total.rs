@@ -1,7 +1,7 @@
 use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
-use api_provider::types::AddressesContentTotalResponse;
 use axum::extract::{Path, State};
-use common::addresses::{AddressInfo, AddressesPath};
+use bf_api_provider::types::AddressesContentTotalResponse;
+use bf_common::addresses::{AddressInfo, AddressesPath};
 
 pub async fn route(
     Path(address_path): Path<AddressesPath>,

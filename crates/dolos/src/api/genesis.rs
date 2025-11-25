@@ -1,6 +1,6 @@
 use crate::client::Dolos;
+use bf_common::types::ApiResult;
 use blockfrost_openapi::models::genesis_content::GenesisContent;
-use common::types::ApiResult;
 
 pub struct DolosGenesis<'a> {
     pub(crate) inner: &'a Dolos,

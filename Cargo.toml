@@ -14,10 +14,10 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-common = { path = "crates/common" }
-node = { path = "crates/node" }
-dolos = { path = "crates/dolos" }
-api-provider = { path = "crates/api_provider" }
+bf-common.workspace = true
+bf-node.workspace = true
+bf-dolos.workspace = true
+bf-api-provider.workspace = true
 axum.workspace = true
 tokio.workspace = true
 futures.workspace = true
@@ -62,7 +62,7 @@ cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
 
 [dev-dependencies]
-api-provider = { path = "crates/api_provider" }
+bf-api-provider.workspace = true
 tracing-test = "0.2.5"
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
@@ -75,7 +75,7 @@ blockfrost = "1.1.0"
 jemalloc = "0.3"
 
 [build-dependencies]
-build-utils = { path = "crates/build_utils" }
+bf-build-utils.workspace = true
 
 [workspace]
 members = [
@@ -88,8 +88,14 @@ members = [
 
 [workspace.dependencies]
 anyhow = "1.0.98"
+async-trait = "0.1.65"
 axum = { version = "0.8.2", features = ["ws"] }
 bech32 = "0.9.1"
+bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
+bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
+bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
+bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
+bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.75"
 cardano-serialization-lib = "12.1.1"
 chrono = "0.4"
@@ -108,18 +114,17 @@ pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "bloc
 pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pretty_assertions = "1.4.1"
 reqwest = { version = "0.12.12", features = ["blocking"] }
+rstest = "0.24.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 thiserror = "2.0.12"
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
 toml = "0.8.23"
-twelf = { version = "0.15.0", features = ["clap", "toml"] }
 tracing = "0.1.41"
+twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
-rstest = "0.24.0"
-pretty_assertions = "1.4.1"
-async-trait = "0.1.65"
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"

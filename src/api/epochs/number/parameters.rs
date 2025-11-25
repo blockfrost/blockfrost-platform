@@ -1,7 +1,7 @@
 use crate::server::state::AppState;
-use api_provider::types::EpochsParamResponse;
 use axum::extract::{Path, State};
-use common::{
+use bf_api_provider::types::EpochsParamResponse;
+use bf_common::{
     epochs::{EpochData, EpochsPath},
     types::ApiResult,
 };

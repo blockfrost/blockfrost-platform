@@ -1,4 +1,4 @@
-use api_provider::types::EpochsStakeResponse;
+use bf_api_provider::types::EpochsStakeResponse;
 
 use crate::{BlockfrostError, api::ApiResult};
 

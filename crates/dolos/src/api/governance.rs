@@ -1,6 +1,6 @@
 use crate::client::Dolos;
+use bf_common::types::ApiResult;
 use blockfrost_openapi::models::drep::Drep;
-use common::types::ApiResult;
 
 pub struct DolosGovernance<'a> {
     pub(crate) inner: &'a Dolos,
