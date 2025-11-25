@@ -1,59 +1,64 @@
 [package]
 name = "blockfrost-platform"
-version = "0.0.3-rc.3"
-license = "Apache-2.0"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 description = "The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint."
 homepage = "https://platform.blockfrost.io"
 repository = "https://github.com/blockfrost/blockfrost-platform"
 build = "build.rs"
+
+[workspace.package]
+version = "0.0.3-rc.3"
+license = "Apache-2.0"
+edition = "2021"
 
 [dependencies]
 common = { path = "crates/common" }
 node = { path = "crates/node" }
 dolos = { path = "crates/dolos" }
 api-provider = { path = "crates/api_provider" }
-axum = { version = "0.8.2", features = ["ws"] }
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
-futures = "0.3"
-futures-util = "0.3"
+axum.workspace = true
+tokio.workspace = true
+futures.workspace = true
+futures-util.workspace = true
 tungstenite = { version = "0.26", features = ["native-tls"] }
 tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
-tracing = "0.1.41"
+tracing.workspace = true
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
-serde = { version = "1.0.219", features = ["derive"] }
+serde.workspace = true
 tower-http = { version = "0.6.6", features = ["normalize-path"] }
 tower = "0.5.2"
 hyper = "1.6.0"
-serde_json = "1.0.140"
-clap = { version = "4.5.40", features = ["derive"] }
-toml = "0.8.23"
-thiserror = "2.0.12"
+serde_json.workspace = true
+clap.workspace = true
+toml.workspace = true
+thiserror.workspace = true
 sentry = "0.41.0"
 base64 = "0.22.1"
-pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-reqwest = "0.12.12"
-hex = "0.4.3"
-metrics = { version = "0.24.1", default-features = false }
+pallas.workspace = true
+pallas-network.workspace = true
+pallas-crypto.workspace = true
+pallas-traverse.workspace = true
+pallas-codec.workspace = true
+pallas-addresses.workspace = true
+pallas-primitives.workspace = true
+pallas-hardano.workspace = true
+reqwest.workspace = true
+hex.workspace = true
+metrics.workspace = true
 metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
 metrics-process = "2.4.0"
-chrono = "0.4"
+chrono.workspace = true
 serde_with = "3.12.0"
 dotenvy = "0.15.7"
 uuid = { version = "1.10.0", features = ["v4"] }
-twelf = { version = "0.15.0", features = ["clap", "toml"] }
-dirs = "6.0.0"
-inquire = "0.9"
-anyhow = "1.0.98"
-bech32 = "0.9.1"
-cardano-serialization-lib = "12.1.1"
+twelf.workspace = true
+dirs.workspace = true
+inquire.workspace = true
+anyhow.workspace = true
+bech32.workspace = true
+cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
 
 [dev-dependencies]
@@ -62,7 +67,7 @@ tracing-test = "0.2.5"
 rstest = "0.24.0"
 pretty_assertions = "1.4.1"
 proptest = "1.6"
-cardano-serialization-lib = "12.1.1"
+cardano-serialization-lib.workspace = true
 bip39 = "2.1.0"
 blockfrost = "1.1.0"
 
@@ -81,5 +86,43 @@ members = [
   "crates/dolos",
 ]
 
-[lints.clippy]
+[workspace.dependencies]
+anyhow = "1.0.98"
+axum = { version = "0.8.2", features = ["ws"] }
+bech32 = "0.9.1"
+blockfrost-openapi = "0.1.75"
+cardano-serialization-lib = "12.1.1"
+chrono = "0.4"
+clap = { version = "4.5.26", features = ["derive"] }
+dirs = "6.0.0"
+futures = "0.3"
+futures-util = "0.3"
+hex = "0.4.3"
+inquire = "0.9"
+metrics = { version = "0.24.1", default-features = false }
+pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+reqwest = { version = "0.12.12", features = ["blocking"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+toml = "0.8.23"
+twelf = { version = "0.15.0", features = ["clap", "toml"] }
+tracing = "0.1.41"
+url = "2"
+rstest = "0.24.0"
+pretty_assertions = "1.4.1"
+async-trait = "0.1.65"
+
+[workspace.lints.clippy]
 uninlined_format_args = "deny"
+
+[lints]
+workspace = true

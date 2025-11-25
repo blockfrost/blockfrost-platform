@@ -1,11 +1,11 @@
 [package]
 name = "api-provider"
-version = "0.0.3-rc.3"
-edition = "2024"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
-blockfrost-openapi = "0.1.75"
+blockfrost-openapi.workspace = true
 
-[lints.clippy]
-uninlined_format_args = "deny"
+[lints]
+workspace = true

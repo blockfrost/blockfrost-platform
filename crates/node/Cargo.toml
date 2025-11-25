@@ -1,35 +1,38 @@
 [package]
 name = "node"
-version = "0.0.3-rc.3"
-license = "Apache-2.0"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 build = "build.rs"
 
 [dependencies]
 common = { path = "../common" }
-serde = { version = "1.0.218", features = ["derive"] }
-reqwest = { version = "0.12", features = ["blocking"] }
-toml = "0.8"
-tracing = "0.1.41"
+serde.workspace = true
+reqwest.workspace = true
+toml.workspace = true
+tracing.workspace = true
 crossbeam = "0.8"
-hex = "0.4.3"
-dirs = "5.0"
-serde_json = "1.0.135"
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+hex.workspace = true
+dirs.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+pallas-network.workspace = true
 deadpool = "0.12.1"
 sysinfo = "0.33.1"
 num_cpus = "1"
-metrics = { version = "0.24.1", default-features = false }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-chrono = "0.4"
+metrics.workspace = true
+pallas-hardano.workspace = true
+pallas-crypto.workspace = true
+pallas-traverse.workspace = true
+pallas-codec.workspace = true
+pallas-primitives.workspace = true
+chrono.workspace = true
 
 [build-dependencies]
 build-utils = { path = "../build_utils" }
 
 [features]
 tarpaulin = []
+
+[lints]
+workspace = true

@@ -1,40 +1,40 @@
 [package]
 name = "common"
-version = "0.0.3-rc.3"
-edition = "2021"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 build = "build.rs"
 
 [dependencies]
-axum = { version = "0.8.2", features = ["ws"] }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
-thiserror = "2.0.11"
-serde = { version = "1.0.218", features = ["derive"] }
-tracing = "0.1.41"
-serde_json = "1.0.135"
-reqwest = { version = "0.12.12", features = ["json"] }
-bech32 = "0.9.1"
-cardano-serialization-lib = "12.1.1"
-hex = "0.4.3"
-dirs = "5.0"
-url = "2"
-toml = "0.8"
-futures = "0.3"
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
-twelf = { version = "0.15.0", features = ["clap", "toml"] }
-inquire = "0.9"
-anyhow = "1.0.95"
-futures-util = "0.3"
-blockfrost-openapi = "0.1.75"
-clap = { version = "4.5.26", features = ["derive"] }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha2" }
+axum.workspace = true
+pallas-network.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+tracing.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+bech32.workspace = true
+cardano-serialization-lib.workspace = true
+hex.workspace = true
+dirs.workspace = true
+url.workspace = true
+toml.workspace = true
+futures.workspace = true
+tokio.workspace = true
+twelf.workspace = true
+inquire.workspace = true
+anyhow.workspace = true
+futures-util.workspace = true
+blockfrost-openapi.workspace = true
+clap.workspace = true
+pallas-addresses.workspace = true
 
 [dev-dependencies]
-rstest = "0.24.0"
-pretty_assertions = "1.4.1"
+rstest.workspace = true
+pretty_assertions.workspace = true
 
 [build-dependencies]
 build-utils = { path = "../build_utils" }
 
-[lints.clippy]
-uninlined_format_args = "deny"
+[lints]
+workspace = true
