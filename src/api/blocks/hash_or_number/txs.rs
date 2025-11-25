@@ -1,6 +1,6 @@
 use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_common::{
     blocks::{BlockData, BlocksPath},
     pagination::{Pagination, PaginationQuery},
 };

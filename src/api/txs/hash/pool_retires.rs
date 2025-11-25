@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::TxsPoolRetiresResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::TxsPoolRetiresResponse;
+use bf_common::{
     pagination::{Pagination, PaginationQuery},
     txs::TxsPath,
 };

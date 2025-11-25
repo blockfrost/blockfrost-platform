@@ -1,4 +1,4 @@
-use api_provider::types::DrepsDelegatorsResponse;
+use bf_api_provider::types::DrepsDelegatorsResponse;
 
 use crate::{BlockfrostError, api::ApiResult};
 

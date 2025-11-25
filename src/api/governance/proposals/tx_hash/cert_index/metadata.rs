@@ -1,4 +1,4 @@
-use api_provider::types::DrepsMetadataResponse;
+use bf_api_provider::types::DrepsMetadataResponse;
 
 use crate::{BlockfrostError, api::ApiResult};
 

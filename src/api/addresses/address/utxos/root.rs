@@ -1,7 +1,7 @@
 use crate::server::state::AppState;
-use api_provider::types::AddressesUtxosResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::AddressesUtxosResponse;
+use bf_common::{
     addresses::{AddressInfo, AddressesPath},
     pagination::{Pagination, PaginationQuery},
     types::ApiResult,

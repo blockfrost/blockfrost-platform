@@ -85,7 +85,7 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
+          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
         });
 
       cargo-doc = craneLib.cargoDoc (commonArgs
@@ -106,7 +106,7 @@ in
       cargo-test = craneLib.cargoNextest (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
-          cargoNextestExtraArgs = "--lib";
+          cargoNextestExtraArgs = "--workspace --lib";
         });
     };
 
@@ -197,7 +197,7 @@ in
 
     cardano-node-configs-verbose = builtins.path {
       name = "cardano-playground-configs";
-      path = inputs.cardano-playground + "/static/book.play.dev.cardano.org/environments";
+      path = inputs.cardano-playground + "/docs/environments";
     };
 
     cardano-node-configs =

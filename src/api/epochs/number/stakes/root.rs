@@ -1,4 +1,4 @@
-use api_provider::types::EpochStakePoolResponse;
+use bf_api_provider::types::EpochStakePoolResponse;
 
 use crate::{BlockfrostError, api::ApiResult};
 

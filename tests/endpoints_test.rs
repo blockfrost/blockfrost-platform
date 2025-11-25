@@ -1,6 +1,7 @@
-mod asserts;
 mod common;
-mod tx_builder;
+
+use common::asserts;
+use common::tx_builder;
 
 mod tests {
     use blockfrost_platform::BlockfrostError;

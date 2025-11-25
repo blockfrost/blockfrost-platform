@@ -1,5 +1,5 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::PoolsUpdatesResponse;
+use bf_api_provider::types::PoolsUpdatesResponse;
 
 pub async fn route() -> ApiResult<PoolsUpdatesResponse> {
     Err(BlockfrostError::not_found())

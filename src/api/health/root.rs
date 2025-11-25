@@ -1,6 +1,6 @@
 use crate::{api::ApiResult, health_monitor::HealthMonitor};
-use api_provider::types::HealthResponse;
 use axum::{Extension, Json};
+use bf_api_provider::types::HealthResponse;
 
 pub async fn route(
     Extension(health_monitor): Extension<HealthMonitor>,

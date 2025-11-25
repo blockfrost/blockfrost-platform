@@ -1,11 +1,11 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
+use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
-use common::cli::Args;
 use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;

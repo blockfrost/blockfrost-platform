@@ -6,13 +6,13 @@ use crate::{
     health_monitor, icebreakers::api::IcebreakersAPI, middlewares::errors::error_middleware,
 };
 use axum::{Extension, Router, middleware::from_fn};
-use common::{
+use bf_common::{
     config::Config,
     errors::{AppError, BlockfrostError},
 };
-use dolos::client::Dolos;
+use bf_dolos::client::Dolos;
+use bf_node::pool::NodePool;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
-use node::pool::NodePool;
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
 use std::sync::Arc;

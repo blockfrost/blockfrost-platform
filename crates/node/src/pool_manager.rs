@@ -1,5 +1,5 @@
 use super::connection::NodeClient;
-use common::errors::AppError;
+use bf_common::errors::AppError;
 use deadpool::managed::{Manager, Metrics, RecycleError, RecycleResult};
 use metrics::{counter, gauge};
 use pallas_network::facades::NodeClient as NodeClientFacade;

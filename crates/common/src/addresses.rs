@@ -17,6 +17,12 @@ pub struct AddressesPath {
     pub asset: Option<String>,
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct AddressPathWithAsset {
+    pub address: String,
+    pub asset: String,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct AddressInfo {
     pub address_type: AddressType,

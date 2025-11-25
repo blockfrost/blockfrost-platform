@@ -1,9 +1,9 @@
 use crate::client::Dolos;
-use api_provider::types::{
+use bf_api_provider::types::{
     AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
     AccountsResponse, AccountsRewardsResponse,
 };
-use common::{pagination::Pagination, types::ApiResult};
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DolosAccounts<'a> {
     pub(crate) inner: &'a Dolos,

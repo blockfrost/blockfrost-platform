@@ -1,4 +1,4 @@
-use common::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 use pallas_hardano::display::haskell_error::as_cbor_decode_failure;
 use pallas_primitives::{alonzo::Value, babbage::GenTransactionOutput, conway::Tx};
 use tracing::info;

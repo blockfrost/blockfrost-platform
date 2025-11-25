@@ -1,6 +1,6 @@
 use super::connection::NodeClient;
+use bf_common::errors::BlockfrostError;
 use chrono::{Duration, TimeZone, Utc};
-use common::errors::BlockfrostError;
 use pallas_network::{miniprotocols, miniprotocols::localstate};
 use pallas_traverse::wellknown;
 use serde::{Deserialize, Serialize};
@@ -39,9 +39,20 @@ impl NodeClient {
                 let chain_point = localstate::queries_v16::get_chain_point(generic_client).await?;
                 let slot = chain_point.slot_or_default();
 
-                let year: i32 = system_start.year.try_into().map_err(|e| {
-                    BlockfrostError::internal_server_error(format!("Failed to convert year: {e}"))
-                })?;
+                fn big_int_to_i128(i: localstate::queries_v16::BigInt) -> Result<i128, String> {
+                    match i {
+                        localstate::queries_v16::BigInt::Int(ii) => Ok(i128::from(ii)),
+                        _ => Err(format!("cannot convert {i:?} to i128")),
+                    }
+                }
+
+                let year: i32 = big_int_to_i128(system_start.year)
+                    .and_then(|i| i32::try_from(i).map_err(|err| err.to_string()))
+                    .map_err(|e| {
+                        BlockfrostError::internal_server_error(format!(
+                            "Failed to convert year: {e}"
+                        ))
+                    })?;
 
                 let base_date = Utc
                     .with_ymd_and_hms(year, 1, 1, 0, 0, 0)
@@ -50,10 +61,11 @@ impl NodeClient {
                         BlockfrostError::internal_server_error("Invalid base date".to_string())
                     })?;
 
-                let days = Duration::days((system_start.day_of_year - 1).into());
+                let days = Duration::days(system_start.day_of_year - 1);
 
-                let nanoseconds: i64 = (system_start.picoseconds_of_day / 1_000)
-                    .try_into()
+                let nanoseconds: i64 = big_int_to_i128(system_start.picoseconds_of_day)
+                    .map(|i| i / 1_000)
+                    .and_then(|i| i64::try_from(i).map_err(|err| err.to_string()))
                     .map_err(|e| {
                         BlockfrostError::internal_server_error(format!(
                             "Failed to convert picoseconds: {e}"

@@ -1,7 +1,7 @@
-use api_provider::types::GenesisResponse;
 use axum::extract::State;
-use common::{config::Config, errors::BlockfrostError, types::Network};
-use dolos::client::Dolos;
+use bf_api_provider::types::GenesisResponse;
+use bf_common::{config::Config, errors::BlockfrostError, types::Network};
+use bf_dolos::client::Dolos;
 use std::sync::Arc;
 
 #[derive(Clone)]

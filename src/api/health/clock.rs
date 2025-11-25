@@ -1,6 +1,6 @@
 use crate::api::ApiResult;
-use api_provider::types::HealthClockResponse;
 use axum::Json;
+use bf_api_provider::types::HealthClockResponse;
 use chrono::Utc;
 
 pub async fn route() -> ApiResult<HealthClockResponse> {

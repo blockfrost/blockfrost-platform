@@ -1,7 +1,7 @@
 use crate::BlockfrostError;
-use api_provider::types::AssetsResponse;
 use axum::extract::Query;
-use common::{
+use bf_api_provider::types::AssetsResponse;
+use bf_common::{
     pagination::{Pagination, PaginationQuery},
     types::ApiResult,
 };

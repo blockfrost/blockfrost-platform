@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::AssetsSingleResponse;
 use axum::extract::{Path, State};
-use common::assets::{AssetData, AssetsPath};
+use bf_api_provider::types::AssetsSingleResponse;
+use bf_common::assets::{AssetData, AssetsPath};
 
 pub async fn route(
     State(state): State<AppState>,

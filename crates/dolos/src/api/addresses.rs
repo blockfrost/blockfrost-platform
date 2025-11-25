@@ -1,8 +1,8 @@
 use crate::client::Dolos;
-use api_provider::types::{
+use bf_api_provider::types::{
     AddressesTransactionsResponse, AddressesUtxosAssetResponse, AddressesUtxosResponse,
 };
-use common::{pagination::Pagination, types::ApiResult};
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DolosAddresses<'a> {
     pub(crate) inner: &'a Dolos,

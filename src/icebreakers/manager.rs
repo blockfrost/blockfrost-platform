@@ -2,7 +2,7 @@ use crate::icebreakers::api::IcebreakersAPI;
 use crate::load_balancer;
 use crate::server::state::ApiPrefix;
 use axum::Router;
-use common::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};

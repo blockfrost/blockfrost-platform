@@ -1,22 +1,18 @@
 [package]
-name = "dolos"
-version = "0.0.3-rc.3"
-license = "Apache-2.0"
-edition = "2021"
-
-[package.metadata.dolos]
-version = "v0.24.0"
+name = "blockfrost-platform-dolos"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-api-provider = { path = "../api_provider" }
-serde = { version = "1.0.218", features = ["derive"] }
-reqwest = { version = "0.12", features = ["blocking"] }
-toml = "0.8"
-dirs = "5.0"
-blockfrost-openapi = "0.1.75"
-async-trait = "0.1.65"
-axum = { version = "0.8.2", features = ["ws"] }
+bf-common.workspace = true
+bf-api-provider.workspace = true
+serde.workspace = true
+reqwest.workspace = true
+toml.workspace = true
+dirs.workspace = true
+async-trait.workspace = true
+axum.workspace = true
 
-[lints.clippy]
-uninlined_format_args = "deny"
+[lints]
+workspace = true
