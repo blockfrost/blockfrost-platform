@@ -96,7 +96,7 @@ bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-b
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
-blockfrost-openapi = "0.1.75"
+blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "12.1.1"
 chrono = "0.4"
 clap = { version = "4.5.26", features = ["derive"] }

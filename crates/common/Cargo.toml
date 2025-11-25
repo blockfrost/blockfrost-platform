@@ -7,6 +7,7 @@ build = "build.rs"
 
 [dependencies]
 axum.workspace = true
+bf-api-provider.workspace = true
 pallas-network.workspace = true
 thiserror.workspace = true
 serde.workspace = true
@@ -25,7 +26,6 @@ twelf.workspace = true
 inquire.workspace = true
 anyhow.workspace = true
 futures-util.workspace = true
-blockfrost-openapi.workspace = true
 clap.workspace = true
 pallas-addresses.workspace = true
 

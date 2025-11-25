@@ -1,6 +1,6 @@
 use crate::client::Dolos;
+use bf_api_provider::types::GenesisResponse;
 use bf_common::types::ApiResult;
-use blockfrost_openapi::models::genesis_content::GenesisContent;
 
 pub struct DolosGenesis<'a> {
     pub(crate) inner: &'a Dolos,
@@ -13,7 +13,7 @@ impl Dolos {
 }
 
 impl DolosGenesis<'_> {
-    pub async fn get(&self) -> ApiResult<GenesisContent> {
+    pub async fn get(&self) -> ApiResult<GenesisResponse> {
         self.inner.client.get("genesis", None).await
     }
 }

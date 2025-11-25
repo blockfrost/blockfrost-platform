@@ -1,16 +1,16 @@
 use crate::types::Network;
 use axum::Extension;
-use blockfrost_openapi::models::genesis_content::GenesisContent;
+use bf_api_provider::types::GenesisResponse;
 use std::sync::Arc;
 
-pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisContent)>>>;
+pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisResponse)>>>;
 
 pub trait GenesisRegistry {
     /// Get a network config by its `Network` enum variant.
-    fn by_network(&self, network: &Network) -> GenesisContent;
+    fn by_network(&self, network: &Network) -> GenesisResponse;
 
     /// Get a network config by magic.
-    fn by_magic(&self, magic: u64) -> GenesisContent;
+    fn by_magic(&self, magic: u64) -> GenesisResponse;
 
     /// List all known network magics.
     fn all_magics(&self) -> Vec<u64>;
@@ -19,18 +19,18 @@ pub trait GenesisRegistry {
     fn network_by_magic(&self, magic: u64) -> &Network;
 
     /// Insert or replace the `GenesisContent` for `network` at the front.
-    fn add(&mut self, network: Network, genesis: GenesisContent);
+    fn add(&mut self, network: Network, genesis: GenesisResponse);
 }
 
-impl GenesisRegistry for Vec<(Network, GenesisContent)> {
-    fn by_network(&self, network: &Network) -> GenesisContent {
+impl GenesisRegistry for Vec<(Network, GenesisResponse)> {
+    fn by_network(&self, network: &Network) -> GenesisResponse {
         self.iter()
             .find(|(n, _)| n == network)
             .map(|(_, g)| g.clone())
             .expect("Missing GenesisContent for known Network")
     }
 
-    fn by_magic(&self, magic: u64) -> GenesisContent {
+    fn by_magic(&self, magic: u64) -> GenesisResponse {
         self.iter()
             .find(|(_, g)| g.network_magic as u64 == magic)
             .map(|(_, g)| g.clone())
@@ -48,7 +48,7 @@ impl GenesisRegistry for Vec<(Network, GenesisContent)> {
             .expect("Missing Network for known magic")
     }
 
-    fn add(&mut self, network: Network, genesis: GenesisContent) {
+    fn add(&mut self, network: Network, genesis: GenesisResponse) {
         // If the network already exists, replace its GenesisContent;
         // otherwise, insert this (network, genesis) tuple at index 0.
         if let Some((_, slot)) = self.iter_mut().find(|(n, _)| n == &network) {
@@ -59,11 +59,11 @@ impl GenesisRegistry for Vec<(Network, GenesisContent)> {
     }
 }
 
-pub fn genesis() -> Vec<(Network, GenesisContent)> {
+pub fn genesis() -> Vec<(Network, GenesisResponse)> {
     vec![
         (
             Network::Mainnet,
-            GenesisContent {
+            GenesisResponse {
                 active_slots_coefficient: 0.05,
                 update_quorum: 5,
                 max_lovelace_supply: "45000000000000000".to_string(),
@@ -78,7 +78,7 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
         ),
         (
             Network::Preprod,
-            GenesisContent {
+            GenesisResponse {
                 active_slots_coefficient: 0.05,
                 update_quorum: 5,
                 max_lovelace_supply: "45000000000000000".to_string(),
@@ -93,7 +93,7 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
         ),
         (
             Network::Preview,
-            GenesisContent {
+            GenesisResponse {
                 active_slots_coefficient: 0.05,
                 update_quorum: 5,
                 max_lovelace_supply: "45000000000000000".to_string(),
@@ -112,7 +112,6 @@ pub fn genesis() -> Vec<(Network, GenesisContent)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use blockfrost_openapi::models::genesis_content::GenesisContent;
     use rstest::rstest;
 
     #[rstest]
@@ -173,7 +172,7 @@ mod tests {
         let mut registry = if prepopulated { genesis() } else { Vec::new() };
 
         // dummy
-        let dummy = GenesisContent {
+        let dummy = GenesisResponse {
             active_slots_coefficient: 0.1,
             update_quorum: 10,
             max_lovelace_supply: "100".to_string(),

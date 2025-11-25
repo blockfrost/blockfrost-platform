@@ -2,7 +2,7 @@ use crate::cli::Args;
 use crate::errors::AppError;
 use crate::genesis::{GenesisRegistry, genesis};
 use crate::types::Network;
-use blockfrost_openapi::models::genesis_content::GenesisContent;
+use bf_api_provider::types::GenesisResponse;
 use clap::ValueEnum;
 use futures::FutureExt; // for `.boxed()`
 use futures::future::BoxFuture;
@@ -126,7 +126,7 @@ impl Config {
 
     /// Build the full genesis registry, overriding or prepending
     /// a user-supplied file if `custom_genesis_config` is Some.
-    pub fn with_custom_genesis(&self) -> Result<Vec<(Network, GenesisContent)>, AppError> {
+    pub fn with_custom_genesis(&self) -> Result<Vec<(Network, GenesisResponse)>, AppError> {
         let mut registry = genesis();
 
         // if user pointed us at a file, load & insert it
@@ -140,7 +140,7 @@ impl Config {
             })?;
 
             // try JSON and TOML
-            let custom: GenesisContent = serde_json::from_str(&data)
+            let custom: GenesisResponse = serde_json::from_str(&data)
                 .or_else(|_| toml::from_str(&data))
                 .map_err(|e| {
                     AppError::Server(format!(
