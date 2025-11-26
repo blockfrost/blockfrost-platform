@@ -73,9 +73,9 @@ in
         meta = {
           mainProgram = packageName;
           license =
-            if cargoToml.package.license == "Apache-2.0"
+            if cargoToml.workspace.package.license == "Apache-2.0"
             then lib.licenses.asl20
-            else throw "unknown license in Cargo.toml: ${cargoToml.package.license}";
+            else throw "unknown license in Cargo.toml: ${cargoToml.workspace.package.license}";
           inherit (cargoToml.package) description homepage;
         };
       });
