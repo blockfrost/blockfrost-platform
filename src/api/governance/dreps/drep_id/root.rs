@@ -1,7 +1,7 @@
 use crate::server::state::AppState;
-use api_provider::types::DrepsSingleResponse;
 use axum::extract::{Path, State};
-use common::{dreps::DrepsPath, types::ApiResult};
+use bf_api_provider::types::DrepsSingleResponse;
+use bf_common::{dreps::DrepsPath, types::ApiResult};
 
 pub async fn route(
     Path(drep_path): Path<DrepsPath>,

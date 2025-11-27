@@ -1,4 +1,4 @@
-use api_provider::types::DrepsProposalsResponse;
+use bf_api_provider::types::DrepsProposalsResponse;
 
 use crate::{BlockfrostError, api::ApiResult};
 

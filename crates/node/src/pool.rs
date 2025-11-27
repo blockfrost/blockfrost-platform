@@ -1,5 +1,5 @@
 use super::pool_manager::NodePoolManager;
-use common::{
+use bf_common::{
     config::Config,
     errors::AppError,
     genesis::{GenesisRegistry, genesis},

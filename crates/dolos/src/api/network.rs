@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::types::{NetworkErasResponse, NetworkResponse};
-use common::types::ApiResult;
+use bf_api_provider::types::{NetworkErasResponse, NetworkResponse};
+use bf_common::types::ApiResult;
 
 pub struct DolosNetwork<'a> {
     pub(crate) inner: &'a Dolos,

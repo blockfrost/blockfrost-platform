@@ -1,6 +1,6 @@
 use crate::types::Network;
-use api_provider::types::GenesisResponse;
 use axum::Extension;
+use bf_api_provider::types::GenesisResponse;
 use std::sync::Arc;
 
 pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisResponse)>>>;

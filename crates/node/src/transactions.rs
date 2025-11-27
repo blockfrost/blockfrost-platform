@@ -1,6 +1,6 @@
 use super::connection::NodeClient;
 use crate::cbor::validation::validate_tx_cbor;
-use common::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 use pallas_crypto::hash::Hasher;
 use pallas_hardano::display::haskell_error::as_node_submit_error;
 use pallas_network::miniprotocols::{

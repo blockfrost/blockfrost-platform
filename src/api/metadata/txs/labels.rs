@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::MetadataLabelsResponse;
 use axum::extract::{Query, State};
-use common::pagination::{Pagination, PaginationQuery};
+use bf_api_provider::types::MetadataLabelsResponse;
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     State(state): State<AppState>,

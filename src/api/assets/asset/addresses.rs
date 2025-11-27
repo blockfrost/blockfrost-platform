@@ -1,7 +1,7 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::AssetsAddressesResponse;
 use axum::extract::Query;
-use common::pagination::{Pagination, PaginationQuery};
+use bf_api_provider::types::AssetsAddressesResponse;
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,

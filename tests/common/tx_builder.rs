@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use api_provider::types::{EpochsParamResponse, TestsAddressUtxoResponse};
+use bf_api_provider::types::{EpochsParamResponse, TestsAddressUtxoResponse};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
 use cardano_serialization_lib::{

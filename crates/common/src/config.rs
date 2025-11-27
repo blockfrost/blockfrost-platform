@@ -2,7 +2,7 @@ use crate::cli::Args;
 use crate::errors::AppError;
 use crate::genesis::{GenesisRegistry, genesis};
 use crate::types::Network;
-use api_provider::types::GenesisResponse;
+use bf_api_provider::types::GenesisResponse;
 use clap::ValueEnum;
 use futures::FutureExt; // for `.boxed()`
 use futures::future::BoxFuture;

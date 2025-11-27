@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::types::DrepsSingleResponse;
-use common::types::ApiResult;
+use bf_api_provider::types::DrepsSingleResponse;
+use bf_common::types::ApiResult;
 
 pub struct DolosGovernance<'a> {
     pub(crate) inner: &'a Dolos,

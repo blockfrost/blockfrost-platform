@@ -1,4 +1,4 @@
-use common::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
 use std::{boxed::Box, pin::Pin};
 use tokio::time::{Duration, timeout};

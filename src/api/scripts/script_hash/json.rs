@@ -1,5 +1,5 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::ScriptsJsonResponse;
+use bf_api_provider::types::ScriptsJsonResponse;
 
 pub async fn route() -> ApiResult<ScriptsJsonResponse> {
     Err(BlockfrostError::not_found())

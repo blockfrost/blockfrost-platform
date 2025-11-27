@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::types::GenesisResponse;
-use common::types::ApiResult;
+use bf_api_provider::types::GenesisResponse;
+use bf_common::types::ApiResult;
 
 pub struct DolosGenesis<'a> {
     pub(crate) inner: &'a Dolos,

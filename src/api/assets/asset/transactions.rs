@@ -1,7 +1,7 @@
 use crate::{BlockfrostError, api::ApiResult};
-use api_provider::types::AssetsTransactionsResponse;
 use axum::extract::{Path, Query};
-use common::{
+use bf_api_provider::types::AssetsTransactionsResponse;
+use bf_common::{
     assets::{AssetData, AssetsPath},
     pagination::{Pagination, PaginationQuery},
 };

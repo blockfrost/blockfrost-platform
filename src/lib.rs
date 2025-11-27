@@ -5,4 +5,4 @@ pub mod load_balancer;
 pub mod middlewares;
 pub mod server;
 
-pub use common::errors::{AppError, BlockfrostError};
+pub use bf_common::errors::{AppError, BlockfrostError};

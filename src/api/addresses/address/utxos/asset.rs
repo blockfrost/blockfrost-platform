@@ -1,7 +1,7 @@
 use crate::{api::ApiResult, server::state::AppState};
-use api_provider::types::AddressesUtxosAssetResponse;
 use axum::extract::{Path, Query, State};
-use common::{
+use bf_api_provider::types::AddressesUtxosAssetResponse;
+use bf_common::{
     addresses::{AddressInfo, AddressPathWithAsset},
     assets::AssetData,
     pagination::{Pagination, PaginationQuery},

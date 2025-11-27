@@ -1,4 +1,4 @@
-use common::{config::DolosConfig, errors::AppError, json_client::JsonClient};
+use bf_common::{config::DolosConfig, errors::AppError, json_client::JsonClient};
 use reqwest::Url;
 
 #[derive(Clone)]

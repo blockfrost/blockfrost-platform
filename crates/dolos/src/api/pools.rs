@@ -1,6 +1,6 @@
 use crate::client::Dolos;
-use api_provider::types::{PoolsDelegatorsResponse, PoolsListExtendedResponse};
-use common::{pagination::Pagination, types::ApiResult};
+use bf_api_provider::types::{PoolsDelegatorsResponse, PoolsListExtendedResponse};
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DolosPools<'a> {
     pub(crate) inner: &'a Dolos,
