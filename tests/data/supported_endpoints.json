@@ -36,6 +36,5 @@
   "/epochs/latest/parameters",
   "/genesis",
   "/addresses/{address}/transactions",
-  "/addresses/{address}/utxos",
-  "/tx/submit"
+  "/addresses/{address}/utxos"
 ]
