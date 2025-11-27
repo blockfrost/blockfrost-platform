@@ -497,6 +497,7 @@ in
     in
       pkgs.writeShellApplication {
         name = "blockfrost-tests";
+        meta.description = "Runs `blockfrost-tests` on `${network}` against this repository";
         runtimeInputs = with pkgs; [
           bash
           coreutils
@@ -510,7 +511,12 @@ in
         text = ''
           set -euo pipefail
 
-          curl -fsSL "''${DOLOS_ENDPOINT:-http://127.0.0.1:3010}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
+          if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
+            export DOLOS_ENDPOINT="http://127.0.0.1:3010"
+            echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
+          fi
+
+          curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
 
           err() { printf "error: %s\n" "$1" >&2; }
 
@@ -552,7 +558,7 @@ in
             --node-socket-path "''${CARDANO_NODE_SOCKET_PATH:-/run/cardano-node/node.socket}" \
             --mode compact \
             --solitary \
-            --dolos-endpoint "''${DOLOS_ENDPOINT:-http://127.0.0.1:3010}" \
+            --dolos-endpoint "''${DOLOS_ENDPOINT}" \
             --dolos-timeout-sec 30 \
             &
           platform_pid=$!
@@ -575,6 +581,63 @@ in
           yarn test:preview
         '';
       };
+
+    # One degree of indirection for the devshell – we don’t want to compile
+    # `blockfrost-platform` on each devshell reload.
+    run-blockfrost-tests =
+      pkgs.writeShellScriptBin "test-blockfrost-tests" ''
+        set -euo pipefail
+        exec nix run -L $PRJ_ROOT#internal.${pkgs.system}.${blockfrost-tests.name}
+      ''
+      // {
+        meta.description = blockfrost-tests.meta.description;
+      };
+
+    hydra-flake = (import inputs.flake-compat {src = inputs.hydra;}).defaultNix;
+
+    hydraVersion = hydra-flake.legacyPackages.${targetSystem}.hydra-node.identifier.version;
+
+    hydraNetworksJson = builtins.path {
+      path = hydra-flake + "/hydra-node/networks.json";
+    };
+
+    hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
+      meta.description = "Layer 2 scalability solution for Cardano";
+    };
+
+    hydra-test = pkgs.writeShellApplication {
+      name = "test-hydra-against-blockfrost";
+      meta.description = "Tests a small Hydra cluster, with one member opening head against the Blockfrost API";
+      runtimeInputs = with pkgs; [
+        bash
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        websocat
+        etcd
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+        HYDRA_SCRIPTS_TX_ID = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${NETWORK}.${hydraVersion};
+      };
+      text = builtins.readFile ./hydra-blockfrost-test.sh;
+    };
 
     midnight = let
       fenix = inputs.fenix.packages.${pkgs.system};

@@ -32,6 +32,7 @@ in {
       package = internal.cardano-address;
     }
     {package = internal.mithril-client;}
+    {package = internal.hydra-node;}
     {package = internal.dolos;}
     {package = internal.acropolis-process-omnibus;}
     {package = internal.acropolis-process-replayer;}
@@ -77,6 +78,14 @@ in {
       name = "testgen-hs";
       package = internal.testgen-hs;
     }
+    {
+      category = "handy";
+      package = internal.run-blockfrost-tests;
+    }
+    {
+      category = "handy";
+      package = internal.hydra-test;
+    }
   ];
 
   language.c = {
@@ -119,6 +128,7 @@ in {
       [
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
+        pkgs.websocat
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config
