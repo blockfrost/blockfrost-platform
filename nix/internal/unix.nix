@@ -490,6 +490,46 @@ in
 
     inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
 
+    michals-test = let
+      inherit (pkgs) nodePackages;
+    in
+      pkgs.writeShellApplication {
+        name = "michals-test";
+        runtimeInputs = with pkgs; [
+          bash
+          coreutils
+          procps
+          gnugrep
+          gnused
+          curl
+          jq
+        ];
+        text = ''
+          echo "All processes:"
+          echo
+          ps aux
+          echo
+          exe_name=dolos
+          echo "$exe_name processes:"
+          echo
+          pgrep -a "$exe_name"
+          echo
+          echo "$exe_name processes’ configs:"
+          echo
+          pgrep -a "$exe_name" | sed -n 's/.*--config[ =]\([^[:space:]]*\).*/\1/p'
+          echo
+          echo "$exe_name processes’ configs’ contents:"
+          echo
+          pgrep -a "$exe_name" | sed -n 's/.*--config[ =]\([^[:space:]]*\).*/\1/p' | while IFS= read -r config ; do
+            echo "---------------------- $config ----------------------"
+            cat "$config"
+            echo "---------------------- end of $config ----------------------"
+          done
+          echo
+          exit 77
+        '';
+      };
+
     blockfrost-tests = make-blockfrost-tests "preview";
 
     make-blockfrost-tests = network: let

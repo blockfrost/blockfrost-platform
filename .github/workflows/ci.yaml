@@ -14,9 +14,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  michals_test:
+    name: Michal’s Test
+    runs-on: [self-hosted, Linux, X64, nixos]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run Michal’s Test
+        run: |
+          nix run -L .#internal.x86_64-linux.michals-test && exit 77
+
   lint_docker:
     name: Lint Dockerfile
     runs-on: ubuntu-latest
+    needs: michals_test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,6 +44,7 @@ jobs:
   build_and_test:
     name: Build and Test
     runs-on: ${{ matrix.os }}
+    needs: michals_test
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
