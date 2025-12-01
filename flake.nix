@@ -12,7 +12,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-compat = {
-      url = "github:input-output-hk/flake-compat";
+      url = "github:edolstra/flake-compat";
       flake = false;
     };
     cardano-node = {
@@ -43,6 +43,10 @@
     testgen-hs = {
       url = "github:input-output-hk/testgen-hs/10.4.1.1"; # make sure it follows cardano-node
       flake = false; # otherwise, +2k dependencies we don’t really use
+    };
+    hydra = {
+      url = "github:cardano-scaling/hydra/1.0.0";
+      flake = false;
     };
     devshell = {
       url = "github:numtide/devshell";
