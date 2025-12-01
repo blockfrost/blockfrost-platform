@@ -187,6 +187,11 @@
             curl-bash-install = {
               x86_64-linux = inputs.self.internal.x86_64-linux.curl-bash-install;
             };
+            tests = lib.genAttrs (config.systems) (
+              targetSystem: {
+                inherit (inputs.self.internal.${targetSystem}) blockfrost-tests;
+              }
+            );
             inherit (inputs.self) checks;
           };
         in
