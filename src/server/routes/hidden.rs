@@ -43,6 +43,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/assets/policy/{policy_id}", get(assets::policy::policy_id::route))
 
         // blocks
+        .route("/blocks/epoch/{epoch_number}/slot/{slot_number}", get(blocks::epoch::epoch_number::slot::slot_number::route))
         .route("/blocks/latest", get(blocks::latest::root::route))
         .route("/blocks/latest/txs", get(blocks::latest::txs::route))
         .route("/blocks/{hash_or_number}", get(blocks::hash_or_number::root::route))
