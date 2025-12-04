@@ -20,7 +20,7 @@
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.0.0-rc.2";
+      url = "github:txpipe/dolos/v1.0.0-rc.3";
       flake = false;
     };
     acropolis = {
