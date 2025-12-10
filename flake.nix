@@ -28,7 +28,7 @@
       flake = false;
     };
     blockfrost-tests = {
-      url = "github:blockfrost/blockfrost-tests";
+      url = "github:blockfrost/blockfrost-tests/better-url-matcher";
       flake = false;
     };
     midnight-node = {
@@ -191,6 +191,11 @@
             curl-bash-install = {
               x86_64-linux = inputs.self.internal.x86_64-linux.curl-bash-install;
             };
+            tests = lib.genAttrs config.systems (
+              targetSystem: {
+                inherit (inputs.self.internal.${targetSystem}) blockfrost-tests;
+              }
+            );
             inherit (inputs.self) checks;
           };
         in
