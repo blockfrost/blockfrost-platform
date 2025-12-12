@@ -4,8 +4,7 @@ use crate::{
     types::LogLevel,
 };
 use anyhow::{Error, Result, anyhow};
-use clap::{CommandFactory, ValueEnum};
-use clap::{Parser, arg, command};
+use clap::{CommandFactory, Parser, ValueEnum};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
 use serde::{Deserialize, Serialize};
