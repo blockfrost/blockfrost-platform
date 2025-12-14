@@ -106,18 +106,18 @@ jobs:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
             cardano_node_socket_path: /run/cardano-node/node.socket
-            project_id_secret: BLOCKFROST_TESTS_PROJECT_ID
-            submit_mnemonic_secret: BLOCKFROST_TESTS_SUBMIT_MNEMONIC
+            project_id_secret: ${{ secrets.BLOCKFROST_PREVIEW_PROJECT_ID }}
+            submit_mnemonic_secret: ${{ secrets.BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC }}
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
             cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
-            project_id_secret: i-dont-exist-yet
-            submit_mnemonic_secret: i-dont-exist-yet
+            project_id_secret: ${{ secrets.BLOCKFROST_PREPROD_PROJECT_ID }}
+            submit_mnemonic_secret: ${{ secrets.BLOCKFROST_PREPROD_SUBMIT_MNEMONIC }}
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
             cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
-            project_id_secret: i-dont-exist-yet
-            submit_mnemonic_secret: i-dont-exist-yet
+            project_id_secret: ${{ secrets.BLOCKFROST_MAINNET_PROJECT_ID }}
+            submit_mnemonic_secret: ${{ secrets.BLOCKFROST_MAINNET_SUBMIT_MNEMONIC }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
