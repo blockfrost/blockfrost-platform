@@ -192,14 +192,10 @@ mod tests {
         assert!(body_str.contains("invalid version 53"));
     }
 
-    ///
-    /// Currently not working since we are not handling desirializing the tx for old eras on Haskell side.
-    /// This test is identical to the Blockfrost test:
-    /// https://github.com/blockfrost/blockfrost-tests/blob/7a847bc41b8153844a2643d817559367cc4ffd4d/src/fixtures/preview/utils/txs-evaluate.ts#L5
-    ///
+    /// This test is mimics the Blockfrost test:
+    /// https://github.com/blockfrost/blockfrost-tests/blob/7a847bc41b8153844a2643d817559367cc4ffd4d/src/fixtures/preview/utils/txs-evaluate.ts#L20
     #[tokio::test]
-    #[ignore = "not implemented yet"]
-    async fn test_fail_incompatible_era() {
+    async fn test_fail_decoder_v5() {
         let tx_hex = "83a300818258200ac82ea5bc0967a17d4a60e2474b01df72440673429ff89b2802d3bd2a38ec3e01018282583900e2fbc47df26fcd065c074c451e792599ea8fc159f76163ca4c2b520b58adbef896164ee7456ccb4eaa965a87a602b0e3b2825d7b4ee789b01a000f4240825839003c77cd7f3c07b3b0ba72044848592d2e5687569ad25b93a926392f5e83892080b40900e146e1c68f12ef6811773bd8740196cd211f3211de1af9b0595d021a0002c5bda10081825820da818bbf3a082945884681d062147ca7dc3111d87fab415268749124a3ed1d31584059ca300a7d38abf454482a57281acdbbaab740b868978131f36117a224e6ba2be5248da0205296d7a8211506d6430a2873c201831e326e5db68ac9e1403e520ef6";
         // init our app
         let app = initialize_app().await;
@@ -207,7 +203,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate")
+            .uri("/utils/tx/evaluate?version=5")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -227,21 +223,20 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        let body_str = String::from_utf8_lossy(&body_bytes);
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
 
         assert_eq!(
-            body_str,
-            "[{\"EvaluationFailure\":{\"IncompatibleEra\":\"Mary\"}}]"
+            body_json.get("type").unwrap().as_str().unwrap(),
+            "jsonwsp/fault"
         );
+
+        assert!(body_json.get("fault").unwrap().is_object());
     }
 
-    /// Currently not working, we need to mimic Haskell error on the Rust part.
-    /// This test is identical to the Blockfrost test:
+    /// This test is mimics the Blockfrost test:
     /// https://github.com/blockfrost/blockfrost-tests/blob/7a847bc41b8153844a2643d817559367cc4ffd4d/src/fixtures/preview/utils/txs-evaluate.ts#L20
-    ///
     #[tokio::test]
-    #[ignore = "not implemented yet"]
-    async fn test_fail_ill_formed_tx() {
+    async fn test_fail_decoder_v6() {
         let tx_hex = "83a300818258200ac82ea5bc0967a17d4a60e2474b01df72440673429ff89b2802d3bd2a38ec3e01018282583900e2fbc47df26fcd065c074c451e792599ea8fc159f76163ca4c2b520b58adbef896164ee7456ccb4eaa965a87a602b0e3b2825d7b4ee789b01a000f4240825839003c77cd7f3c07b3b0ba72044848592d2e5687569ad25b93a926392f5e83892080b40900e146e1c68f12ef6811773bd8740196cd211f3211de1af9b0595d021a0002c5bda10081825820da818bbf3a082945884681d062147ca7dc3111d87fab415268749124a3ed1d31584059ca300a7d38abf454482a57281acdbbaab740b868978131f36117a224e6ba2be5248da0205296d7a8211506d6430a2873c201831e326e5db68ac9e1403e520ef6";
         // init our app
         let app = initialize_app().await;
@@ -249,7 +244,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate")
+            .uri("/utils/tx/evaluate?version=6")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -269,11 +264,10 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        let body_str = String::from_utf8_lossy(&body_bytes);
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
 
-        assert_eq!(
-            body_str,
-            "[Invalid request: Deserialisation failure while decoding serialised transaction. CBOR failed with error: DeserialiseFailure 0 \"expected tag\"."
-        );
+        let error = body_json.get("error").unwrap();
+
+        assert_eq!(error.get("code").unwrap().as_i64().unwrap(), -32602);
     }
 }

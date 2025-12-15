@@ -141,6 +141,82 @@ pub struct TxOut {
 }
 
 pub type AdditionalUtxoSet = Vec<(TxIn, TxOut)>;
+#[derive(Serialize, Debug)]
+pub struct OgmiosError {
+    pub code: i64,
+    pub message: String,
+    pub data: EvaluationError,
+}
+
+impl OgmiosError {
+    pub fn deserialization_error(err: String) -> OgmiosError {
+        Self {
+            code: -32602,
+            message: "Invalid transaction; It looks like the given transaction wasn't well-formed. Note that I try to decode the transaction in only Conway era, and copy the error into others."
+                .to_string(),
+            data: EvaluationError::Deserialization(DeserializationErrorData::conway_only(err)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum EvaluationError {
+    Evaluation(serde_json::Value),
+    Deserialization(DeserializationErrorData),
+}
+
+pub enum EvaluateTransactionError {}
+#[derive(Serialize, Debug)]
+pub struct DeserializationErrorData {
+    pub shelley: String,
+    pub allegra: String,
+    pub mary: String,
+    pub alonzo: String,
+    pub babbage: String,
+    pub conway: String,
+}
+
+impl DeserializationErrorData {
+    // Copy conway error into all eras. Implemented this way since we might want to fill specific eras with actual errors.
+    pub fn conway_only(err: String) -> Self {
+        Self {
+            shelley: err.clone(),
+            allegra: err.clone(),
+            mary: err.clone(),
+            alonzo: err.clone(),
+            babbage: err.clone(),
+            conway: err,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for DeserializationErrorData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Visitor;
+
+        struct DeserializationErrorDataVisitor;
+        impl Visitor<'_> for DeserializationErrorDataVisitor {
+            type Value = DeserializationErrorData;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string representing a DeserializationErrorData")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(DeserializationErrorData::conway_only(v.to_string()))
+            }
+        }
+
+        deserializer.deserialize_str(DeserializationErrorDataVisitor)
+    }
+}
 
 impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
     fn from(script: Script) -> Self {
@@ -355,10 +431,25 @@ pub struct ExecCost {
 }
 
 // Create a wrapper type for TxEvalResult
-pub struct TxEvalResultV5 {
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TxEvalResultV5 {
+    SUCCESS(TxEvalSuccessV5),
+    FAILURE(TxEvalFailureV5),
+}
+
+#[derive(Deserialize)]
+pub struct TxEvalSuccessV5 {
     pub tag: RedeemerTag,
     pub index: u32,
     pub units: ExecCost,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TxEvalFailureV5 {
+    pub validator: TxValidator,
+    pub error: serde_json::Value,
 }
 
 pub struct TxValidator {
@@ -368,9 +459,22 @@ pub struct TxValidator {
 
 // This is also the format ledger responses
 #[derive(Serialize, Deserialize)]
-pub struct TxEvalResultV6 {
+#[serde(untagged)]
+pub enum TxEvalResultV6 {
+    SUCCESS(TxEvalSuccessV6),
+    FAILURE(TxEvalFailureV6),
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TxEvalSuccessV6 {
     pub validator: TxValidator,
     pub budget: ExecCost,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TxEvalFailureV6 {
+    pub validator: TxValidator,
+    pub error: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -381,8 +485,8 @@ pub enum TxValidatorV6 {
     MINT,
 }
 
-impl From<TxEvalResultV5> for TxEvalResult {
-    fn from(value: TxEvalResultV5) -> Self {
+impl From<TxEvalSuccessV5> for TxEvalResult {
+    fn from(value: TxEvalSuccessV5) -> Self {
         TxEvalResult {
             tag: value.tag,
             index: value.index,
@@ -396,9 +500,30 @@ impl From<TxEvalResultV5> for TxEvalResult {
     }
 }
 
-impl From<TxEvalResult> for TxEvalResultV5 {
+impl From<TxEvalFailureV5> for TxEvalResult {
+    fn from(value: TxEvalFailureV5) -> Self {
+        TxEvalResult {
+            tag: value.validator.tag,
+            index: value.validator.index,
+            units: ExUnits { mem: 0, steps: 0 },
+            logs: vec![value.error.to_string()],
+            success: false,
+        }
+    }
+}
+
+impl From<TxEvalResultV5> for TxEvalResult {
+    fn from(value: TxEvalResultV5) -> Self {
+        match value {
+            TxEvalResultV5::SUCCESS(success) => TxEvalResult::from(success),
+            TxEvalResultV5::FAILURE(fail) => TxEvalResult::from(fail),
+        }
+    }
+}
+
+impl From<TxEvalResult> for TxEvalSuccessV5 {
     fn from(value: TxEvalResult) -> Self {
-        TxEvalResultV5 {
+        TxEvalSuccessV5 {
             tag: value.tag,
             index: value.index, // @todo fix this in pallas to be u64
             units: ExecCost {
@@ -409,12 +534,52 @@ impl From<TxEvalResult> for TxEvalResultV5 {
     }
 }
 
-impl From<TxEvalResultV6> for TxEvalResultV5 {
-    fn from(value: TxEvalResultV6) -> Self {
-        TxEvalResultV5 {
+impl From<TxEvalResult> for TxEvalFailureV5 {
+    fn from(value: TxEvalResult) -> Self {
+        TxEvalFailureV5 {
+            error: serde_json::Value::String(value.logs[0].clone()),
+            validator: TxValidator {
+                tag: value.tag,
+                index: value.index,
+            },
+        }
+    }
+}
+
+impl From<TxEvalResult> for TxEvalResultV5 {
+    fn from(value: TxEvalResult) -> Self {
+        if value.success {
+            TxEvalResultV5::SUCCESS(value.into())
+        } else {
+            TxEvalResultV5::FAILURE(value.into())
+        }
+    }
+}
+
+impl From<TxEvalSuccessV6> for TxEvalSuccessV5 {
+    fn from(value: TxEvalSuccessV6) -> Self {
+        TxEvalSuccessV5 {
             tag: value.validator.tag,
             index: value.validator.index, // @todo can this take different values?
             units: value.budget,
+        }
+    }
+}
+
+impl From<TxEvalFailureV6> for TxEvalFailureV5 {
+    fn from(value: TxEvalFailureV6) -> Self {
+        TxEvalFailureV5 {
+            validator: value.validator,
+            error: value.error,
+        }
+    }
+}
+
+impl From<TxEvalResultV6> for TxEvalResultV5 {
+    fn from(value: TxEvalResultV6) -> Self {
+        match value {
+            TxEvalResultV6::SUCCESS(success) => TxEvalResultV5::SUCCESS(success.into()),
+            TxEvalResultV6::FAILURE(fail) => TxEvalResultV5::FAILURE(fail.into()),
         }
     }
 }
@@ -432,7 +597,7 @@ pub fn reedemer_tag_to_string(tag: RedeemerTag) -> String {
 
 use serde::ser::Serializer;
 
-impl Serialize for TxEvalResultV5 {
+impl Serialize for TxEvalSuccessV5 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

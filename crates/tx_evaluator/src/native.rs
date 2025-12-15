@@ -43,9 +43,10 @@ use pallas_primitives::{
 use pallas_traverse::MultiEraInput;
 use pallas_validate::utils::EraCbor;
 
-use crate::model::AdditionalUtxoSet;
-use crate::model::Value;
-use crate::model::ValueV6;
+use crate::model::api::AdditionalUtxoSet;
+use crate::model::api::Value;
+use crate::model::api::ValueV6;
+
 
 //* This implementation uses pallas validate.
 //  Since pallas validate behaves differently from the ogmios validation (which uses ledger)

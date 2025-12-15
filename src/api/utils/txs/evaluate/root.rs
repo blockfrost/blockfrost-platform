@@ -10,7 +10,7 @@ use common::{helpers::binary_or_hex_heuristic, validation::validate_content_type
 use hyper::HeaderMap;
 use node::pool::NodePool;
 use tx_evaluator::{
-    external::ExternalEvaluator, helpers::is_external_evaluator, model::convert_eval_report_v5,
+    external::ExternalEvaluator, helpers::is_external_evaluator, model::api::convert_eval_report_v5,
     native::evaluate_binary_tx, wrapper::wrap_success_response_v5,
 };
 

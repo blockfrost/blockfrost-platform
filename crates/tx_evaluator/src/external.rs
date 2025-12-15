@@ -21,12 +21,10 @@ use common::{
 use testgen::testgen::{Testgen, TestgenResponse};
 
 use crate::{
-    model::{AdditionalUtxoSet, AdditionalUtxoV6},
-    native::{
+    model::api::{AdditionalUtxoSet, AdditionalUtxoV6}, native::{
         convert_to_datum_option_network, convert_to_network_value, convert_to_network_value_v6,
         create_address, extract_inputs,
-    },
-    wrapper::{wrap_response_v5, wrap_response_v6},
+    }, wrapper::{wrap_response_v5, wrap_response_v6}
 };
 
 #[derive(Clone)]
@@ -98,6 +96,7 @@ impl ExternalEvaluator {
             AppError::Server(format!("ExternalEvaluator: Failed to initialize: {err}"))
         })
         */
+        // println!("1 -> {}", payload);
         match self.testgen.send(payload).await {
             Ok(response) => match response {
                 TestgenResponse::Ok(value) => Ok(value),
@@ -117,15 +116,25 @@ impl ExternalEvaluator {
         tx_cbor_binary: &[u8],
         additional_utxos: Vec<(UTxO, TransactionOutput)>,
     ) -> Result<TestgenResponse, BlockfrostError> {
-        let mut node = node_pool.get().await?;
+        let node = node_pool.get();
 
         /*
          * Prepare txins
          */
-        let multi_era_tx = MultiEraTx::decode(tx_cbor_binary).unwrap();
+        let multi_era_tx = match MultiEraTx::decode(tx_cbor_binary) {
+            Ok(tx) => tx,
+            Err(err) =>
+            // handle pallas decoding error as if it's coming from external binary.
+            {
+                return Ok(TestgenResponse::Err(
+                    serde_json::to_value(err.to_string()).unwrap(),
+                ));
+            },
+        };
+
         let txins = extract_inputs(multi_era_tx);
 
-        let utxos_from_node = node.get_utxos_for_txins(txins).await?;
+        let utxos_from_node = node.await?.get_utxos_for_txins(txins).await?;
 
         // Merge utxos from node and user
         let utxos = KeyValuePairs::from_iter(

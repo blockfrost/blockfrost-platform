@@ -12,7 +12,7 @@ use node::pool::NodePool;
 use tx_evaluator::{
     external::ExternalEvaluator,
     helpers::is_external_evaluator,
-    model::{TxEvaluationRequest, convert_eval_report_v5},
+    model::api::{TxEvaluationRequest, convert_eval_report_v5},
     native::evaluate_binary_tx,
 };
 

@@ -17,7 +17,7 @@ impl ExternalDecoder {
         match self.testgen.decode(input).await {
             Ok(resp) => match resp {
                 testgen::testgen::TestgenResponse::Ok(value) => Ok(value),
-                testgen::testgen::TestgenResponse::Err(err) => Err(err),
+                testgen::testgen::TestgenResponse::Err(err) => Err(err.to_string()),
             },
             Err(err) => Err(err),
         }

@@ -27,7 +27,7 @@ pub enum TestgenResponse {
     #[serde(rename = "json")]
     Ok(serde_json::Value),
     #[serde(rename = "error")]
-    Err(String),
+    Err(serde_json::Value),
 }
 /// Testgen is an executable that we use to run some functionality that are readily/easily available
 /// in Haskell codebase like the ledger.
