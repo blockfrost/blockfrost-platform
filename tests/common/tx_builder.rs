@@ -66,7 +66,7 @@ pub fn compose_transaction(
     current_slot: u64,
 ) -> Result<(String, TransactionBody)> {
     if utxos.is_empty() {
-        return Err(anyhow!("No UTXO on address {}", address));
+        return Err(anyhow!("No UTXO on address {address}"));
     }
 
     let config = TransactionBuilderConfigBuilder::new()
