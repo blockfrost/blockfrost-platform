@@ -34,8 +34,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> 
 
     if utxos.is_empty() || has_low_balance {
         return Err(anyhow!(
-            "You should send ADA to {} to have enough funds to send a transaction",
-            address
+            "You should send ADA to {address} to have enough funds to send a transaction",
         ));
     }
 
@@ -67,7 +66,7 @@ pub fn compose_transaction(
     current_slot: u64,
 ) -> Result<(String, TransactionBody)> {
     if utxos.is_empty() {
-        return Err(anyhow!("No UTXO on address {}", address));
+        return Err(anyhow!("No UTXO on address {address}"));
     }
 
     let config = TransactionBuilderConfigBuilder::new()
