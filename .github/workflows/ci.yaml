@@ -96,9 +96,28 @@ jobs:
         run: nix develop .# --command cargo test --verbose --test endpoints_test
 
   blockfrost_integration_tests:
-    name: Blockfrost Integration Tests
+    name: Blockfrost Integration Tests (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: build_and_test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - network: preview
+            dolos_endpoint: http://127.0.0.1:3010
+            cardano_node_socket_path: /run/cardano-node/node.socket
+            project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
+            submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
+          - network: preprod
+            dolos_endpoint: http://127.0.0.1:3009
+            cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
+            project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
+            submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
+          - network: mainnet
+            dolos_endpoint: http://127.0.0.1:3008
+            cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
+            project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
+            submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -106,10 +125,12 @@ jobs:
       - name: Run Blockfrost Tests
         continue-on-error: true
         env:
-          PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
-          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+          PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
+          SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
+          DOLOS_ENDPOINT: ${{ matrix.dolos_endpoint }}
+          CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
         run: |
-          nix run -L .#internal.x86_64-linux.blockfrost-tests
+          nix run -L .#internal.x86_64-linux.blockfrost-tests-"${{ matrix.network }}"
 
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option

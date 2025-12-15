@@ -490,7 +490,9 @@ in
 
     inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
 
-    blockfrost-tests = make-blockfrost-tests "preview";
+    blockfrost-tests-preview = make-blockfrost-tests "preview";
+    blockfrost-tests-preprod = make-blockfrost-tests "preprod";
+    blockfrost-tests-mainnet = make-blockfrost-tests "mainnet";
 
     make-blockfrost-tests = network: let
       inherit (pkgs) nodePackages;
@@ -578,7 +580,7 @@ in
           yarn --version
 
           yarn install
-          yarn test:preview
+          yarn test:${lib.escapeShellArg network}
         '';
       };
 
@@ -587,10 +589,10 @@ in
     run-blockfrost-tests =
       pkgs.writeShellScriptBin "test-blockfrost-tests" ''
         set -euo pipefail
-        exec nix run -L $PRJ_ROOT#internal.${pkgs.system}.${blockfrost-tests.name}
+        exec nix run -L $PRJ_ROOT#internal.${pkgs.system}.${blockfrost-tests-preview.name}
       ''
       // {
-        meta.description = blockfrost-tests.meta.description;
+        meta.description = blockfrost-tests-preview.meta.description;
       };
 
     hydra-flake = (import inputs.flake-compat {src = inputs.hydra;}).defaultNix;

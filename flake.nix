@@ -193,7 +193,7 @@
             };
             tests = lib.genAttrs config.systems (
               targetSystem: {
-                inherit (inputs.self.internal.${targetSystem}) blockfrost-tests;
+                inherit (inputs.self.internal.${targetSystem}) blockfrost-tests-preview;
               }
             );
             inherit (inputs.self) checks;

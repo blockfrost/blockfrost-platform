@@ -181,8 +181,6 @@ macro_rules! assert_json_eq {
         }
     };
 }
-#[cfg(not(feature = "tarpaulin"))]
-pub(crate) use assert_json_eq; // export it
 
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
