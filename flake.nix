@@ -28,7 +28,7 @@
       flake = false;
     };
     blockfrost-tests = {
-      url = "github:blockfrost/blockfrost-tests/better-url-matcher";
+      url = "github:blockfrost/blockfrost-tests";
       flake = false;
     };
     midnight-node = {
