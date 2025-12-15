@@ -46,6 +46,18 @@ impl From<std::num::TryFromIntError> for BlockfrostError {
     }
 }
 
+impl From<bech32::Error> for BlockfrostError {
+    fn from(err: bech32::Error) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 error: {err}"))
+    }
+}
+
+impl From<hex::FromHexError> for BlockfrostError {
+    fn from(err: hex::FromHexError) -> Self {
+        BlockfrostError::internal_server_error(format!("Hex error: {err}"))
+    }
+}
+
 impl From<AppError> for BlockfrostError {
     fn from(err: AppError) -> Self {
         match err {
