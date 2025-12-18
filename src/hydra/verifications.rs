@@ -3,13 +3,11 @@ use serde_json::Value;
 use std::path::Path;
 use tracing::info;
 
+use crate::types::Network;
+
 /// FIXME: don’t use `cardano-cli`.
 ///
-/// FIXME: set `CARDANO_NODE_NETWORK_ID` ourselves
-///
-/// FIXME: set `CARDANO_NODE_SOCKET_PATH` ourselves
-///
-/// FIXME: proper errors, not `Box<dyn Erro>>`
+/// FIXME: proper errors, not `anyhow!`
 impl super::HydraConfig {
     /// Generates Hydra keys if they don’t exist.
     pub(super) async fn gen_hydra_keys(&self, target_dir: &Path) -> Result<()> {
@@ -37,18 +35,40 @@ impl super::HydraConfig {
         Ok(())
     }
 
+    fn cardano_cli_env(&self) -> Vec<(&str, String)> {
+        vec![
+            (
+                "CARDANO_NODE_SOCKET_PATH",
+                self.toml.node_socket_path.to_string_lossy().to_string(),
+            ),
+            (
+                "CARDANO_NODE_NETWORK_ID",
+                match &self.network {
+                    Network::Mainnet => self.network.as_str().to_string(),
+                    other => other.network_magic().to_string(),
+                },
+            ),
+        ]
+    }
+
     /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
     /// are L1 parameters with zeroed transaction fees.
     pub(super) async fn gen_protocol_parameters(&self) -> Result<serde_json::Value> {
         use serde_json::Value;
 
-        let output = tokio::process::Command::new("cardano-cli")
+        let output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["query", "protocol-parameters"])
             .output()
             .await?;
 
         if !output.status.success() {
-            Err(anyhow!("cardano-cli failed with status: {}", output.status))?;
+            Err(anyhow!(
+                "cardano-cli failed with status: {} (stdout: {}) (stderr: {})",
+                output.status,
+                String::from_utf8_lossy(&output.stdout).trim(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            ))?;
         }
 
         let mut params: Value = serde_json::from_slice(&output.stdout)?;
@@ -84,6 +104,7 @@ impl super::HydraConfig {
         skey_path: &Path,
     ) -> Result<serde_json::Value> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
             .args(["--verification-key-file", "/dev/stdout"])
@@ -97,6 +118,7 @@ impl super::HydraConfig {
         skey_path: &Path,
     ) -> Result<String> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
             .args(["--verification-key-file", "/dev/stdout"])
@@ -111,6 +133,7 @@ impl super::HydraConfig {
         }
 
         let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args([
                 "address",
                 "build",
@@ -165,6 +188,7 @@ impl super::HydraConfig {
 
     pub async fn new_cardano_keypair(&self, base_path: &Path) -> Result<()> {
         let output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["address", "key-gen", "--verification-key-file"])
             .arg(base_path.with_extension("vk"))
             .arg("--signing-key-file")
@@ -230,6 +254,7 @@ impl super::HydraConfig {
         use tokio::io::AsyncWriteExt;
 
         let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
+        cmd.envs(self.cardano_cli_env());
         cmd.args(args)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
