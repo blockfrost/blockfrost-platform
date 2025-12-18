@@ -75,7 +75,8 @@ impl HydrasManager {
             self.config.toml.commit_ada + (MIN_FUEL_LOVELACE as f64 / 1_000_000.0);
         if have_funds < required_funds_ada {
             let err = anyhow!(
-                "hydra-controller: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                "hydra-controller: {:?}: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                originator,
                 have_funds,
                 self.config.toml.cardano_signing_key,
                 required_funds_ada,
@@ -84,8 +85,8 @@ impl HydrasManager {
             Err(err)?
         }
         info!(
-            "hydra-controller: funds on cardano_signing_key: {:?} ADA",
-            have_funds
+            "hydra-controller: {:?}: funds on cardano_signing_key: {:?} ADA",
+            originator, have_funds
         );
 
         use verifications::{find_free_tcp_port, read_json_file};
@@ -335,7 +336,8 @@ impl State {
                     Ok(()) => (),
                     Err(err) => {
                         error!(
-                            "hydra-controller: error: {}; will restart in {:?}…",
+                            "hydra-controller: {:?}: error: {}; will restart in {:?}…",
+                            self_.originator,
                             err,
                             Self::RESTART_DELAY
                         );
