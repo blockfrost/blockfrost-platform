@@ -58,6 +58,7 @@ pub enum LoadBalancerMessage {
     HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
+    Error { code: u64, msg: String },
 }
 
 /// The WebSocket messages that we receive.
@@ -75,6 +76,7 @@ pub struct LoadBalancerState {
     pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
     pub background_worker: Arc<JoinHandle<()>>,
+    pub hydras: Option<hydra::HydrasManager>,
 }
 
 #[derive(Debug)]
@@ -107,7 +109,7 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new() -> LoadBalancerState {
+    pub async fn new(hydras: Option<hydra::HydrasManager>) -> LoadBalancerState {
         let access_tokens = Arc::new(Mutex::new(HashMap::new()));
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
         let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
@@ -118,6 +120,7 @@ impl LoadBalancerState {
             access_tokens,
             active_relays,
             background_worker,
+            hydras,
         }
     }
 
@@ -476,18 +479,25 @@ pub mod event_loop {
                     todo!()
                 },
 
-                LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest { .. }) => {
-                    // FIXME: actually exchange
-                    let resp = crate::hydra::fake_kex_response(&crate::types::Network::Preview)
+                LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
+                    let reply = if let Some(hydras) = &load_balancer.hydras {
+                        match hydras.key_exchange(req).await {
+                            Ok(resp) => LoadBalancerMessage::HydraKExResponse(resp),
+                            Err(err) => LoadBalancerMessage::Error {
+                                code: 537,
+                                msg: format!("Hydra micropayments setup error: {err}"),
+                            },
+                        }
+                    } else {
+                        LoadBalancerMessage::Error {
+                            code: 536,
+                            msg: "Hydra micropayments not supported".to_string(),
+                        }
+                    };
+
+                    if send_json_msg(&mut socket_tx, &reply, asset_name)
                         .await
-                        .unwrap();
-                    if send_json_msg(
-                        &mut socket_tx,
-                        &LoadBalancerMessage::HydraKExResponse(resp),
-                        asset_name,
-                    )
-                    .await
-                    .is_err()
+                        .is_err()
                     {
                         break 'event_loop;
                     }
@@ -1042,7 +1052,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_new_creates_empty_state() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
 
         let tokens = lb.access_tokens.lock().await;
         assert!(tokens.is_empty());
@@ -1053,7 +1063,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_new_access_token_register() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
         let token = lb.new_access_token(name.clone(), prefix).await;
@@ -1069,14 +1079,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_invalid_token() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let res = lb.register("invalid").await;
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
     #[tokio::test]
     async fn test_register_expired_token() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
         let token = random_token();
@@ -1097,7 +1107,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_clean_up_expired_tokens_logic() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
 

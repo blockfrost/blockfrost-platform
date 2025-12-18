@@ -2,10 +2,60 @@ use crate::config::HydraConfig;
 use crate::types::Network;
 use anyhow::{Result, anyhow};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub mod verifications;
+
+/// After cloning, it still represents the same set of [`HydraController`]s.
+#[derive(Clone, Debug)]
+pub struct HydrasManager {
+    config: HydraConfig,
+    network: Network,
+    /// This is `Arc<Arc<()>>` because we want all clones of the controller to only hold a single copy.
+    #[allow(clippy::redundant_allocation)]
+    controller_counter: Arc<Arc<()>>,
+}
+
+impl HydrasManager {
+    pub async fn new(config: &HydraConfig, network: &Network) -> Self {
+        Self {
+            config: config.clone(),
+            network: network.clone(),
+            controller_counter: Arc::new(Arc::new(())),
+        }
+    }
+
+    pub async fn key_exchange(&self, req: KeyExchangeRequest) -> Result<KeyExchangeResponse> {
+        // FIXME: actually exchange
+        let resp = fake_kex_response(&self.network).await?;
+        Ok(resp)
+    }
+
+    pub async fn spawn_new(&self) -> Result<HydraController> {
+        // Clone first, to prevent the nastier race condition:
+        let maybe_new = Arc::clone(self.controller_counter.as_ref());
+        let new_count = Arc::strong_count(&self.controller_counter).saturating_sub(1); // subtract the manager
+        if new_count as u64 <= self.config.max_concurrent_hydra_nodes {
+            Err(anyhow!(
+                "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
+            ))?
+        } else {
+            // FIXME: continue
+            let (unused_1, _) = mpsc::channel(32);
+            let (_, unused_2) = mpsc::channel(32);
+            HydraController::spawn(
+                self.config.clone(),
+                self.network.clone(),
+                unused_1,
+                unused_2,
+                maybe_new,
+            )
+            .await
+        }
+    }
+}
 
 /// Runs a `hydra-node` and sets up an L2 network with the Platform for microtransactions.
 ///
@@ -13,6 +63,7 @@ pub mod verifications;
 #[derive(Clone)]
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
+    _controller_counter: Arc<()>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
@@ -41,19 +92,15 @@ impl HydraController {
     pub async fn spawn(
         config: HydraConfig,
         network: Network,
-        node_socket_path: String,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
+        controller_counter: Arc<()>,
     ) -> Result<Self> {
-        let event_tx = State::spawn(
-            config,
-            network,
-            node_socket_path,
-            kex_requests,
-            kex_responses,
-        )
-        .await?;
-        Ok(Self { event_tx })
+        let event_tx = State::spawn(config, network, kex_requests, kex_responses).await?;
+        Ok(Self {
+            event_tx,
+            _controller_counter: controller_counter,
+        })
     }
 
     pub async fn send_some_event(&self, some_value: u64) {
@@ -76,7 +123,6 @@ enum Event {
 struct State {
     config: HydraConfig,
     network: Network,
-    node_socket_path: String,
     platform_cardano_vkey: serde_json::Value,
     kex_requests: mpsc::Sender<KeyExchangeRequest>,
     hydra_node_exe: String,
@@ -92,7 +138,6 @@ impl State {
     async fn spawn(
         config: HydraConfig,
         network: Network,
-        node_socket_path: String,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
     ) -> Result<mpsc::Sender<Event>> {
@@ -114,7 +159,6 @@ impl State {
         let self_ = Self {
             config,
             network,
-            node_socket_path,
             platform_cardano_vkey: serde_json::Value::Null,
             kex_requests,
             hydra_node_exe,
@@ -272,7 +316,7 @@ impl State {
                 ]
             })
             .arg("--node-socket")
-            .arg(&self.node_socket_path)
+            .arg(&self.config.node_socket_path)
             .arg("--api-port")
             .arg(format!("{api_port}"))
             .arg("--api-host")

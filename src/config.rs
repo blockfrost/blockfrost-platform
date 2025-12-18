@@ -65,7 +65,7 @@ pub struct ConfigInput {
     pub server: ServerInput,
     pub database: DbInput,
     pub blockfrost: BlockfrostInput,
-    pub hydra: HydraConfig,
+    pub hydra: Option<HydraConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -73,7 +73,7 @@ pub struct Config {
     pub server: Server,
     pub database: Db,
     pub blockfrost: Blockfrost,
-    pub hydra: HydraConfig, // FIXME: this should be an `Option<HydraConfig>`
+    pub hydra: Option<HydraConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -85,6 +85,8 @@ pub struct Blockfrost {
 #[derive(Debug, Deserialize, Clone)]
 pub struct HydraConfig {
     pub cardano_signing_key: PathBuf,
+    pub max_concurrent_hydra_nodes: u64,
+    pub node_socket_path: PathBuf,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
