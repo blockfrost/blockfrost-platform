@@ -11,6 +11,7 @@ default = []
 dev_mock_db = []
 
 [dependencies]
+anyhow = "1.0.98"
 axum = { version = "0.7.5", features = ["ws"] }
 tokio = { version = "1.39.2", features = ["full"] }
 futures = "0.3"
@@ -26,6 +27,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.122"
 colored = "2.1.0"
 clap = { version = "4.5.14", features = ["derive"] }
+dirs = "6.0.0"
 toml = "0.9.5"
 thiserror = "1.0.63"
 chrono = { version = "0.4.3", features = ["serde"] }

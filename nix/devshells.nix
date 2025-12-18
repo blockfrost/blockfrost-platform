@@ -50,6 +50,25 @@ in {
       inherit (internal) rustfmt;
     };
 
+  env =
+    (map (network: {
+      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
+      value = (builtins.fromJSON (builtins.readFile internal.hydraNetworksJson)).${network}.${internal.hydraVersion};
+    }) ["mainnet" "preprod" "preview"])
+    ++ lib.optionals pkgs.stdenv.isDarwin [
+      {
+        name = "LIBCLANG_PATH";
+        value = internal.commonArgs.LIBCLANG_PATH;
+      }
+    ]
+    ++ lib.optionals pkgs.stdenv.isLinux [
+      # Embed `openssl` in `RPATH`:
+      {
+        name = "RUSTFLAGS";
+        eval = ''"-C link-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl)"'';
+      }
+    ];
+
   devshell.motd = ''
 
     {202}🔨 Welcome to ${config.name}{reset}

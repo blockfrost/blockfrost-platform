@@ -1,5 +1,6 @@
 use crate::blockfrost::AssetName;
 use crate::errors::APIError;
+use crate::hydra;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{atomic, Arc};
@@ -53,6 +54,8 @@ pub enum JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
+    HydraKExResponse(hydra::KeyExchangeResponse),
+    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
 }
@@ -61,6 +64,8 @@ pub enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RelayMessage {
     Response(JsonResponse),
+    HydraKExRequest(hydra::KeyExchangeRequest),
+    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
 }
@@ -446,6 +451,14 @@ pub mod event_loop {
                     {
                         break 'event_loop;
                     }
+                },
+
+                LBEvent::NewRelayMessage(RelayMessage::HydraTunnel { .. }) => {
+                    todo!()
+                },
+
+                LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest { .. }) => {
+                    todo!()
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {

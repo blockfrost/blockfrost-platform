@@ -1,3 +1,5 @@
+use crate::types::Network;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
@@ -49,7 +51,7 @@ pub struct Server {
     pub address: String,
     #[serde(deserialize_with = "deserialize_log_level")]
     pub log_level: Level,
-    pub is_testnet: bool,
+    pub network: Network,
     pub url: Option<String>,
 }
 
@@ -63,6 +65,7 @@ pub struct ConfigInput {
     pub server: ServerInput,
     pub database: DbInput,
     pub blockfrost: BlockfrostInput,
+    pub hydra: HydraConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -70,12 +73,18 @@ pub struct Config {
     pub server: Server,
     pub database: Db,
     pub blockfrost: Blockfrost,
+    pub hydra: HydraConfig, // FIXME: this should be an `Option<HydraConfig>`
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Blockfrost {
     pub project_id: String,
     pub nft_asset: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct HydraConfig {
+    pub cardano_signing_key: PathBuf,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
@@ -108,13 +117,13 @@ pub fn load_config(path: PathBuf) -> Config {
         None => toml_config.blockfrost.project_id.expect("project_id must be provided"),
     };
 
-    let is_testnet = project_id.contains("preview");
+    let network = network_from_project_id(&project_id).unwrap();
 
     let config = Config {
         server: Server {
             address: toml_config.server.address,
             log_level,
-            is_testnet,
+            network,
             url: toml_config.server.url,
         },
         database: Db { connection_string },
@@ -122,9 +131,24 @@ pub fn load_config(path: PathBuf) -> Config {
             project_id,
             nft_asset: toml_config.blockfrost.nft_asset,
         },
+        hydra: toml_config.hydra,
     };
 
     override_with_env(config)
+}
+
+fn network_from_project_id(project_id: &str) -> Result<Network> {
+    if project_id.starts_with("mainnet") {
+        Ok(Network::Mainnet)
+    } else if project_id.starts_with("preprod") {
+        Ok(Network::Preprod)
+    } else if project_id.starts_with("preview") {
+        Ok(Network::Preview)
+    } else {
+        Err(anyhow!(
+            "cannot infer Cardano network from the Blockfrost project id"
+        ))
+    }
 }
 
 fn override_with_env(config: Config) -> Config {
@@ -134,7 +158,7 @@ fn override_with_env(config: Config) -> Config {
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
     let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
-    let is_testnet = project_id.contains("preview");
+    let network = network_from_project_id(&project_id).unwrap();
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
@@ -149,12 +173,13 @@ fn override_with_env(config: Config) -> Config {
         server: Server {
             address: server_address,
             log_level: final_log_level,
-            is_testnet,
+            network,
             url: server_url,
         },
         database: Db {
             connection_string: db_connection,
         },
         blockfrost: Blockfrost { project_id, nft_asset },
+        hydra: config.hydra,
     }
 }

@@ -59,7 +59,7 @@ pub async fn route(
 
     let is_testnet_address = payload.reward_address.starts_with("addr_test");
 
-    if config.server.is_testnet {
+    if config.server.network.is_testnet() {
         if !is_testnet_address {
             return Err(APIError::Validation(
                 "Network and address mismatch: mainnet address provided on testnet".to_string(),
