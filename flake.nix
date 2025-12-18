@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-compat = {
       url = "github:edolstra/flake-compat";
@@ -64,7 +64,7 @@
             alejandra.enable = true; # Nix
             prettier.enable = true;
             rustfmt.enable = true;
-            rustfmt.package = internal.rustfmt;
+            rustfmt.package = internal.rustPackages.rustfmt;
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
             taplo.enable = true; # TOML
             shfmt.enable = true;

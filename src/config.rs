@@ -1,5 +1,5 @@
 use crate::types::Network;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
@@ -89,7 +89,8 @@ pub struct HydraConfig {
 
 pub fn load_config(path: PathBuf) -> Config {
     let config_file_content = fs::read_to_string(path).expect("Reading config failed");
-    let toml_config: ConfigInput = toml::from_str(&config_file_content).expect("Config file is invalid");
+    let toml_config: ConfigInput =
+        toml::from_str(&config_file_content).expect("Config file is invalid");
 
     let log_level = match toml_config.server.log_level.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
@@ -114,7 +115,10 @@ pub fn load_config(path: PathBuf) -> Config {
         Some(file_path) => read_to_string(file_path)
             .expect("Failed to read project ID file")
             .to_string(),
-        None => toml_config.blockfrost.project_id.expect("project_id must be provided"),
+        None => toml_config
+            .blockfrost
+            .project_id
+            .expect("project_id must be provided"),
     };
 
     let network = network_from_project_id(&project_id).unwrap();
@@ -154,7 +158,8 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
 fn override_with_env(config: Config) -> Config {
     let server_url = var("SERVER_URL").ok().or(config.server.url.clone());
     let server_address = var("SERVER_ADDRESS").unwrap_or(config.server.address);
-    let log_level_str = var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
+    let log_level_str =
+        var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
     let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
@@ -179,7 +184,10 @@ fn override_with_env(config: Config) -> Config {
         database: Db {
             connection_string: db_connection,
         },
-        blockfrost: Blockfrost { project_id, nft_asset },
+        blockfrost: Blockfrost {
+            project_id,
+            nft_asset,
+        },
         hydra: config.hydra,
     }
 }

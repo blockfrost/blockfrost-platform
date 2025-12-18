@@ -1,7 +1,7 @@
 use api::{register, root};
 use axum::{
-    routing::{get, post},
     Extension, Router,
+    routing::{get, post},
 };
 use blockfrost_gateway::{api, blockfrost, config, db, load_balancer};
 use clap::Parser;

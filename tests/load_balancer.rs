@@ -8,7 +8,7 @@ use blockfrost_gateway::{
 };
 use futures::{SinkExt, StreamExt};
 use std::vec;
-use tungstenite::{handshake::client::generate_key, Message};
+use tungstenite::{Message, handshake::client::generate_key};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -73,7 +73,8 @@ async fn test_websocket_request_response_flow() {
                             id: json_req.id,
                             code: 200,
                             header: vec![],
-                            body_base64: base64::engine::general_purpose::STANDARD.encode(b"test response"),
+                            body_base64: base64::engine::general_purpose::STANDARD
+                                .encode(b"test response"),
                         };
                         let relay_msg = RelayMessage::Response(response);
 

@@ -1,5 +1,5 @@
 use axum::response::{IntoResponse, Response};
-use axum::{http, Json};
+use axum::{Json, http};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -78,7 +78,9 @@ impl IntoResponse for APIError {
                     details: "You are not authorized to access the registration.".to_string(),
                 },
             ),
-            APIError::DatabaseConnection(_) | APIError::DatabaseQuery(_) | APIError::DatabaseInteraction(_) => (
+            APIError::DatabaseConnection(_)
+            | APIError::DatabaseQuery(_)
+            | APIError::DatabaseInteraction(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiError {
                     status: "failed".to_string(),

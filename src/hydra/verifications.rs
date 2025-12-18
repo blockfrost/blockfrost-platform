@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde_json::Value;
 use std::path::Path;
 use tracing::info;
@@ -65,7 +65,10 @@ impl super::State {
 
             // .executionUnitPrices.priceMemory := 0
             // .executionUnitPrices.priceSteps := 0
-            if let Some(exec_prices) = obj.get_mut("executionUnitPrices").and_then(Value::as_object_mut) {
+            if let Some(exec_prices) = obj
+                .get_mut("executionUnitPrices")
+                .and_then(Value::as_object_mut)
+            {
                 exec_prices.insert("priceMemory".to_string(), 0.into());
                 exec_prices.insert("priceSteps".to_string(), 0.into());
             }
@@ -89,7 +92,10 @@ impl super::State {
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
 
-    pub(super) async fn derive_vkey_from_skey(&self, skey_path: &Path) -> Result<serde_json::Value> {
+    pub(super) async fn derive_vkey_from_skey(
+        &self,
+        skey_path: &Path,
+    ) -> Result<serde_json::Value> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
@@ -115,7 +121,12 @@ impl super::State {
         }
 
         let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
-            .args(["address", "build", "--payment-verification-key-file", "/dev/stdin"])
+            .args([
+                "address",
+                "build",
+                "--payment-verification-key-file",
+                "/dev/stdin",
+            ])
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .spawn()?;
@@ -164,7 +175,9 @@ impl super::State {
 
     fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64> {
         let v: Value = serde_json::from_str(json)?;
-        let obj = v.as_object().ok_or(anyhow!("UTxO JSON root is not an object"))?;
+        let obj = v
+            .as_object()
+            .ok_or(anyhow!("UTxO JSON root is not an object"))?;
 
         let mut total: u64 = 0;
 

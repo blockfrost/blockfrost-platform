@@ -5,7 +5,7 @@ use crate::{
 };
 use deadpool_diesel::postgres::{Manager, Pool};
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use schema::users::dsl::*;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
@@ -18,7 +18,9 @@ pub struct DB {
 impl DB {
     pub async fn new(database_url: &str) -> Self {
         let manager = Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
-        let pool = Pool::builder(manager).build().expect("Failed to create pool.");
+        let pool = Pool::builder(manager)
+            .build()
+            .expect("Failed to create pool.");
 
         if cfg!(feature = "dev_mock_db") {
             return Self { pool };
@@ -64,7 +66,11 @@ impl DB {
         if cfg!(feature = "dev_mock_db") {
             return Ok(User {
                 id: 31337,
-                created_at: chrono::NaiveDateTime::parse_from_str("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S").unwrap(),
+                created_at: chrono::NaiveDateTime::parse_from_str(
+                    "2015-09-05 23:56:04",
+                    "%Y-%m-%d %H:%M:%S",
+                )
+                .unwrap(),
                 user_id: 31337,
                 email: "xxx@xxx.xxx".to_string(),
                 secret: "xxxxxxxx".to_string(),
@@ -74,7 +80,12 @@ impl DB {
         let db_pool = self.pool.get().await?;
 
         let user_result: Option<User> = db_pool
-            .interact(|db_pool| users.filter(secret.eq(secret_param)).first::<User>(db_pool).optional())
+            .interact(|db_pool| {
+                users
+                    .filter(secret.eq(secret_param))
+                    .first::<User>(db_pool)
+                    .optional()
+            })
             .await??;
 
         if let Some(user) = user_result {

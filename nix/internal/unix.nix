@@ -16,7 +16,9 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
     ) {inherit inputs targetSystem unix;};
 in
   extendForTarget rec {
-    craneLib = inputs.crane.mkLib pkgs;
+    rustPackages = inputs.fenix.packages.${pkgs.system}.stable;
+
+    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
     src = lib.cleanSourceWith {
       src = lib.cleanSource ../../.;
@@ -27,24 +29,33 @@ in
       name = "source";
     };
 
-    commonArgs = {
-      inherit src;
-      strictDeps = true;
-      nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
-        pkgs.pkg-config
-      ];
-      buildInputs =
-        [pkgs.postgresql]
-        ++ lib.optionals pkgs.stdenv.isLinux [
-          pkgs.openssl
-        ]
-        ++ lib.optionals pkgs.stdenv.isDarwin [
-          pkgs.libiconv
-          pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-          pkgs.darwin.apple_sdk_12_3.frameworks.Security
-          pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+    commonArgs =
+      {
+        inherit src;
+        strictDeps = true;
+        nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
+          pkgs.pkg-config
         ];
-    };
+        buildInputs =
+          [pkgs.postgresql]
+          ++ lib.optionals pkgs.stdenv.isLinux [
+            pkgs.openssl
+          ]
+          ++ lib.optionals pkgs.stdenv.isDarwin [
+            pkgs.libiconv
+            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
+            pkgs.darwin.apple_sdk_12_3.frameworks.Security
+            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
+          ];
+      }
+      // lib.optionalAttrs pkgs.stdenv.isDarwin {
+        # for bindgen, used by libproc, used by metrics_process
+        LIBCLANG_PATH = "${lib.getLib pkgs.llvmPackages.libclang}/lib";
+      }
+      // lib.optionalAttrs pkgs.stdenv.isLinux {
+        # The linker bundled with Fenix has wrong interpreter path, and it fails with ENOENT, so:
+        RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
+      };
 
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -64,10 +75,8 @@ in
           ( cd $out/bin && ln -s ../libexec/${packageName} ./ ; )
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
-      });
-
-    # We use a newer `rustfmt`:
-    inherit (inputs.fenix.packages.${pkgs.system}.stable) rustfmt;
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
@@ -157,6 +166,11 @@ in
     hydraNetworksJson = builtins.path {
       path = hydra-flake + "/hydra-node/networks.json";
     };
+
+    hydraScriptsEnvVars = map (network: {
+      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
+      value = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${network}.${hydraVersion};
+    }) ["mainnet" "preprod" "preview"];
 
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";

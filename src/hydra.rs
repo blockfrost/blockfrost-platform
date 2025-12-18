@@ -1,6 +1,6 @@
 use crate::config::HydraConfig;
 use crate::types::Network;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -96,10 +96,12 @@ impl State {
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
     ) -> Result<mpsc::Sender<Event>> {
-        let hydra_node_exe = crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
-            .map_err(|e| anyhow!(e))?;
-        let cardano_cli_exe = crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
-            .map_err(|e| anyhow!(e))?;
+        let hydra_node_exe =
+            crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+                .map_err(|e| anyhow!(e))?;
+        let cardano_cli_exe =
+            crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
+                .map_err(|e| anyhow!(e))?;
 
         // FIXME: config dir needs to be network specific
         let config_dir = dirs::config_dir()
@@ -121,7 +123,9 @@ impl State {
             event_tx: event_tx.clone(),
         };
 
-        let platform_cardano_vkey = self_.derive_vkey_from_skey(&self_.config.cardano_signing_key).await?;
+        let platform_cardano_vkey = self_
+            .derive_vkey_from_skey(&self_.config.cardano_signing_key)
+            .await?;
         let self_ = Self {
             platform_cardano_vkey,
             ..self_
@@ -172,7 +176,9 @@ impl State {
             Event::Restart => {
                 info!("hydra-manager: starting…");
 
-                let potential_fuel = self.lovelace_on_payment_skey(&self.config.cardano_signing_key).await?;
+                let potential_fuel = self
+                    .lovelace_on_payment_skey(&self.config.cardano_signing_key)
+                    .await?;
                 if potential_fuel < Self::MIN_FUEL_LOVELACE {
                     Err(anyhow!(
                         "hydra-manager: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
@@ -192,7 +198,9 @@ impl State {
                 self.kex_requests
                     .send(KeyExchangeRequest {
                         platform_cardano_vkey: self.platform_cardano_vkey.clone(),
-                        platform_hydra_vkey: verifications::read_json_file(&self.config_dir.join("hydra.vk"))?,
+                        platform_hydra_vkey: verifications::read_json_file(
+                            &self.config_dir.join("hydra.vk"),
+                        )?,
                         accepted_platform_h2h_port: None,
                     })
                     .await?;
@@ -223,10 +231,16 @@ impl State {
         // TODO: Write a ticket in `hydra-node`.
 
         let protocol_parameters_path = self.config_dir.join("protocol-parameters.json");
-        verifications::write_json_if_changed(&protocol_parameters_path, &kex_response.protocol_parameters)?;
+        verifications::write_json_if_changed(
+            &protocol_parameters_path,
+            &kex_response.protocol_parameters,
+        )?;
 
         let gateway_hydra_vkey_path = self.config_dir.join("gateway-hydra.vk");
-        verifications::write_json_if_changed(&gateway_hydra_vkey_path, &kex_response.gateway_hydra_vkey)?;
+        verifications::write_json_if_changed(
+            &gateway_hydra_vkey_path,
+            &kex_response.gateway_hydra_vkey,
+        )?;
 
         let gateway_cardano_vkey_path = self.config_dir.join("gateway-payment.vk");
         verifications::write_json_if_changed(
@@ -344,7 +358,8 @@ pub async fn fake_kex_response(network: &Network) -> Result<KeyExchangeResponse>
         )?,
         hydra_scripts_tx_id,
         protocol_parameters: read_json_file(
-            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json".as_ref(),
+            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json"
+                .as_ref(),
         )?,
         contestation_period: CONTESTATION_PERIOD_SECONDS,
         proposed_platform_h2h_port: pick_free_tcp_port().await?,

@@ -14,7 +14,10 @@ in {
   ];
 
   devshell.packages =
-    [pkgs.unixtools.xxd]
+    [
+      pkgs.unixtools.xxd
+      internal.rustPackages.clippy
+    ]
     ++ lib.optionals pkgs.stdenv.isLinux [
       pkgs.pkg-config
     ]
@@ -24,14 +27,17 @@ in {
 
   commands = [
     {package = inputs.self.formatter.${pkgs.system};}
-    {package = config.language.rust.packageSet.cargo;}
+    {
+      name = "cargo";
+      package = internal.rustPackages.cargo;
+    }
     {package = pkgs.cargo-nextest;}
     # TODO: add .envrc.local with node env. exports
     {
       name = "cardano-cli";
       package = internal.cardano-cli;
     }
-    {package = pkgs.rust-analyzer;}
+    {package = internal.rustPackages.rust-analyzer;}
     {package = pkgs.doctl;}
     {package = internal.hydra-node;}
   ];
@@ -42,19 +48,17 @@ in {
       then pkgs.gcc
       else pkgs.clang;
     includes = internal.commonArgs.buildInputs;
+    libraries = internal.commonArgs.buildInputs;
   };
 
-  language.rust.packageSet =
-    pkgs.rustPackages
-    // {
-      inherit (internal) rustfmt;
-    };
+  language.rust = {
+    packageSet = internal.rustPackages;
+    tools = ["cargo" "rustfmt"]; # The rest is provided below.
+    enableDefaultToolchain = true;
+  };
 
   env =
-    (map (network: {
-      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
-      value = (builtins.fromJSON (builtins.readFile internal.hydraNetworksJson)).${network}.${internal.hydraVersion};
-    }) ["mainnet" "preprod" "preview"])
+    internal.hydraScriptsEnvVars
     ++ lib.optionals pkgs.stdenv.isDarwin [
       {
         name = "LIBCLANG_PATH";
@@ -62,10 +66,14 @@ in {
       }
     ]
     ++ lib.optionals pkgs.stdenv.isLinux [
-      # Embed `openssl` in `RPATH`:
+      # Embed runtime libs in `RPATH`:
       {
         name = "RUSTFLAGS";
-        eval = ''"-C link-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl)"'';
+        eval = ''"-Clink-arg=-fuse-ld=bfd -Clink-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl libpq | tr ' ' :)"'';
+      }
+      {
+        name = "LD_LIBRARY_PATH";
+        eval = lib.mkForce "";
       }
     ];
 

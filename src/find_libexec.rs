@@ -29,10 +29,11 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
 
     // This is the most important one for relocatable directories (that keep the initial
     // structure) on Windows, Linux, macOS:
-    let current_exe_dir: Option<PathBuf> = std::fs::canonicalize(env::current_exe().map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?
-        .parent()
-        .map(|a| a.to_path_buf().join(exe_name));
+    let current_exe_dir: Option<PathBuf> =
+        std::fs::canonicalize(env::current_exe().map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?
+            .parent()
+            .map(|a| a.to_path_buf().join(exe_name));
 
     // Similar, but accounts for the `nix-bundle-exe` structure on Linux:
     let current_package_dir: Option<PathBuf> = current_exe_dir
@@ -62,7 +63,11 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
     .chain(system_path)
     .collect();
 
-    let extension = if cfg!(target_os = "windows") { ".exe" } else { "" };
+    let extension = if cfg!(target_os = "windows") {
+        ".exe"
+    } else {
+        ""
+    };
 
     let exe_name_ext = format!("{exe_name}{extension}");
 
@@ -70,7 +75,8 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
 
     // Checks if the path is runnable. Adjust for platform specifics if needed.
     // TODO: check that the --version matches what we expect.
-    let is_our_executable = |path: &Path| -> bool { Command::new(path).args(test_args).output().is_ok() };
+    let is_our_executable =
+        |path: &Path| -> bool { Command::new(path).args(test_args).output().is_ok() };
 
     // Look in each candidate directory to find a matching file
     for candidate in &search_path {

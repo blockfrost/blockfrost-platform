@@ -92,7 +92,12 @@ pub async fn route(
         .and_then(|val| val.to_str().ok())
     {
         // multiple ips are provided, take the first.
-        ip_header_value.split(',').next().unwrap_or("").trim().to_string()
+        ip_header_value
+            .split(',')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_string()
     } else {
         // fallback to the IP from the connection info (useful for localhost testing)
         addr.ip().to_string()

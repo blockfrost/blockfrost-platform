@@ -39,8 +39,8 @@ impl BlockfrostAPI {
         }
 
         let asset_hex = &unit[self.policy_id_size..];
-        let decoded =
-            hex::decode(asset_hex).map_err(|err| APIError::License(format!("Hex decoding failed: {}", err)))?;
+        let decoded = hex::decode(asset_hex)
+            .map_err(|err| APIError::License(format!("Hex decoding failed: {}", err)))?;
 
         let asset_name = AssetName(String::from_utf8_lossy(&decoded).to_string());
 
@@ -61,11 +61,15 @@ impl BlockfrostAPI {
             .await
             .map_err(|err| APIError::License(err.to_string()))?;
 
-        let found_asset = bf_result.amount.iter().filter(|x| x.unit != "lovelace").find(|x| {
-            x.unit.len() >= self.policy_id_size
-                && &x.unit[..self.policy_id_size] == asset
-                && x.quantity.parse::<i64>().unwrap_or(0) > 0
-        });
+        let found_asset = bf_result
+            .amount
+            .iter()
+            .filter(|x| x.unit != "lovelace")
+            .find(|x| {
+                x.unit.len() >= self.policy_id_size
+                    && &x.unit[..self.policy_id_size] == asset
+                    && x.quantity.parse::<i64>().unwrap_or(0) > 0
+            });
 
         let found_asset_unit = match found_asset {
             Some(a) => &a.unit,

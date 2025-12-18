@@ -27,7 +27,9 @@ mod git_revision {
                 .args(["rev-parse", "HEAD"])
                 .output()
                 .expect("git-rev-parse");
-            String::from_utf8_lossy(&git_rev_parse.stdout).trim().to_string()
+            String::from_utf8_lossy(&git_rev_parse.stdout)
+                .trim()
+                .to_string()
         };
 
         println!("cargo:rustc-env={}={}", GIT_REVISION, revision);
