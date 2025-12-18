@@ -260,3 +260,51 @@ pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
         Err(e) => Err(e),
     }
 }
+
+pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64) -> Result<bool> {
+    let client = reqwest::Client::new();
+    let body = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+
+    let mut found_any = false;
+    let mut max_value: Option<f64> = None;
+
+    for line in body.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        // <name>{labels} <value> [timestamp]
+        let mut parts = line.split_whitespace();
+        let name_and_labels = match parts.next() {
+            Some(x) => x,
+            None => continue,
+        };
+
+        let name = name_and_labels.split('{').next().unwrap_or(name_and_labels);
+        if name != metric {
+            continue;
+        }
+
+        let value_str = match parts.next() {
+            Some(v) => v,
+            None => continue,
+        };
+
+        let value: f64 = value_str.parse()?;
+        found_any = true;
+        max_value = Some(max_value.map_or(value, |m| m.max(value)));
+    }
+
+    if !found_any {
+        return Err(anyhow!("metric {metric} not found in /metrics output").into());
+    }
+
+    Ok(max_value.unwrap_or(f64::NEG_INFINITY) >= threshold)
+}

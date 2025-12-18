@@ -261,6 +261,7 @@ impl HydraController {
 enum Event {
     Restart,
     SomeEvent { _some_value: u64 },
+    TryToOpenHead,
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -282,6 +283,7 @@ struct State {
     event_tx: mpsc::Sender<Event>,
     kex_req: KeyExchangeRequest,
     kex_resp: KeyExchangeResponse,
+    hydra_peers_connected: bool,
 }
 
 impl State {
@@ -297,13 +299,14 @@ impl State {
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
-        let self_ = Self {
+        let mut self_ = Self {
             config,
             _originator: originator,
             config_dir,
             event_tx: event_tx.clone(),
             kex_req,
             kex_resp,
+            hydra_peers_connected: false,
         };
 
         self_.send(Event::Restart).await;
@@ -335,11 +338,46 @@ impl State {
             .expect("we never close the event receiver");
     }
 
-    async fn process_event(&self, event: Event) -> Result<()> {
+    async fn send_delayed(&self, event: Event, delay: std::time::Duration) {
+        let event_tx = self.event_tx.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(delay).await;
+            event_tx.send(event).await
+        });
+    }
+
+    async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
                 info!("hydra-controller: starting…");
                 self.start_hydra_node().await?;
+                self.send_delayed(Event::TryToOpenHead, std::time::Duration::from_secs(1))
+                    .await
+            },
+
+            Event::TryToOpenHead => {
+                let ready = verifications::prometheus_metric_at_least(
+                    &format!(
+                        "http://127.0.0.1:{}/metrics",
+                        self.kex_resp.proposed_platform_h2h_port
+                    ),
+                    "hydra_head_peers_connected",
+                    1.0,
+                )
+                .await;
+
+                info!(
+                    "hydra-controller: waiting for hydras to connect: {:?}",
+                    ready
+                );
+
+                if matches!(ready, Ok(true)) {
+                    self.hydra_peers_connected = true;
+                    todo!("open hydra head")
+                } else {
+                    self.send_delayed(Event::TryToOpenHead, std::time::Duration::from_secs(1))
+                        .await
+                }
             },
 
             Event::SomeEvent { .. } => todo!(),
