@@ -1,10 +1,10 @@
 use crate::icebreakers::api::IcebreakersAPI;
-use crate::load_balancer;
 use crate::server::state::ApiPrefix;
+use crate::{hydra, load_balancer};
 use axum::Router;
 use bf_common::errors::BlockfrostError;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, mpsc};
 use tracing::{error, info, warn};
 
 pub struct IcebreakersManager {
@@ -45,6 +45,7 @@ impl IcebreakersManager {
             self.app.clone(),
             self.health_errors.clone(),
             self.api_prefix.clone(),
+            None,
         ));
 
         let health_errors = self.health_errors.lock().await;
@@ -57,7 +58,30 @@ impl IcebreakersManager {
     }
 
     /// Runs the registration process periodically in a single spawned task.
-    pub async fn run(self) {
+    pub async fn run(
+        self,
+        hydra_kex: (
+            mpsc::Receiver<hydra::KeyExchangeRequest>,
+            mpsc::Sender<hydra::KeyExchangeResponse>,
+        ),
+    ) {
+        // FIXME: actually exchange
+        let fake_kex_response = hydra::fake_kex_response(&bf_common::types::Network::Preview)
+            .await
+            .expect("fake KEx shouldn’t fail");
+
+        tokio::spawn(async move {
+            let mut hydra_kex = hydra_kex;
+            while let Some(req) = hydra_kex.0.recv().await {
+                warn!(";;; got a KeyExchangeRequest: {:?}", req);
+                hydra_kex
+                    .1
+                    .send(fake_kex_response.clone())
+                    .await
+                    .expect("boom");
+            }
+        });
+
         tokio::spawn(async move {
             'load_balancers: loop {
                 match self.icebreakers_api.register().await {
@@ -75,6 +99,7 @@ impl IcebreakersManager {
                             self.app.clone(),
                             self.health_errors.clone(),
                             self.api_prefix.clone(),
+                            None,
                         )
                         .await;
 

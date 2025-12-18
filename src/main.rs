@@ -3,7 +3,7 @@
 use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
-    hydra::{self, HydraManager},
+    hydra::HydraManager,
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
@@ -64,6 +64,9 @@ async fn main() -> Result<(), AppError> {
     // and re-register to get a new set of access tokens. It’s complicated by
     // our want to to specify _multiple_ load balancer endpoints in the future,
     // so it’s best to have future-compatibility in the messaging now.
+    let (kex_req_tx, kex_req_rx) = mpsc::channel(32);
+    let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
+
     if let Some(icebreakers_api) = icebreakers_api {
         let health_errors = Arc::new(Mutex::new(vec![]));
 
@@ -73,7 +76,7 @@ async fn main() -> Result<(), AppError> {
 
         let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
 
-        manager.run().await;
+        manager.run((kex_req_rx, kex_resp_tx)).await;
     }
 
     if let Some(hydra_config) = config.hydra {
@@ -82,21 +85,6 @@ async fn main() -> Result<(), AppError> {
             health_monitor
                 .register_error_source(health_errors.clone())
                 .await;
-
-            // FIXME: actually exchange
-            let kex_response = hydra::fake_kex_response(&config.network)
-                .await
-                .map_err(|e| AppError::Server(format!("{}", e)))?;
-
-            let (kex_req_tx, mut kex_req_rx) = mpsc::channel(32);
-            let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
-
-            tokio::spawn(async move {
-                while let Some(req) = kex_req_rx.recv().await {
-                    warn!(";;; got a KeyExchangeRequest: {:?}", req);
-                    kex_resp_tx.send(kex_response.clone()).await.expect("boom");
-                }
-            });
 
             let _manager = HydraManager::spawn(
                 hydra_config,

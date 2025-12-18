@@ -219,6 +219,8 @@ impl State {
                         )?,
                     })
                     .await?;
+
+                // FIXME: resend the request periodically in case it gets lost – i.e. new `Event::KExTimeout`
             },
 
             Event::KeyExchangeResponse(kex_resp) => {

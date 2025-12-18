@@ -1,3 +1,4 @@
+use crate::hydra;
 use crate::server::state::ApiPrefix;
 use bf_common::errors::{AppError, BlockfrostError};
 use serde::{Deserialize, Serialize};
@@ -31,6 +32,10 @@ pub async fn run_all(
     http_router: axum::Router,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     api_prefix: ApiPrefix,
+    hydra_kex: Option<(
+        mpsc::Receiver<hydra::KeyExchangeRequest>,
+        mpsc::Sender<hydra::KeyExchangeResponse>,
+    )>,
 ) {
     assert!(
         !configs.is_empty(),
@@ -45,6 +50,7 @@ pub async fn run_all(
                 http_router.clone(),
                 health_errors.clone(),
                 api_prefix.clone(),
+                None,
             ))
         })
         .collect();
@@ -127,7 +133,8 @@ impl JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 enum LoadBalancerMessage {
     Request(JsonRequest),
-    HydraTunnel(Vec<u8>),
+    HydraKExRequest(hydra::KeyExchangeRequest),
+    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
 }
@@ -136,7 +143,8 @@ enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 enum RelayMessage {
     Response(JsonResponse),
-    HydraTunnel(Vec<u8>),
+    HydraKExResponse(hydra::KeyExchangeResponse),
+    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
 }
@@ -164,6 +172,10 @@ mod event_loop {
         http_router: axum::Router,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         api_prefix: ApiPrefix,
+        hydra_kex: Option<(
+            mpsc::Receiver<hydra::KeyExchangeRequest>,
+            mpsc::Sender<hydra::KeyExchangeResponse>,
+        )>,
     ) -> Result<(), String> {
         let (mut socket_tx, socket_rx) = connect(config.clone()).await?.split();
         *health_errors.lock().await = vec![];
@@ -199,7 +211,13 @@ mod event_loop {
                     break 'event_loop;
                 },
 
-                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraTunnel(_bytes)) => {
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraTunnel { .. }) => {
+                    todo!()
+                },
+
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExRequest {
+                    ..
+                }) => {
                     todo!()
                 },
 

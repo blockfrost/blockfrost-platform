@@ -315,7 +315,10 @@ mod tests {
                 );
 
                 tokio::spawn(async move {
-                    manager.run().await;
+                    use tokio::sync::mpsc;
+                    let (_, kex_req_rx) = mpsc::channel(32);
+                    let (kex_resp_tx, _) = mpsc::channel(32);
+                    manager.run((kex_req_rx, kex_resp_tx)).await;
                 });
             }
         }
