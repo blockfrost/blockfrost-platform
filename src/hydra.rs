@@ -60,6 +60,7 @@ impl HydrasManager {
             contestation_period: CONTESTATION_PERIOD_SECONDS,
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
+            kex_done: false,
         })
     }
 
@@ -109,7 +110,10 @@ impl HydrasManager {
             ))?
         }
 
-        let final_resp = initial.1;
+        let final_resp = KeyExchangeResponse {
+            kex_done: true,
+            ..initial.1
+        };
 
         let ctl = HydraController::spawn(
             self.config.clone(),
@@ -194,6 +198,9 @@ pub struct KeyExchangeResponse {
     /// Platform, too (as both sides open both ports).
     pub proposed_platform_h2h_port: u16,
     pub gateway_h2h_port: u16,
+    /// This being set to `true` means that the ceremony is successful, and the
+    /// Gateway is going to start its own `hydra-node`, and the Platform should too.
+    pub kex_done: bool,
 }
 
 impl HydraController {
