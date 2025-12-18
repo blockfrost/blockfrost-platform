@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -24,7 +24,7 @@
       flake = false;
     };
     acropolis = {
-      url = "github:input-output-hk/acropolis";
+      url = "github:input-output-hk/acropolis/371aa46d74af8ea21cf076ed699d921dc827639b"; # `main` on 2025-10-22T17:40:10.000Z
       flake = false;
     };
     blockfrost-tests = {
