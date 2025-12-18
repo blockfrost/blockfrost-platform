@@ -68,7 +68,7 @@ impl HydrasManager {
 
         let have_funds: f64 = self
             .config
-            .lovelace_on_payment_skey(&self.config.toml.cardano_signing_key)
+            .lovelace_on_addr(&self.config.gateway_cardano_addr)
             .await? as f64
             / 1_000_000.0;
         let required_funds_ada: f64 =
@@ -84,8 +84,8 @@ impl HydrasManager {
             Err(err)?
         }
         info!(
-            "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
-            potential_fuel
+            "hydra-controller: funds on cardano_signing_key: {:?} ADA",
+            have_funds
         );
 
         use verifications::{find_free_tcp_port, read_json_file};
@@ -176,6 +176,7 @@ struct HydraConfig {
     pub hydra_node_exe: String,
     pub cardano_cli_exe: String,
     pub gateway_cardano_vkey: serde_json::Value,
+    pub gateway_cardano_addr: String,
     pub protocol_parameters: serde_json::Value,
 }
 
@@ -193,14 +194,19 @@ impl HydraConfig {
             hydra_node_exe,
             cardano_cli_exe,
             gateway_cardano_vkey: serde_json::Value::Null,
+            gateway_cardano_addr: String::new(),
             protocol_parameters: serde_json::Value::Null,
         };
+        let gateway_cardano_addr = self_
+            .derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)
+            .await?;
         let gateway_cardano_vkey = self_
             .derive_vkey_from_skey(&self_.toml.cardano_signing_key)
             .await?;
         let protocol_parameters = self_.gen_protocol_parameters().await?;
         let self_ = Self {
             gateway_cardano_vkey,
+            gateway_cardano_addr,
             protocol_parameters,
             ..self_
         };
@@ -269,6 +275,7 @@ enum Event {
     Restart,
     TryToOpenHead,
     TryToCommit,
+    WaitForOpen,
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -285,11 +292,12 @@ fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
 struct State {
     config: HydraConfig,
-    _originator: AssetName,
+    originator: AssetName,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
     kex_req: KeyExchangeRequest,
     kex_resp: KeyExchangeResponse,
+    api_port: u16,
     metrics_port: u16,
     hydra_peers_connected: bool,
 }
@@ -309,11 +317,12 @@ impl State {
 
         let mut self_ = Self {
             config,
-            _originator: originator,
+            originator,
             config_dir,
             event_tx: event_tx.clone(),
             kex_req,
             kex_resp,
+            api_port: 0,
             metrics_port: 0,
             hydra_peers_connected: false,
         };
@@ -358,7 +367,7 @@ impl State {
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-controller: starting…");
+                info!("hydra-controller: {:?}: starting…", self.originator);
                 self.start_hydra_node().await?;
                 self.send_delayed(Event::TryToOpenHead, Duration::from_secs(1))
                     .await
@@ -373,18 +382,15 @@ impl State {
                 .await?;
 
                 info!(
-                    "hydra-controller: waiting for hydras to connect: ready={:?}",
-                    ready
+                    "hydra-controller: {:?}: waiting for hydras to connect: ready={:?}",
+                    self.originator, ready
                 );
 
                 if ready {
                     self.hydra_peers_connected = true;
 
                     verifications::send_one_websocket_msg(
-                        &format!(
-                            "http://127.0.0.1:{}/",
-                            self.kex_resp.proposed_platform_h2h_port
-                        ),
+                        &format!("http://127.0.0.1:{}/", self.api_port),
                         serde_json::json!({"tag":"Init"}),
                         Duration::from_secs(2),
                     )
@@ -399,20 +405,64 @@ impl State {
             },
 
             Event::TryToCommit => {
-                let status =
-                    verifications::fetch_head_tag(self.kex_resp.proposed_platform_h2h_port).await?;
+                let status = verifications::fetch_head_tag(self.api_port).await?;
 
                 info!(
-                    "hydra-controller: waiting for the Initial head status: status={:?}",
-                    status
+                    "hydra-controller: {:?}: waiting for the Initial head status: status={:?}",
+                    self.originator, status
                 );
 
                 if status == "Initial" {
-                    todo!("TODO: commit the funds -- configure how much")
+                    let commit_wallet = self.config_dir.join("commit-funds");
+                    let commit_wallet_skey = commit_wallet.with_extension("sk");
+
+                    if std::fs::exists(&commit_wallet_skey)? {
+                        warn!(
+                            "hydra-controller: {:?}: commit wallet {:?} already exists, skipping the Commit transaction",
+                            self.originator, commit_wallet_skey
+                        );
+                    } else {
+                        self.config.new_cardano_keypair(&commit_wallet).await?;
+                        let commit_wallet_addr = self
+                            .config
+                            .derive_enterprise_address_from_skey(
+                                &self.config_dir.join("commit-funds.sk"),
+                            )
+                            .await?;
+                        self.config
+                            .fund_address(
+                                &self.config.gateway_cardano_addr,
+                                &commit_wallet_addr,
+                                (self.config.toml.commit_ada * 1_000_000.0).round() as u64,
+                                &self.config.toml.cardano_signing_key,
+                            )
+                            .await?;
+
+                        self.config
+                            .commit_all_utxo_to_hydra(
+                                &commit_wallet_addr,
+                                self.api_port,
+                                &commit_wallet_skey,
+                            )
+                            .await?;
+
+                        self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                            .await
+                    }
                 } else {
+                    let status = verifications::fetch_head_tag(self.api_port).await?;
+                    info!(
+                        "hydra-controller: {:?}: waiting for the Open head status: status={:?}",
+                        self.originator, status
+                    );
                     self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                         .await
                 }
+            },
+
+            Event::WaitForOpen => {
+                self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                    .await
             },
         }
         Ok(())
@@ -422,8 +472,7 @@ impl State {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
-        // FIXME: save the ports in an `Arc<Mutex<u16>` for future use
-        let api_port = verifications::find_free_tcp_port().await?;
+        self.api_port = verifications::find_free_tcp_port().await?;
         self.metrics_port = verifications::find_free_tcp_port().await?;
 
         // FIXME: somehow do shutdown once we’re killed
@@ -475,7 +524,7 @@ impl State {
             .arg("--node-socket")
             .arg(&self.config.toml.node_socket_path)
             .arg("--api-port")
-            .arg(format!("{api_port}"))
+            .arg(format!("{}", self.api_port))
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")

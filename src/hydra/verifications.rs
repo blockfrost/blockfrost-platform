@@ -73,10 +73,8 @@ impl super::HydraConfig {
         Ok(params)
     }
 
-    /// Check how much lovelace is on an enterprise address associated with a
-    /// given `payment.skey`.
-    pub(super) async fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
-        let address = self.derive_enterprise_address_from_skey(skey_path).await?;
+    /// Check how much lovelace is available on an address.
+    pub(super) async fn lovelace_on_addr(&self, address: &str) -> Result<u64> {
         let utxo_json = self.query_utxo_json(&address).await?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
@@ -94,7 +92,10 @@ impl super::HydraConfig {
         Ok(serde_json::from_slice(&vkey_output.stdout)?)
     }
 
-    async fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
+    pub(super) async fn derive_enterprise_address_from_skey(
+        &self,
+        skey_path: &Path,
+    ) -> Result<String> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
@@ -162,6 +163,25 @@ impl super::HydraConfig {
         Ok(String::from_utf8(output.stdout)?)
     }
 
+    pub async fn new_cardano_keypair(&self, base_path: &Path) -> Result<()> {
+        let output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .args(["address", "key-gen", "--verification-key-file"])
+            .arg(base_path.with_extension(".vk"))
+            .arg("--signing-key-file")
+            .arg(base_path.with_extension(".sk"))
+            .output()
+            .await?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "cardano-cli address key-gen failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        Ok(())
+    }
+
     fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64> {
         let v: Value = serde_json::from_str(json)?;
         let obj = v
@@ -201,6 +221,206 @@ impl super::HydraConfig {
             return Ok(s.parse()?);
         }
         Err(anyhow!("lovelace value is neither u64 nor string"))
+    }
+
+    async fn cardano_cli_capture(
+        &self,
+        args: &[&str],
+        stdin_bytes: Option<&[u8]>,
+    ) -> Result<Vec<u8>> {
+        use tokio::io::AsyncWriteExt;
+
+        let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
+        cmd.args(args)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        if stdin_bytes.is_some() {
+            cmd.stdin(std::process::Stdio::piped());
+        } else {
+            cmd.stdin(std::process::Stdio::null());
+        }
+
+        let mut child = cmd.spawn()?;
+
+        if let Some(bytes) = stdin_bytes {
+            let mut stdin = child
+                .stdin
+                .take()
+                .ok_or_else(|| anyhow!("failed to open stdin pipe"))?;
+            stdin.write_all(bytes).await?;
+            stdin.shutdown().await?;
+        }
+
+        let out = child.wait_with_output().await?;
+        if out.status.success() {
+            Ok(out.stdout)
+        } else {
+            Err(anyhow!(
+                "cardano-cli failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            )
+            .into())
+        }
+    }
+
+    pub(super) async fn fund_address(
+        &self,
+        addr_from: &str,
+        addr_to: &str,
+        amount_lovelace: u64,
+        payment_skey_path: &Path,
+    ) -> Result<()> {
+        let utxo_json_bytes = self
+            .cardano_cli_capture(
+                &[
+                    "query",
+                    "utxo",
+                    "--address",
+                    addr_from,
+                    "--out-file",
+                    "/dev/stdout",
+                ],
+                None,
+            )
+            .await?;
+
+        // XXX: we’re only taking the first 200 UTxOs below, because the test address on
+        // CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
+        let v: serde_json::Value = serde_json::from_slice(&utxo_json_bytes)?;
+        let obj = v
+            .as_object()
+            .ok_or_else(|| anyhow!("UTxO JSON is not an object"))?;
+
+        let tx_in_keys: Vec<&str> = obj.keys().take(200).map(|k| k.as_str()).collect();
+        if tx_in_keys.is_empty() {
+            Err(anyhow!("no UTxOs found for addr_from"))?
+        }
+
+        let tx_out = format!("{addr_to}+{amount_lovelace}");
+        let mut build_args: Vec<String> =
+            vec!["latest".into(), "transaction".into(), "build".into()];
+        for k in &tx_in_keys {
+            build_args.push("--tx-in".into());
+            build_args.push((*k).into());
+        }
+        build_args.extend([
+            "--change-address".into(),
+            addr_from.into(),
+            "--tx-out".into(),
+            tx_out,
+            "--out-file".into(),
+            "/dev/stdout".into(),
+        ]);
+
+        let build_args_ref: Vec<&str> = build_args.iter().map(|s| s.as_str()).collect();
+        let tx_json_bytes = self.cardano_cli_capture(&build_args_ref, None).await?;
+
+        // 4) sign -> signed tx bytes in memory (tx file via /dev/stdin, out via /dev/stdout)
+        let skey = payment_skey_path
+            .to_str()
+            .ok_or_else(|| anyhow!("payment_skey_path is not valid UTF-8"))?;
+
+        let tx_signed_bytes = self
+            .cardano_cli_capture(
+                &[
+                    "latest",
+                    "transaction",
+                    "sign",
+                    "--tx-file",
+                    "/dev/stdin",
+                    "--signing-key-file",
+                    skey,
+                    "--out-file",
+                    "/dev/stdout",
+                ],
+                Some(&tx_json_bytes),
+            )
+            .await?;
+
+        let _ = self
+            .cardano_cli_capture(
+                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
+                Some(&tx_signed_bytes),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    pub(super) async fn commit_all_utxo_to_hydra(
+        &self,
+        from_addr: &str,
+        hydra_api_port: u16,
+        commit_funds_skey: &Path,
+    ) -> Result<()> {
+        use anyhow::Context;
+        use reqwest::header;
+        use tokio::time::{Duration, sleep};
+
+        let utxo_json = self.query_utxo_json(from_addr).await?;
+        let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
+
+        // curl -fsSL -X POST http://127.0.0.1:$hydra_api_port/commit --data @utxo.json > commit-tx.json
+        let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(utxo_body)
+            .send()
+            .await
+            .context("failed to POST /commit to hydra-node")?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.bytes().await.unwrap_or_default();
+            sleep(Duration::from_secs(15)).await;
+            return Err(anyhow!(
+                "hydra /commit failed with {}: {}",
+                status,
+                String::from_utf8_lossy(&body)
+            ));
+        }
+
+        let commit_tx_bytes = resp
+            .bytes()
+            .await
+            .context("failed to read hydra /commit response body")?
+            .to_vec();
+
+        let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
+            .context("hydra /commit response was not valid JSON")?;
+
+        let signed_tx_bytes = self
+            .cardano_cli_capture(
+                &[
+                    "latest",
+                    "transaction",
+                    "sign",
+                    "--tx-file",
+                    "/dev/stdin",
+                    "--signing-key-file",
+                    commit_funds_skey
+                        .to_str()
+                        .ok_or_else(|| anyhow!("commit_funds_skey is not valid UTF-8"))?,
+                    "--out-file",
+                    "/dev/stdout",
+                ],
+                Some(&commit_tx_bytes),
+            )
+            .await?;
+
+        let _: serde_json::Value = serde_json::from_slice(&signed_tx_bytes)
+            .context("signed tx output was not valid JSON")?;
+
+        let _ = self
+            .cardano_cli_capture(
+                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
+                Some(&signed_tx_bytes),
+            )
+            .await?;
+        Ok(())
     }
 }
 
