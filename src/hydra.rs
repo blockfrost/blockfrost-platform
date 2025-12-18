@@ -1,5 +1,7 @@
 use bf_common::errors::{AppError, BlockfrostError};
-use std::sync::Arc;
+use std::error::Error;
+use std::process::Command;
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
@@ -7,9 +9,11 @@ pub mod verifications;
 
 pub struct HydraManager {
     config: bf_common::config::HydraConfig,
+    reward_address: String,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     hydra_node_exe: String,
     cardano_cli_exe: String,
+    config_dir: PathBuf,
 }
 
 impl HydraManager {
@@ -18,6 +22,7 @@ impl HydraManager {
 
     pub fn new(
         config: bf_common::config::HydraConfig,
+        reward_address: String,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     ) -> Result<Self, AppError> {
         let hydra_node_exe =
@@ -27,11 +32,18 @@ impl HydraManager {
             bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
                 .map_err(AppError::Server)?;
 
+        let config_dir = dirs::config_dir()
+            .expect("Could not determine config directory")
+            .join("blockfrost-platform")
+            .join("hydra");
+
         Ok(Self {
             config,
+            reward_address,
             health_errors,
             hydra_node_exe,
             cardano_cli_exe,
+            config_dir,
         })
     }
 
@@ -56,31 +68,51 @@ impl HydraManager {
         });
     }
 
-    async fn run_once(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn run_once(&self) -> Result<(), Box<dyn Error>> {
         let potential_fuel = verifications::lovelace_on_payment_skey(
             &self.cardano_cli_exe,
             &self.config.cardano_signing_key,
         )?;
         if potential_fuel < Self::MIN_FUEL_LOVELACE {
             Err(format!(
-                "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                "hydra-manager: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                 potential_fuel as f64 / 1_000_000.0,
                 self.config.cardano_signing_key,
                 Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
             ))?
         }
 
-        // TODO: hydra-node gen-hydra-key --output-file credentials/"$participant"-node/hydra
-
         info!(
-            "lovelace on {:?} is {:?}",
-            self.config.cardano_signing_key, potential_fuel
+            "hydra-manager: fuel on cardano_signing_key: {:?} lovelace",
+            potential_fuel
         );
 
-        info!(
-            "would start: {} with parameters: {:?} · {}",
-            self.hydra_node_exe, self.config, self.cardano_cli_exe
-        );
+        self.gen_hydra_keys().await?;
+
+        Ok(())
+    }
+
+    /// Generates Hydra keys if they don’t exist.
+    async fn gen_hydra_keys(&self) -> Result<(), Box<dyn Error>> {
+        std::fs::create_dir_all(&self.config_dir)?;
+
+        let key_path = self.config_dir.join("hydra.sk");
+
+        if !key_path.exists() {
+            info!("hydra-manager: generating hydra keys");
+
+            let status = Command::new(&self.hydra_node_exe)
+                .arg("gen-hydra-key")
+                .arg("--output-file")
+                .arg(&self.config_dir.join("hydra"))
+                .status()?;
+
+            if !status.success() {
+                Err(format!("gen-hydra-key failed with status: {status}"))?;
+            }
+        } else {
+            info!("hydra-manager: hydra keys already exist");
+        }
 
         Ok(())
     }

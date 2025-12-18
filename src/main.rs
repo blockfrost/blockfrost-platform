@@ -77,13 +77,21 @@ async fn main() -> Result<(), AppError> {
     }
 
     if let Some(hydra_config) = config.hydra {
-        let health_errors = Arc::new(Mutex::new(vec![]));
-        health_monitor
-            .register_error_source(health_errors.clone())
-            .await;
+        if let Some(icebreakers_config) = config.icebreakers_config {
+            let health_errors = Arc::new(Mutex::new(vec![]));
+            health_monitor
+                .register_error_source(health_errors.clone())
+                .await;
 
-        let manager = HydraManager::new(hydra_config, health_errors)?;
-        manager.run().await;
+            let manager = HydraManager::new(
+                hydra_config,
+                icebreakers_config.reward_address,
+                health_errors,
+            )?;
+            manager.run().await;
+        } else {
+            warn!("Hydra micropayments won’t run without a valid IceBreakers config.")
+        }
     }
 
     spawn_task
