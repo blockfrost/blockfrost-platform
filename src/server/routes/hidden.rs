@@ -43,6 +43,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/assets/policy/{policy_id}", get(assets::policy::policy_id::route))
 
         // blocks
+        .route("/blocks/epoch/{epoch_number}/slot/{slot_number}", get(blocks::epoch::epoch_number::slot::slot_number::route))
         .route("/blocks/latest", get(blocks::latest::root::route))
         .route("/blocks/latest/txs", get(blocks::latest::txs::route))
         .route("/blocks/{hash_or_number}", get(blocks::hash_or_number::root::route))
@@ -54,14 +55,14 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         // epochs
         .route("/epochs/latest", get(epochs::latest::root::route))
         .route("/epochs/latest/parameters", get(epochs::latest::parameters::route))
-        .route("/epochs/{number}", get(epochs::number::root::route))
-        .route("/epochs/{number}/next", get(epochs::number::next::route))
-        .route("/epochs/{number}/previous", get(epochs::number::previous::route))
-        .route("/epochs/{number}/stakes", get(epochs::number::stakes::root::route))
-        .route("/epochs/{number}/stakes/{pool_id}", get(epochs::number::stakes::pool_id::route))
-        .route("/epochs/{number}/blocks", get(epochs::number::blocks::root::route))
-        .route("/epochs/{number}/blocks/{pool_id}", get(epochs::number::blocks::pool_id::route))
-        .route("/epochs/{number}/parameters", get(epochs::number::parameters::route))
+        .route("/epochs/{epoch_number}", get(epochs::number::root::route))
+        .route("/epochs/{epoch_number}/next", get(epochs::number::next::route))
+        .route("/epochs/{epoch_number}/previous", get(epochs::number::previous::route))
+        .route("/epochs/{epoch_number}/stakes", get(epochs::number::stakes::root::route))
+        .route("/epochs/{epoch_number}/stakes/{pool_id}", get(epochs::number::stakes::pool_id::route))
+        .route("/epochs/{epoch_number}/blocks", get(epochs::number::blocks::root::route))
+        .route("/epochs/{epoch_number}/blocks/{pool_id}", get(epochs::number::blocks::pool_id::route))
+        .route("/epochs/{epoch_number}/parameters", get(epochs::number::parameters::route))
 
         // health
         .route("/health", get(health::root::route))

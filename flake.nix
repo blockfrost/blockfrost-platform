@@ -20,7 +20,7 @@
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.0.0-rc.2";
+      url = "github:txpipe/dolos/v1.0.0-rc.3";
       flake = false;
     };
     acropolis = {
@@ -191,6 +191,11 @@
             curl-bash-install = {
               x86_64-linux = inputs.self.internal.x86_64-linux.curl-bash-install;
             };
+            tests = lib.genAttrs config.systems (
+              targetSystem: {
+                inherit (inputs.self.internal.${targetSystem}) blockfrost-tests-preview;
+              }
+            );
             inherit (inputs.self) checks;
           };
         in
