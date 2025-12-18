@@ -17,6 +17,9 @@ const CONTESTATION_PERIOD_SECONDS: Duration = Duration::from_secs(60);
 // FIXME: shouldn’t this be multiplied by `max_concurrent_hydra_nodes`?
 const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 
+// TODO: At least on Preview that is. Where does this come from exactly?
+const MIN_LOVELACE_PER_TRANSACTION: u64 = 840_450;
+
 /// After cloning, it still represents the same set of [`HydraController`]s.
 #[derive(Clone, Debug)]
 pub struct HydrasManager {
@@ -32,11 +35,23 @@ impl HydrasManager {
         let minimal_commit: f64 = 1.01
             * (config.lovelace_per_request
                 * config.requests_per_microtransaction
-                * config.microtransactions_per_fanout) as f64
+                * config.microtransactions_per_fanout
+                + MIN_LOVELACE_PER_TRANSACTION) as f64
             / 1_000_000.0;
         if config.commit_ada < minimal_commit {
             Err(anyhow!(
-                "hydras-manager: Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout."
+                "hydras-manager: Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout + {}.",
+                MIN_LOVELACE_PER_TRANSACTION as f64 / 1_000_000.0
+            ))?
+        }
+
+        let microtransaction_lovelace: u64 =
+            config.lovelace_per_request * config.requests_per_microtransaction;
+        if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
+            Err(anyhow!(
+                "hydras-manager: Please make sure that each microtransaction will be larger than {} lovelace. Currently it would be {}.",
+                MIN_LOVELACE_PER_TRANSACTION,
+                microtransaction_lovelace,
             ))?
         }
 
@@ -75,8 +90,8 @@ impl HydrasManager {
             self.config.toml.commit_ada + (MIN_FUEL_LOVELACE as f64 / 1_000_000.0);
         if have_funds < required_funds_ada {
             let err = anyhow!(
-                "hydra-controller: {:?}: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
-                originator,
+                "hydra-controller: {}: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                originator.as_str(),
                 have_funds,
                 self.config.toml.cardano_signing_key,
                 required_funds_ada,
@@ -85,8 +100,9 @@ impl HydrasManager {
             Err(err)?
         }
         info!(
-            "hydra-controller: {:?}: funds on cardano_signing_key: {:?} ADA",
-            originator, have_funds
+            "hydra-controller: {}: funds on cardano_signing_key: {:?} ADA",
+            originator.as_str(),
+            have_funds
         );
 
         use verifications::{find_free_tcp_port, read_json_file};
@@ -283,16 +299,22 @@ impl HydraController {
             .await
             .unwrap_or_else(|_| {
                 error!(
-                    "hydra-controller: {:?}: failed to account one request: event channel closed",
-                    self.originator
+                    "hydra-controller: {}: failed to account one request: event channel closed",
+                    self.originator.as_str()
                 )
             })
+    }
+
+    pub async fn terminate(&self) {
+        let _ = self.event_tx.send(Event::Terminate).await;
     }
 }
 
 enum Event {
     Restart,
-    TryToOpenHead,
+    Terminate,
+    TryToInitHead,
+    FundCommitAddr,
     TryToCommit,
     WaitForOpen,
     AccountOneRequest,
@@ -332,6 +354,7 @@ struct State {
     commit_wallet_skey: PathBuf,
     commit_wallet_addr: String,
     is_closing: bool,
+    hydra_pid: Option<u32>,
 }
 
 impl State {
@@ -364,7 +387,8 @@ impl State {
             sent_microtransactions: 0,
             commit_wallet_skey: PathBuf::new(),
             commit_wallet_addr: String::new(),
-            is_closing: true,
+            is_closing: false,
+            hydra_pid: None,
         };
 
         self_.send(Event::Restart).await;
@@ -375,8 +399,8 @@ impl State {
                     Ok(()) => (),
                     Err(err) => {
                         error!(
-                            "hydra-controller: {:?}: error: {}; will restart in {:?}…",
-                            self_.originator,
+                            "hydra-controller: {}: error: {}; will restart in {:?}…",
+                            self_.originator.as_str(),
                             err,
                             Self::RESTART_DELAY
                         );
@@ -408,88 +432,134 @@ impl State {
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-controller: {:?}: starting…", self.originator);
+                info!("hydra-controller: {}: starting…", self.originator.as_str());
                 self.start_hydra_node().await?;
-                self.send_delayed(Event::TryToOpenHead, Duration::from_secs(1))
+                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                     .await
             },
 
-            Event::TryToOpenHead => {
+            Event::Terminate => {
+                if let Some(pid) = self.hydra_pid {
+                    verifications::sigterm(pid)?
+                }
+            },
+
+            Event::TryToInitHead => {
                 let ready = verifications::prometheus_metric_at_least(
                     &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
                     "hydra_head_peers_connected",
                     1.0,
                 )
-                .await?;
+                .await;
 
                 info!(
-                    "hydra-controller: {:?}: waiting for hydras to connect: ready={:?}",
-                    self.originator, ready
+                    "hydra-controller: {}: waiting for hydras to connect: ready={:?}",
+                    self.originator.as_str(),
+                    ready
                 );
 
-                if ready {
+                if matches!(ready, Ok(true)) {
                     self.hydra_peers_connected = true;
 
                     verifications::send_one_websocket_msg(
-                        &format!("http://127.0.0.1:{}/", self.api_port),
+                        &format!("ws://127.0.0.1:{}/", self.api_port),
                         serde_json::json!({"tag":"Init"}),
                         Duration::from_secs(2),
                     )
                     .await?;
 
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
                         .await
                 } else {
-                    self.send_delayed(Event::TryToOpenHead, Duration::from_secs(1))
+                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                         .await
                 }
             },
 
-            Event::TryToCommit => {
+            Event::FundCommitAddr => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
 
                 info!(
-                    "hydra-controller: {:?}: waiting for the Initial head status: status={:?}",
-                    self.originator, status
+                    "hydra-controller: {}: waiting for the Initial head status: status={:?}",
+                    self.originator.as_str(),
+                    status
                 );
 
-                if status == "Initial" {
+                if status == "Initial" || status == "Open" {
                     let commit_wallet = self.config_dir.join("commit-funds");
                     self.commit_wallet_skey = commit_wallet.with_extension("sk");
 
-                    if std::fs::exists(&self.commit_wallet_skey)? {
-                        warn!(
-                            "hydra-controller: {:?}: commit wallet {:?} already exists, skipping the Commit transaction",
-                            self.originator, self.commit_wallet_skey
-                        );
-                    } else {
+                    if !std::fs::exists(&self.commit_wallet_skey)? {
+                        if status == "Open" {
+                            Err(anyhow!(
+                                "Head status is Open, but there’s no commit wallet anymore; this shouldn’t really happen, we don’t yet know how to handle it"
+                            ))?
+                        }
+
                         self.config.new_cardano_keypair(&commit_wallet).await?;
-                        let commit_wallet_addr = self
-                            .config
-                            .derive_enterprise_address_from_skey(
-                                &self.config_dir.join("commit-funds.sk"),
-                            )
-                            .await?;
+                    }
+
+                    self.commit_wallet_addr = self
+                        .config
+                        .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
+                        .await?;
+
+                    if status == "Initial" {
                         self.config
                             .fund_address(
                                 &self.config.gateway_cardano_addr,
-                                &commit_wallet_addr,
+                                &self.commit_wallet_addr,
                                 (self.config.toml.commit_ada * 1_000_000.0).round() as u64,
                                 &self.config.toml.cardano_signing_key,
                             )
                             .await?;
 
-                        self.config
-                            .commit_all_utxo_to_hydra(
-                                &commit_wallet_addr,
-                                self.api_port,
-                                &self.commit_wallet_skey,
-                            )
-                            .await?;
-
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    } else if status == "Open" {
+                        warn!(
+                            "hydra-controller: {}: turns out the Head is already Open, skipping Commit",
+                            self.originator.as_str(),
+                        );
                         self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                             .await
                     }
+                } else {
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
+                        .await
+                }
+            },
+
+            Event::TryToCommit => {
+                let commit_wallet_lovelace = self
+                    .config
+                    .lovelace_on_addr(&self.commit_wallet_addr)
+                    .await?;
+
+                let lovelace_needed = 0.99 * self.config.toml.commit_ada * 1_000_000.0;
+
+                info!(
+                    "hydra-controller: {}: waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
+                    self.originator.as_str(),
+                    lovelace_needed.round(),
+                    commit_wallet_lovelace
+                );
+
+                if commit_wallet_lovelace as f64 >= lovelace_needed {
+                    info!(
+                        "hydra-controller: {}: submitting a Commit transaction to join the Hydra Head",
+                        self.originator.as_str()
+                    );
+                    self.config
+                        .commit_all_utxo_to_hydra(
+                            &self.commit_wallet_addr,
+                            self.api_port,
+                            &self.commit_wallet_skey,
+                        )
+                        .await?;
+
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                        .await
                 } else {
                     self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                         .await
@@ -499,8 +569,9 @@ impl State {
             Event::WaitForOpen => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {:?}: waiting for the Open head status: status={:?}",
-                    self.originator, status
+                    "hydra-controller: {}: waiting for the Open head status: status={:?}",
+                    self.originator.as_str(),
+                    status
                 );
                 if status == "Open" {
                     self.hydra_head_open = true;
@@ -516,13 +587,14 @@ impl State {
                 if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
                     if self.is_closing {
                         warn!(
-                            "hydra-controller: {:?}: would send a microtransaction, but the Hydra Head state is currently closing for `Fanout` (backlog of requests: {})",
-                            self.originator, self.accounted_requests
+                            "hydra-controller: {}: would send a microtransaction, but the Hydra Head state is currently closing for `Fanout` (backlog of requests: {})",
+                            self.originator.as_str(),
+                            self.accounted_requests
                         )
                     } else if self.hydra_head_open {
                         info!(
-                            "hydra-controller: {:?}: sending a microtransaction",
-                            self.originator
+                            "hydra-controller: {}: sending a microtransaction",
+                            self.originator.as_str()
                         );
                         let amount_lovelace: u64 =
                             self.accounted_requests * self.config.toml.lovelace_per_request;
@@ -548,8 +620,9 @@ impl State {
                         }
                     } else {
                         warn!(
-                            "hydra-controller: {:?}: would send a microtransaction, but the Hydra Head state is still not `Open` (backlog of requests: {})",
-                            self.originator, self.accounted_requests
+                            "hydra-controller: {}: would send a microtransaction, but the Hydra Head state is still not `Open` (backlog of requests: {})",
+                            self.originator.as_str(),
+                            self.accounted_requests
                         )
                     }
                 }
@@ -562,15 +635,17 @@ impl State {
 
                 if current_count >= expected_count {
                     info!(
-                        "hydra-controller: {:?}: got correct L2 UTxO count, will Close now…",
-                        self.originator
+                        "hydra-controller: {}: got correct L2 UTxO count, will Close now…",
+                        self.originator.as_str()
                     );
                     self.send_delayed(Event::TryToClose, Duration::from_secs(1))
                         .await;
                 } else {
                     warn!(
-                        "hydra-controller: {:?}: still have incorrect L2 UTxO count: {}, expected {}",
-                        self.originator, current_count, expected_count
+                        "hydra-controller: {}: still have incorrect L2 UTxO count: {}, expected {}",
+                        self.originator.as_str(),
+                        current_count,
+                        expected_count
                     );
                     self.send_delayed(Event::WaitForUtxoCount, Duration::from_secs(3))
                         .await;
@@ -579,7 +654,7 @@ impl State {
 
             Event::TryToClose => {
                 verifications::send_one_websocket_msg(
-                    &format!("http://127.0.0.1:{}", self.api_port),
+                    &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Close"}),
                     Duration::from_secs(2),
                 )
@@ -598,40 +673,40 @@ impl State {
             } => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {:?}: waiting for the Closed head status: status={:?}",
-                    self.originator, status
+                    "hydra-controller: {}: waiting for the Closed head status: status={:?}",
+                    self.originator.as_str(),
+                    status
                 );
                 if status == "Closed" {
-                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
-                        .await
+                    let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
+                    info!(
+                        "hydra-controller: {}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
+                        self.originator.as_str(),
+                        invalidity_period,
+                    );
+                    self.send_delayed(Event::DoFanout, invalidity_period).await
                 } else {
-                    if retries_before_reclose <= 1 {
-                        let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
-                        info!(
-                            "hydra-controller: {:?}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
-                            self.originator, invalidity_period,
-                        );
-                        self.send_delayed(Event::TryToClose, invalidity_period)
-                            .await;
-                    } else {
-                        self.send_delayed(
+                    self.send_delayed(
+                        if retries_before_reclose <= 1 {
+                            Event::TryToClose
+                        } else {
                             Event::WaitForClosed {
                                 retries_before_reclose: retries_before_reclose - 1,
-                            },
-                            Duration::from_secs(3),
-                        )
-                        .await
-                    }
+                            }
+                        },
+                        Duration::from_secs(3),
+                    )
+                    .await
                 }
             },
 
             Event::DoFanout => {
                 info!(
-                    "hydra-controller: {:?}: requesting `Fanout`",
-                    self.originator,
+                    "hydra-controller: {}: requesting `Fanout`",
+                    self.originator.as_str(),
                 );
                 verifications::send_one_websocket_msg(
-                    &format!("http://127.0.0.1:{}", self.api_port),
+                    &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Fanout"}),
                     Duration::from_secs(2),
                 )
@@ -643,16 +718,17 @@ impl State {
             Event::WaitForIdleAfterClose => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {:?}: waiting for the Idle head status (after Fanout): status={:?}",
-                    self.originator, status
+                    "hydra-controller: {}: waiting for the Idle head status (after Fanout): status={:?}",
+                    self.originator.as_str(),
+                    status
                 );
                 if status == "Idle" {
                     info!(
-                        "hydra-controller: {:?}: re-initializing the Hydra Head for another L2 session",
-                        self.originator,
+                        "hydra-controller: {}: re-initializing the Hydra Head for another L2 session",
+                        self.originator.as_str(),
                     );
 
-                    self.send_delayed(Event::TryToOpenHead, Duration::from_secs(3))
+                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(3))
                         .await;
                 } else {
                     self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
@@ -736,6 +812,8 @@ impl State {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
+
+        self.hydra_pid = child.id();
 
         let stdout = child.stdout.take().expect("child stdout");
         let stderr = child.stderr.take().expect("child stderr");

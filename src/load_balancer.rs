@@ -607,6 +607,10 @@ pub mod event_loop {
             }
         }
 
+        if let Some(ctl) = hydra_controller {
+            ctl.terminate().await
+        }
+
         let disconnection_reason_ = disconnection_reason
             .clone()
             .unwrap_or("reason unknown".to_string());

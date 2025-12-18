@@ -43,6 +43,9 @@ base64 = "0.21"
 uuid = "1.10"
 hyper = "1.4.1"
 
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }
+
 [lib]
 name = "blockfrost_gateway"
 path = "src/lib.rs"

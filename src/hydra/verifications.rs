@@ -145,30 +145,30 @@ impl super::HydraConfig {
         Ok(address)
     }
 
-    async fn query_utxo_json(&self, address: &str) -> Result<String> {
-        let output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .args(["query", "utxo", "--address"])
-            .arg(address)
-            .args(["--output-json"])
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            return Err(anyhow!(
-                "cardano-cli query utxo failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
-
-        Ok(String::from_utf8(output.stdout)?)
+    pub(super) async fn query_utxo_json(&self, address: &str) -> Result<serde_json::Value> {
+        let utxo_json = self
+            .cardano_cli_capture(
+                &[
+                    "query",
+                    "utxo",
+                    "--address",
+                    address,
+                    "--out-file",
+                    "/dev/stdout",
+                ],
+                None,
+            )
+            .await?
+            .0;
+        Ok(utxo_json)
     }
 
     pub async fn new_cardano_keypair(&self, base_path: &Path) -> Result<()> {
         let output = tokio::process::Command::new(&self.cardano_cli_exe)
             .args(["address", "key-gen", "--verification-key-file"])
-            .arg(base_path.with_extension(".vk"))
+            .arg(base_path.with_extension("vk"))
             .arg("--signing-key-file")
-            .arg(base_path.with_extension(".sk"))
+            .arg(base_path.with_extension("sk"))
             .output()
             .await?;
 
@@ -182,9 +182,8 @@ impl super::HydraConfig {
         Ok(())
     }
 
-    fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64> {
-        let v: Value = serde_json::from_str(json)?;
-        let obj = v
+    fn sum_lovelace_from_utxo_json(json: &serde_json::Value) -> Result<u64> {
+        let obj = json
             .as_object()
             .ok_or(anyhow!("UTxO JSON root is not an object"))?;
 
@@ -227,7 +226,7 @@ impl super::HydraConfig {
         &self,
         args: &[&str],
         stdin_bytes: Option<&[u8]>,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<(serde_json::Value, Vec<u8>)> {
         use tokio::io::AsyncWriteExt;
 
         let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
@@ -253,15 +252,18 @@ impl super::HydraConfig {
         }
 
         let out = child.wait_with_output().await?;
-        if out.status.success() {
-            Ok(out.stdout)
-        } else {
-            Err(anyhow!(
-                "cardano-cli failed: {}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            )
-            .into())
+
+        if !out.status.success() {
+            return Err(anyhow!(
+                "cardano-cli failed (exit={}):\nstdout: {}\nstderr: {}",
+                out.status,
+                String::from_utf8_lossy(&out.stdout).trim(),
+                String::from_utf8_lossy(&out.stderr).trim(),
+            ));
         }
+
+        let (json, rest) = parse_first_json_and_rest(&out.stdout)?;
+        Ok((json, rest))
     }
 
     pub(super) async fn fund_address(
@@ -271,7 +273,7 @@ impl super::HydraConfig {
         amount_lovelace: u64,
         payment_skey_path: &Path,
     ) -> Result<()> {
-        let utxo_json_bytes = self
+        let utxo_json = self
             .cardano_cli_capture(
                 &[
                     "query",
@@ -283,12 +285,12 @@ impl super::HydraConfig {
                 ],
                 None,
             )
-            .await?;
+            .await?
+            .0;
 
         // XXX: we’re only taking the first 200 UTxOs below, because the test address on
         // CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
-        let v: serde_json::Value = serde_json::from_slice(&utxo_json_bytes)?;
-        let obj = v
+        let obj = utxo_json
             .as_object()
             .ok_or_else(|| anyhow!("UTxO JSON is not an object"))?;
 
@@ -314,14 +316,13 @@ impl super::HydraConfig {
         ]);
 
         let build_args_ref: Vec<&str> = build_args.iter().map(|s| s.as_str()).collect();
-        let tx_json_bytes = self.cardano_cli_capture(&build_args_ref, None).await?;
+        let tx_json = self.cardano_cli_capture(&build_args_ref, None).await?.0;
 
-        // 4) sign -> signed tx bytes in memory (tx file via /dev/stdin, out via /dev/stdout)
         let skey = payment_skey_path
             .to_str()
             .ok_or_else(|| anyhow!("payment_skey_path is not valid UTF-8"))?;
 
-        let tx_signed_bytes = self
+        let tx_signed = self
             .cardano_cli_capture(
                 &[
                     "latest",
@@ -334,16 +335,18 @@ impl super::HydraConfig {
                     "--out-file",
                     "/dev/stdout",
                 ],
-                Some(&tx_json_bytes),
+                Some(&serde_json::to_vec(&tx_json)?),
             )
-            .await?;
+            .await?
+            .0;
 
         let _ = self
             .cardano_cli_capture(
                 &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&tx_signed_bytes),
+                Some(&serde_json::to_vec(&tx_signed)?),
             )
-            .await?;
+            .await?
+            .0;
 
         Ok(())
     }
@@ -360,7 +363,6 @@ impl super::HydraConfig {
         let utxo_json = self.query_utxo_json(from_addr).await?;
         let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
 
-        // curl -fsSL -X POST http://127.0.0.1:$hydra_api_port/commit --data @utxo.json > commit-tx.json
         let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
         let client = reqwest::Client::new();
         let resp = client
@@ -390,7 +392,7 @@ impl super::HydraConfig {
         let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
             .context("hydra /commit response was not valid JSON")?;
 
-        let signed_tx_bytes = self
+        let signed_tx = self
             .cardano_cli_capture(
                 &[
                     "latest",
@@ -407,17 +409,16 @@ impl super::HydraConfig {
                 ],
                 Some(&commit_tx_bytes),
             )
-            .await?;
-
-        let _: serde_json::Value = serde_json::from_slice(&signed_tx_bytes)
-            .context("signed tx output was not valid JSON")?;
+            .await?
+            .0;
 
         let _ = self
             .cardano_cli_capture(
                 &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&signed_tx_bytes),
+                Some(&serde_json::to_vec(&signed_tx)?),
             )
-            .await?;
+            .await?
+            .0;
         Ok(())
     }
 
@@ -473,7 +474,7 @@ impl super::HydraConfig {
 
         let change = lovelace_total - amount_lovelace;
 
-        let tx_body_bytes: Vec<u8> = {
+        let tx_body: serde_json::Value = {
             let args: &[&str] = &[
                 "latest",
                 "transaction",
@@ -489,10 +490,10 @@ impl super::HydraConfig {
                 "--out-file",
                 "/dev/stdout",
             ];
-            self.cardano_cli_capture(&args, None).await?
+            self.cardano_cli_capture(&args, None).await?.0
         };
 
-        let tx_signed_bytes: Vec<u8> = {
+        let tx_signed: serde_json::Value = {
             let skey_str = sender_skey_path
                 .to_str()
                 .context("sender_skey_path is not valid UTF-8")?;
@@ -509,17 +510,20 @@ impl super::HydraConfig {
                 "/dev/stdout",
             ];
 
-            self.cardano_cli_capture(&args, Some(&tx_body_bytes))
+            self.cardano_cli_capture(&args, Some(&serde_json::to_vec(&tx_body)?))
                 .await?
+                .0
         };
-
-        let signed_json: Value = serde_json::from_slice(&tx_signed_bytes)
-            .context("tx-signed: invalid JSON from cardano-cli")?;
 
         let payload = serde_json::json!({
             "tag": "NewTx",
-            "transaction": signed_json,
+            "transaction": tx_signed,
         });
+
+        tracing::info!(
+            "hydra-controller: sending WebSocket payload: {}",
+            serde_json::to_string(&payload)?
+        );
 
         let ws_url = format!("ws://127.0.0.1:{}/", hydra_api_port);
         send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(2)).await?;
@@ -678,7 +682,10 @@ pub async fn send_one_websocket_msg(
     while let Some(msg) = read.next().await {
         match msg? {
             Message::Close(_) => break,
-            _ => (),
+            Message::Text(msg) => {
+                tracing::info!("hydra-controller: got WebSocket message: {}", msg)
+            },
+            msg => tracing::info!("hydra-controller: got WebSocket message: {:?}", msg),
         }
     }
 
@@ -694,4 +701,58 @@ pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
         .ok_or(anyhow!("missing tag"))
         .and_then(|a| a.as_str().ok_or(anyhow!("tag is not a string")))
         .map(|a| a.to_string())
+}
+
+/// Parse the first JSON value from e.g. stdout, and return the remainder.
+fn parse_first_json_and_rest(stdout: &[u8]) -> Result<(serde_json::Value, Vec<u8>)> {
+    let mut start = stdout
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .unwrap_or(0);
+
+    if !matches!(stdout.get(start), Some(b'{') | Some(b'[')) {
+        if let Some(i) = stdout.iter().position(|&b| b == b'{' || b == b'[') {
+            start = i;
+        }
+    }
+
+    let mut it = serde_json::Deserializer::from_slice(&stdout[start..]).into_iter::<Value>();
+
+    let first = it
+        .next()
+        .ok_or_else(|| anyhow!("no JSON value found in stdout"))?
+        .map_err(|e| anyhow!("failed to parse first JSON value from stdout: {e}"))?;
+
+    let consumed = it.byte_offset(); // <-- works here
+    let rest = stdout[start + consumed..].to_vec();
+
+    Ok((first, rest))
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    #[test]
+    fn parse_first_json_and_rest() -> Result<()> {
+        let input = r#"
+{"cborHex":"84a300d9010"}
+blah blah
+"#;
+        let (obj, rest) = super::parse_first_json_and_rest(String::from(input).as_bytes())?;
+        assert_eq!(obj, serde_json::json!({"cborHex":"84a300d9010"}));
+        assert_eq!(rest, String::from("\nblah blah\n").as_bytes());
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    use nix::sys::signal::{Signal, kill};
+    use nix::unistd::Pid;
+    Ok(kill(Pid::from_raw(pid as i32), Signal::SIGTERM)?)
+}
+
+#[cfg(windows)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    unreachable!()
 }

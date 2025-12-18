@@ -1,6 +1,6 @@
 [server]
 address = '0.0.0.0:3001'
-log_level = 'debug'
+log_level = 'info'
 url = 'https://api.domain.com'
 
 [database]
@@ -14,7 +14,7 @@ nft_asset = '4213fc3eac8c781ac85514dd1de9aaabcd5a3a81cc2df4f413b9b295'
 max_concurrent_hydra_nodes = 2
 cardano_signing_key = "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.sk"
 node_socket_path = "/home/mw/.local/share/blockfrost-platform/preview/node.socket"
-commit_ada = 2.0
-lovelace_per_request = 100
+commit_ada = 3.0
+lovelace_per_request = 100_000
 requests_per_microtransaction = 10
 microtransactions_per_fanout = 2
