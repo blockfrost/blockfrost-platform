@@ -37,53 +37,6 @@ impl super::State {
         Ok(())
     }
 
-    /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
-    /// are L1 parameters with zeroed transaction fees.
-    ///
-    /// FIXME: move to `blockfrost-gateway`, as it controls protocol parameters for both
-    pub(super) async fn _gen_protocol_parameters(&self) -> Result<()> {
-        use serde_json::Value;
-
-        std::fs::create_dir_all(&self.config_dir)?;
-
-        let output = tokio::process::Command::new("cardano-cli")
-            .args(["query", "protocol-parameters"])
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            Err(anyhow!("cardano-cli failed with status: {}", output.status))?;
-        }
-
-        let mut params: Value = serde_json::from_slice(&output.stdout)?;
-
-        // .txFeeFixed := 0
-        // .txFeePerByte := 0
-        if let Some(obj) = params.as_object_mut() {
-            obj.insert("txFeeFixed".to_string(), 0.into());
-            obj.insert("txFeePerByte".to_string(), 0.into());
-
-            // .executionUnitPrices.priceMemory := 0
-            // .executionUnitPrices.priceSteps := 0
-            if let Some(exec_prices) = obj
-                .get_mut("executionUnitPrices")
-                .and_then(Value::as_object_mut)
-            {
-                exec_prices.insert("priceMemory".to_string(), 0.into());
-                exec_prices.insert("priceSteps".to_string(), 0.into());
-            }
-        }
-
-        let pp_path = self.config_dir.join("protocol-parameters.json");
-        if write_json_if_changed(&pp_path, &params)? {
-            info!("hydra-controller: protocol parameters updated");
-        } else {
-            info!("hydra-controller: protocol parameters unchanged");
-        }
-
-        Ok(())
-    }
-
     /// Check how much lovelace is on an enterprise address associated with a
     /// given `payment.skey`.
     pub(super) async fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
@@ -252,9 +205,22 @@ pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bo
 }
 
 /// Finds a free port by bind to port 0, to let the OS pick a free port.
-pub async fn pick_free_tcp_port() -> std::io::Result<u16> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+pub async fn find_free_tcp_port() -> std::io::Result<u16> {
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
     let port = listener.local_addr()?.port();
     drop(listener);
     Ok(port)
+}
+
+/// Returns `Ok(true)` if `port` can be bound on 127.0.0.1 (so it's free),
+/// `Ok(false)` if it's already in use, and `Err(_)` for other IO errors.
+pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
+    match tokio::net::TcpListener::bind(("127.0.0.1", port)).await {
+        Ok(listener) => {
+            drop(listener);
+            Ok(true)
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
+        Err(e) => Err(e),
+    }
 }

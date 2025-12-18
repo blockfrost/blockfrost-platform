@@ -243,8 +243,8 @@ impl State {
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         // FIXME: save the ports in an `Arc<Mutex<u16>` for future use
-        let api_port = verifications::pick_free_tcp_port().await?;
-        let metrics_port = verifications::pick_free_tcp_port().await?;
+        let api_port = verifications::find_free_tcp_port().await?;
+        let metrics_port = verifications::find_free_tcp_port().await?;
 
         // FIXME: somehow do shutdown once we’re killed
         // cf. <https://github.com/IntersectMBO/cardano-node/blob/10.6.1/cardano-node/src/Cardano/Node/Handlers/Shutdown.hs#L123-L148>
