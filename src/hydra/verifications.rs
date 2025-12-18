@@ -380,6 +380,6 @@ pub fn sigterm(pid: u32) -> Result<()> {
 }
 
 #[cfg(windows)]
-pub fn sigterm(pid: u32) -> Result<()> {
+pub fn sigterm(_pid: u32) -> Result<()> {
     unreachable!()
 }
