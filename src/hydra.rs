@@ -112,11 +112,15 @@ impl State {
             bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
                 .map_err(|e| anyhow!(e))?;
 
-        // FIXME: config dir needs to be network specific
+        // FIXME: config dir prob. needs to be gateway specific? Test it!
+        let gateway_prefix = "_default";
+
         let config_dir = dirs::config_dir()
             .expect("Could not determine config directory")
             .join("blockfrost-platform")
-            .join("hydra");
+            .join("hydra")
+            .join(network.as_str())
+            .join(gateway_prefix);
 
         let genesis = {
             use bf_common::genesis::*;
