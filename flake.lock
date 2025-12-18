@@ -16,6 +16,23 @@
         "type": "github"
       }
     },
+    "cardano-node": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763736877,
+        "narHash": "sha256-c1a6DzDlm+wzwa85TWeOFrPEldsfjiZw7+DcMMW9nc4=",
+        "owner": "IntersectMBO",
+        "repo": "cardano-node",
+        "rev": "6c034ec038d8d276a3595e10e2d38643f09bd1f2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "IntersectMBO",
+        "ref": "10.5.3",
+        "repo": "cardano-node",
+        "type": "github"
+      }
+    },
     "crane": {
       "locked": {
         "lastModified": 1727316705,
@@ -154,6 +171,7 @@
     "root": {
       "inputs": {
         "advisory-db": "advisory-db",
+        "cardano-node": "cardano-node",
         "crane": "crane",
         "devshell": "devshell",
         "fenix": "fenix",

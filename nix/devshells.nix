@@ -26,6 +26,11 @@ in {
     {package = inputs.self.formatter.${pkgs.system};}
     {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
+    # TODO: add .envrc.local with node env. exports
+    {
+      name = "cardano-cli";
+      package = internal.cardano-cli;
+    }
     {package = pkgs.rust-analyzer;}
     {package = pkgs.doctl;}
     {package = internal.hydra-node;}

@@ -161,4 +161,21 @@ in
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";
     };
+
+    cardano-node-flake =
+      (import inputs.flake-compat {
+        src = inputs.cardano-node;
+      })
+      .defaultNix;
+
+    cardano-node-packages =
+      {
+        x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
+        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
+      }
+      .${
+        targetSystem
+      };
+
+    inherit (cardano-node-packages) cardano-cli;
   }

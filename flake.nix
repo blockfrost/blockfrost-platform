@@ -15,6 +15,11 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    cardano-node = {
+      # Temporarily for `cardano-cli`, for `hydra-node`:
+      url = "github:IntersectMBO/cardano-node/10.5.3";
+      flake = false; # otherwise, +2k dependencies we don’t really use
+    };
     hydra = {
       url = "github:cardano-scaling/hydra/1.0.0";
       flake = false;
