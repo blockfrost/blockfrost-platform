@@ -1,6 +1,6 @@
 [server]
 address = '0.0.0.0:3001'
-log_level = 'info'
+log_level = 'debug'
 url = 'https://api.domain.com'
 
 [database]

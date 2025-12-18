@@ -12,6 +12,9 @@ pub mod verifications;
 // FIXME: this should most probably be back to the default of 600 seconds:
 const CONTESTATION_PERIOD_SECONDS: std::time::Duration = std::time::Duration::from_secs(60);
 
+// FIXME: shouldn’t this be multiplied by `max_concurrent_hydra_nodes`?
+const MIN_FUEL_LOVELACE: u64 = 15_000_000;
+
 /// After cloning, it still represents the same set of [`HydraController`]s.
 #[derive(Clone, Debug)]
 pub struct HydrasManager {
@@ -42,10 +45,31 @@ impl HydrasManager {
 
         let cur_count = Arc::strong_count(&self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
         if cur_count as u64 >= self.config.toml.max_concurrent_hydra_nodes {
-            Err(anyhow!(
+            let err = anyhow!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
-            ))?
+            );
+            warn!("{}", err);
+            Err(err)?
         }
+
+        let potential_fuel = self
+            .config
+            .lovelace_on_payment_skey(&self.config.toml.cardano_signing_key)
+            .await?;
+        if potential_fuel < MIN_FUEL_LOVELACE {
+            let err = anyhow!(
+                "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                potential_fuel as f64 / 1_000_000.0,
+                self.config.toml.cardano_signing_key,
+                MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
+            );
+            error!("{}", err);
+            Err(err)?
+        }
+        info!(
+            "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
+            potential_fuel
+        );
 
         use verifications::{find_free_tcp_port, read_json_file};
 
@@ -230,14 +254,13 @@ impl HydraController {
 
 enum Event {
     Restart,
-    KeyExchangeResponse(KeyExchangeResponse),
     SomeEvent { _some_value: u64 },
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
     let config_dir = dirs::config_dir()
         .ok_or(anyhow!("`dirs::config_dir()` returned `None`"))?
-        .join("blockfrost-platform")
+        .join("blockfrost-gateway")
         .join("hydra")
         .join(network.as_str())
         .join(originator.as_str());
@@ -249,15 +272,14 @@ fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
 struct State {
     config: HydraConfig,
     _originator: AssetName,
-    platform_cardano_vkey: serde_json::Value,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
+    kex_req: KeyExchangeRequest,
+    kex_resp: KeyExchangeResponse,
 }
 
 impl State {
     const RESTART_DELAY: std::time::Duration = std::time::Duration::from_secs(5);
-    // FIXME: shouldn’t this be multiplied by `max_concurrent_hydra_nodes`?
-    const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 
     async fn spawn(
         config: HydraConfig,
@@ -269,22 +291,13 @@ impl State {
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
-        // TODO: save protocol params from initial.1
-        //
-        // std::fs::create_dir_all(&self.config_dir)?;
-        // let pp_path = self.config_dir.join("protocol-parameters.json");
-        // if write_json_if_changed(&pp_path, &params)? {
-        //     info!("hydra-controller: protocol parameters updated");
-        // } else {
-        //     info!("hydra-controller: protocol parameters unchanged");
-        // }
-
         let self_ = Self {
             config,
             _originator: originator,
-            platform_cardano_vkey: kex_req.platform_cardano_vkey,
             config_dir,
             event_tx: event_tx.clone(),
+            kex_req,
+            kex_resp,
         };
 
         self_.send(Event::Restart).await;
@@ -320,38 +333,15 @@ impl State {
         match event {
             Event::Restart => {
                 info!("hydra-controller: starting…");
-
-                let potential_fuel = self
-                    .config
-                    .lovelace_on_payment_skey(&self.config.toml.cardano_signing_key)
-                    .await?;
-                if potential_fuel < Self::MIN_FUEL_LOVELACE {
-                    Err(anyhow!(
-                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
-                        potential_fuel as f64 / 1_000_000.0,
-                        self.config.toml.cardano_signing_key,
-                        Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
-                    ))?
-                }
-
-                info!(
-                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
-                    potential_fuel
-                );
-
-                self.config.gen_hydra_keys(&self.config_dir).await?;
-
-                self.start_hydra_node(todo!()).await?;
+                self.start_hydra_node().await?;
             },
-
-            Event::KeyExchangeResponse(kex_resp) => {},
 
             Event::SomeEvent { .. } => todo!(),
         }
         Ok(())
     }
 
-    async fn start_hydra_node(&self, kex_response: KeyExchangeResponse) -> Result<()> {
+    async fn start_hydra_node(&self) -> Result<()> {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
@@ -367,19 +357,19 @@ impl State {
         let protocol_parameters_path = self.config_dir.join("protocol-parameters.json");
         verifications::write_json_if_changed(
             &protocol_parameters_path,
-            &kex_response.protocol_parameters,
+            &self.kex_resp.protocol_parameters,
         )?;
 
-        let gateway_hydra_vkey_path = self.config_dir.join("gateway-hydra.vk");
+        let platform_hydra_vkey_path = self.config_dir.join("platform-hydra.vk");
         verifications::write_json_if_changed(
-            &gateway_hydra_vkey_path,
-            &kex_response.gateway_hydra_vkey,
+            &platform_hydra_vkey_path,
+            &self.kex_req.platform_hydra_vkey,
         )?;
 
-        let gateway_cardano_vkey_path = self.config_dir.join("gateway-payment.vk");
+        let platform_cardano_vkey_path = self.config_dir.join("platform-payment.vk");
         verifications::write_json_if_changed(
-            &gateway_cardano_vkey_path,
-            &kex_response.gateway_cardano_vkey,
+            &platform_cardano_vkey_path,
+            &self.kex_req.platform_cardano_vkey,
         )?;
 
         let mut child = tokio::process::Command::new(&self.config.hydra_node_exe)
@@ -392,11 +382,11 @@ impl State {
             .arg("--hydra-signing-key")
             .arg(self.config_dir.join("hydra.sk"))
             .arg("--hydra-scripts-tx-id")
-            .arg(&kex_response.hydra_scripts_tx_id)
+            .arg(&self.kex_resp.hydra_scripts_tx_id)
             .arg("--ledger-protocol-parameters")
             .arg(&protocol_parameters_path) // FIXME: copy it somewhere else in case the source file changes
             .arg("--contestation-period")
-            .arg(format!("{}s", kex_response.contestation_period.as_secs()))
+            .arg(format!("{}s", self.kex_resp.contestation_period.as_secs()))
             .args(if self.config.network == Network::Mainnet {
                 vec!["-mainnet".to_string()]
             } else {
@@ -412,15 +402,15 @@ impl State {
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")
-            .arg(format!("127.0.0.1:{}", kex_response.proposed_platform_h2h_port))
+            .arg(format!("127.0.0.1:{}", self.kex_resp.gateway_h2h_port))
             .arg("--peer")
-            .arg(format!("127.0.0.1:{}", kex_response.gateway_h2h_port))
+            .arg(format!("127.0.0.1:{}", self.kex_resp.proposed_platform_h2h_port))
             .arg("--monitoring-port")
             .arg(format!("{metrics_port}"))
             .arg("--hydra-verification-key")
-            .arg(gateway_hydra_vkey_path)
+            .arg(platform_hydra_vkey_path)
             .arg("--cardano-verification-key")
-            .arg(gateway_cardano_vkey_path)
+            .arg(platform_cardano_vkey_path)
             .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exitst on our `kill -9`
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

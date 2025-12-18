@@ -506,8 +506,14 @@ pub mod event_loop {
                             }
                         },
                         (Some(hydras), _, _) => {
-                            match hydras.initialize_key_exchange(&asset_name, req).await {
-                                Ok(resp) => LoadBalancerMessage::HydraKExResponse(resp),
+                            match hydras
+                                .initialize_key_exchange(&asset_name, req.clone())
+                                .await
+                            {
+                                Ok(resp) => {
+                                    initial_hydra_kex = Some((req, resp.clone()));
+                                    LoadBalancerMessage::HydraKExResponse(resp)
+                                },
                                 Err(err) => LoadBalancerMessage::Error {
                                     code: 537,
                                     msg: format!("Hydra micropayments setup error: {err}"),
