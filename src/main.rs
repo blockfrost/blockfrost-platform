@@ -82,8 +82,8 @@ async fn main() -> Result<(), AppError> {
             .register_error_source(health_errors.clone())
             .await;
 
-        let manager = HydraManager::new(hydra_config, health_errors);
-        manager.run().await?;
+        let manager = HydraManager::new(hydra_config, health_errors)?;
+        manager.run().await;
     }
 
     spawn_task
