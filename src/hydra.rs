@@ -12,7 +12,7 @@ pub mod tunnel;
 /// You can safely clone it, and the clone will represent the same `hydra-node` etc.
 #[derive(Clone)]
 pub struct HydraController {
-    event_tx: mpsc::Sender<Event>,
+    _event_tx: mpsc::Sender<Event>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
@@ -61,23 +61,13 @@ impl HydraController {
         )
         .await
         .map_err(|e| AppError::Server(format!("{e}")))?;
-        Ok(Self { event_tx })
-    }
-
-    pub async fn send_some_event(&self, some_value: u64) {
-        self.event_tx
-            .send(Event::SomeEvent {
-                _some_value: some_value,
-            })
-            .await
-            .expect("we never close the event receiver");
+        Ok(Self { _event_tx: event_tx })
     }
 }
 
 enum Event {
     Restart,
     KeyExchangeResponse(KeyExchangeResponse),
-    SomeEvent { _some_value: u64 },
 }
 
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
@@ -265,8 +255,6 @@ impl State {
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
                 self.start_hydra_node(kex_resp).await?;
             },
-
-            Event::SomeEvent { .. } => todo!(),
         }
         Ok(())
     }
