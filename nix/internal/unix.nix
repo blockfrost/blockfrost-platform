@@ -176,9 +176,25 @@ in
       meta.description = "Layer 2 scalability solution for Cardano";
     };
 
-    cardano-node-flake =
+    cardano-node-flake = let
+      unpatched = inputs.cardano-node;
+    in
       (import inputs.flake-compat {
-        src = inputs.cardano-node;
+        src =
+          if targetSystem != "aarch64-darwin" && targetSystem != "aarch64-linux"
+          then unpatched
+          else {
+            outPath = toString (pkgs.runCommand "source" {} ''
+              cp -r ${unpatched} $out
+              chmod -R +w $out
+              cd $out
+              echo ${lib.escapeShellArg (builtins.toJSON [targetSystem])} >$out/nix/supported-systems.nix
+              ${lib.optionalString (targetSystem == "aarch64-linux") ''
+                sed -r 's/"-fexternal-interpreter"//g' -i $out/nix/haskell.nix
+              ''}
+            '');
+            inherit (unpatched) rev shortRev lastModified lastModifiedDate;
+          };
       })
       .defaultNix;
 
