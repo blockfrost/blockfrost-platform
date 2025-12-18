@@ -66,16 +66,19 @@ impl HydrasManager {
             Err(err)?
         }
 
-        let potential_fuel = self
+        let have_funds: f64 = self
             .config
             .lovelace_on_payment_skey(&self.config.toml.cardano_signing_key)
-            .await?;
-        if potential_fuel < MIN_FUEL_LOVELACE {
+            .await? as f64
+            / 1_000_000.0;
+        let required_funds_ada: f64 =
+            self.config.toml.commit_ada + (MIN_FUEL_LOVELACE as f64 / 1_000_000.0);
+        if have_funds < required_funds_ada {
             let err = anyhow!(
-                "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
-                potential_fuel as f64 / 1_000_000.0,
+                "hydra-controller: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                have_funds,
                 self.config.toml.cardano_signing_key,
-                MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
+                required_funds_ada,
             );
             error!("{}", err);
             Err(err)?
