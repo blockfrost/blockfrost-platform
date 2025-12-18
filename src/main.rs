@@ -3,7 +3,7 @@
 use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
-    hydra::HydraManager,
+    hydra::{self, HydraManager},
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
@@ -83,8 +83,20 @@ async fn main() -> Result<(), AppError> {
                 .register_error_source(health_errors.clone())
                 .await;
 
-            let (kex_req_tx, kex_req_rx) = mpsc::channel(32);
+            // FIXME: actually exchange
+            let kex_response = hydra::fake_kex_response(&config.network)
+                .await
+                .map_err(|e| AppError::Server(format!("{}", e)))?;
+
+            let (kex_req_tx, mut kex_req_rx) = mpsc::channel(32);
             let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
+
+            tokio::spawn(async move {
+                while let Some(req) = kex_req_rx.recv().await {
+                    warn!(";;; got a KeyExchangeRequest: {:?}", req);
+                    kex_resp_tx.send(kex_response.clone()).await.expect("boom");
+                }
+            });
 
             let _manager = HydraManager::spawn(
                 hydra_config,

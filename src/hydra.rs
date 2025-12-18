@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
-mod verifications;
+pub mod verifications;
 
 /// Runs a `hydra-node` and sets up an L2 network with the Gateway for microtransactions.
 ///
@@ -14,13 +14,13 @@ pub struct HydraManager {
     event_tx: mpsc::Sender<Event>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
     pub platform_cardano_vkey: serde_json::Value,
     pub platform_hydra_vkey: serde_json::Value,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeResponse {
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_hydra_vkey: serde_json::Value,
@@ -71,18 +71,20 @@ impl HydraManager {
 
 enum Event {
     Restart,
+    KeyExchangeResponse(KeyExchangeResponse),
     SomeEvent { _some_value: u64 },
 }
 
+// FIXME: don’t construct all key and other paths manually, keep them in a single place
 struct State {
     config: bf_common::config::HydraConfig,
     network: bf_common::types::Network,
     genesis: bf_api_provider::types::GenesisResponse,
     node_socket_path: String,
-    hydra_scripts_tx_id: String,
     platform_cardano_vkey: serde_json::Value,
     _reward_address: String,
     _health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
+    kex_requests: mpsc::Sender<KeyExchangeRequest>,
     hydra_node_exe: String,
     cardano_cli_exe: String,
     config_dir: PathBuf,
@@ -92,8 +94,6 @@ struct State {
 impl State {
     const RESTART_DELAY: std::time::Duration = std::time::Duration::from_secs(5);
     const MIN_FUEL_LOVELACE: u64 = 15_000_000;
-    // FIXME: this should most probably be back to the default of 600 seconds:
-    const CONTESTATION_PERIOD_SECONDS: std::time::Duration = std::time::Duration::from_secs(60);
 
     async fn spawn(
         config: bf_common::config::HydraConfig,
@@ -101,8 +101,8 @@ impl State {
         node_socket_path: String,
         reward_address: String,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
-        _kex_requests: mpsc::Sender<KeyExchangeRequest>,
-        _kex_responses: mpsc::Receiver<KeyExchangeResponse>,
+        kex_requests: mpsc::Sender<KeyExchangeRequest>,
+        kex_responses: mpsc::Receiver<KeyExchangeResponse>,
     ) -> Result<mpsc::Sender<Event>> {
         let hydra_node_exe =
             bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
@@ -111,24 +111,11 @@ impl State {
             bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
                 .map_err(|e| anyhow!(e))?;
 
+        // FIXME: config dir needs to be network specific
         let config_dir = dirs::config_dir()
             .expect("Could not determine config directory")
             .join("blockfrost-platform")
             .join("hydra");
-
-        // FIXME: also define them in a `build.rs` script without Nix – consult
-        // `flake.lock` to get the exact Hydra version.
-        let hydra_scripts_tx_id: String = {
-            use bf_common::types::Network::*;
-            match network {
-                Mainnet => env!("HYDRA_SCRIPTS_TX_ID_MAINNET").into(),
-                Preprod => env!("HYDRA_SCRIPTS_TX_ID_PREPROD").into(),
-                Preview => env!("HYDRA_SCRIPTS_TX_ID_PREVIEW").into(),
-                Custom => Err(anyhow!(
-                    "hydra-manager: can only run on known networks (Mainnet, Preprod, Preview)"
-                ))?,
-            }
-        };
 
         let genesis = {
             use bf_common::genesis::*;
@@ -142,10 +129,10 @@ impl State {
             network,
             genesis,
             node_socket_path,
-            hydra_scripts_tx_id,
             platform_cardano_vkey: serde_json::Value::Null,
             _reward_address: reward_address,
             _health_errors: health_errors,
+            kex_requests,
             hydra_node_exe,
             cardano_cli_exe,
             config_dir,
@@ -161,6 +148,17 @@ impl State {
         };
 
         self_.send(Event::Restart).await;
+
+        let event_tx_ = event_tx.clone();
+        tokio::spawn(async move {
+            let mut kex_responses = kex_responses;
+            while let Some(resp) = kex_responses.recv().await {
+                event_tx_
+                    .send(Event::KeyExchangeResponse(resp))
+                    .await
+                    .expect("we never close the event receiver");
+            }
+        });
 
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
@@ -212,53 +210,56 @@ impl State {
                 );
 
                 self.gen_hydra_keys().await?;
-                //self.gen_protocol_parameters().await?;
 
-                self.start_hydra_node().await?;
+                self.kex_requests
+                    .send(KeyExchangeRequest {
+                        platform_cardano_vkey: self.platform_cardano_vkey.clone(),
+                        platform_hydra_vkey: verifications::read_json_file(
+                            &self.config_dir.join("hydra.vk"),
+                        )?,
+                    })
+                    .await?;
             },
+
+            Event::KeyExchangeResponse(kex_resp) => {
+                self.start_hydra_node(kex_resp).await?;
+            },
+
             Event::SomeEvent { .. } => todo!(),
         }
         Ok(())
     }
 
-    async fn start_hydra_node(&self) -> Result<()> {
+    async fn start_hydra_node(&self, kex_response: KeyExchangeResponse) -> Result<()> {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         // FIXME: save the ports in an `Arc<Mutex<u16>` for future use
-        let api_port = Self::pick_free_tcp_port().await?;
-        let metrics_port = Self::pick_free_tcp_port().await?;
+        let api_port = verifications::pick_free_tcp_port().await?;
+        let metrics_port = verifications::pick_free_tcp_port().await?;
 
         // FIXME: somehow do shutdown once we’re killed
         // cf. <https://github.com/IntersectMBO/cardano-node/blob/10.6.1/cardano-node/src/Cardano/Node/Handlers/Shutdown.hs#L123-L148>
         // cf. <https://input-output-rnd.slack.com/archives/C06J9HK7QCQ/p1764782397820079>
         // TODO: Write a ticket in `hydra-node`.
 
-        // FIXME: actually exchange
-        let request = KeyExchangeRequest {
-            platform_cardano_vkey: self.platform_cardano_vkey.clone(),
-            platform_hydra_vkey: Self::read_json_file(&self.config_dir.join("hydra.vk"))?,
-        };
-
-        // FIXME: actually exchange
-        let response = KeyExchangeResponse {
-            gateway_cardano_vkey: Self::read_json_file("/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.vk".as_ref())?,
-            gateway_hydra_vkey: Self::read_json_file("/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/hydra.vk".as_ref())?,
-            hydra_scripts_tx_id: self.hydra_scripts_tx_id.clone(),
-            protocol_parameters: Self::read_json_file("/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json".as_ref())?,
-            contestation_period: Self::CONTESTATION_PERIOD_SECONDS,
-            proposed_platform_h2h_port: Self::pick_free_tcp_port().await?,
-            gateway_h2h_port: Self::pick_free_tcp_port().await?,
-        };
-
         let protocol_parameters_path = self.config_dir.join("protocol-parameters.json");
-        Self::write_json_if_changed(&protocol_parameters_path, &response.protocol_parameters)?;
+        verifications::write_json_if_changed(
+            &protocol_parameters_path,
+            &kex_response.protocol_parameters,
+        )?;
 
         let gateway_hydra_vkey_path = self.config_dir.join("gateway-hydra.vk");
-        Self::write_json_if_changed(&gateway_hydra_vkey_path, &response.gateway_hydra_vkey)?;
+        verifications::write_json_if_changed(
+            &gateway_hydra_vkey_path,
+            &kex_response.gateway_hydra_vkey,
+        )?;
 
         let gateway_cardano_vkey_path = self.config_dir.join("gateway-payment.vk");
-        Self::write_json_if_changed(&gateway_cardano_vkey_path, &response.gateway_cardano_vkey)?;
+        verifications::write_json_if_changed(
+            &gateway_cardano_vkey_path,
+            &kex_response.gateway_cardano_vkey,
+        )?;
 
         let mut child = tokio::process::Command::new(&self.hydra_node_exe)
             .arg("--node-id")
@@ -270,11 +271,11 @@ impl State {
             .arg("--hydra-signing-key")
             .arg(self.config_dir.join("hydra.sk"))
             .arg("--hydra-scripts-tx-id")
-            .arg(&response.hydra_scripts_tx_id)
+            .arg(&kex_response.hydra_scripts_tx_id)
             .arg("--ledger-protocol-parameters")
             .arg(&protocol_parameters_path)
             .arg("--contestation-period")
-            .arg(format!("{}s", response.contestation_period.as_secs()))
+            .arg(format!("{}s", kex_response.contestation_period.as_secs()))
             .args(if self.network == bf_common::types::Network::Mainnet {
                 vec!["-mainnet".to_string()]
             } else {
@@ -290,9 +291,9 @@ impl State {
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")
-            .arg(format!("127.0.0.1:{}", response.proposed_platform_h2h_port))
+            .arg(format!("127.0.0.1:{}", kex_response.proposed_platform_h2h_port))
             .arg("--peer")
-            .arg(format!("127.0.0.1:{}", response.gateway_h2h_port))
+            .arg(format!("127.0.0.1:{}", kex_response.gateway_h2h_port))
             .arg("--monitoring-port")
             .arg(format!("{metrics_port}"))
             .arg("--hydra-verification-key")
@@ -342,12 +343,42 @@ impl State {
 
         Ok(())
     }
+}
 
-    /// Finds a free port by bind to port 0, to let the OS pick a free port.
-    async fn pick_free_tcp_port() -> std::io::Result<u16> {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
-        let port = listener.local_addr()?.port();
-        drop(listener);
-        Ok(port)
-    }
+// FIXME: remove this
+pub async fn fake_kex_response(network: &bf_common::types::Network) -> Result<KeyExchangeResponse> {
+    // FIXME: also define them in a `build.rs` script without Nix – consult
+    // `flake.lock` to get the exact Hydra version.
+    let hydra_scripts_tx_id: String = {
+        use bf_common::types::Network::*;
+        match network {
+            Mainnet => env!("HYDRA_SCRIPTS_TX_ID_MAINNET").into(),
+            Preprod => env!("HYDRA_SCRIPTS_TX_ID_PREPROD").into(),
+            Preview => env!("HYDRA_SCRIPTS_TX_ID_PREVIEW").into(),
+            Custom => Err(anyhow::anyhow!(
+                "hydra-manager: can only run on known networks (Mainnet, Preprod, Preview)"
+            ))?,
+        }
+    };
+
+    // FIXME: this should most probably be back to the default of 600 seconds:
+    const CONTESTATION_PERIOD_SECONDS: std::time::Duration = std::time::Duration::from_secs(60);
+
+    use verifications::{pick_free_tcp_port, read_json_file};
+    Ok(KeyExchangeResponse {
+        gateway_cardano_vkey: read_json_file(
+            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.vk".as_ref(),
+        )?,
+        gateway_hydra_vkey: read_json_file(
+            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/hydra.vk".as_ref(),
+        )?,
+        hydra_scripts_tx_id,
+        protocol_parameters: read_json_file(
+            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json"
+                .as_ref(),
+        )?,
+        contestation_period: CONTESTATION_PERIOD_SECONDS,
+        proposed_platform_h2h_port: pick_free_tcp_port().await?,
+        gateway_h2h_port: pick_free_tcp_port().await?,
+    })
 }

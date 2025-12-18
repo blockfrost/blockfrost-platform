@@ -75,50 +75,13 @@ impl super::State {
         }
 
         let pp_path = self.config_dir.join("protocol-parameters.json");
-        if Self::write_json_if_changed(&pp_path, &params)? {
+        if write_json_if_changed(&pp_path, &params)? {
             info!("hydra-manager: protocol parameters updated");
         } else {
             info!("hydra-manager: protocol parameters unchanged");
         }
 
         Ok(())
-    }
-
-    /// Reads a JSON file from disk.
-    pub(super) fn read_json_file(path: &Path) -> Result<serde_json::Value> {
-        let contents = std::fs::read_to_string(path)?;
-        let json: serde_json::Value = serde_json::from_str(&contents)?;
-        Ok(json)
-    }
-
-    /// Writes `json` to `path` (pretty-printed) **only if** the JSON content differs
-    /// from what is already on disk. Returns `true` if the file was written.
-    pub(super) fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bool> {
-        use std::fs::File;
-        use std::io::Write;
-
-        if path.exists() {
-            if let Ok(existing_str) = std::fs::read_to_string(path) {
-                if let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str)
-                {
-                    if existing_json == *json {
-                        return Ok(false);
-                    }
-                }
-            }
-        }
-
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent)?;
-            }
-        }
-
-        let mut file = File::create(path)?;
-        serde_json::to_writer_pretty(&mut file, json)?;
-        file.write_all(b"\n")?;
-
-        Ok(true)
     }
 
     /// Check how much lovelace is on an enterprise address associated with a
@@ -250,4 +213,48 @@ impl super::State {
         }
         Err(anyhow!("lovelace value is neither u64 nor string"))
     }
+}
+
+/// Reads a JSON file from disk.
+pub fn read_json_file(path: &Path) -> Result<serde_json::Value> {
+    let contents = std::fs::read_to_string(path)?;
+    let json: serde_json::Value = serde_json::from_str(&contents)?;
+    Ok(json)
+}
+
+/// Writes `json` to `path` (pretty-printed) **only if** the JSON content differs
+/// from what is already on disk. Returns `true` if the file was written.
+pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bool> {
+    use std::fs::File;
+    use std::io::Write;
+
+    if path.exists() {
+        if let Ok(existing_str) = std::fs::read_to_string(path) {
+            if let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str) {
+                if existing_json == *json {
+                    return Ok(false);
+                }
+            }
+        }
+    }
+
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+
+    let mut file = File::create(path)?;
+    serde_json::to_writer_pretty(&mut file, json)?;
+    file.write_all(b"\n")?;
+
+    Ok(true)
+}
+
+/// Finds a free port by bind to port 0, to let the OS pick a free port.
+pub async fn pick_free_tcp_port() -> std::io::Result<u16> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let port = listener.local_addr()?.port();
+    drop(listener);
+    Ok(port)
 }
