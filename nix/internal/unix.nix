@@ -84,13 +84,15 @@ in
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
           cargoClippyExtraArgs = "--all-targets --all-features -- --deny warnings";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-audit = craneLib.cargoAudit {
         inherit src;
@@ -104,7 +106,8 @@ in
       cargo-test = craneLib.cargoNextest (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
     };
 
     nixChecks = {
