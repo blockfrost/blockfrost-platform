@@ -1,7 +1,7 @@
+use anyhow::{Result, anyhow};
 use serde_json::Value;
 use std::path::Path;
 use std::{
-    error::Error,
     io::Write,
     process::{Command, Stdio},
 };
@@ -14,9 +14,9 @@ use tracing::info;
 /// FIXME: set `CARDANO_NODE_SOCKET_PATH` ourselves
 ///
 /// FIXME: proper errors, not `Box<dyn Erro>>`
-impl super::HydraManager {
+impl super::State {
     /// Generates Hydra keys if they don’t exist.
-    pub(super) async fn gen_hydra_keys(&self) -> Result<(), Box<dyn Error>> {
+    pub(super) async fn gen_hydra_keys(&self) -> Result<()> {
         std::fs::create_dir_all(&self.config_dir)?;
 
         let key_path = self.config_dir.join("hydra.sk");
@@ -31,7 +31,7 @@ impl super::HydraManager {
                 .status()?;
 
             if !status.success() {
-                Err(format!("gen-hydra-key failed with status: {status}"))?;
+                Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
             }
         } else {
             info!("hydra-manager: hydra keys already exist");
@@ -42,7 +42,7 @@ impl super::HydraManager {
 
     /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
     /// are L1 parameters with zeroed transaction fees.
-    pub(super) async fn gen_protocol_parameters(&self) -> Result<(), Box<dyn Error>> {
+    pub(super) async fn gen_protocol_parameters(&self) -> Result<()> {
         use serde_json::Value;
 
         std::fs::create_dir_all(&self.config_dir)?;
@@ -52,7 +52,7 @@ impl super::HydraManager {
             .output()?;
 
         if !output.status.success() {
-            Err(format!("cardano-cli failed with status: {}", output.status))?;
+            Err(anyhow!("cardano-cli failed with status: {}", output.status))?;
         }
 
         let mut params: Value = serde_json::from_slice(&output.stdout)?;
@@ -86,10 +86,7 @@ impl super::HydraManager {
 
     /// Writes `json` to `path` (pretty-printed) **only if** the JSON content differs
     /// from what is already on disk. Returns `true` if the file was written.
-    fn write_json_if_changed(
-        path: impl AsRef<Path>,
-        json: &serde_json::Value,
-    ) -> Result<bool, Box<dyn Error>> {
+    fn write_json_if_changed(path: impl AsRef<Path>, json: &serde_json::Value) -> Result<bool> {
         use std::fs::File;
         use std::io::Write;
 
@@ -121,16 +118,13 @@ impl super::HydraManager {
 
     /// Check how much lovelace is on an enterprise address associated with a
     /// given `payment.skey`.
-    pub(super) fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64, Box<dyn Error>> {
+    pub(super) fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
         let address = self.derive_enterprise_address_from_skey(skey_path)?;
         let utxo_json = self.query_utxo_json(&address)?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
 
-    fn derive_enterprise_address_from_skey(
-        &self,
-        skey_path: &Path,
-    ) -> Result<String, Box<dyn Error>> {
+    fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
         let vkey_output = Command::new(&self.cardano_cli_exe)
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
@@ -138,11 +132,10 @@ impl super::HydraManager {
             .output()?;
 
         if !vkey_output.status.success() {
-            return Err(format!(
+            return Err(anyhow!(
                 "cardano-cli key verification-key failed: {}",
                 String::from_utf8_lossy(&vkey_output.stderr)
-            )
-            .into());
+            ));
         }
 
         let mut child = Command::new(&self.cardano_cli_exe)
@@ -157,31 +150,29 @@ impl super::HydraManager {
             .spawn()?;
 
         {
-            let stdin = child
-                .stdin
-                .as_mut()
-                .ok_or("failed to open stdin for cardano-cli address build")?;
+            let stdin = child.stdin.as_mut().ok_or(anyhow!(
+                "failed to open stdin for cardano-cli address build"
+            ))?;
             stdin.write_all(&vkey_output.stdout)?;
         }
 
         let addr_output = child.wait_with_output()?;
         if !addr_output.status.success() {
-            return Err(format!(
+            Err(anyhow!(
                 "cardano-cli address build failed: {}",
                 String::from_utf8_lossy(&addr_output.stderr)
-            )
-            .into());
+            ))?;
         }
 
         let address = String::from_utf8(addr_output.stdout)?.trim().to_string();
         if address.is_empty() {
-            return Err("derived address is empty".into());
+            return Err(anyhow!("derived address is empty"));
         }
 
         Ok(address)
     }
 
-    fn query_utxo_json(&self, address: &str) -> Result<String, Box<dyn Error>> {
+    fn query_utxo_json(&self, address: &str) -> Result<String> {
         let output = Command::new(&self.cardano_cli_exe)
             .args(["query", "utxo", "--address"])
             .arg(address)
@@ -189,19 +180,20 @@ impl super::HydraManager {
             .output()?;
 
         if !output.status.success() {
-            return Err(format!(
+            return Err(anyhow!(
                 "cardano-cli query utxo failed: {}",
                 String::from_utf8_lossy(&output.stderr)
-            )
-            .into());
+            ));
         }
 
         Ok(String::from_utf8(output.stdout)?)
     }
 
-    fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64, Box<dyn Error>> {
+    fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64> {
         let v: Value = serde_json::from_str(json)?;
-        let obj = v.as_object().ok_or("UTxO JSON root is not an object")?;
+        let obj = v
+            .as_object()
+            .ok_or(anyhow!("UTxO JSON root is not an object"))?;
 
         let mut total: u64 = 0;
 
@@ -210,7 +202,7 @@ impl super::HydraManager {
                 if let Some(lovelace_val) = value_obj.get("lovelace") {
                     total = total
                         .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or("cannot add".to_string())?;
+                        .ok_or(anyhow!("cannot add"))?;
                     continue;
                 }
             }
@@ -219,7 +211,7 @@ impl super::HydraManager {
                 if let Some(lovelace_val) = amount_arr.first() {
                     total = total
                         .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or("cannot add".to_string())?;
+                        .ok_or(anyhow!("cannot add"))?;
                 }
             }
         }
@@ -228,13 +220,13 @@ impl super::HydraManager {
     }
 
     /// Convert a JSON value into u64, allowing either number or string.
-    fn as_u64(v: &Value) -> Result<u64, Box<dyn Error>> {
+    fn as_u64(v: &Value) -> Result<u64> {
         if let Some(n) = v.as_u64() {
             return Ok(n);
         }
         if let Some(s) = v.as_str() {
             return Ok(s.parse()?);
         }
-        Err("lovelace value is neither u64 nor string".into())
+        Err(anyhow!("lovelace value is neither u64 nor string"))
     }
 }

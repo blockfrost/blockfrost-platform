@@ -83,12 +83,12 @@ async fn main() -> Result<(), AppError> {
                 .register_error_source(health_errors.clone())
                 .await;
 
-            let manager = HydraManager::new(
+            let _manager = HydraManager::spawn(
                 hydra_config,
                 icebreakers_config.reward_address,
                 health_errors,
-            )?;
-            manager.run().await;
+            )
+            .await?;
         } else {
             warn!("Hydra micropayments won’t run without a valid IceBreakers config.");
         }
