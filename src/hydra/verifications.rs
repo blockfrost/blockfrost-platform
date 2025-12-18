@@ -1,15 +1,19 @@
 use serde_json::Value;
-use std::{error::Error, io::Write, process::{Command, Stdio}};
+use std::path::Path;
 use std::{
-    path::{Path},
+    error::Error,
+    io::Write,
+    process::{Command, Stdio},
 };
 use tracing::info;
 
 /// FIXME: don’t use `cardano-cli`.
-/// FIXME: set CARDANO_NODE_NETWORK_ID ourselves
-/// FIXME: set CARDANO_NODE_SOCKET_PATH ourselves
+///
+/// FIXME: set `CARDANO_NODE_NETWORK_ID` ourselves
+///
+/// FIXME: set `CARDANO_NODE_SOCKET_PATH` ourselves
+///
 /// FIXME: proper errors, not `Box<dyn Erro>>`
-
 impl super::HydraManager {
     /// Generates Hydra keys if they don’t exist.
     pub(super) async fn gen_hydra_keys(&self) -> Result<(), Box<dyn Error>> {
@@ -23,7 +27,7 @@ impl super::HydraManager {
             let status = Command::new(&self.hydra_node_exe)
                 .arg("gen-hydra-key")
                 .arg("--output-file")
-                .arg(&self.config_dir.join("hydra"))
+                .arg(self.config_dir.join("hydra"))
                 .status()?;
 
             if !status.success() {
@@ -117,7 +121,7 @@ impl super::HydraManager {
 
     /// Check how much lovelace is on an enterprise address associated with a
     /// given `payment.skey`.
-    pub fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64, Box<dyn Error>> {
+    pub(super) fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64, Box<dyn Error>> {
         let address = self.derive_enterprise_address_from_skey(skey_path)?;
         let utxo_json = self.query_utxo_json(&address)?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
@@ -212,7 +216,7 @@ impl super::HydraManager {
             }
 
             if let Some(amount_arr) = utxo.get("amount").and_then(|v| v.as_array()) {
-                if let Some(lovelace_val) = amount_arr.get(0) {
+                if let Some(lovelace_val) = amount_arr.first() {
                     total = total
                         .checked_add(Self::as_u64(lovelace_val)?)
                         .ok_or("cannot add".to_string())?;

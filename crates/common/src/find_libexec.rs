@@ -16,7 +16,7 @@ use tracing::debug;
 /// * `exe_name` - The name of the executable (without `.exe` on Windows).
 ///
 /// * `env_name` - Allow overriding the path to the executable with this
-///    environment variable name.
+///   environment variable name.
 ///
 /// * `test_args` - Arguments to a test invocation of the found command (to
 ///   check that it really is executable). Maybe in the future we should have a

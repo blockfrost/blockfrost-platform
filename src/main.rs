@@ -90,7 +90,7 @@ async fn main() -> Result<(), AppError> {
             )?;
             manager.run().await;
         } else {
-            warn!("Hydra micropayments won’t run without a valid IceBreakers config.")
+            warn!("Hydra micropayments won’t run without a valid IceBreakers config.");
         }
     }
 
