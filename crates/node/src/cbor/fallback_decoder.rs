@@ -1,14 +1,13 @@
 use bf_common::errors::AppError;
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
-use std::process::{self as proc, Command};
+use std::process::{self as proc};
 use std::sync::{
     Arc,
     atomic::{self, AtomicU32},
 };
-use std::{env, thread};
+use std::thread;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct FallbackDecoder {
@@ -85,62 +84,7 @@ impl FallbackDecoder {
 
     /// Searches for `testgen-hs` in multiple directories.
     pub fn find_testgen_hs() -> Result<String, String> {
-        let env_var_dir: Option<PathBuf> = env::var("TESTGEN_HS_PATH")
-            .ok()
-            .and_then(|a| PathBuf::from(a).parent().map(|a| a.to_path_buf()));
-
-        // This is the most important one for relocatable directories (that keep the initial
-        // structure) on Windows, Linux, macOS:
-        let current_exe_dir: Option<PathBuf> =
-            std::fs::canonicalize(env::current_exe().map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?
-                .parent()
-                .map(|a| a.to_path_buf().join("testgen-hs"));
-
-        let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
-            .ok()
-            .map(|root| PathBuf::from(root).join("target/testgen-hs/extracted/testgen-hs"));
-
-        let docker_path: Option<PathBuf> = Some(PathBuf::from("/app/testgen-hs"));
-
-        let system_path: Vec<PathBuf> = env::var("PATH")
-            .map(|p| env::split_paths(&p).collect())
-            .unwrap_or_default();
-
-        let search_path: Vec<PathBuf> =
-            vec![env_var_dir, current_exe_dir, cargo_target_dir, docker_path]
-                .into_iter()
-                .flatten()
-                .chain(system_path)
-                .collect();
-
-        let exe_name = if cfg!(target_os = "windows") {
-            "testgen-hs.exe"
-        } else {
-            "testgen-hs"
-        };
-
-        debug!("{} search directories = {:?}", exe_name, search_path);
-
-        // Checks if the path is runnable. Adjust for platform specifics if needed.
-        // TODO: check that the --version matches what we expect.
-        fn is_our_executable(path: &Path) -> bool {
-            Command::new(path).arg("--version").output().is_ok()
-        }
-
-        // Look in each candidate directory to find a matching file
-        for candidate in &search_path {
-            let path = candidate.join(exe_name);
-
-            if path.is_file() && is_our_executable(path.as_path()) {
-                return Ok(path.to_string_lossy().to_string());
-            }
-        }
-
-        Err(format!(
-            "No valid `{}` binary found in {:?}.",
-            exe_name, &search_path
-        ))
+        bf_common::find_libexec::find_libexec("testgen-hs", "TESTGEN_HS_PATH", &["--version"])
     }
 
     /// This function is called at startup, so that we make sure that the worker is reasonable.
