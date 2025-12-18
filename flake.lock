@@ -72,6 +72,22 @@
         "type": "github"
       }
     },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1761588595,
+        "narHash": "sha256-XKUZz9zewJNUj46b4AJdiRZJAvSZ0Dqj2BNfXvFlJC4=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "f387cd2afec9419c8ee37694406ca490c3f34ee5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -87,6 +103,23 @@
       "original": {
         "owner": "hercules-ci",
         "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "hydra": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1759947091,
+        "narHash": "sha256-V9VBA5cFLcZ/M8g12Bzye5tVSVW3uoUIaRm+Ws0mFbo=",
+        "owner": "cardano-scaling",
+        "repo": "hydra",
+        "rev": "b5e33b55e9fba442c562f82cec6c36b1716d9847",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cardano-scaling",
+        "ref": "1.0.0",
+        "repo": "hydra",
         "type": "github"
       }
     },
@@ -124,7 +157,9 @@
         "crane": "crane",
         "devshell": "devshell",
         "fenix": "fenix",
+        "flake-compat": "flake-compat",
         "flake-parts": "flake-parts",
+        "hydra": "hydra",
         "nixpkgs": "nixpkgs",
         "treefmt-nix": "treefmt-nix"
       }

@@ -28,6 +28,7 @@ in {
     {package = pkgs.cargo-nextest;}
     {package = pkgs.rust-analyzer;}
     {package = pkgs.doctl;}
+    {package = internal.hydra-node;}
   ];
 
   language.c = {

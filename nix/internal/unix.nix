@@ -58,6 +58,12 @@ in
         inherit cargoArtifacts GIT_REVISION;
         doCheck = false; # we run tests with `cargo-nextest` below
         meta.mainProgram = packageName;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${packageName} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
       });
 
     # We use a newer `rustfmt`:
@@ -142,5 +148,17 @@ in
           done
           exit $ec
         '';
+    };
+
+    hydra-flake = (import inputs.flake-compat {src = inputs.hydra;}).defaultNix;
+
+    hydraVersion = hydra-flake.legacyPackages.${targetSystem}.hydra-node.identifier.version;
+
+    hydraNetworksJson = builtins.path {
+      path = hydra-flake + "/hydra-node/networks.json";
+    };
+
+    hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
+      meta.description = "Layer 2 scalability solution for Cardano";
     };
   }
