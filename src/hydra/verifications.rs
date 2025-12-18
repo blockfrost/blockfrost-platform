@@ -261,6 +261,7 @@ pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
     }
 }
 
+/// Checks if a Prometheus `metric` at `url` is greater or equal to `threshold`.
 pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64) -> Result<bool> {
     let client = reqwest::Client::new();
     let body = client
@@ -307,4 +308,45 @@ pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64)
     }
 
     Ok(max_value.unwrap_or(f64::NEG_INFINITY) >= threshold)
+}
+
+/// Sends a single WebSocket message, and waits a bit before closing the
+/// connection cleanly. Particularly useful for Hydra.
+pub async fn send_one_websocket_msg(
+    url: &str,
+    payload: serde_json::Value,
+    wait_before_close: std::time::Duration,
+) -> Result<()> {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+
+    let (ws_stream, _resp) = connect_async(url).await?;
+    let (mut write, mut read) = ws_stream.split();
+
+    write.send(Message::Text(payload.to_string())).await?;
+
+    tokio::time::sleep(wait_before_close).await;
+
+    write.send(Message::Close(None)).await?;
+
+    // Drain until we observe the close handshake (or the peer drops):
+    while let Some(msg) = read.next().await {
+        match msg? {
+            Message::Close(_) => break,
+            _ => (),
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
+    let url = format!("http://127.0.0.1:{}/head", hydra_api_port);
+
+    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+
+    v.get("tag")
+        .ok_or(anyhow!("missing tag"))
+        .and_then(|a| a.as_str().ok_or(anyhow!("tag is not a string")))
+        .map(|a| a.to_string())
 }

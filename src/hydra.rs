@@ -4,6 +4,7 @@ use anyhow::{Result, anyhow};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -11,7 +12,7 @@ pub mod tunnel;
 pub mod verifications;
 
 // FIXME: this should most probably be back to the default of 600 seconds:
-const CONTESTATION_PERIOD_SECONDS: std::time::Duration = std::time::Duration::from_secs(60);
+const CONTESTATION_PERIOD_SECONDS: Duration = Duration::from_secs(60);
 
 // FIXME: shouldn’t this be multiplied by `max_concurrent_hydra_nodes`?
 const MIN_FUEL_LOVELACE: u64 = 15_000_000;
@@ -216,7 +217,7 @@ pub struct KeyExchangeResponse {
     pub gateway_hydra_vkey: serde_json::Value,
     pub hydra_scripts_tx_id: String,
     pub protocol_parameters: serde_json::Value,
-    pub contestation_period: std::time::Duration,
+    pub contestation_period: Duration,
     /// Unfortunately the ports have to be the same on both sides, so
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
@@ -243,15 +244,6 @@ impl HydraController {
         })
     }
 
-    pub async fn send_some_event(&self, some_value: u64) {
-        self.event_tx
-            .send(Event::SomeEvent {
-                _some_value: some_value,
-            })
-            .await
-            .expect("we never close the event receiver");
-    }
-
     // FIXME: this is too primitive
     pub fn is_alive(&self) -> bool {
         !self.event_tx.is_closed()
@@ -260,8 +252,8 @@ impl HydraController {
 
 enum Event {
     Restart,
-    SomeEvent { _some_value: u64 },
     TryToOpenHead,
+    TryToCommit,
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -283,11 +275,12 @@ struct State {
     event_tx: mpsc::Sender<Event>,
     kex_req: KeyExchangeRequest,
     kex_resp: KeyExchangeResponse,
+    metrics_port: u16,
     hydra_peers_connected: bool,
 }
 
 impl State {
-    const RESTART_DELAY: std::time::Duration = std::time::Duration::from_secs(5);
+    const RESTART_DELAY: Duration = Duration::from_secs(5);
 
     async fn spawn(
         config: HydraConfig,
@@ -306,6 +299,7 @@ impl State {
             event_tx: event_tx.clone(),
             kex_req,
             kex_resp,
+            metrics_port: 0,
             hydra_peers_connected: false,
         };
 
@@ -338,7 +332,7 @@ impl State {
             .expect("we never close the event receiver");
     }
 
-    async fn send_delayed(&self, event: Event, delay: std::time::Duration) {
+    async fn send_delayed(&self, event: Event, delay: Duration) {
         let event_tx = self.event_tx.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
@@ -351,47 +345,71 @@ impl State {
             Event::Restart => {
                 info!("hydra-controller: starting…");
                 self.start_hydra_node().await?;
-                self.send_delayed(Event::TryToOpenHead, std::time::Duration::from_secs(1))
+                self.send_delayed(Event::TryToOpenHead, Duration::from_secs(1))
                     .await
             },
 
             Event::TryToOpenHead => {
                 let ready = verifications::prometheus_metric_at_least(
-                    &format!(
-                        "http://127.0.0.1:{}/metrics",
-                        self.kex_resp.proposed_platform_h2h_port
-                    ),
+                    &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
                     "hydra_head_peers_connected",
                     1.0,
                 )
-                .await;
+                .await?;
 
                 info!(
-                    "hydra-controller: waiting for hydras to connect: {:?}",
+                    "hydra-controller: waiting for hydras to connect: ready={:?}",
                     ready
                 );
 
-                if matches!(ready, Ok(true)) {
+                if ready {
                     self.hydra_peers_connected = true;
-                    todo!("open hydra head")
+
+                    verifications::send_one_websocket_msg(
+                        &format!(
+                            "http://127.0.0.1:{}/",
+                            self.kex_resp.proposed_platform_h2h_port
+                        ),
+                        serde_json::json!({"tag":"Init"}),
+                        Duration::from_secs(2),
+                    )
+                    .await?;
+
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                        .await
                 } else {
-                    self.send_delayed(Event::TryToOpenHead, std::time::Duration::from_secs(1))
+                    self.send_delayed(Event::TryToOpenHead, Duration::from_secs(1))
                         .await
                 }
             },
 
-            Event::SomeEvent { .. } => todo!(),
+            Event::TryToCommit => {
+                let status =
+                    verifications::fetch_head_tag(self.kex_resp.proposed_platform_h2h_port).await?;
+
+                info!(
+                    "hydra-controller: waiting for the Initial head status: status={:?}",
+                    status
+                );
+
+                if status == "Initial" {
+                    todo!("TODO: commit the funds -- configure how much")
+                } else {
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                        .await
+                }
+            },
         }
         Ok(())
     }
 
-    async fn start_hydra_node(&self) -> Result<()> {
+    async fn start_hydra_node(&mut self) -> Result<()> {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         // FIXME: save the ports in an `Arc<Mutex<u16>` for future use
         let api_port = verifications::find_free_tcp_port().await?;
-        let metrics_port = verifications::find_free_tcp_port().await?;
+        self.metrics_port = verifications::find_free_tcp_port().await?;
 
         // FIXME: somehow do shutdown once we’re killed
         // cf. <https://github.com/IntersectMBO/cardano-node/blob/10.6.1/cardano-node/src/Cardano/Node/Handlers/Shutdown.hs#L123-L148>
@@ -450,7 +468,7 @@ impl State {
             .arg("--peer")
             .arg(format!("127.0.0.1:{}", self.kex_resp.proposed_platform_h2h_port))
             .arg("--monitoring-port")
-            .arg(format!("{metrics_port}"))
+            .arg(format!("{}", self.metrics_port))
             .arg("--hydra-verification-key")
             .arg(platform_hydra_vkey_path)
             .arg("--cardano-verification-key")
