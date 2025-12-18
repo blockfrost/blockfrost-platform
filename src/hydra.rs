@@ -1,18 +1,19 @@
 use anyhow::{Result, anyhow};
 use bf_common::errors::{AppError, BlockfrostError};
+use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
-pub mod verifications;
 pub mod tunnel;
+pub mod verifications;
 
 /// Runs a `hydra-node` and sets up an L2 network with the Gateway for microtransactions.
 ///
 /// You can safely clone it, and the clone will represent the same `hydra-node` etc.
 #[derive(Clone)]
 pub struct HydraController {
-    _event_tx: mpsc::Sender<Event>,
+    event_tx: mpsc::Sender<Event>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
@@ -40,6 +41,8 @@ pub struct KeyExchangeResponse {
     pub kex_done: bool,
 }
 
+pub struct TerminateRequest;
+
 impl HydraController {
     pub async fn spawn(
         config: bf_common::config::HydraConfig,
@@ -49,6 +52,7 @@ impl HydraController {
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
+        terminate_reqs: mpsc::Receiver<TerminateRequest>,
     ) -> Result<Self, AppError> {
         let event_tx = State::spawn(
             config,
@@ -58,16 +62,24 @@ impl HydraController {
             health_errors,
             kex_requests,
             kex_responses,
+            terminate_reqs,
         )
         .await
         .map_err(|e| AppError::Server(format!("{e}")))?;
-        Ok(Self { _event_tx: event_tx })
+        Ok(Self { event_tx })
+    }
+
+    pub async fn terminate(&self) {
+        let _ = self.event_tx.send(Event::Terminate).await;
     }
 }
 
 enum Event {
     Restart,
+    Terminate,
     KeyExchangeResponse(KeyExchangeResponse),
+    TryToCommit,
+    MonitorStates,
 }
 
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
@@ -80,10 +92,13 @@ struct State {
     _reward_address: String,
     _health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     kex_requests: mpsc::Sender<KeyExchangeRequest>,
+    api_port: u16,
     hydra_node_exe: String,
     cardano_cli_exe: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
+    last_hydra_head_state: String,
+    hydra_pid: Option<u32>,
 }
 
 impl State {
@@ -98,6 +113,7 @@ impl State {
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
+        terminate_reqs: mpsc::Receiver<TerminateRequest>,
     ) -> Result<mpsc::Sender<Event>> {
         let hydra_node_exe =
             bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
@@ -132,16 +148,19 @@ impl State {
             _reward_address: reward_address,
             _health_errors: health_errors,
             kex_requests,
+            api_port: 0,
             hydra_node_exe,
             cardano_cli_exe,
             config_dir,
             event_tx: event_tx.clone(),
+            last_hydra_head_state: String::new(),
+            hydra_pid: None,
         };
 
         let platform_cardano_vkey = self_
             .derive_vkey_from_skey(&self_.config.cardano_signing_key)
             .await?;
-        let self_ = Self {
+        let mut self_ = Self {
             platform_cardano_vkey,
             ..self_
         };
@@ -154,6 +173,17 @@ impl State {
             while let Some(resp) = kex_responses.recv().await {
                 event_tx_
                     .send(Event::KeyExchangeResponse(resp))
+                    .await
+                    .expect("we never close the event receiver");
+            }
+        });
+
+        let event_tx_ = event_tx.clone();
+        tokio::spawn(async move {
+            let mut terminate_reqs = terminate_reqs;
+            while let Some(_) = terminate_reqs.recv().await {
+                event_tx_
+                    .send(Event::Terminate)
                     .await
                     .expect("we never close the event receiver");
             }
@@ -186,7 +216,15 @@ impl State {
             .expect("we never close the event receiver");
     }
 
-    async fn process_event(&self, event: Event) -> Result<()> {
+    async fn send_delayed(&self, event: Event, delay: Duration) {
+        let event_tx = self.event_tx.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(delay).await;
+            event_tx.send(event).await
+        });
+    }
+
+    async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
                 info!("hydra-controller: starting…");
@@ -223,6 +261,12 @@ impl State {
                 // FIXME: resend the request periodically in case it gets lost – i.e. new `Event::KExTimeout`
             },
 
+            Event::Terminate => {
+                if let Some(pid) = self.hydra_pid {
+                    verifications::sigterm(pid)?
+                }
+            },
+
             Event::KeyExchangeResponse(
                 kex_resp @ KeyExchangeResponse {
                     kex_done: false, ..
@@ -254,17 +298,70 @@ impl State {
 
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
                 self.start_hydra_node(kex_resp).await?;
+                self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                    .await
+            },
+
+            Event::TryToCommit => {
+                let status = verifications::fetch_head_tag(self.api_port).await;
+
+                info!(
+                    "hydra-controller: waiting for the Initial head status: status={:?}",
+                    status
+                );
+
+                match status.as_deref() {
+                    Err(_) => {
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    },
+                    Ok(status) => {
+                        self.last_hydra_head_state = status.to_string();
+                        if status == "Initial" {
+                            info!(
+                                "hydra-controller: submitting an empty Commit transaction to join the Hydra Head"
+                            );
+                            self.empty_commit_to_hydra(
+                                self.api_port,
+                                &self.config.cardano_signing_key,
+                            )
+                            .await?;
+                        }
+                        self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
+                            .await
+                    },
+                }
+            },
+
+            Event::MonitorStates => {
+                let new_status = verifications::fetch_head_tag(self.api_port).await?;
+
+                if new_status != self.last_hydra_head_state {
+                    let old = self.last_hydra_head_state.clone();
+                    let new = new_status.clone();
+                    self.last_hydra_head_state = new_status;
+
+                    info!("hydra-controller: state changed from {old} to {new}");
+
+                    if new == "Initial" {
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
+                            .await;
+                        return Ok(());
+                    }
+                }
+
+                self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
+                    .await
             },
         }
         Ok(())
     }
 
-    async fn start_hydra_node(&self, kex_response: KeyExchangeResponse) -> Result<()> {
+    async fn start_hydra_node(&mut self, kex_response: KeyExchangeResponse) -> Result<()> {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
-        // FIXME: save the ports in an `Arc<Mutex<u16>` for future use
-        let api_port = verifications::find_free_tcp_port().await?;
+        self.api_port = verifications::find_free_tcp_port().await?;
         let metrics_port = verifications::find_free_tcp_port().await?;
 
         // FIXME: somehow do shutdown once we’re killed
@@ -316,7 +413,7 @@ impl State {
             .arg("--node-socket")
             .arg(&self.node_socket_path)
             .arg("--api-port")
-            .arg(format!("{api_port}"))
+            .arg(format!("{}", self.api_port))
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")
@@ -333,6 +430,8 @@ impl State {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
+
+        self.hydra_pid = child.id();
 
         let stdout = child.stdout.take().expect("child stdout");
         let stderr = child.stderr.take().expect("child stderr");

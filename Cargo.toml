@@ -63,6 +63,9 @@ bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
 
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }
+
 [dev-dependencies]
 bf-api-provider.workspace = true
 tracing-test = "0.2.5"

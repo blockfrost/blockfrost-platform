@@ -35,6 +35,7 @@ pub async fn run_all(
     hydra_kex: Option<(
         watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
         mpsc::Sender<hydra::KeyExchangeResponse>,
+        mpsc::Sender<hydra::TerminateRequest>,
     )>,
 ) {
     assert!(
@@ -178,6 +179,7 @@ mod event_loop {
         hydra_kex: Option<(
             watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
             mpsc::Sender<hydra::KeyExchangeResponse>,
+            mpsc::Sender<hydra::TerminateRequest>,
         )>,
     ) -> Result<(), String> {
         let (mut socket_tx, socket_rx) = connect(config.clone()).await?.split();
@@ -310,6 +312,10 @@ mod event_loop {
                     }
                 },
             }
+        }
+
+        if let Some(hydra_kex) = hydra_kex {
+            let _ = hydra_kex.2.send(hydra::TerminateRequest).await;
         }
 
         // Wait for all children to finish:

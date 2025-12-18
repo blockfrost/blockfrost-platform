@@ -66,6 +66,7 @@ async fn main() -> Result<(), AppError> {
     // so it’s best to have future-compatibility in the messaging now.
     let (kex_req_tx, kex_req_rx) = mpsc::channel(32);
     let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
+    let (terminate_req_tx, terminate_req_rx) = mpsc::channel(32);
 
     if let Some(icebreakers_api) = icebreakers_api {
         let health_errors = Arc::new(Mutex::new(vec![]));
@@ -76,7 +77,9 @@ async fn main() -> Result<(), AppError> {
 
         let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
 
-        manager.run((kex_req_rx, kex_resp_tx)).await;
+        manager
+            .run((kex_req_rx, kex_resp_tx, terminate_req_tx))
+            .await;
     }
 
     if let Some(hydra_config) = config.hydra {
@@ -94,6 +97,7 @@ async fn main() -> Result<(), AppError> {
                 health_errors,
                 kex_req_tx,
                 kex_resp_rx,
+                terminate_req_rx,
             )
             .await?;
         } else {

@@ -166,6 +166,116 @@ impl super::State {
         }
         Err(anyhow!("lovelace value is neither u64 nor string"))
     }
+
+    async fn cardano_cli_capture(
+        &self,
+        args: &[&str],
+        stdin_bytes: Option<&[u8]>,
+    ) -> Result<(serde_json::Value, Vec<u8>)> {
+        use tokio::io::AsyncWriteExt;
+
+        let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
+        cmd.args(args)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        if stdin_bytes.is_some() {
+            cmd.stdin(std::process::Stdio::piped());
+        } else {
+            cmd.stdin(std::process::Stdio::null());
+        }
+
+        let mut child = cmd.spawn()?;
+
+        if let Some(bytes) = stdin_bytes {
+            let mut stdin = child
+                .stdin
+                .take()
+                .ok_or_else(|| anyhow!("failed to open stdin pipe"))?;
+            stdin.write_all(bytes).await?;
+            stdin.shutdown().await?;
+        }
+
+        let out = child.wait_with_output().await?;
+
+        if !out.status.success() {
+            return Err(anyhow!(
+                "cardano-cli failed (exit={}):\nstdout: {}\nstderr: {}",
+                out.status,
+                String::from_utf8_lossy(&out.stdout).trim(),
+                String::from_utf8_lossy(&out.stderr).trim(),
+            ));
+        }
+
+        let (json, rest) = parse_first_json_and_rest(&out.stdout)?;
+        Ok((json, rest))
+    }
+
+    pub(super) async fn empty_commit_to_hydra(
+        &self,
+        hydra_api_port: u16,
+        signing_skey: &Path,
+    ) -> Result<()> {
+        use anyhow::Context;
+        use reqwest::header;
+
+        let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(url)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body("{}")
+            .send()
+            .await
+            .context("failed to POST /commit to hydra-node")?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.bytes().await.unwrap_or_default();
+            return Err(anyhow!(
+                "hydra /commit failed with {}: {}",
+                status,
+                String::from_utf8_lossy(&body)
+            ));
+        }
+
+        let commit_tx_bytes = resp
+            .bytes()
+            .await
+            .context("failed to read hydra /commit response body")?
+            .to_vec();
+
+        let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
+            .context("hydra /commit response was not valid JSON")?;
+
+        let signed_tx = self
+            .cardano_cli_capture(
+                &[
+                    "latest",
+                    "transaction",
+                    "sign",
+                    "--tx-file",
+                    "/dev/stdin",
+                    "--signing-key-file",
+                    signing_skey
+                        .to_str()
+                        .ok_or_else(|| anyhow!("commit_funds_skey is not valid UTF-8"))?,
+                    "--out-file",
+                    "/dev/stdout",
+                ],
+                Some(&commit_tx_bytes),
+            )
+            .await?
+            .0;
+
+        let _ = self
+            .cardano_cli_capture(
+                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
+                Some(&serde_json::to_vec(&signed_tx)?),
+            )
+            .await?;
+        Ok(())
+    }
 }
 
 /// Reads a JSON file from disk.
@@ -223,4 +333,53 @@ pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
         Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
         Err(e) => Err(e),
     }
+}
+
+pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
+    let url = format!("http://127.0.0.1:{}/head", hydra_api_port);
+
+    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+
+    v.get("tag")
+        .ok_or(anyhow!("missing tag"))
+        .and_then(|a| a.as_str().ok_or(anyhow!("tag is not a string")))
+        .map(|a| a.to_string())
+}
+
+/// Parse the first JSON value from e.g. stdout, and return the remainder.
+fn parse_first_json_and_rest(stdout: &[u8]) -> Result<(serde_json::Value, Vec<u8>)> {
+    let mut start = stdout
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .unwrap_or(0);
+
+    if !matches!(stdout.get(start), Some(b'{') | Some(b'[')) {
+        if let Some(i) = stdout.iter().position(|&b| b == b'{' || b == b'[') {
+            start = i;
+        }
+    }
+
+    let mut it = serde_json::Deserializer::from_slice(&stdout[start..]).into_iter::<Value>();
+
+    let first = it
+        .next()
+        .ok_or_else(|| anyhow!("no JSON value found in stdout"))?
+        .map_err(|e| anyhow!("failed to parse first JSON value from stdout: {e}"))?;
+
+    let consumed = it.byte_offset(); // <-- works here
+    let rest = stdout[start + consumed..].to_vec();
+
+    Ok((first, rest))
+}
+
+#[cfg(unix)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    use nix::sys::signal::{Signal, kill};
+    use nix::unistd::Pid;
+    Ok(kill(Pid::from_raw(pid as i32), Signal::SIGTERM)?)
+}
+
+#[cfg(windows)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    unreachable!()
 }

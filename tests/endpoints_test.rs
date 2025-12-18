@@ -318,7 +318,10 @@ mod tests {
                     use tokio::sync::mpsc;
                     let (_, kex_req_rx) = mpsc::channel(32);
                     let (kex_resp_tx, _) = mpsc::channel(32);
-                    manager.run((kex_req_rx, kex_resp_tx)).await;
+                    let (terminate_req_tx, _) = mpsc::channel(32);
+                    manager
+                        .run((kex_req_rx, kex_resp_tx, terminate_req_tx))
+                        .await;
                 });
             }
         }

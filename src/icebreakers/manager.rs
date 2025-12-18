@@ -63,6 +63,7 @@ impl IcebreakersManager {
         hydra_kex: (
             mpsc::Receiver<hydra::KeyExchangeRequest>,
             mpsc::Sender<hydra::KeyExchangeResponse>,
+            mpsc::Sender<hydra::TerminateRequest>,
         ),
     ) {
         let (dest_watch_tx, dest_watch_rx) = watch::channel(None);
@@ -73,7 +74,8 @@ impl IcebreakersManager {
         let mutable_hydra_kex: (
             watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
             mpsc::Sender<hydra::KeyExchangeResponse>,
-        ) = (dest_watch_tx, hydra_kex.1);
+            mpsc::Sender<hydra::TerminateRequest>,
+        ) = (dest_watch_tx, hydra_kex.1, hydra_kex.2);
 
         tokio::spawn(async move {
             'load_balancers: loop {
