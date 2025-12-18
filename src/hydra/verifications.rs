@@ -39,7 +39,9 @@ impl super::State {
 
     /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
     /// are L1 parameters with zeroed transaction fees.
-    pub(super) async fn gen_protocol_parameters(&self) -> Result<()> {
+    ///
+    /// FIXME: move to `blockfrost-gateway`, as it controls protocol parameters for both
+    pub(super) async fn _gen_protocol_parameters(&self) -> Result<()> {
         use serde_json::Value;
 
         std::fs::create_dir_all(&self.config_dir)?;
@@ -73,7 +75,7 @@ impl super::State {
         }
 
         let pp_path = self.config_dir.join("protocol-parameters.json");
-        if Self::write_json_if_changed(pp_path, &params)? {
+        if Self::write_json_if_changed(&pp_path, &params)? {
             info!("hydra-manager: protocol parameters updated");
         } else {
             info!("hydra-manager: protocol parameters unchanged");
@@ -82,13 +84,18 @@ impl super::State {
         Ok(())
     }
 
+    /// Reads a JSON file from disk.
+    pub(super) fn read_json_file(path: &Path) -> Result<serde_json::Value> {
+        let contents = std::fs::read_to_string(path)?;
+        let json: serde_json::Value = serde_json::from_str(&contents)?;
+        Ok(json)
+    }
+
     /// Writes `json` to `path` (pretty-printed) **only if** the JSON content differs
     /// from what is already on disk. Returns `true` if the file was written.
-    fn write_json_if_changed(path: impl AsRef<Path>, json: &serde_json::Value) -> Result<bool> {
+    pub(super) fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bool> {
         use std::fs::File;
         use std::io::Write;
-
-        let path = path.as_ref();
 
         if path.exists() {
             if let Ok(existing_str) = std::fs::read_to_string(path) {
@@ -120,6 +127,19 @@ impl super::State {
         let address = self.derive_enterprise_address_from_skey(skey_path).await?;
         let utxo_json = self.query_utxo_json(&address).await?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
+    }
+
+    pub(super) async fn derive_vkey_from_skey(
+        &self,
+        skey_path: &Path,
+    ) -> Result<serde_json::Value> {
+        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .args(["key", "verification-key", "--signing-key-file"])
+            .arg(skey_path)
+            .args(["--verification-key-file", "/dev/stdout"])
+            .output()
+            .await?;
+        Ok(serde_json::from_slice(&vkey_output.stdout)?)
     }
 
     async fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {

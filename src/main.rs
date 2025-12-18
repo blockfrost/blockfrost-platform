@@ -9,7 +9,7 @@ use blockfrost_platform::{
 };
 use dotenvy::dotenv;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, mpsc};
 use tracing::{info, warn};
 
 #[tokio::main]
@@ -83,12 +83,17 @@ async fn main() -> Result<(), AppError> {
                 .register_error_source(health_errors.clone())
                 .await;
 
+            let (kex_req_tx, kex_req_rx) = mpsc::channel(32);
+            let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
+
             let _manager = HydraManager::spawn(
                 hydra_config,
                 config.network,
                 config.node_socket_path,
                 icebreakers_config.reward_address,
                 health_errors,
+                kex_req_tx,
+                kex_resp_rx,
             )
             .await?;
         } else {

@@ -82,7 +82,7 @@ pub async fn run_all(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct RequestId(Uuid);
+struct RequestId(Uuid);
 
 #[derive(Serialize, Deserialize, Debug)]
 struct JsonRequest {
