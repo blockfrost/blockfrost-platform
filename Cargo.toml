@@ -6,6 +6,10 @@ publish = false
 edition = "2021"
 build = "build.rs"
 
+[features]
+default = []
+dev_mock_db = []
+
 [dependencies]
 axum = { version = "0.7.5", features = ["ws"] }
 tokio = { version = "1.39.2", features = ["full"] }

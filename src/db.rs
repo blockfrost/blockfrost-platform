@@ -19,8 +19,12 @@ impl DB {
     pub async fn new(database_url: &str) -> Self {
         let manager = Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
         let pool = Pool::builder(manager).build().expect("Failed to create pool.");
-        let connection = pool.get().await.expect("Failed to get a connection.");
 
+        if cfg!(feature = "dev_mock_db") {
+            return Self { pool };
+        }
+
+        let connection = pool.get().await.expect("Failed to get a connection.");
         connection
             .interact(|c| c.run_pending_migrations(MIGRATIONS).map(|_| ()))
             .await
@@ -31,6 +35,17 @@ impl DB {
     }
 
     pub async fn insert_request(&self, request: RequestNewItem) -> Result<Request, APIError> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(Request {
+                id: 42,
+                route: request.route,
+                mode: request.mode,
+                ip_address: request.ip_address,
+                port: request.port,
+                reward_address: request.reward_address,
+            });
+        }
+
         let db_pool = self.pool.get().await?;
 
         let result = db_pool
@@ -46,6 +61,16 @@ impl DB {
     }
 
     pub async fn authorize_user(&self, secret_param: String) -> Result<User, APIError> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(User {
+                id: 31337,
+                created_at: chrono::NaiveDateTime::parse_from_str("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S").unwrap(),
+                user_id: 31337,
+                email: "xxx@xxx.xxx".to_string(),
+                secret: "xxxxxxxx".to_string(),
+            });
+        }
+
         let db_pool = self.pool.get().await?;
 
         let user_result: Option<User> = db_pool
