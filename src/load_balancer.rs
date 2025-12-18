@@ -235,10 +235,10 @@ mod event_loop {
                     todo!()
                 },
 
-                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExResponse {
-                    ..
-                }) => {
-                    todo!()
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExResponse(resp)) => {
+                    if let Some(hydra_kex) = &hydra_kex {
+                        let _ = hydra_kex.1.send(resp).await;
+                    }
                 },
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Request(request)) => {
@@ -302,14 +302,11 @@ mod event_loop {
                 },
 
                 LBEvent::HydraKExRequest(req) => {
-                    // FIXME: actually exchange
-                    if let Some(hydra_kex) = &hydra_kex {
-                        let fake_kex_response =
-                            hydra::fake_kex_response(&bf_common::types::Network::Preview)
-                                .await
-                                .expect("fake KEx shouldn’t fail");
-                        warn!("sending a fake Hydra KEx response…");
-                        let _ = hydra_kex.1.send(fake_kex_response).await;
+                    if send_json_msg(&mut socket_tx, &RelayMessage::HydraKExRequest(req), &config)
+                        .await
+                        .is_err()
+                    {
+                        break 'event_loop;
                     }
                 },
             }

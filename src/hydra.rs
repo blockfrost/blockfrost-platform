@@ -18,6 +18,7 @@ pub struct HydraManager {
 pub struct KeyExchangeRequest {
     pub platform_cardano_vkey: serde_json::Value,
     pub platform_hydra_vkey: serde_json::Value,
+    pub accepted_platform_h2h_port: Option<u16>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
@@ -217,6 +218,7 @@ impl State {
                         platform_hydra_vkey: verifications::read_json_file(
                             &self.config_dir.join("hydra.vk"),
                         )?,
+                        accepted_platform_h2h_port: None,
                     })
                     .await?;
 
@@ -345,42 +347,4 @@ impl State {
 
         Ok(())
     }
-}
-
-// FIXME: remove this
-pub async fn fake_kex_response(network: &bf_common::types::Network) -> Result<KeyExchangeResponse> {
-    // FIXME: also define them in a `build.rs` script without Nix – consult
-    // `flake.lock` to get the exact Hydra version.
-    let hydra_scripts_tx_id: String = {
-        use bf_common::types::Network::*;
-        match network {
-            Mainnet => env!("HYDRA_SCRIPTS_TX_ID_MAINNET").into(),
-            Preprod => env!("HYDRA_SCRIPTS_TX_ID_PREPROD").into(),
-            Preview => env!("HYDRA_SCRIPTS_TX_ID_PREVIEW").into(),
-            Custom => Err(anyhow::anyhow!(
-                "hydra-manager: can only run on known networks (Mainnet, Preprod, Preview)"
-            ))?,
-        }
-    };
-
-    // FIXME: this should most probably be back to the default of 600 seconds:
-    const CONTESTATION_PERIOD_SECONDS: std::time::Duration = std::time::Duration::from_secs(60);
-
-    use verifications::{pick_free_tcp_port, read_json_file};
-    Ok(KeyExchangeResponse {
-        gateway_cardano_vkey: read_json_file(
-            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.vk".as_ref(),
-        )?,
-        gateway_hydra_vkey: read_json_file(
-            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/hydra.vk".as_ref(),
-        )?,
-        hydra_scripts_tx_id,
-        protocol_parameters: read_json_file(
-            "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json"
-                .as_ref(),
-        )?,
-        contestation_period: CONTESTATION_PERIOD_SECONDS,
-        proposed_platform_h2h_port: pick_free_tcp_port().await?,
-        gateway_h2h_port: pick_free_tcp_port().await?,
-    })
 }
