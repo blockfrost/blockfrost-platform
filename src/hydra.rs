@@ -31,7 +31,7 @@ impl HydrasManager {
 
     pub async fn initialize_key_exchange(
         &self,
-        _originator: &AssetName,
+        originator: &AssetName,
         req: KeyExchangeRequest,
     ) -> Result<KeyExchangeResponse> {
         if req.accepted_platform_h2h_port.is_some() {
@@ -40,36 +40,27 @@ impl HydrasManager {
             ))?
         }
 
-        // FIXME: actually exchange
+        let cur_count = Arc::strong_count(&self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        if cur_count as u64 >= self.config.toml.max_concurrent_hydra_nodes {
+            Err(anyhow!(
+                "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
+            ))?
+        }
+
         use verifications::{find_free_tcp_port, read_json_file};
 
-        // TODO: save protocol params
-        //
-        // std::fs::create_dir_all(&self.config_dir)?;
-        // let pp_path = self.config_dir.join("protocol-parameters.json");
-        // if write_json_if_changed(&pp_path, &params)? {
-        //     info!("hydra-controller: protocol parameters updated");
-        // } else {
-        //     info!("hydra-controller: protocol parameters unchanged");
-        // }
+        let config_dir = mk_config_dir(&self.config.network, &originator)?;
+        self.config.gen_hydra_keys(&config_dir).await?;
 
-        let resp = KeyExchangeResponse {
-            gateway_cardano_vkey: read_json_file(
-                "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.vk".as_ref(),
-            )?,
-            gateway_hydra_vkey: read_json_file(
-                "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/hydra.vk".as_ref(),
-            )?,
+        Ok(KeyExchangeResponse {
+            gateway_cardano_vkey: self.config.gateway_cardano_vkey.clone(),
+            gateway_hydra_vkey: read_json_file(&config_dir.join("hydra.vk"))?,
             hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
-            protocol_parameters: read_json_file(
-                "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/protocol-parameters.json"
-                    .as_ref(),
-            )?,
+            protocol_parameters: self.config.protocol_parameters.clone(),
             contestation_period: CONTESTATION_PERIOD_SECONDS,
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
-        };
-        Ok(resp)
+        })
     }
 
     /// You should first call [`Self::initialize_key_exchange`], and then this
@@ -80,28 +71,56 @@ impl HydrasManager {
         initial: (KeyExchangeRequest, KeyExchangeResponse),
         final_req: KeyExchangeRequest,
     ) -> Result<(HydraController, KeyExchangeResponse)> {
+        if initial.0
+            != (KeyExchangeRequest {
+                accepted_platform_h2h_port: None,
+                ..final_req.clone()
+            })
+        {
+            Err(anyhow!(
+                "The 2nd `KeyExchangeRequest` must be the same as the 1st one."
+            ))?
+        }
+
+        if final_req.accepted_platform_h2h_port != Some(initial.1.proposed_platform_h2h_port) {
+            Err(anyhow!(
+                "The Platform must accept the same port that was proposed to it."
+            ))?
+        }
+
         // Clone first, to prevent the nastier race condition:
         let maybe_new = Arc::clone(self.controller_counter.as_ref());
-        let new_count = Arc::strong_count(&self.controller_counter).saturating_sub(1); // subtract the manager
-        if new_count as u64 <= self.config.toml.max_concurrent_hydra_nodes {
+        let new_count = Arc::strong_count(&self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        if new_count as u64 > self.config.toml.max_concurrent_hydra_nodes {
             Err(anyhow!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
             ))?
-        } else {
-            // FIXME: continue
-            let final_resp = initial.1.clone();
-
-            let ctl = HydraController::spawn(
-                self.config.clone(),
-                originator.clone(),
-                maybe_new,
-                final_req,
-                final_resp.clone(),
-            )
-            .await?;
-            // FIXME:
-            Ok((ctl, final_resp))
         }
+
+        if !(matches!(
+            verifications::is_tcp_port_free(initial.1.gateway_h2h_port).await,
+            Ok(true)
+        ) && matches!(
+            verifications::is_tcp_port_free(initial.1.proposed_platform_h2h_port).await,
+            Ok(true)
+        )) {
+            Err(anyhow!(
+                "The exchanged ports are no longer free on the gateway, please perform another KEx."
+            ))?
+        }
+
+        let final_resp = initial.1;
+
+        let ctl = HydraController::spawn(
+            self.config.clone(),
+            originator.clone(),
+            maybe_new,
+            final_req,
+            final_resp.clone(),
+        )
+        .await?;
+
+        Ok((ctl, final_resp))
     }
 }
 
@@ -112,6 +131,7 @@ struct HydraConfig {
     pub hydra_node_exe: String,
     pub cardano_cli_exe: String,
     pub gateway_cardano_vkey: serde_json::Value,
+    pub protocol_parameters: serde_json::Value,
 }
 
 impl HydraConfig {
@@ -128,12 +148,15 @@ impl HydraConfig {
             hydra_node_exe,
             cardano_cli_exe,
             gateway_cardano_vkey: serde_json::Value::Null,
+            protocol_parameters: serde_json::Value::Null,
         };
         let gateway_cardano_vkey = self_
             .derive_vkey_from_skey(&self_.toml.cardano_signing_key)
             .await?;
+        let protocol_parameters = self_.gen_protocol_parameters().await?;
         let self_ = Self {
             gateway_cardano_vkey,
+            protocol_parameters,
             ..self_
         };
         Ok(self_)
@@ -238,6 +261,16 @@ impl State {
         let config_dir = mk_config_dir(&config.network, &originator)?;
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
+
+        // TODO: save protocol params from initial.1
+        //
+        // std::fs::create_dir_all(&self.config_dir)?;
+        // let pp_path = self.config_dir.join("protocol-parameters.json");
+        // if write_json_if_changed(&pp_path, &params)? {
+        //     info!("hydra-controller: protocol parameters updated");
+        // } else {
+        //     info!("hydra-controller: protocol parameters unchanged");
+        // }
 
         let self_ = Self {
             config,

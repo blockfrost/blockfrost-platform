@@ -39,7 +39,7 @@ impl super::HydraConfig {
 
     /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
     /// are L1 parameters with zeroed transaction fees.
-    pub(super) async fn _gen_protocol_parameters(&self) -> Result<serde_json::Value> {
+    pub(super) async fn gen_protocol_parameters(&self) -> Result<serde_json::Value> {
         use serde_json::Value;
 
         let output = tokio::process::Command::new("cardano-cli")
