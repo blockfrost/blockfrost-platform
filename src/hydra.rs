@@ -28,6 +28,18 @@ pub struct HydrasManager {
 
 impl HydrasManager {
     pub async fn new(config: &HydraTomlConfig, network: &Network) -> Result<Self> {
+        // Let’s add some ε of 1% just to be sure about rounding etc.
+        let minimal_commit: f64 = 1.01
+            * (config.lovelace_per_request
+                * config.requests_per_microtransaction
+                * config.microtransactions_per_fanout) as f64
+            / 1_000_000.0;
+        if config.commit_ada < minimal_commit {
+            Err(anyhow!(
+                "hydras-manager: Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout."
+            ))?
+        }
+
         Ok(Self {
             config: HydraConfig::load(config.clone(), network).await?,
             controller_counter: Arc::new(Arc::new(())),

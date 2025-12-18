@@ -87,6 +87,14 @@ pub struct HydraConfig {
     pub cardano_signing_key: PathBuf,
     pub max_concurrent_hydra_nodes: u64,
     pub node_socket_path: PathBuf,
+    /// How much to commit from [`Self::cardano_signing_key`] when starting a new L2 session.
+    pub commit_ada: f64,
+    /// How much is a single request worth?
+    pub lovelace_per_request: u64,
+    /// How many requests to bundle for a single microtransaction payment on L2.
+    pub requests_per_microtransaction: u64,
+    /// How many L2 microtransactions until we flush to L1.
+    pub microtransactions_per_fanout: u64,
 }
 
 pub fn load_config(path: PathBuf) -> Config {
