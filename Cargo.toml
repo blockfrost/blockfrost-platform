@@ -20,8 +20,10 @@ bf-dolos.workspace = true
 bf-api-provider.workspace = true
 axum.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+bytes.workspace = true
 tungstenite = { version = "0.26", features = ["native-tls"] }
 tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 tracing.workspace = true
@@ -97,6 +99,8 @@ bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
+bytes = "1"
+tokio-util = "0.7"
 cardano-serialization-lib = "12.1.1"
 chrono = "0.4"
 clap = { version = "4.5.26", features = ["derive"] }
