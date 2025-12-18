@@ -505,7 +505,7 @@ pub mod event_loop {
                     ) {
                         (true, _, _, _) => LoadBalancerMessage::Error {
                             code: 538,
-                            msg: format!("Hydra controller already exists on this connection"),
+                            msg: "Hydra controller already exists on this connection".to_string(),
                         },
                         (false, None, _, _) => LoadBalancerMessage::Error {
                             code: 536,
@@ -513,7 +513,7 @@ pub mod event_loop {
                         },
                         (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
                             match hydras
-                                .spawn_new(&asset_name, &reward_addr, initial_kex, req)
+                                .spawn_new(asset_name, &reward_addr, initial_kex, req)
                                 .await
                             {
                                 Ok((ctl, resp)) => {
@@ -528,7 +528,7 @@ pub mod event_loop {
                         },
                         (false, Some(hydras), _, _) => {
                             match hydras
-                                .initialize_key_exchange(&asset_name, req.clone())
+                                .initialize_key_exchange(asset_name, req.clone())
                                 .await
                             {
                                 Ok(resp) => {

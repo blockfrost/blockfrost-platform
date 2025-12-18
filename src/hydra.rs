@@ -72,7 +72,7 @@ impl HydrasManager {
             ))?
         }
 
-        let cur_count = Arc::strong_count(&self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
         if cur_count as u64 >= self.config.toml.max_concurrent_hydra_nodes {
             let err = anyhow!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
@@ -107,7 +107,7 @@ impl HydrasManager {
 
         use verifications::{find_free_tcp_port, read_json_file};
 
-        let config_dir = mk_config_dir(&self.config.network, &originator)?;
+        let config_dir = mk_config_dir(&self.config.network, originator)?;
         self.config.gen_hydra_keys(&config_dir).await?;
 
         Ok(KeyExchangeResponse {
@@ -150,7 +150,7 @@ impl HydrasManager {
 
         // Clone first, to prevent the nastier race condition:
         let maybe_new = Arc::clone(self.controller_counter.as_ref());
-        let new_count = Arc::strong_count(&self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        let new_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
         if new_count as u64 > self.config.toml.max_concurrent_hydra_nodes {
             Err(anyhow!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."

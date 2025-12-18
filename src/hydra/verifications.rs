@@ -95,7 +95,7 @@ impl super::HydraConfig {
 
     /// Check how much lovelace is available on an address.
     pub(super) async fn lovelace_on_addr(&self, address: &str) -> Result<u64> {
-        let utxo_json = self.query_utxo_json(&address).await?;
+        let utxo_json = self.query_utxo_json(address).await?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
 
@@ -515,7 +515,7 @@ impl super::HydraConfig {
                 "--out-file",
                 "/dev/stdout",
             ];
-            self.cardano_cli_capture(&args, None).await?.0
+            self.cardano_cli_capture(args, None).await?.0
         };
 
         let tx_signed: serde_json::Value = {
@@ -530,12 +530,12 @@ impl super::HydraConfig {
                 "--tx-body-file",
                 "/dev/stdin",
                 "--signing-key-file",
-                &skey_str,
+                skey_str,
                 "--out-file",
                 "/dev/stdout",
             ];
 
-            self.cardano_cli_capture(&args, Some(&serde_json::to_vec(&tx_body)?))
+            self.cardano_cli_capture(args, Some(&serde_json::to_vec(&tx_body)?))
                 .await?
                 .0
         };
@@ -678,7 +678,7 @@ pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64)
     }
 
     if !found_any {
-        return Err(anyhow!("metric {metric} not found in /metrics output").into());
+        return Err(anyhow!("metric {metric} not found in /metrics output"));
     }
 
     Ok(max_value.unwrap_or(f64::NEG_INFINITY) >= threshold)
@@ -754,6 +754,18 @@ fn parse_first_json_and_rest(stdout: &[u8]) -> Result<(serde_json::Value, Vec<u8
     Ok((first, rest))
 }
 
+#[cfg(unix)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    use nix::sys::signal::{Signal, kill};
+    use nix::unistd::Pid;
+    Ok(kill(Pid::from_raw(pid as i32), Signal::SIGTERM)?)
+}
+
+#[cfg(windows)]
+pub fn sigterm(pid: u32) -> Result<()> {
+    unreachable!()
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
@@ -768,16 +780,4 @@ blah blah
         assert_eq!(rest, String::from("\nblah blah\n").as_bytes());
         Ok(())
     }
-}
-
-#[cfg(unix)]
-pub fn sigterm(pid: u32) -> Result<()> {
-    use nix::sys::signal::{Signal, kill};
-    use nix::unistd::Pid;
-    Ok(kill(Pid::from_raw(pid as i32), Signal::SIGTERM)?)
-}
-
-#[cfg(windows)]
-pub fn sigterm(pid: u32) -> Result<()> {
-    unreachable!()
 }
