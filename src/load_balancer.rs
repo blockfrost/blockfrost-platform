@@ -127,6 +127,7 @@ impl JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 enum LoadBalancerMessage {
     Request(JsonRequest),
+    HydraTunnel(Vec<u8>),
     Ping(u64),
     Pong(u64),
 }
@@ -135,6 +136,7 @@ enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 enum RelayMessage {
     Response(JsonResponse),
+    HydraTunnel(Vec<u8>),
     Ping(u64),
     Pong(u64),
 }
@@ -195,6 +197,10 @@ mod event_loop {
                 LBEvent::SocketError(err) => {
                     loop_error = Err(err);
                     break 'event_loop;
+                },
+
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraTunnel(_bytes)) => {
+                    todo!()
                 },
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Request(request)) => {

@@ -82,6 +82,10 @@ pub struct Args {
 
     #[clap(long = "dolos-timeout-sec", default_value = "30")]
     pub dolos_request_timeout: Option<u64>,
+
+    /// A prefunded L1 key file for paying the Hydra transaction fees on L1, ~13 ADA per L2 cycle.
+    #[arg(long)]
+    pub hydra_cardano_signing_key: Option<PathBuf>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -270,6 +274,7 @@ impl Args {
             custom_genesis_config: None,
             dolos_endpoint: dolos.endpoint,
             dolos_request_timeout: Some(dolos.request_timeout),
+            hydra_cardano_signing_key: None,
         };
 
         if !is_solitary {

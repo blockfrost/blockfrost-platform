@@ -3,6 +3,7 @@
 use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
+    hydra::HydraManager,
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
@@ -73,6 +74,16 @@ async fn main() -> Result<(), AppError> {
         let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
 
         manager.run().await;
+    }
+
+    if let Some(hydra_config) = config.hydra {
+        let health_errors = Arc::new(Mutex::new(vec![]));
+        health_monitor
+            .register_error_source(health_errors.clone())
+            .await;
+
+        let manager = HydraManager::new(hydra_config, health_errors);
+        manager.run().await?;
     }
 
     spawn_task

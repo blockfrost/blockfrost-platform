@@ -50,6 +50,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         no_metrics: false,
         custom_genesis_config: None,
         data_sources: DataSources { dolos: None },
+        hydra: None,
     };
 
     Arc::new(config)

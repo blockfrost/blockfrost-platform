@@ -35,6 +35,12 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
             .parent()
             .map(|a| a.to_path_buf().join(exe_name));
 
+    // Similar, but accounts for the `nix-bundle-exe` structure on Linux:
+    let current_package_dir: Option<PathBuf> = current_exe_dir
+        .clone()
+        .and_then(|a| a.parent().map(PathBuf::from))
+        .and_then(|a| a.parent().map(PathBuf::from));
+
     let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
         .ok()
         .map(|root| PathBuf::from(root).join("target/testgen-hs/extracted/testgen-hs"));
@@ -45,12 +51,17 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
         .map(|p| env::split_paths(&p).collect())
         .unwrap_or_default();
 
-    let search_path: Vec<PathBuf> =
-        vec![env_var_dir, current_exe_dir, cargo_target_dir, docker_path]
-            .into_iter()
-            .flatten()
-            .chain(system_path)
-            .collect();
+    let search_path: Vec<PathBuf> = vec![
+        env_var_dir,
+        current_exe_dir,
+        current_package_dir,
+        cargo_target_dir,
+        docker_path,
+    ]
+    .into_iter()
+    .flatten()
+    .chain(system_path)
+    .collect();
 
     let extension = if cfg!(target_os = "windows") {
         ".exe"
