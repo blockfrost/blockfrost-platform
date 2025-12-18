@@ -296,6 +296,11 @@ enum Event {
     TryToCommit,
     WaitForOpen,
     AccountOneRequest,
+    WaitForUtxoCount,
+    TryToClose,
+    WaitForClosed { retries_before_reclose: u64 },
+    DoFanout,
+    WaitForIdleAfterClose,
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -326,6 +331,7 @@ struct State {
     sent_microtransactions: u64,
     commit_wallet_skey: PathBuf,
     commit_wallet_addr: String,
+    is_closing: bool,
 }
 
 impl State {
@@ -358,6 +364,7 @@ impl State {
             sent_microtransactions: 0,
             commit_wallet_skey: PathBuf::new(),
             commit_wallet_addr: String::new(),
+            is_closing: true,
         };
 
         self_.send(Event::Restart).await;
@@ -484,31 +491,36 @@ impl State {
                             .await
                     }
                 } else {
-                    let status = verifications::fetch_head_tag(self.api_port).await?;
-                    info!(
-                        "hydra-controller: {:?}: waiting for the Open head status: status={:?}",
-                        self.originator, status
-                    );
-                    if status == "Open" {
-                        self.hydra_head_open = true;
-                    } else {
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                            .await
-                    }
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                        .await
                 }
             },
 
             Event::WaitForOpen => {
-                self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
-                    .await
+                let status = verifications::fetch_head_tag(self.api_port).await?;
+                info!(
+                    "hydra-controller: {:?}: waiting for the Open head status: status={:?}",
+                    self.originator, status
+                );
+                if status == "Open" {
+                    self.hydra_head_open = true;
+                } else {
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                        .await
+                }
             },
 
             Event::AccountOneRequest => {
                 self.accounted_requests += 1;
 
                 if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
-                    if self.hydra_head_open {
+                    if self.is_closing {
                         warn!(
+                            "hydra-controller: {:?}: would send a microtransaction, but the Hydra Head state is currently closing for `Fanout` (backlog of requests: {})",
+                            self.originator, self.accounted_requests
+                        )
+                    } else if self.hydra_head_open {
+                        info!(
                             "hydra-controller: {:?}: sending a microtransaction",
                             self.originator
                         );
@@ -530,7 +542,9 @@ impl State {
                         if self.sent_microtransactions
                             >= self.config.toml.microtransactions_per_fanout
                         {
-                            todo!("TODO")
+                            self.is_closing = true;
+                            self.send_delayed(Event::WaitForUtxoCount, Duration::from_secs(3))
+                                .await;
                         }
                     } else {
                         warn!(
@@ -538,6 +552,111 @@ impl State {
                             self.originator, self.accounted_requests
                         )
                     }
+                }
+            },
+
+            Event::WaitForUtxoCount => {
+                // XXX: `1 +`, because we also have the source UTxO of the `commit_wallet`
+                let expected_count = 1 + self.sent_microtransactions;
+                let current_count = self.config.hydra_utxo_count(self.api_port).await?;
+
+                if current_count >= expected_count {
+                    info!(
+                        "hydra-controller: {:?}: got correct L2 UTxO count, will Close now…",
+                        self.originator
+                    );
+                    self.send_delayed(Event::TryToClose, Duration::from_secs(1))
+                        .await;
+                } else {
+                    warn!(
+                        "hydra-controller: {:?}: still have incorrect L2 UTxO count: {}, expected {}",
+                        self.originator, current_count, expected_count
+                    );
+                    self.send_delayed(Event::WaitForUtxoCount, Duration::from_secs(3))
+                        .await;
+                }
+            },
+
+            Event::TryToClose => {
+                verifications::send_one_websocket_msg(
+                    &format!("http://127.0.0.1:{}", self.api_port),
+                    serde_json::json!({"tag":"Close"}),
+                    Duration::from_secs(2),
+                )
+                .await?;
+                self.send_delayed(
+                    Event::WaitForClosed {
+                        retries_before_reclose: 10,
+                    },
+                    Duration::from_secs(3),
+                )
+                .await;
+            },
+
+            Event::WaitForClosed {
+                retries_before_reclose,
+            } => {
+                let status = verifications::fetch_head_tag(self.api_port).await?;
+                info!(
+                    "hydra-controller: {:?}: waiting for the Closed head status: status={:?}",
+                    self.originator, status
+                );
+                if status == "Closed" {
+                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
+                        .await
+                } else {
+                    if retries_before_reclose <= 1 {
+                        let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
+                        info!(
+                            "hydra-controller: {:?}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
+                            self.originator, invalidity_period,
+                        );
+                        self.send_delayed(Event::TryToClose, invalidity_period)
+                            .await;
+                    } else {
+                        self.send_delayed(
+                            Event::WaitForClosed {
+                                retries_before_reclose: retries_before_reclose - 1,
+                            },
+                            Duration::from_secs(3),
+                        )
+                        .await
+                    }
+                }
+            },
+
+            Event::DoFanout => {
+                info!(
+                    "hydra-controller: {:?}: requesting `Fanout`",
+                    self.originator,
+                );
+                verifications::send_one_websocket_msg(
+                    &format!("http://127.0.0.1:{}", self.api_port),
+                    serde_json::json!({"tag":"Fanout"}),
+                    Duration::from_secs(2),
+                )
+                .await?;
+                self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
+                    .await;
+            },
+
+            Event::WaitForIdleAfterClose => {
+                let status = verifications::fetch_head_tag(self.api_port).await?;
+                info!(
+                    "hydra-controller: {:?}: waiting for the Idle head status (after Fanout): status={:?}",
+                    self.originator, status
+                );
+                if status == "Idle" {
+                    info!(
+                        "hydra-controller: {:?}: re-initializing the Hydra Head for another L2 session",
+                        self.originator,
+                    );
+
+                    self.send_delayed(Event::TryToOpenHead, Duration::from_secs(3))
+                        .await;
+                } else {
+                    self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
+                        .await;
                 }
             },
         }

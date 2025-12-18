@@ -526,6 +526,27 @@ impl super::HydraConfig {
 
         Ok(())
     }
+
+    pub(super) async fn hydra_utxo_count(&self, hydra_api_port: u16) -> Result<u64> {
+        use anyhow::Context;
+
+        let url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+
+        let v: Value = reqwest::Client::new()
+            .get(&url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .context("snapshot/utxo: failed to decode JSON")?;
+
+        v.as_object()
+            .context("snapshot/utxo: expected top-level JSON object")?
+            .len()
+            .try_into()
+            .context("utxo length does not fit into u64 (?)")
+    }
 }
 
 /// Reads a JSON file from disk.
