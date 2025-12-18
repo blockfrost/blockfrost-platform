@@ -356,7 +356,6 @@ impl super::HydraConfig {
     ) -> Result<()> {
         use anyhow::Context;
         use reqwest::header;
-        use tokio::time::{Duration, sleep};
 
         let utxo_json = self.query_utxo_json(from_addr).await?;
         let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
@@ -375,7 +374,6 @@ impl super::HydraConfig {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.bytes().await.unwrap_or_default();
-            sleep(Duration::from_secs(15)).await;
             return Err(anyhow!(
                 "hydra /commit failed with {}: {}",
                 status,
@@ -420,6 +418,112 @@ impl super::HydraConfig {
                 Some(&signed_tx_bytes),
             )
             .await?;
+        Ok(())
+    }
+
+    pub(super) async fn send_hydra_transaction(
+        &self,
+        hydra_api_port: u16,
+        sender_addr: &str,
+        receiver_addr: &str,
+        sender_skey_path: &Path,
+        amount_lovelace: u64,
+    ) -> Result<()> {
+        use anyhow::Context;
+
+        let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+        let utxo: Value = reqwest::Client::new()
+            .get(&snapshot_url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .context("snapshot/utxo: failed to decode JSON")?;
+
+        let utxo_obj = utxo
+            .as_object()
+            .context("snapshot/utxo: expected top-level JSON object")?;
+
+        let mut filtered: serde_json::Map<String, Value> = serde_json::Map::new();
+        for (k, v) in utxo_obj.iter() {
+            if v.get("address").and_then(Value::as_str) == Some(sender_addr) {
+                filtered.insert(k.clone(), v.clone());
+            }
+        }
+
+        let (tx_in, chosen_entry) = filtered
+            .iter()
+            .next()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .ok_or_else(|| anyhow!("no UTxO found for sender address"))?;
+
+        let lovelace_total = chosen_entry
+            .pointer("/value/lovelace")
+            .and_then(Value::as_u64)
+            .context("utxo entry: expected .value.lovelace as integer")?;
+
+        if lovelace_total < amount_lovelace {
+            return Err(anyhow!(
+                "insufficient lovelace in selected UTxO: {} < {}",
+                lovelace_total,
+                amount_lovelace
+            ));
+        }
+
+        let change = lovelace_total - amount_lovelace;
+
+        let tx_body_bytes: Vec<u8> = {
+            let args: &[&str] = &[
+                "latest",
+                "transaction",
+                "build-raw",
+                "--tx-in",
+                &tx_in,
+                "--tx-out",
+                &format!("{}+{}", receiver_addr, amount_lovelace),
+                "--tx-out",
+                &format!("{}+{}", sender_addr, change),
+                "--fee",
+                "0",
+                "--out-file",
+                "/dev/stdout",
+            ];
+            self.cardano_cli_capture(&args, None).await?
+        };
+
+        let tx_signed_bytes: Vec<u8> = {
+            let skey_str = sender_skey_path
+                .to_str()
+                .context("sender_skey_path is not valid UTF-8")?;
+
+            let args: &[&str] = &[
+                "latest",
+                "transaction",
+                "sign",
+                "--tx-body-file",
+                "/dev/stdin",
+                "--signing-key-file",
+                &skey_str,
+                "--out-file",
+                "/dev/stdout",
+            ];
+
+            self.cardano_cli_capture(&args, Some(&tx_body_bytes))
+                .await?
+        };
+
+        let signed_json: Value = serde_json::from_slice(&tx_signed_bytes)
+            .context("tx-signed: invalid JSON from cardano-cli")?;
+
+        let payload = serde_json::json!({
+            "tag": "NewTx",
+            "transaction": signed_json,
+        });
+
+        let ws_url = format!("ws://127.0.0.1:{}/", hydra_api_port);
+        send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(2)).await?;
+
         Ok(())
     }
 }

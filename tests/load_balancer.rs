@@ -38,7 +38,7 @@ async fn test_websocket_request_response_flow() {
 
     let name = AssetName("test-asset".to_string());
     let prefix = Uuid::new_v4();
-    let token = lb.new_access_token(name.clone(), prefix).await;
+    let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
 
     let router = build_router(lb.clone()).await;
     let (addr, server_handle) = start_server(router).await;

@@ -82,6 +82,7 @@ pub struct LoadBalancerState {
 #[derive(Debug)]
 pub struct AccessTokenState {
     pub name: AssetName,
+    pub reward_addr: String,
     pub api_prefix: Uuid,
     pub expires: std::time::Instant,
 }
@@ -124,13 +125,19 @@ impl LoadBalancerState {
         }
     }
 
-    pub async fn new_access_token(&self, name: AssetName, api_prefix: Uuid) -> AccessToken {
+    pub async fn new_access_token(
+        &self,
+        name: AssetName,
+        api_prefix: Uuid,
+        reward_addr: &str,
+    ) -> AccessToken {
         let expires = std::time::Instant::now() + ACCESS_TOKEN_TIMEOUT;
         let token = random_token();
         self.access_tokens.lock().await.insert(
             token.clone(),
             AccessTokenState {
                 name,
+                reward_addr: reward_addr.to_string(),
                 api_prefix,
                 expires,
             },
@@ -402,6 +409,7 @@ pub mod event_loop {
         socket: WebSocket,
     ) {
         let asset_name = &token_state.name;
+        let reward_addr = token_state.reward_addr.clone();
 
         // Allow only 1 connection per NFT:
         disconnect_existing_sessions_of(&token_state, &load_balancer).await;
@@ -504,7 +512,10 @@ pub mod event_loop {
                             msg: "Hydra micropayments not supported".to_string(),
                         },
                         (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
-                            match hydras.spawn_new(&asset_name, initial_kex, req).await {
+                            match hydras
+                                .spawn_new(&asset_name, &reward_addr, initial_kex, req)
+                                .await
+                            {
                                 Ok((ctl, resp)) => {
                                     hydra_controller = Some(ctl);
                                     LoadBalancerMessage::HydraKExResponse(resp)
@@ -1106,7 +1117,7 @@ mod tests {
         let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
-        let token = lb.new_access_token(name.clone(), prefix).await;
+        let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
         let state = lb.register(&token.0).await.expect("should register");
 
         assert_eq!(state.name, name);
@@ -1136,6 +1147,7 @@ mod tests {
             token.clone(),
             AccessTokenState {
                 name,
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires,
             },
@@ -1158,6 +1170,7 @@ mod tests {
             token_expired.clone(),
             AccessTokenState {
                 name: name.clone(),
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires: expires_expired,
             },
@@ -1171,6 +1184,7 @@ mod tests {
             token_valid.clone(),
             AccessTokenState {
                 name,
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires: expires_valid,
             },

@@ -165,7 +165,11 @@ pub async fn route(
     };
 
     let token = load_balancer
-        .new_access_token(asset.asset_name, payload.api_prefix)
+        .new_access_token(
+            asset.asset_name,
+            payload.api_prefix,
+            &payload.reward_address,
+        )
         .await;
 
     let success_response = ResponseSuccess {

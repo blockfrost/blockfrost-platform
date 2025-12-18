@@ -111,6 +111,7 @@ impl HydrasManager {
     pub async fn spawn_new(
         &self,
         originator: &AssetName,
+        reward_addr: &str,
         initial: (KeyExchangeRequest, KeyExchangeResponse),
         final_req: KeyExchangeRequest,
     ) -> Result<(HydraController, KeyExchangeResponse)> {
@@ -160,6 +161,7 @@ impl HydrasManager {
         let ctl = HydraController::spawn(
             self.config.clone(),
             originator.clone(),
+            reward_addr.to_string(),
             maybe_new,
             final_req,
             final_resp.clone(),
@@ -256,11 +258,13 @@ impl HydraController {
     async fn spawn(
         config: HydraConfig,
         originator: AssetName,
+        reward_addr: String,
         controller_counter: Arc<()>,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
-        let event_tx = State::spawn(config, originator.clone(), kex_req, kex_resp).await?;
+        let event_tx =
+            State::spawn(config, originator.clone(), reward_addr, kex_req, kex_resp).await?;
         Ok(Self {
             event_tx,
             originator,
@@ -309,6 +313,7 @@ fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
 struct State {
     config: HydraConfig,
     originator: AssetName,
+    reward_addr: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
     kex_req: KeyExchangeRequest,
@@ -318,6 +323,9 @@ struct State {
     hydra_peers_connected: bool, // FIXME: they can become disconnected…
     hydra_head_open: bool,
     accounted_requests: u64,
+    sent_microtransactions: u64,
+    commit_wallet_skey: PathBuf,
+    commit_wallet_addr: String,
 }
 
 impl State {
@@ -326,6 +334,7 @@ impl State {
     async fn spawn(
         config: HydraConfig,
         originator: AssetName,
+        reward_addr: String,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<mpsc::Sender<Event>> {
@@ -336,6 +345,7 @@ impl State {
         let mut self_ = Self {
             config,
             originator,
+            reward_addr,
             config_dir,
             event_tx: event_tx.clone(),
             kex_req,
@@ -345,6 +355,9 @@ impl State {
             hydra_peers_connected: false,
             hydra_head_open: false,
             accounted_requests: 0,
+            sent_microtransactions: 0,
+            commit_wallet_skey: PathBuf::new(),
+            commit_wallet_addr: String::new(),
         };
 
         self_.send(Event::Restart).await;
@@ -435,12 +448,12 @@ impl State {
 
                 if status == "Initial" {
                     let commit_wallet = self.config_dir.join("commit-funds");
-                    let commit_wallet_skey = commit_wallet.with_extension("sk");
+                    self.commit_wallet_skey = commit_wallet.with_extension("sk");
 
-                    if std::fs::exists(&commit_wallet_skey)? {
+                    if std::fs::exists(&self.commit_wallet_skey)? {
                         warn!(
                             "hydra-controller: {:?}: commit wallet {:?} already exists, skipping the Commit transaction",
-                            self.originator, commit_wallet_skey
+                            self.originator, self.commit_wallet_skey
                         );
                     } else {
                         self.config.new_cardano_keypair(&commit_wallet).await?;
@@ -463,7 +476,7 @@ impl State {
                             .commit_all_utxo_to_hydra(
                                 &commit_wallet_addr,
                                 self.api_port,
-                                &commit_wallet_skey,
+                                &self.commit_wallet_skey,
                             )
                             .await?;
 
@@ -495,7 +508,30 @@ impl State {
 
                 if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
                     if self.hydra_head_open {
-                        todo!("TODO")
+                        warn!(
+                            "hydra-controller: {:?}: sending a microtransaction",
+                            self.originator
+                        );
+                        let amount_lovelace: u64 =
+                            self.accounted_requests * self.config.toml.lovelace_per_request;
+                        self.config
+                            .send_hydra_transaction(
+                                self.api_port,
+                                &self.commit_wallet_addr,
+                                &self.reward_addr,
+                                &self.commit_wallet_skey,
+                                amount_lovelace,
+                            )
+                            .await?;
+
+                        self.accounted_requests = 0;
+                        self.sent_microtransactions += 1;
+
+                        if self.sent_microtransactions
+                            >= self.config.toml.microtransactions_per_fanout
+                        {
+                            todo!("TODO")
+                        }
                     } else {
                         warn!(
                             "hydra-controller: {:?}: would send a microtransaction, but the Hydra Head state is still not `Open` (backlog of requests: {})",
