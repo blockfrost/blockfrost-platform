@@ -46,10 +46,13 @@ impl IcebreakersAPI {
         config: &Config,
         api_prefix: ApiPrefix,
     ) -> Result<Option<Arc<Self>>, AppError> {
-        let api_url = match config.network {
-            Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
-            Network::Mainnet | Network::Custom => "https://icebreakers-api.blockfrost.io",
-        };
+        let api_url = std::env::var("BLOCKFROST_GATEWAY_URL").unwrap_or(
+            match config.network {
+                Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
+                Network::Mainnet | Network::Custom => "https://icebreakers-api.blockfrost.io",
+            }
+            .to_string(),
+        );
 
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
