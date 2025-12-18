@@ -85,6 +85,8 @@ async fn main() -> Result<(), AppError> {
 
             let _manager = HydraManager::spawn(
                 hydra_config,
+                config.network,
+                config.node_socket_path,
                 icebreakers_config.reward_address,
                 health_errors,
             )
