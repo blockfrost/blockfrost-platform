@@ -460,7 +460,7 @@ pub mod event_loop {
 
         let mut initial_hydra_kex: Option<(hydra::KeyExchangeRequest, hydra::KeyExchangeResponse)> =
             None;
-        let mut _hydra_controller: Option<hydra::HydraController> = None;
+        let mut hydra_controller: Option<hydra::HydraController> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -484,19 +484,29 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
+                    let already_exists = match &hydra_controller {
+                        None => false,
+                        Some(ctl) => ctl.is_alive(),
+                    };
+
                     let reply = match (
+                        already_exists,
                         &load_balancer.hydras,
                         &req.accepted_platform_h2h_port,
                         initial_hydra_kex.take(),
                     ) {
-                        (None, _, _) => LoadBalancerMessage::Error {
+                        (true, _, _, _) => LoadBalancerMessage::Error {
+                            code: 538,
+                            msg: format!("Hydra controller already exists on this connection"),
+                        },
+                        (false, None, _, _) => LoadBalancerMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                        (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
                             match hydras.spawn_new(&asset_name, initial_kex, req).await {
                                 Ok((ctl, resp)) => {
-                                    _hydra_controller = Some(ctl);
+                                    hydra_controller = Some(ctl);
                                     LoadBalancerMessage::HydraKExResponse(resp)
                                 },
                                 Err(err) => LoadBalancerMessage::Error {
@@ -505,7 +515,7 @@ pub mod event_loop {
                                 },
                             }
                         },
-                        (Some(hydras), _, _) => {
+                        (false, Some(hydras), _, _) => {
                             match hydras
                                 .initialize_key_exchange(&asset_name, req.clone())
                                 .await

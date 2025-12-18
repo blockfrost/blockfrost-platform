@@ -251,6 +251,11 @@ impl HydraController {
             .await
             .expect("we never close the event receiver");
     }
+
+    // FIXME: this is too primitive
+    pub fn is_alive(&self) -> bool {
+        !self.event_tx.is_closed()
+    }
 }
 
 enum Event {
