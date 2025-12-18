@@ -219,7 +219,7 @@ impl super::State {
         use anyhow::Context;
         use reqwest::header;
 
-        let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
+        let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
         let client = reqwest::Client::new();
         let resp = client
             .post(url)
@@ -336,7 +336,7 @@ pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
 }
 
 pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
-    let url = format!("http://127.0.0.1:{}/head", hydra_api_port);
+    let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
     let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
 

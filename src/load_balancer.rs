@@ -27,6 +27,8 @@ const MAX_BODY_BYTES: usize = 1024 * 1024;
 /// Whenever a single load balancer connection breaks, we abort all of them.
 /// This logic will have to be better once we actually use more than a single
 /// connection for high availability.
+// FIXME: refactor
+#[allow(clippy::type_complexity)]
 pub async fn run_all(
     configs: Vec<LoadBalancerConfig>,
     http_router: axum::Router,
@@ -171,6 +173,8 @@ mod event_loop {
     }
 
     /// Top-level logic of a single WebSocket connection with a load balancer.
+    // FIXME: refactor
+    #[allow(clippy::type_complexity)]
     pub async fn run(
         config: LoadBalancerConfig,
         http_router: axum::Router,

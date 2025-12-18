@@ -44,6 +44,8 @@ pub struct KeyExchangeResponse {
 pub struct TerminateRequest;
 
 impl HydraController {
+    // FIXME: refactor
+    #[allow(clippy::too_many_arguments)]
     pub async fn spawn(
         config: bf_common::config::HydraConfig,
         network: bf_common::types::Network,
@@ -105,6 +107,8 @@ impl State {
     const RESTART_DELAY: std::time::Duration = std::time::Duration::from_secs(5);
     const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 
+    // FIXME: refactor
+    #[allow(clippy::too_many_arguments)]
     async fn spawn(
         config: bf_common::config::HydraConfig,
         network: bf_common::types::Network,
@@ -181,7 +185,7 @@ impl State {
         let event_tx_ = event_tx.clone();
         tokio::spawn(async move {
             let mut terminate_reqs = terminate_reqs;
-            while let Some(_) = terminate_reqs.recv().await {
+            while terminate_reqs.recv().await.is_some() {
                 event_tx_
                     .send(Event::Terminate)
                     .await
