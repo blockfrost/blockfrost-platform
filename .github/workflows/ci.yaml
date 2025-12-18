@@ -110,12 +110,12 @@ jobs:
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
-            cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
+            cardano_node_socket_path: /run/cardano-node/node_preprod.socket
             project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
-            cardano_node_socket_path: /run/cardano-node/i-dont-exist-yet.socket
+            cardano_node_socket_path: /run/cardano-node/node_mainnet.socket
             project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
     steps:
