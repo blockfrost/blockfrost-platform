@@ -3,8 +3,8 @@ use common::*;
 
 use base64::Engine;
 use blockfrost_gateway::{
-    blockfrost::AssetName,
     load_balancer::{JsonResponse, LoadBalancerMessage, LoadBalancerState, RelayMessage},
+    types::AssetName,
 };
 use futures::{SinkExt, StreamExt};
 use std::vec;

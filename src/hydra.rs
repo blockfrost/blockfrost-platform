@@ -1,5 +1,5 @@
 use crate::config::HydraConfig;
-use crate::types::Network;
+use crate::types::{AssetName, Network};
 use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -27,13 +27,30 @@ impl HydrasManager {
         }
     }
 
-    pub async fn key_exchange(&self, req: KeyExchangeRequest) -> Result<KeyExchangeResponse> {
+    pub async fn initialize_key_exchange(
+        &self,
+        _originator: &AssetName,
+        req: KeyExchangeRequest,
+    ) -> Result<KeyExchangeResponse> {
+        if req.accepted_platform_h2h_port.is_some() {
+            Err(anyhow!(
+                "`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`"
+            ))?
+        }
+
         // FIXME: actually exchange
         let resp = fake_kex_response(&self.network).await?;
         Ok(resp)
     }
 
-    pub async fn spawn_new(&self) -> Result<HydraController> {
+    /// You should first call [`Self::initialize_key_exchange`], and then this
+    /// function with the initial request/response pair.
+    pub async fn spawn_new(
+        &self,
+        originator: &AssetName,
+        initial: (KeyExchangeRequest, KeyExchangeResponse),
+        final_: KeyExchangeRequest,
+    ) -> Result<(HydraController, KeyExchangeResponse)> {
         // Clone first, to prevent the nastier race condition:
         let maybe_new = Arc::clone(self.controller_counter.as_ref());
         let new_count = Arc::strong_count(&self.controller_counter).saturating_sub(1); // subtract the manager
@@ -45,14 +62,17 @@ impl HydrasManager {
             // FIXME: continue
             let (unused_1, _) = mpsc::channel(32);
             let (_, unused_2) = mpsc::channel(32);
-            HydraController::spawn(
+            let ctl = HydraController::spawn(
                 self.config.clone(),
                 self.network.clone(),
+                originator.clone(),
                 unused_1,
                 unused_2,
                 maybe_new,
             )
-            .await
+            .await?;
+            // FIXME:
+            Ok((ctl, fake_kex_response(&self.network).await?))
         }
     }
 }
@@ -65,6 +85,8 @@ pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
     _controller_counter: Arc<()>,
 }
+
+// FIXME: send a Quit event on `drop()` of all controller instances
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
@@ -92,11 +114,13 @@ impl HydraController {
     pub async fn spawn(
         config: HydraConfig,
         network: Network,
+        originator: AssetName,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
         controller_counter: Arc<()>,
     ) -> Result<Self> {
-        let event_tx = State::spawn(config, network, kex_requests, kex_responses).await?;
+        let event_tx =
+            State::spawn(config, network, originator, kex_requests, kex_responses).await?;
         Ok(Self {
             event_tx,
             _controller_counter: controller_counter,
@@ -123,6 +147,7 @@ enum Event {
 struct State {
     config: HydraConfig,
     network: Network,
+    _originator: AssetName,
     platform_cardano_vkey: serde_json::Value,
     kex_requests: mpsc::Sender<KeyExchangeRequest>,
     hydra_node_exe: String,
@@ -138,6 +163,7 @@ impl State {
     async fn spawn(
         config: HydraConfig,
         network: Network,
+        originator: AssetName,
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
     ) -> Result<mpsc::Sender<Event>> {
@@ -148,17 +174,19 @@ impl State {
             crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
                 .map_err(|e| anyhow!(e))?;
 
-        // FIXME: config dir needs to be network specific
         let config_dir = dirs::config_dir()
             .expect("Could not determine config directory")
             .join("blockfrost-platform")
-            .join("hydra");
+            .join("hydra")
+            .join(network.as_str())
+            .join(originator.as_str());
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
         let self_ = Self {
             config,
             network,
+            _originator: originator,
             platform_cardano_vkey: serde_json::Value::Null,
             kex_requests,
             hydra_node_exe,

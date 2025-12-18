@@ -21,4 +21,21 @@ impl Network {
     pub fn is_testnet(&self) -> bool {
         *self != Self::Mainnet
     }
+
+    // FIXME: use serde? But it allocs
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Mainnet => "mainnet",
+            Self::Preprod => "preprod",
+            Self::Preview => "preview",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct AssetName(pub String);
+impl AssetName {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }

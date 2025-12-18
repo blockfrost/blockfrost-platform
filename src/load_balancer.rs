@@ -1,6 +1,6 @@
-use crate::blockfrost::AssetName;
 use crate::errors::APIError;
 use crate::hydra;
+use crate::types::AssetName;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, atomic};
@@ -458,6 +458,10 @@ pub mod event_loop {
         let mut last_ping_id: u64 = 0;
         let mut disconnection_reason = None;
 
+        let mut initial_hydra_kex: Option<(hydra::KeyExchangeRequest, hydra::KeyExchangeResponse)> =
+            None;
+        let mut _hydra_controller: Option<hydra::HydraController> = None;
+
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
             match msg {
@@ -480,19 +484,36 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
-                    let reply = if let Some(hydras) = &load_balancer.hydras {
-                        match hydras.key_exchange(req).await {
-                            Ok(resp) => LoadBalancerMessage::HydraKExResponse(resp),
-                            Err(err) => LoadBalancerMessage::Error {
-                                code: 537,
-                                msg: format!("Hydra micropayments setup error: {err}"),
-                            },
-                        }
-                    } else {
-                        LoadBalancerMessage::Error {
+                    let reply = match (
+                        &load_balancer.hydras,
+                        &req.accepted_platform_h2h_port,
+                        initial_hydra_kex.take(),
+                    ) {
+                        (None, _, _) => LoadBalancerMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
-                        }
+                        },
+                        (Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                            match hydras.spawn_new(&asset_name, initial_kex, req).await {
+                                Ok((ctl, resp)) => {
+                                    _hydra_controller = Some(ctl);
+                                    LoadBalancerMessage::HydraKExResponse(resp)
+                                },
+                                Err(err) => LoadBalancerMessage::Error {
+                                    code: 537,
+                                    msg: format!("Hydra micropayments setup error: {err}"),
+                                },
+                            }
+                        },
+                        (Some(hydras), _, _) => {
+                            match hydras.initialize_key_exchange(&asset_name, req).await {
+                                Ok(resp) => LoadBalancerMessage::HydraKExResponse(resp),
+                                Err(err) => LoadBalancerMessage::Error {
+                                    code: 537,
+                                    msg: format!("Hydra micropayments setup error: {err}"),
+                                },
+                            }
+                        },
                     };
 
                     if send_json_msg(&mut socket_tx, &reply, asset_name)
