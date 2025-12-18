@@ -221,6 +221,7 @@ impl HydraConfig {
 #[derive(Clone)]
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
+    originator: AssetName,
     _controller_counter: Arc<()>,
 }
 
@@ -259,9 +260,10 @@ impl HydraController {
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
-        let event_tx = State::spawn(config, originator, kex_req, kex_resp).await?;
+        let event_tx = State::spawn(config, originator.clone(), kex_req, kex_resp).await?;
         Ok(Self {
             event_tx,
+            originator,
             _controller_counter: controller_counter,
         })
     }
@@ -270,6 +272,18 @@ impl HydraController {
     pub fn is_alive(&self) -> bool {
         !self.event_tx.is_closed()
     }
+
+    pub async fn account_one_request(&self) {
+        self.event_tx
+            .send(Event::AccountOneRequest)
+            .await
+            .unwrap_or_else(|_| {
+                error!(
+                    "hydra-controller: {:?}: failed to account one request: event channel closed",
+                    self.originator
+                )
+            })
+    }
 }
 
 enum Event {
@@ -277,6 +291,7 @@ enum Event {
     TryToOpenHead,
     TryToCommit,
     WaitForOpen,
+    AccountOneRequest,
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -300,7 +315,9 @@ struct State {
     kex_resp: KeyExchangeResponse,
     api_port: u16,
     metrics_port: u16,
-    hydra_peers_connected: bool,
+    hydra_peers_connected: bool, // FIXME: they can become disconnected…
+    hydra_head_open: bool,
+    accounted_requests: u64,
 }
 
 impl State {
@@ -326,6 +343,8 @@ impl State {
             api_port: 0,
             metrics_port: 0,
             hydra_peers_connected: false,
+            hydra_head_open: false,
+            accounted_requests: 0,
         };
 
         self_.send(Event::Restart).await;
@@ -457,14 +476,33 @@ impl State {
                         "hydra-controller: {:?}: waiting for the Open head status: status={:?}",
                         self.originator, status
                     );
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                        .await
+                    if status == "Open" {
+                        self.hydra_head_open = true;
+                    } else {
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    }
                 }
             },
 
             Event::WaitForOpen => {
                 self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                     .await
+            },
+
+            Event::AccountOneRequest => {
+                self.accounted_requests += 1;
+
+                if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
+                    if self.hydra_head_open {
+                        todo!("TODO")
+                    } else {
+                        warn!(
+                            "hydra-controller: {:?}: would send a microtransaction, but the Hydra Head state is still not `Open` (backlog of requests: {})",
+                            self.originator, self.accounted_requests
+                        )
+                    }
+                }
             },
         }
         Ok(())
