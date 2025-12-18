@@ -458,7 +458,20 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest { .. }) => {
-                    todo!()
+                    // FIXME: actually exchange
+                    let resp = crate::hydra::fake_kex_response(&crate::types::Network::Preview)
+                        .await
+                        .unwrap();
+                    if send_json_msg(
+                        &mut socket_tx,
+                        &LoadBalancerMessage::HydraKExResponse(resp),
+                        asset_name,
+                    )
+                    .await
+                    .is_err()
+                    {
+                        break 'event_loop;
+                    }
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {
