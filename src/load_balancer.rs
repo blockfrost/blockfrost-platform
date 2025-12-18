@@ -4,7 +4,7 @@ use bf_common::errors::{AppError, BlockfrostError};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -33,7 +33,7 @@ pub async fn run_all(
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     api_prefix: ApiPrefix,
     hydra_kex: Option<(
-        mpsc::Receiver<hydra::KeyExchangeRequest>,
+        watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
         mpsc::Sender<hydra::KeyExchangeResponse>,
     )>,
 ) {
@@ -44,13 +44,15 @@ pub async fn run_all(
 
     let connections: Vec<JoinHandle<Result<(), String>>> = configs
         .iter()
-        .map(|c| {
+        .enumerate()
+        .map(|(idx, c)| {
             tokio::spawn(event_loop::run(
                 c.clone(),
                 http_router.clone(),
                 health_errors.clone(),
                 api_prefix.clone(),
-                None,
+                // FIXME: for now, we only pass the `hydra_kex` to the first Gateway (but we only run one)
+                if idx == 0 { hydra_kex.clone() } else { None },
             ))
         })
         .collect();
@@ -133,7 +135,7 @@ impl JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 enum LoadBalancerMessage {
     Request(JsonRequest),
-    HydraKExRequest(hydra::KeyExchangeRequest),
+    HydraKExResponse(hydra::KeyExchangeResponse),
     HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
@@ -143,7 +145,7 @@ enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 enum RelayMessage {
     Response(JsonResponse),
-    HydraKExResponse(hydra::KeyExchangeResponse),
+    HydraKExRequest(hydra::KeyExchangeRequest),
     HydraTunnel { connection_id: u64, bytes: Vec<u8> },
     Ping(u64),
     Pong(u64),
@@ -162,6 +164,7 @@ mod event_loop {
     enum LBEvent {
         NewLoadBalancerMessage(LoadBalancerMessage),
         NewResponse(JsonResponse),
+        HydraKExRequest(hydra::KeyExchangeRequest),
         PingTick,
         SocketError(String),
     }
@@ -173,7 +176,7 @@ mod event_loop {
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         api_prefix: ApiPrefix,
         hydra_kex: Option<(
-            mpsc::Receiver<hydra::KeyExchangeRequest>,
+            watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
             mpsc::Sender<hydra::KeyExchangeResponse>,
         )>,
     ) -> Result<(), String> {
@@ -182,6 +185,23 @@ mod event_loop {
 
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
         let request_task = wire_requests(event_tx.clone(), socket_rx, config.clone()).await;
+
+        let hydra_kex_fwd_task = {
+            let event_tx = event_tx.clone();
+            let hydra_kex = hydra_kex.clone();
+            tokio::spawn(async move {
+                if let Some(hydra_kex) = hydra_kex {
+                    let (tx, mut rx) = mpsc::channel(32);
+                    if let Err(e) = hydra_kex.0.send(Some(tx)) {
+                        error!("hydra_kex_fwd_task: `watch::Receiver` is unexpectedly closed: {e}")
+                    } else {
+                        while let Some(req) = rx.recv().await {
+                            let _ = event_tx.send(LBEvent::HydraKExRequest(req)).await;
+                        }
+                    }
+                }
+            })
+        };
 
         let schedule_ping_tick = {
             let event_tx = event_tx.clone();
@@ -215,7 +235,7 @@ mod event_loop {
                     todo!()
                 },
 
-                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExRequest {
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExResponse {
                     ..
                 }) => {
                     todo!()
@@ -280,11 +300,23 @@ mod event_loop {
                         }
                     }
                 },
+
+                LBEvent::HydraKExRequest(req) => {
+                    // FIXME: actually exchange
+                    if let Some(hydra_kex) = &hydra_kex {
+                        let fake_kex_response =
+                            hydra::fake_kex_response(&bf_common::types::Network::Preview)
+                                .await
+                                .expect("fake KEx shouldn’t fail");
+                        warn!("sending a fake Hydra KEx response…");
+                        let _ = hydra_kex.1.send(fake_kex_response).await;
+                    }
+                },
             }
         }
 
         // Wait for all children to finish:
-        let children = [request_task];
+        let children = [request_task, hydra_kex_fwd_task];
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
 
