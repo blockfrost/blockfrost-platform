@@ -52,15 +52,18 @@ in
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName},dolos} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName},dolos,hydra-node} ./ ; )
         '';
     });
 
     bundle-testgen-hs = nix-bundle-exe-lib-subdir (lib.getExe unix.testgen-hs);
 
     bundle-dolos = nix-bundle-exe-lib-subdir "${unix.dolos}/bin/dolos";
+
+    bundle-hydra = nix-bundle-exe-lib-subdir "${unix.hydra-node}/bin/hydra-node";
 
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
