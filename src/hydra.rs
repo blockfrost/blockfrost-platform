@@ -10,7 +10,7 @@ pub mod verifications;
 ///
 /// You can safely clone it, and the clone will represent the same `hydra-node` etc.
 #[derive(Clone)]
-pub struct HydraManager {
+pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
 }
 
@@ -36,7 +36,7 @@ pub struct KeyExchangeResponse {
     pub gateway_h2h_port: u16,
 }
 
-impl HydraManager {
+impl HydraController {
     pub async fn spawn(
         config: bf_common::config::HydraConfig,
         network: bf_common::types::Network,
@@ -167,7 +167,7 @@ impl State {
                     Ok(()) => (),
                     Err(err) => {
                         error!(
-                            "hydra-manager: error: {}; will restart in {:?}…",
+                            "hydra-controller: error: {}; will restart in {:?}…",
                             err,
                             Self::RESTART_DELAY
                         );
@@ -191,14 +191,14 @@ impl State {
     async fn process_event(&self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-manager: starting…");
+                info!("hydra-controller: starting…");
 
                 let potential_fuel = self
                     .lovelace_on_payment_skey(&self.config.cardano_signing_key)
                     .await?;
                 if potential_fuel < Self::MIN_FUEL_LOVELACE {
                     Err(anyhow!(
-                        "hydra-manager: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                         potential_fuel as f64 / 1_000_000.0,
                         self.config.cardano_signing_key,
                         Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
@@ -206,7 +206,7 @@ impl State {
                 }
 
                 info!(
-                    "hydra-manager: fuel on cardano_signing_key: {:?} lovelace",
+                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
                     potential_fuel
                 );
 

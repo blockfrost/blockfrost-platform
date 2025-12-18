@@ -3,7 +3,7 @@
 use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
-    hydra::HydraManager,
+    hydra::HydraController,
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };
@@ -86,7 +86,7 @@ async fn main() -> Result<(), AppError> {
                 .register_error_source(health_errors.clone())
                 .await;
 
-            let _manager = HydraManager::spawn(
+            let _controller = HydraController::spawn(
                 hydra_config,
                 config.network,
                 config.node_socket_path,

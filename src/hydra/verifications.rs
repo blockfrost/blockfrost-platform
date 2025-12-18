@@ -18,7 +18,7 @@ impl super::State {
         let key_path = self.config_dir.join("hydra.sk");
 
         if !key_path.exists() {
-            info!("hydra-manager: generating hydra keys");
+            info!("hydra-controller: generating hydra keys");
 
             let status = tokio::process::Command::new(&self.hydra_node_exe)
                 .arg("gen-hydra-key")
@@ -31,7 +31,7 @@ impl super::State {
                 Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
             }
         } else {
-            info!("hydra-manager: hydra keys already exist");
+            info!("hydra-controller: hydra keys already exist");
         }
 
         Ok(())
@@ -76,9 +76,9 @@ impl super::State {
 
         let pp_path = self.config_dir.join("protocol-parameters.json");
         if write_json_if_changed(&pp_path, &params)? {
-            info!("hydra-manager: protocol parameters updated");
+            info!("hydra-controller: protocol parameters updated");
         } else {
-            info!("hydra-manager: protocol parameters unchanged");
+            info!("hydra-controller: protocol parameters unchanged");
         }
 
         Ok(())
