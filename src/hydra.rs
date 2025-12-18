@@ -115,8 +115,9 @@ impl State {
             Event::Restart => {
                 info!("hydra-manager: starting…");
 
-                let potential_fuel =
-                    self.lovelace_on_payment_skey(&self.config.cardano_signing_key)?;
+                let potential_fuel = self
+                    .lovelace_on_payment_skey(&self.config.cardano_signing_key)
+                    .await?;
                 if potential_fuel < Self::MIN_FUEL_LOVELACE {
                     Err(anyhow!(
                         "hydra-manager: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",

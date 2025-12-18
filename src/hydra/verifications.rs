@@ -1,10 +1,6 @@
 use anyhow::{Result, anyhow};
 use serde_json::Value;
 use std::path::Path;
-use std::{
-    io::Write,
-    process::{Command, Stdio},
-};
 use tracing::info;
 
 /// FIXME: don’t use `cardano-cli`.
@@ -24,11 +20,12 @@ impl super::State {
         if !key_path.exists() {
             info!("hydra-manager: generating hydra keys");
 
-            let status = Command::new(&self.hydra_node_exe)
+            let status = tokio::process::Command::new(&self.hydra_node_exe)
                 .arg("gen-hydra-key")
                 .arg("--output-file")
                 .arg(self.config_dir.join("hydra"))
-                .status()?;
+                .status()
+                .await?;
 
             if !status.success() {
                 Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
@@ -47,9 +44,10 @@ impl super::State {
 
         std::fs::create_dir_all(&self.config_dir)?;
 
-        let output = Command::new("cardano-cli")
+        let output = tokio::process::Command::new("cardano-cli")
             .args(["query", "protocol-parameters"])
-            .output()?;
+            .output()
+            .await?;
 
         if !output.status.success() {
             Err(anyhow!("cardano-cli failed with status: {}", output.status))?;
@@ -118,18 +116,19 @@ impl super::State {
 
     /// Check how much lovelace is on an enterprise address associated with a
     /// given `payment.skey`.
-    pub(super) fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
-        let address = self.derive_enterprise_address_from_skey(skey_path)?;
-        let utxo_json = self.query_utxo_json(&address)?;
+    pub(super) async fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
+        let address = self.derive_enterprise_address_from_skey(skey_path).await?;
+        let utxo_json = self.query_utxo_json(&address).await?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
 
-    fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
-        let vkey_output = Command::new(&self.cardano_cli_exe)
+    async fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
+        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
             .args(["--verification-key-file", "/dev/stdout"])
-            .output()?;
+            .output()
+            .await?;
 
         if !vkey_output.status.success() {
             return Err(anyhow!(
@@ -138,25 +137,26 @@ impl super::State {
             ));
         }
 
-        let mut child = Command::new(&self.cardano_cli_exe)
+        let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
             .args([
                 "address",
                 "build",
                 "--payment-verification-key-file",
                 "/dev/stdin",
             ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
             .spawn()?;
 
         {
             let stdin = child.stdin.as_mut().ok_or(anyhow!(
                 "failed to open stdin for cardano-cli address build"
             ))?;
-            stdin.write_all(&vkey_output.stdout)?;
+            use tokio::io::AsyncWriteExt;
+            stdin.write_all(&vkey_output.stdout).await?;
         }
 
-        let addr_output = child.wait_with_output()?;
+        let addr_output = child.wait_with_output().await?;
         if !addr_output.status.success() {
             Err(anyhow!(
                 "cardano-cli address build failed: {}",
@@ -172,12 +172,13 @@ impl super::State {
         Ok(address)
     }
 
-    fn query_utxo_json(&self, address: &str) -> Result<String> {
-        let output = Command::new(&self.cardano_cli_exe)
+    async fn query_utxo_json(&self, address: &str) -> Result<String> {
+        let output = tokio::process::Command::new(&self.cardano_cli_exe)
             .args(["query", "utxo", "--address"])
             .arg(address)
             .args(["--output-json"])
-            .output()?;
+            .output()
+            .await?;
 
         if !output.status.success() {
             return Err(anyhow!(
