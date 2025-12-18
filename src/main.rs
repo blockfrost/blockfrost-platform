@@ -1,3 +1,4 @@
+use anyhow::Result;
 use api::{register, root};
 use axum::{
     Extension, Router,
@@ -12,7 +13,7 @@ use std::net::SocketAddr;
 use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
 
     let arguments = Args::parse();
@@ -32,7 +33,7 @@ async fn main() {
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
     let hydras_manager = if let Some(hydra) = &config.hydra {
-        Some(hydra::HydrasManager::new(hydra, &config.server.network).await)
+        Some(hydra::HydrasManager::new(hydra, &config.server.network).await?)
     } else {
         None
     };
@@ -84,4 +85,6 @@ async fn main() {
         eprintln!("Server error: {}", e);
         std::process::exit(1);
     });
+
+    Ok(())
 }
