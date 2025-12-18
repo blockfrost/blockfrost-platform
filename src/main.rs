@@ -1,18 +1,9 @@
-mod api;
-mod blockfrost;
-mod config;
-mod db;
-mod errors;
-mod load_balancer;
-mod models;
-mod payload;
-mod schema;
-
 use api::{register, root};
 use axum::{
     routing::{get, post},
     Extension, Router,
 };
+use blockfrost_gateway::{api, blockfrost, config, db, load_balancer};
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
