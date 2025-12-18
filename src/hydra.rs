@@ -34,6 +34,9 @@ pub struct KeyExchangeResponse {
     /// Platform, too (as both sides open both ports).
     pub proposed_platform_h2h_port: u16,
     pub gateway_h2h_port: u16,
+    /// This being set to `true` means that the ceremony is successful, and the
+    /// Gateway is going to start its own `hydra-node`, and the Platform should too.
+    pub kex_done: bool,
 }
 
 impl HydraController {
@@ -229,7 +232,36 @@ impl State {
                 // FIXME: resend the request periodically in case it gets lost – i.e. new `Event::KExTimeout`
             },
 
-            Event::KeyExchangeResponse(kex_resp) => {
+            Event::KeyExchangeResponse(
+                kex_resp @ KeyExchangeResponse {
+                    kex_done: false, ..
+                },
+            ) => {
+                if !(matches!(
+                    verifications::is_tcp_port_free(kex_resp.gateway_h2h_port).await,
+                    Ok(true)
+                ) && matches!(
+                    verifications::is_tcp_port_free(kex_resp.proposed_platform_h2h_port).await,
+                    Ok(true)
+                )) {
+                    warn!(
+                        "hydra-controller: the ports proposed by the Gateway are not free locally, will ask again"
+                    );
+                    self.send(Event::Restart).await
+                } else {
+                    self.kex_requests
+                        .send(KeyExchangeRequest {
+                            platform_cardano_vkey: self.platform_cardano_vkey.clone(),
+                            platform_hydra_vkey: verifications::read_json_file(
+                                &self.config_dir.join("hydra.vk"),
+                            )?,
+                            accepted_platform_h2h_port: Some(kex_resp.proposed_platform_h2h_port),
+                        })
+                        .await?;
+                }
+            },
+
+            Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
                 self.start_hydra_node(kex_resp).await?;
             },
 
@@ -275,7 +307,7 @@ impl State {
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
             .arg("--cardano-signing-key")
-            .arg(&self.config.cardano_signing_key)
+            .arg(&self.config.cardano_signing_key) // FIXME: copy it somewhere else in case the source file changes
             .arg("--hydra-signing-key")
             .arg(self.config_dir.join("hydra.sk"))
             .arg("--hydra-scripts-tx-id")
