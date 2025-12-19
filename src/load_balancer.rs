@@ -419,7 +419,7 @@ pub mod event_loop {
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
         let (request_tx, request_task) = wire_requests(event_tx.clone()).await;
         let (finish_tx, finish_task) = wire_do_finish(event_tx.clone()).await;
-        let (mut socket_tx, response_task, arbitrary_msg_task) =
+        let (socket_tx, response_task, arbitrary_msg_task) =
             wire_responses(event_tx.clone(), socket, asset_name).await;
 
         let relay_state = RelayState {
@@ -587,10 +587,7 @@ pub mod event_loop {
                         },
                     };
 
-                    if send_json_msg(&mut socket_tx, &reply, asset_name)
-                        .await
-                        .is_err()
-                    {
+                    if send_json_msg(&socket_tx, &reply, asset_name).await.is_err() {
                         break 'event_loop;
                     }
                 },
@@ -603,13 +600,9 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Ping(ping_id)) => {
-                    if send_json_msg(
-                        &mut socket_tx,
-                        &LoadBalancerMessage::Pong(ping_id),
-                        asset_name,
-                    )
-                    .await
-                    .is_err()
+                    if send_json_msg(&socket_tx, &LoadBalancerMessage::Pong(ping_id), asset_name)
+                        .await
+                        .is_err()
                     {
                         break 'event_loop;
                     }
@@ -637,7 +630,7 @@ pub mod event_loop {
                         last_ping_id += 1;
                         last_ping_sent_at = Some(std::time::Instant::now());
                         if send_json_msg(
-                            &mut socket_tx,
+                            &socket_tx,
                             &LoadBalancerMessage::Ping(last_ping_id),
                             asset_name,
                         )
