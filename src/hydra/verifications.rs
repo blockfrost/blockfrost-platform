@@ -5,11 +5,7 @@ use tracing::info;
 
 /// FIXME: don’t use `cardano-cli`.
 ///
-/// FIXME: set `CARDANO_NODE_NETWORK_ID` ourselves
-///
-/// FIXME: set `CARDANO_NODE_SOCKET_PATH` ourselves
-///
-/// FIXME: proper errors, not `Box<dyn Erro>>`
+/// FIXME: proper errors, not `anyhow!`
 impl super::State {
     /// Generates Hydra keys if they don’t exist.
     pub(super) async fn gen_hydra_keys(&self) -> Result<()> {
@@ -37,6 +33,19 @@ impl super::State {
         Ok(())
     }
 
+    fn cardano_cli_env(&self) -> Vec<(&str, String)> {
+        vec![
+            ("CARDANO_NODE_SOCKET_PATH", self.node_socket_path.clone()),
+            (
+                "CARDANO_NODE_NETWORK_ID",
+                match &self.network {
+                    bf_common::types::Network::Mainnet => self.network.as_str().to_string(),
+                    _ => self.genesis.network_magic.to_string(),
+                },
+            ),
+        ]
+    }
+
     /// Check how much lovelace is on an enterprise address associated with a
     /// given `payment.skey`.
     pub(super) async fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
@@ -50,6 +59,7 @@ impl super::State {
         skey_path: &Path,
     ) -> Result<serde_json::Value> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
             .args(["--verification-key-file", "/dev/stdout"])
@@ -60,6 +70,7 @@ impl super::State {
 
     async fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
         let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["key", "verification-key", "--signing-key-file"])
             .arg(skey_path)
             .args(["--verification-key-file", "/dev/stdout"])
@@ -74,6 +85,7 @@ impl super::State {
         }
 
         let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args([
                 "address",
                 "build",
@@ -110,6 +122,7 @@ impl super::State {
 
     async fn query_utxo_json(&self, address: &str) -> Result<String> {
         let output = tokio::process::Command::new(&self.cardano_cli_exe)
+            .envs(self.cardano_cli_env())
             .args(["query", "utxo", "--address"])
             .arg(address)
             .args(["--output-json"])
@@ -175,6 +188,7 @@ impl super::State {
         use tokio::io::AsyncWriteExt;
 
         let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
+        cmd.envs(self.cardano_cli_env());
         cmd.args(args)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
