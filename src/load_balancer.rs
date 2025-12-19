@@ -253,17 +253,19 @@ mod event_loop {
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExResponse(resp)) => {
                     if let Some(hydra_kex) = &hydra_kex {
-                        if resp.kex_done {
+                        // Only start the TCP-over-WebSocket tunnels if we’re running
+                        // on different machines:
+                        if resp.machine_id != hydra::verifications::hashed_machine_id() {
                             let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
                                 hydra::tunnel2::TunnelConfig {
-                                    expose_port: resp.gateway_h2h_port,
+                                    expose_port: resp.proposed_platform_h2h_port,
                                     id_prefix_bit: true,
                                     ..(hydra::tunnel2::TunnelConfig::default())
                                 },
                                 tunnel_cancellation.clone(),
                             );
 
-                            tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                            tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
 
                             let socket_tx_ = socket_tx.clone();
                             let config_ = config.clone();

@@ -62,6 +62,10 @@ anyhow.workspace = true
 bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
+sysinfo.workspace = true
+machine-uid = "0.5"
+blake3 = "1"
+getrandom = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.30", default-features = false, features = ["signal"] }
@@ -126,6 +130,7 @@ reqwest = { version = "0.12.12", features = ["blocking"] }
 rstest = "0.24.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+sysinfo = "0.33.1"
 thiserror = "2.0.12"
 tokio = { version = "1.43.0", features = [
   "rt",
