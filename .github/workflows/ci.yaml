@@ -94,10 +94,8 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          ls -al
           nix develop .# --command bash -c '
             set -euo pipefail
-            cargo clean
             cargo test --verbose --test endpoints_test
             cargo clean
           '
