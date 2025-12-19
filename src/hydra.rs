@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub mod tunnel;
+pub mod tunnel2;
 pub mod verifications;
 
 // FIXME: this should most probably be back to the default of 600 seconds:

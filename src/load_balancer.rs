@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, atomic};
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -55,7 +56,7 @@ pub enum JsonRequestMethod {
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
     HydraKExResponse(hydra::KeyExchangeResponse),
-    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
+    HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
     Error { code: u64, msg: String },
@@ -66,7 +67,7 @@ pub enum LoadBalancerMessage {
 pub enum RelayMessage {
     Response(JsonResponse),
     HydraKExRequest(hydra::KeyExchangeRequest),
-    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
+    HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -388,10 +389,6 @@ pub mod event_loop {
     use super::*;
     use axum::extract::ws::{Message, WebSocket};
     use axum::http::StatusCode;
-    use futures_util::{
-        sink::SinkExt,
-        stream::{SplitSink, StreamExt},
-    };
 
     /// For clarity, let’s have a single connection 'event_loop per WebSocket
     /// connection, with the following events:
@@ -422,7 +419,7 @@ pub mod event_loop {
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
         let (request_tx, request_task) = wire_requests(event_tx.clone()).await;
         let (finish_tx, finish_task) = wire_do_finish(event_tx.clone()).await;
-        let (mut socket_tx, response_task) =
+        let (mut socket_tx, response_task, arbitrary_msg_task) =
             wire_responses(event_tx.clone(), socket, asset_name).await;
 
         let relay_state = RelayState {
@@ -470,6 +467,9 @@ pub mod event_loop {
             None;
         let mut hydra_controller: Option<hydra::HydraController> = None;
 
+        let tunnel_cancellation = CancellationToken::new();
+        let mut tunnel_controller: Option<hydra::tunnel2::Tunnel> = None;
+
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
             match msg {
@@ -479,7 +479,7 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRequest(request) => {
-                    if pass_on_request(request, &relay_state, asset_name, &mut socket_tx)
+                    if pass_on_request(request, &relay_state, asset_name, &socket_tx)
                         .await
                         .is_err()
                     {
@@ -487,8 +487,15 @@ pub mod event_loop {
                     }
                 },
 
-                LBEvent::NewRelayMessage(RelayMessage::HydraTunnel { .. }) => {
-                    todo!()
+                LBEvent::NewRelayMessage(RelayMessage::HydraTunnel(tun_msg)) => {
+                    if let Some(tunnel_ctl) = &tunnel_controller {
+                        match tunnel_ctl.on_msg(tun_msg).await {
+                            Ok(()) => (),
+                            Err(err) => error!(
+                                "hydra-tunnel: got an error when passing message through WebSocket: {err}; ignoring"
+                            ),
+                        }
+                    }
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
@@ -518,6 +525,37 @@ pub mod event_loop {
                             {
                                 Ok((ctl, resp)) => {
                                     hydra_controller = Some(ctl);
+
+                                    let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
+                                        hydra::tunnel2::TunnelConfig {
+                                            expose_port: resp.gateway_h2h_port,
+                                            id_prefix_bit: true,
+                                            ..(hydra::tunnel2::TunnelConfig::default())
+                                        },
+                                        tunnel_cancellation.clone(),
+                                    );
+
+                                    tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+
+                                    let socket_tx_ = socket_tx.clone();
+                                    let asset_name_ = asset_name.clone();
+                                    tokio::spawn(async move {
+                                        while let Some(tun_msg) = tunnel_rx.recv().await {
+                                            if send_json_msg(
+                                                &socket_tx_,
+                                                &LoadBalancerMessage::HydraTunnel(tun_msg),
+                                                &asset_name_,
+                                            )
+                                            .await
+                                            .is_err()
+                                            {
+                                                break;
+                                            }
+                                        }
+                                    });
+
+                                    tunnel_controller = Some(tunnel_ctl);
+
                                     LoadBalancerMessage::HydraKExResponse(resp)
                                 },
                                 Err(err) => LoadBalancerMessage::Error {
@@ -611,6 +649,8 @@ pub mod event_loop {
             ctl.terminate().await
         }
 
+        tunnel_cancellation.cancel();
+
         let disconnection_reason_ = disconnection_reason
             .clone()
             .unwrap_or("reason unknown".to_string());
@@ -682,7 +722,13 @@ pub mod event_loop {
         }
 
         // Wait for all children to finish:
-        let children = [request_task, finish_task, response_task, clean_up_task];
+        let children = [
+            request_task,
+            finish_task,
+            response_task,
+            arbitrary_msg_task,
+            clean_up_task,
+        ];
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
 
@@ -789,11 +835,13 @@ pub mod event_loop {
         event_tx: mpsc::Sender<LBEvent>,
         socket: WebSocket,
         asset_name: &AssetName,
-    ) -> (SplitSink<WebSocket, Message>, JoinHandle<()>) {
-        let (tx, mut rx) = socket.split();
-        let asset_name = asset_name.clone();
-        let task = tokio::spawn(async move {
-            while let Some(Ok(msg)) = rx.next().await {
+    ) -> (mpsc::Sender<Message>, JoinHandle<()>, JoinHandle<()>) {
+        use futures_util::{sink::SinkExt, stream::StreamExt};
+        let (msg_tx, mut msg_rx) = mpsc::channel::<Message>(64);
+        let (mut sock_tx, mut sock_rx) = socket.split();
+        let asset_name_ = asset_name.clone();
+        let response_task = tokio::spawn(async move {
+            while let Some(Ok(msg)) = sock_rx.next().await {
                 match msg {
                     Message::Text(text) => {
                         match serde_json::from_str::<RelayMessage>(&text) {
@@ -804,7 +852,7 @@ pub mod event_loop {
                             },
                             Err(err) => warn!(
                                 "load balancer: {}: received unparsable text message: {:?}: {:?}",
-                                asset_name.as_str(),
+                                asset_name_.as_str(),
                                 text,
                                 err,
                             ),
@@ -813,14 +861,14 @@ pub mod event_loop {
                     Message::Binary(bin) => {
                         warn!(
                             "load balancer: {}: received unexpected binary message: {:?}",
-                            asset_name.as_str(),
+                            asset_name_.as_str(),
                             hex::encode(bin),
                         );
                     },
                     Message::Close(frame) => {
                         warn!(
                             "load balancer: {}: relay disconnected (CloseFrame: {:?})",
-                            asset_name.as_str(),
+                            asset_name_.as_str(),
                             frame,
                         );
                         let _ignored_failure: Result<_, _> = event_tx
@@ -832,13 +880,31 @@ pub mod event_loop {
                 }
             }
         });
-        (tx, task)
+        let asset_name_ = asset_name.clone();
+        let arbitrary_msg_task = tokio::spawn(async move {
+            while let Some(msg) = msg_rx.recv().await {
+                match sock_tx.send(msg).await {
+                    Ok(()) => (),
+                    Err(err) => {
+                        error!(
+                            "load balancer: {}: error when sending a message: {:?}",
+                            asset_name_.as_str(),
+                            err
+                        );
+                        // Something wrong with the socket, let’s break the 'event_loop
+                        // (eventually, by closing `msg_rx`):
+                        break;
+                    },
+                }
+            }
+        });
+        (msg_tx, response_task, arbitrary_msg_task)
     }
 
     /// Sends a JSON message to a WebSocket. `Err(_)` is returned when you
     /// need to break the 'event_loop, because the connection is already broken.
     async fn send_json_msg<J>(
-        socket_tx: &mut SplitSink<WebSocket, Message>,
+        socket_tx: &mpsc::Sender<Message>,
         msg: &J,
         asset_name: &AssetName,
     ) -> Result<(), String>
@@ -851,7 +917,7 @@ pub mod event_loop {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         error!(
-                            "load balancer: {}: error when sending a Pong: {:?}",
+                            "load balancer: {}: error when sending a message: {:?}",
                             asset_name.as_str(),
                             err
                         );
@@ -914,7 +980,7 @@ pub mod event_loop {
         request: RequestState,
         relay_state: &RelayState,
         asset_name: &AssetName,
-        socket_tx: &mut SplitSink<WebSocket, Message>,
+        socket_tx: &mpsc::Sender<Message>,
     ) -> Result<(), String> {
         let request_id = request.underlying.id.clone();
         let (request, json) = serialize_request(request);
