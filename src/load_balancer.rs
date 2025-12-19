@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -139,7 +140,7 @@ impl JsonRequestMethod {
 enum LoadBalancerMessage {
     Request(JsonRequest),
     HydraKExResponse(hydra::KeyExchangeResponse),
-    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
+    HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -149,7 +150,7 @@ enum LoadBalancerMessage {
 enum RelayMessage {
     Response(JsonResponse),
     HydraKExRequest(hydra::KeyExchangeRequest),
-    HydraTunnel { connection_id: u64, bytes: Vec<u8> },
+    HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -158,8 +159,6 @@ mod event_loop {
     use crate::server::state::ApiPrefix;
 
     use super::*;
-    use futures::stream::{SplitSink, SplitStream};
-    use futures_util::{SinkExt, StreamExt};
     use tungstenite::protocol::Message;
 
     /// For clarity, let’s have a single connection 'event_loop per WebSocket
@@ -186,11 +185,12 @@ mod event_loop {
             mpsc::Sender<hydra::TerminateRequest>,
         )>,
     ) -> Result<(), String> {
-        let (mut socket_tx, socket_rx) = connect(config.clone()).await?.split();
+        let socket = connect(config.clone()).await?;
         *health_errors.lock().await = vec![];
 
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
-        let request_task = wire_requests(event_tx.clone(), socket_rx, config.clone()).await;
+        let (socket_tx, request_task, arbitrary_msg_task) =
+            wire_requests(event_tx.clone(), socket, config.clone()).await;
 
         let hydra_kex_fwd_task = {
             let event_tx = event_tx.clone();
@@ -229,6 +229,9 @@ mod event_loop {
         // checking for ping timeout:
         schedule_ping_tick();
 
+        let tunnel_cancellation = CancellationToken::new();
+        let mut tunnel_controller: Option<hydra::tunnel2::Tunnel> = None;
+
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
             match msg {
@@ -237,12 +240,51 @@ mod event_loop {
                     break 'event_loop;
                 },
 
-                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraTunnel { .. }) => {
-                    todo!()
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraTunnel(tun_msg)) => {
+                    if let Some(tunnel_ctl) = &tunnel_controller {
+                        match tunnel_ctl.on_msg(tun_msg).await {
+                            Ok(()) => (),
+                            Err(err) => error!(
+                                "hydra-tunnel: got an error when passing message through WebSocket: {err}; ignoring"
+                            ),
+                        }
+                    }
                 },
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::HydraKExResponse(resp)) => {
                     if let Some(hydra_kex) = &hydra_kex {
+                        if resp.kex_done {
+                            let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
+                                hydra::tunnel2::TunnelConfig {
+                                    expose_port: resp.gateway_h2h_port,
+                                    id_prefix_bit: true,
+                                    ..(hydra::tunnel2::TunnelConfig::default())
+                                },
+                                tunnel_cancellation.clone(),
+                            );
+
+                            tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+
+                            let socket_tx_ = socket_tx.clone();
+                            let config_ = config.clone();
+                            tokio::spawn(async move {
+                                while let Some(tun_msg) = tunnel_rx.recv().await {
+                                    if send_json_msg(
+                                        &socket_tx_,
+                                        &LoadBalancerMessage::HydraTunnel(tun_msg),
+                                        &config_,
+                                    )
+                                    .await
+                                    .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                            });
+
+                            tunnel_controller = Some(tunnel_ctl);
+                        }
+
                         let _ = hydra_kex.1.send(resp).await;
                     }
                 },
@@ -260,8 +302,7 @@ mod event_loop {
 
                 LBEvent::NewResponse(response) => {
                     if let Err(err) =
-                        send_json_msg(&mut socket_tx, &RelayMessage::Response(response), &config)
-                            .await
+                        send_json_msg(&socket_tx, &RelayMessage::Response(response), &config).await
                     {
                         loop_error = Err(err);
                         break 'event_loop;
@@ -270,7 +311,7 @@ mod event_loop {
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Ping(ping_id)) => {
                     if let Err(err) =
-                        send_json_msg(&mut socket_tx, &RelayMessage::Pong(ping_id), &config).await
+                        send_json_msg(&socket_tx, &RelayMessage::Pong(ping_id), &config).await
                     {
                         loop_error = Err(err);
                         break 'event_loop;
@@ -295,7 +336,7 @@ mod event_loop {
                         last_ping_id += 1;
                         last_ping_sent_at = Some(std::time::Instant::now());
                         if send_json_msg(
-                            &mut socket_tx,
+                            &socket_tx,
                             &LoadBalancerMessage::Ping(last_ping_id),
                             &config,
                         )
@@ -308,7 +349,7 @@ mod event_loop {
                 },
 
                 LBEvent::HydraKExRequest(req) => {
-                    if send_json_msg(&mut socket_tx, &RelayMessage::HydraKExRequest(req), &config)
+                    if send_json_msg(&socket_tx, &RelayMessage::HydraKExRequest(req), &config)
                         .await
                         .is_err()
                     {
@@ -322,8 +363,10 @@ mod event_loop {
             let _ = hydra_kex.2.send(hydra::TerminateRequest).await;
         }
 
+        tunnel_cancellation.cancel();
+
         // Wait for all children to finish:
-        let children = [request_task, hydra_kex_fwd_task];
+        let children = [request_task, arbitrary_msg_task, hydra_kex_fwd_task];
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
 
@@ -355,12 +398,7 @@ mod event_loop {
     /// Sends a JSON message to a WebSocket. `Err(_)` is returned when you
     /// need to break the 'event_loop, because the connection is already broken.
     async fn send_json_msg<J>(
-        socket_tx: &mut SplitSink<
-            tokio_tungstenite::WebSocketStream<
-                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-            >,
-            Message,
-        >,
+        socket_tx: &mpsc::Sender<Message>,
         msg: &J,
         config: &LoadBalancerConfig,
     ) -> Result<(), String>
@@ -373,7 +411,7 @@ mod event_loop {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         error!(
-                            "load balancer: {}: error when sending a Pong: {:?}",
+                            "load balancer: {}: error when sending a message: {:?}",
                             config.uri, err
                         );
                         // Something wrong with the socket, let’s break the 'event_loop:
@@ -395,16 +433,20 @@ mod event_loop {
 
     async fn wire_requests(
         event_tx: mpsc::Sender<LBEvent>,
-        mut socket_rx: SplitStream<
-            tokio_tungstenite::WebSocketStream<
-                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-            >,
+        socket: tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
         >,
         config: LoadBalancerConfig,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
+    ) -> (mpsc::Sender<Message>, JoinHandle<()>, JoinHandle<()>) {
+        use futures_util::{SinkExt, StreamExt};
+
+        let (msg_tx, mut msg_rx) = mpsc::channel::<Message>(64);
+        let (mut sock_tx, mut sock_rx) = socket.split();
+
+        let config_uri = config.uri.clone();
+        let request_task = tokio::spawn(async move {
             'read_loop: loop {
-                match socket_rx.next().await {
+                match sock_rx.next().await {
                     None => {
                         let _ignored_failure: Result<_, _> = event_tx
                             .send(LBEvent::SocketError("connection closed".to_string()))
@@ -454,7 +496,24 @@ mod event_loop {
                     },
                 }
             }
-        })
+        });
+        let arbitrary_msg_task = tokio::spawn(async move {
+            while let Some(msg) = msg_rx.recv().await {
+                match sock_tx.send(msg).await {
+                    Ok(()) => (),
+                    Err(err) => {
+                        error!(
+                            "load balancer: {}: error when sending a message: {:?}",
+                            config_uri, err
+                        );
+                        // Something wrong with the socket, let’s break the 'event_loop
+                        // (eventually, by closing `msg_rx`):
+                        break;
+                    },
+                }
+            }
+        });
+        (msg_tx, request_task, arbitrary_msg_task)
     }
 
     /// Passes one [`JsonRequest`] through our underlying original HTTP server.

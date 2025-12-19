@@ -6,6 +6,7 @@ use tokio::sync::{Mutex, mpsc};
 use tracing::{debug, error, info, warn};
 
 pub mod tunnel;
+pub mod tunnel2;
 pub mod verifications;
 
 /// Runs a `hydra-node` and sets up an L2 network with the Gateway for microtransactions.
