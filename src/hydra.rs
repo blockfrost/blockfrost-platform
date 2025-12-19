@@ -112,6 +112,7 @@ impl HydrasManager {
         self.config.gen_hydra_keys(&config_dir).await?;
 
         Ok(KeyExchangeResponse {
+            machine_id: verifications::hashed_machine_id(),
             gateway_cardano_vkey: self.config.gateway_cardano_vkey.clone(),
             gateway_hydra_vkey: read_json_file(&config_dir.join("hydra.vk"))?,
             hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
@@ -248,6 +249,7 @@ pub struct HydraController {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
+    pub machine_id: String,
     pub platform_cardano_vkey: serde_json::Value,
     pub platform_hydra_vkey: serde_json::Value,
     pub accepted_platform_h2h_port: Option<u16>,
@@ -255,6 +257,7 @@ pub struct KeyExchangeRequest {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeResponse {
+    pub machine_id: String,
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_hydra_vkey: serde_json::Value,
     pub hydra_scripts_tx_id: String,

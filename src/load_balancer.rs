@@ -519,6 +519,7 @@ pub mod event_loop {
                             msg: "Hydra micropayments not supported".to_string(),
                         },
                         (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                            let platform_machine_id = req.machine_id.clone();
                             match hydras
                                 .spawn_new(asset_name, &reward_addr, initial_kex, req)
                                 .await
@@ -526,35 +527,40 @@ pub mod event_loop {
                                 Ok((ctl, resp)) => {
                                     hydra_controller = Some(ctl);
 
-                                    let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
-                                        hydra::tunnel2::TunnelConfig {
-                                            expose_port: resp.gateway_h2h_port,
-                                            id_prefix_bit: true,
-                                            ..(hydra::tunnel2::TunnelConfig::default())
-                                        },
-                                        tunnel_cancellation.clone(),
-                                    );
+                                    // Only start the TCP-over-WebSocket tunnels if we’re running
+                                    // on different machines:
+                                    if platform_machine_id != resp.machine_id {
+                                        let (tunnel_ctl, mut tunnel_rx) =
+                                            hydra::tunnel2::Tunnel::new(
+                                                hydra::tunnel2::TunnelConfig {
+                                                    expose_port: resp.gateway_h2h_port,
+                                                    id_prefix_bit: true,
+                                                    ..(hydra::tunnel2::TunnelConfig::default())
+                                                },
+                                                tunnel_cancellation.clone(),
+                                            );
 
-                                    tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                                        tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
 
-                                    let socket_tx_ = socket_tx.clone();
-                                    let asset_name_ = asset_name.clone();
-                                    tokio::spawn(async move {
-                                        while let Some(tun_msg) = tunnel_rx.recv().await {
-                                            if send_json_msg(
-                                                &socket_tx_,
-                                                &LoadBalancerMessage::HydraTunnel(tun_msg),
-                                                &asset_name_,
-                                            )
-                                            .await
-                                            .is_err()
-                                            {
-                                                break;
+                                        let socket_tx_ = socket_tx.clone();
+                                        let asset_name_ = asset_name.clone();
+                                        tokio::spawn(async move {
+                                            while let Some(tun_msg) = tunnel_rx.recv().await {
+                                                if send_json_msg(
+                                                    &socket_tx_,
+                                                    &LoadBalancerMessage::HydraTunnel(tun_msg),
+                                                    &asset_name_,
+                                                )
+                                                .await
+                                                .is_err()
+                                                {
+                                                    break;
+                                                }
                                             }
-                                        }
-                                    });
+                                        });
 
-                                    tunnel_controller = Some(tunnel_ctl);
+                                        tunnel_controller = Some(tunnel_ctl);
+                                    }
 
                                     LoadBalancerMessage::HydraKExResponse(resp)
                                 },
