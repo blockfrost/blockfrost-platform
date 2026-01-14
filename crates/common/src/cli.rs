@@ -21,8 +21,24 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DataNodeType {
+    #[default]
+    Dolos,
+}
+
+impl std::fmt::Display for DataNodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataNodeType::Dolos => write!(f, "dolos"),
+        }
+    }
+}
+
 #[derive(Parser, Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DolosArgs {
+pub struct DataNodeArgs {
+    pub node_type: DataNodeType,
     pub endpoint: Option<String>,
     pub request_timeout: u64,
 }
@@ -76,11 +92,14 @@ pub struct Args {
     #[arg(long, help = "Path to an configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
 
-    #[clap(long = "dolos-endpoint")]
-    pub dolos_endpoint: Option<String>,
+    #[clap(long = "data-node")]
+    pub data_node: Option<String>,
 
-    #[clap(long = "dolos-timeout-sec", default_value = "30")]
-    pub dolos_request_timeout: Option<u64>,
+    #[clap(long = "data-node-type", default_value = "dolos")]
+    pub data_node_type: DataNodeType,
+
+    #[clap(long = "data-node-timeout-sec", default_value = "30")]
+    pub data_node_timeout: Option<u64>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -227,16 +246,23 @@ impl Args {
             })
             .prompt()?;
 
-        let dolos = {
-            let dolos_endpoint = Text::new("Dolos endpoint URL (empty to skip):").prompt()?;
+        let data_node = {
+            let data_node_url = Text::new("Data node URL (empty to skip):").prompt()?;
 
-            if dolos_endpoint.is_empty() {
-                DolosArgs {
+            if data_node_url.is_empty() {
+                DataNodeArgs {
+                    node_type: DataNodeType::default(),
                     endpoint: None,
                     request_timeout: 0,
                 }
             } else {
-                let dolors_request_timeout = Text::new("Dolos timeout (s):")
+                let data_node_type =
+                    Args::enum_prompt("Data node type?", DataNodeType::value_variants(), 0)
+                        .and_then(|it| {
+                            DataNodeType::from_str(it.as_str(), true).map_err(|e| anyhow!(e))
+                        })?;
+
+                let data_node_timeout = Text::new("Data node timeout (s):")
                     .with_default("30")
                     .with_validator(|i: &str| match i.parse::<u64>() {
                         Ok(t) if t > 0 => Ok(Validation::Valid),
@@ -247,9 +273,10 @@ impl Args {
                     .prompt()?
                     .parse()?;
 
-                DolosArgs {
-                    endpoint: Some(dolos_endpoint),
-                    request_timeout: dolors_request_timeout,
+                DataNodeArgs {
+                    node_type: data_node_type,
+                    endpoint: Some(data_node_url),
+                    request_timeout: data_node_timeout,
                 }
             }
         };
@@ -267,8 +294,9 @@ impl Args {
             reward_address: None,
             secret: None,
             custom_genesis_config: None,
-            dolos_endpoint: dolos.endpoint,
-            dolos_request_timeout: Some(dolos.request_timeout),
+            data_node: data_node.endpoint,
+            data_node_type: data_node.node_type,
+            data_node_timeout: Some(data_node.request_timeout),
         };
 
         if !is_solitary {
@@ -484,47 +512,41 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dolos_cli_both_values() {
+    async fn test_data_node_cli_both_values() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
             "/path/to/socket",
             "--solitary",
-            "--dolos-endpoint",
+            "--data-node",
             "http://localhost:3000",
-            "--dolos-timeout-sec",
+            "--data-node-timeout-sec",
             "45",
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-        assert_eq!(
-            args.dolos_endpoint.as_deref(),
-            Some("http://localhost:3000")
-        );
-        assert_eq!(args.dolos_request_timeout, Some(45));
+        assert_eq!(args.data_node.as_deref(), Some("http://localhost:3000"));
+        assert_eq!(args.data_node_timeout, Some(45));
     }
 
     #[tokio::test]
-    async fn test_dolos_cli_only_endpoint_default_timeout() {
+    async fn test_data_node_cli_only_endpoint_default_timeout() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
             "/path/to/socket",
             "--solitary",
-            "--dolos-endpoint",
+            "--data-node",
             "http://localhost:8080",
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-        assert_eq!(
-            args.dolos_endpoint.as_deref(),
-            Some("http://localhost:8080")
-        );
-        assert_eq!(args.dolos_request_timeout, Some(30));
+        assert_eq!(args.data_node.as_deref(), Some("http://localhost:8080"));
+        assert_eq!(args.data_node_timeout, Some(30));
     }
 
     #[tokio::test]
-    async fn test_dolos_cli_absent_means_none_endpoint_and_default_timeout() {
+    async fn test_data_node_cli_absent_means_none_endpoint_and_default_timeout() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
@@ -533,22 +555,84 @@ mod tests {
         ];
 
         let args = Args::try_parse_from(inputs).unwrap();
-        assert!(args.dolos_endpoint.is_none());
-        assert_eq!(args.dolos_request_timeout, Some(30));
+        assert!(args.data_node.is_none());
+        assert_eq!(args.data_node_timeout, Some(30));
     }
 
     #[tokio::test]
-    async fn test_dolos_cli_rejects_invalid_timeout() {
+    async fn test_data_node_cli_rejects_invalid_timeout() {
         let inputs = vec![
             "testing",
             "--node-socket-path",
             "/path/to/socket",
             "--solitary",
-            "--dolos-timeout-sec",
+            "--data-node-timeout-sec",
             "not-a-number",
         ];
 
         let err = Args::try_parse_from(inputs).unwrap_err();
         assert!(format!("{err}").contains("invalid value"));
+    }
+
+    #[tokio::test]
+    async fn test_data_node_cli_all_params() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+            "--data-node",
+            "http://localhost:9000",
+            "--data-node-type",
+            "dolos",
+            "--data-node-timeout-sec",
+            "60",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+
+        assert_eq!(args.data_node.as_deref(), Some("http://localhost:9000"));
+        assert_eq!(args.data_node_type, DataNodeType::Dolos);
+        assert_eq!(args.data_node_timeout, Some(60));
+    }
+
+    #[tokio::test]
+    async fn test_data_node_config_created_correctly() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+            "--data-node",
+            "http://localhost:9000",
+            "--data-node-type",
+            "dolos",
+            "--data-node-timeout-sec",
+            "60",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+        let config = Config::from_args_with_detector(args, mock_detector).await.unwrap();
+
+        let data_node = config.data_node.expect("data_node should be Some");
+
+        assert_eq!(data_node.endpoint, "http://localhost:9000");
+        assert_eq!(data_node.node_type, DataNodeType::Dolos);
+        assert_eq!(data_node.request_timeout, std::time::Duration::from_secs(60));
+    }
+
+    #[tokio::test]
+    async fn test_data_node_config_none_when_not_provided() {
+        let inputs = vec![
+            "testing",
+            "--node-socket-path",
+            "/path/to/socket",
+            "--solitary",
+        ];
+
+        let args = Args::try_parse_from(inputs).unwrap();
+        let config = Config::from_args_with_detector(args, mock_detector).await.unwrap();
+
+        assert!(config.data_node.is_none());
     }
 }

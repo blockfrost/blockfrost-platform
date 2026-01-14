@@ -1,4 +1,4 @@
-use crate::cli::Args;
+use crate::cli::{Args, DataNodeType};
 use crate::errors::AppError;
 use crate::genesis::{GenesisRegistry, genesis};
 use crate::types::Network;
@@ -26,17 +26,13 @@ pub struct Config {
     pub no_metrics: bool,
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
-    pub data_sources: DataSources,
-}
-
-#[derive(Clone, Debug)]
-pub struct DataSources {
-    pub dolos: Option<DolosConfig>,
+    pub data_node: Option<DataNodeConfig>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
-pub struct DolosConfig {
-    pub endpoint: Option<String>,
+pub struct DataNodeConfig {
+    pub node_type: DataNodeType,
+    pub endpoint: String,
     pub request_timeout: Duration,
 }
 
@@ -97,13 +93,15 @@ impl Config {
 
         let network = detector(&node_socket_path).await?;
 
-        let dolos_request_timeout =
-            Duration::from_secs(args.dolos_request_timeout.unwrap_or_default());
+        let data_node = args.data_node.map(|endpoint| {
+            let timeout = Duration::from_secs(args.data_node_timeout.unwrap_or(30));
 
-        let dolos = DolosConfig {
-            endpoint: args.dolos_endpoint,
-            request_timeout: dolos_request_timeout,
-        };
+            DataNodeConfig {
+                node_type: args.data_node_type,
+                endpoint,
+                request_timeout: timeout,
+            }
+        });
 
         Ok(Config {
             server_address: args.server_address,
@@ -116,7 +114,7 @@ impl Config {
             no_metrics: args.no_metrics,
             network,
             custom_genesis_config: args.custom_genesis_config,
-            data_sources: DataSources { dolos: Some(dolos) },
+            data_node,
         })
     }
 
