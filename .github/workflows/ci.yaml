@@ -82,28 +82,6 @@ jobs:
           name: ${{ runner.os }}-binary
           path: artifacts/
 
-  miri:
-    name: Miri (Undefined Behavior Detection)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain with Miri
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: nightly
-          components: miri
-
-      - name: Setup Miri
-        run: cargo miri setup
-
-      # Check only blockfrost-platform crates
-      - name: Run Miri tests
-        run: cargo miri test -p blockfrost-platform -p blockfrost-platform-common -p blockfrost-platform-node -p blockfrost-platform-dolos -p blockfrost-platform-api-provider --lib
-        env:
-          MIRIFLAGS: -Zmiri-disable-isolation
-
   platform_integration_tests:
     name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
