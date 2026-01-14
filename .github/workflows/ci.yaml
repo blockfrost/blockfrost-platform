@@ -71,6 +71,13 @@ jobs:
       - name: Lint with Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      - name: Check unused dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cargo install cargo-udeps --locked
+          rustup toolchain install nightly
+          cargo +nightly udeps --workspace --all-targets
+
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
         run: |
@@ -83,6 +90,28 @@ jobs:
         with:
           name: ${{ runner.os }}-binary
           path: artifacts/
+
+  miri:
+    name: Miri (Undefined Behavior Detection)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain with Miri
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: miri
+
+      - name: Setup Miri
+        run: cargo miri setup
+
+      # Check only blockfrost-platform crates
+      - name: Run Miri tests
+        run: cargo miri test -p blockfrost-platform -p bf-common -p bf-node -p bf-dolos -p bf-api-provider --lib
+        env:
+          MIRIFLAGS: -Zmiri-disable-isolation
 
   platform_integration_tests:
     name: Platform Integration Tests
