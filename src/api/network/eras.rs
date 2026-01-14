@@ -3,7 +3,7 @@ use axum::extract::State;
 use bf_api_provider::types::NetworkErasResponse;
 
 pub async fn route(State(state): State<AppState>) -> ApiResult<NetworkErasResponse> {
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
 
-    dolos.network().eras().await
+    data_node.network().eras().await
 }

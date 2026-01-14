@@ -8,12 +8,12 @@ use std::sync::Arc;
 pub struct AppState {
     pub config: Arc<Config>,
     pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
-    pub dolos: Option<Dolos>,
+    pub data_node: Option<Dolos>,
 }
 
 impl AppState {
-    pub fn get_dolos(&self) -> Result<&Dolos, BlockfrostError> {
-        self.dolos.as_ref().ok_or_else(|| {
+    pub fn get_data_node(&self) -> Result<&Dolos, BlockfrostError> {
+        self.data_node.as_ref().ok_or_else(|| {
             BlockfrostError::internal_server_error("Data node is not configured".to_string())
         })
     }

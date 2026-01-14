@@ -10,8 +10,8 @@ pub async fn route(
     Path(drep_path): Path<DrepsPath>,
     State(state): State<AppState>,
 ) -> ApiResult<DrepsSingleResponse> {
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
     let drep_data = DRepData::new(drep_path.drep_id)?;
 
-    dolos.governance().drep(&drep_data.drep_id).await
+    data_node.governance().drep(&drep_data.drep_id).await
 }

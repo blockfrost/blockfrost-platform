@@ -50,7 +50,7 @@ pub async fn build(
     let node_conn_pool = NodePool::new(&config)?;
 
     // Data node (currently only Dolos is supported)
-    let dolos = if let Some(ref data_node_config) = config.data_node {
+    let data_node = if let Some(ref data_node_config) = config.data_node {
         match data_node_config.node_type {
             DataNodeType::Dolos => Some(Dolos::new(data_node_config)?),
         }
@@ -80,7 +80,7 @@ pub async fn build(
     let app_state = AppState {
         config: config.clone(),
         genesis,
-        dolos,
+        data_node,
     };
 
     // Add layers

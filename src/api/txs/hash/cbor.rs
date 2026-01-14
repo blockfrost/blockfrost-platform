@@ -7,7 +7,7 @@ pub async fn route(
     State(state): State<AppState>,
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsCborResponse> {
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
 
-    dolos.txs().cbor(&path.hash).await
+    data_node.txs().cbor(&path.hash).await
 }
