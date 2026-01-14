@@ -14,22 +14,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint_docker:
-    name: Lint Dockerfile
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Hadolint
-        run: |
-          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
-          chmod +x hadolint
-          sudo mv hadolint /usr/local/bin/hadolint
-
-      - name: Lint Dockerfile
-        run: hadolint Dockerfile
-
   build_and_test:
     name: Build and Test
     runs-on: ${{ matrix.os }}
@@ -70,6 +54,13 @@ jobs:
 
       - name: Lint with Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Lint Dockerfile
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
+          chmod +x hadolint
+          ./hadolint Dockerfile
 
       - name: Check unused dependencies
         if: matrix.os == 'ubuntu-latest'
