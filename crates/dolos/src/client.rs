@@ -10,6 +10,7 @@ impl Dolos {
     pub fn new(config: &DataNodeConfig) -> Result<Self, AppError> {
         let url = Url::parse(&config.endpoint).map_err(|e| AppError::Dolos(e.to_string()))?;
         let client = JsonClient::new(url, config.request_timeout)?;
+
         Ok(Dolos { client })
     }
 }

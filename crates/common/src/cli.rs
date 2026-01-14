@@ -453,7 +453,10 @@ mod tests {
             push_opt("--secret", self.secret.clone());
             push_opt("--data-node", self.data_node.clone());
             push_opt("--data-node-type", self.data_node_type.clone());
-            push_opt("--data-node-timeout-sec", self.data_node_timeout_sec.clone());
+            push_opt(
+                "--data-node-timeout-sec",
+                self.data_node_timeout_sec.clone(),
+            );
 
             // optional parameters
             if self.solitary {
@@ -672,7 +675,10 @@ mod tests {
 
         assert_eq!(data_node.endpoint, "http://localhost:9000");
         assert_eq!(data_node.node_type, DataNodeType::Dolos);
-        assert_eq!(data_node.request_timeout, std::time::Duration::from_secs(60));
+        assert_eq!(
+            data_node.request_timeout,
+            std::time::Duration::from_secs(60)
+        );
     }
 
     #[tokio::test]
