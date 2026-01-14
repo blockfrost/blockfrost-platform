@@ -622,7 +622,6 @@ dependencies = [
  "clap",
  "dirs",
  "futures",
- "futures-util",
  "hex",
  "inquire",
  "pallas-addresses",
