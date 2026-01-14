@@ -100,7 +100,7 @@ jobs:
 
       # Check only blockfrost-platform crates
       - name: Run Miri tests
-        run: cargo miri test -p blockfrost-platform -p bf-common -p bf-node -p bf-dolos -p bf-api-provider --lib
+        run: cargo miri test -p blockfrost-platform -p blockfrost-platform-common -p blockfrost-platform-node -p blockfrost-platform-dolos -p blockfrost-platform-api-provider --lib
         env:
           MIRIFLAGS: -Zmiri-disable-isolation
 
