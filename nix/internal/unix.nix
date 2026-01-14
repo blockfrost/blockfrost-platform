@@ -560,7 +560,7 @@ in
             --node-socket-path "''${CARDANO_NODE_SOCKET_PATH:-/run/cardano-node/node.socket}" \
             --mode compact \
             --solitary \
-            --data-node-endpoint "''${DOLOS_ENDPOINT}" \
+            --data-node "''${DOLOS_ENDPOINT}" \
             --data-node-timeout-sec 30 \
             &
           platform_pid=$!
