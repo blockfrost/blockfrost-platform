@@ -280,7 +280,7 @@ log info "Starting the Hydra node for: alice"
 # validity interval and gets dropped from the mempool—so the Head looks like it
 # stays open.
 #
-# OTOH, the default makes us wait 10 minutes before Fanout.
+# OTOH, the default makes us wait 30 minutes before Fanout ((2+1)*600 s).
 #
 # @michalrus tested 60s to be a good compromise for testnet tests.
 

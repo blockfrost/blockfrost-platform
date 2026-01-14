@@ -20,8 +20,10 @@ bf-dolos.workspace = true
 bf-api-provider.workspace = true
 axum.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+bytes.workspace = true
 tungstenite = { version = "0.26", features = ["native-tls"] }
 tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 tracing.workspace = true
@@ -60,6 +62,13 @@ anyhow.workspace = true
 bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
+sysinfo.workspace = true
+machine-uid = "0.5"
+blake3 = "1"
+getrandom = "0.3"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 
 [dev-dependencies]
 bf-api-provider.workspace = true
@@ -97,6 +106,8 @@ bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
+bytes = "1"
+tokio-util = "0.7"
 cardano-serialization-lib = "12.1.1"
 chrono = "0.4"
 clap = { version = "4.5.26", features = ["derive"] }
@@ -119,8 +130,14 @@ reqwest = { version = "0.12.12", features = ["blocking"] }
 rstest = "0.24.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+sysinfo = "0.33.1"
 thiserror = "2.0.12"
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+tokio = { version = "1.43.0", features = [
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "process",
+] }
 toml = "0.8.23"
 tracing = "0.1.41"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
