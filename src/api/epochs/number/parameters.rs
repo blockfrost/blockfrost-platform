@@ -13,5 +13,8 @@ pub async fn route(
     let epoch_data = EpochData::from_path(epochs_path.epoch_number, &state.config.network)?;
     let data_node = state.get_data_node()?;
 
-    data_node.epochs().parameters(&epoch_data.epoch_number).await
+    data_node
+        .epochs()
+        .parameters(&epoch_data.epoch_number)
+        .await
 }
