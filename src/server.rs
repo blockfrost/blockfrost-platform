@@ -49,7 +49,7 @@ pub async fn build(
     let node_conn_pool = NodePool::new(&config)?;
 
     // Data node (Dolos)
-    let data_node = config.data_node.as_ref().map(Dolos::new);
+    let data_node = config.data_node.as_ref().map(Dolos::new).transpose()?;
 
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
