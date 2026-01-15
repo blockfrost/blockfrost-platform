@@ -1,4 +1,4 @@
-use crate::cli::{Args, DataNodeType};
+use crate::cli::Args;
 use crate::errors::AppError;
 use crate::genesis::{GenesisRegistry, genesis};
 use crate::types::Network;
@@ -31,7 +31,6 @@ pub struct Config {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct DataNodeConfig {
-    pub node_type: DataNodeType,
     pub endpoint: String,
     pub request_timeout: Duration,
 }
@@ -97,7 +96,6 @@ impl Config {
             let timeout = Duration::from_secs(args.data_node_timeout.unwrap_or(30));
 
             DataNodeConfig {
-                node_type: args.data_node_type,
                 endpoint,
                 request_timeout: timeout,
             }

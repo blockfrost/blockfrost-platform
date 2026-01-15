@@ -21,24 +21,8 @@ fn should_skip_serializng_fields<T>(_: &T) -> bool {
     SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum DataNodeType {
-    #[default]
-    Dolos,
-}
-
-impl std::fmt::Display for DataNodeType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DataNodeType::Dolos => write!(f, "dolos"),
-        }
-    }
-}
-
 #[derive(Parser, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DataNodeArgs {
-    pub node_type: DataNodeType,
     pub endpoint: Option<String>,
     pub request_timeout: u64,
 }
@@ -94,9 +78,6 @@ pub struct Args {
 
     #[clap(long = "data-node")]
     pub data_node: Option<String>,
-
-    #[clap(long = "data-node-type", default_value = "dolos")]
-    pub data_node_type: DataNodeType,
 
     #[clap(long = "data-node-timeout-sec", default_value = "30")]
     pub data_node_timeout: Option<u64>,
@@ -251,17 +232,10 @@ impl Args {
 
             if data_node_url.is_empty() {
                 DataNodeArgs {
-                    node_type: DataNodeType::default(),
                     endpoint: None,
                     request_timeout: 0,
                 }
             } else {
-                let data_node_type =
-                    Args::enum_prompt("Data node type?", DataNodeType::value_variants(), 0)
-                        .and_then(|it| {
-                            DataNodeType::from_str(it.as_str(), true).map_err(|e| anyhow!(e))
-                        })?;
-
                 let data_node_timeout = Text::new("Data node timeout (s):")
                     .with_default("30")
                     .with_validator(|i: &str| match i.parse::<u64>() {
@@ -274,7 +248,6 @@ impl Args {
                     .parse()?;
 
                 DataNodeArgs {
-                    node_type: data_node_type,
                     endpoint: Some(data_node_url),
                     request_timeout: data_node_timeout,
                 }
@@ -295,7 +268,6 @@ impl Args {
             secret: None,
             custom_genesis_config: None,
             data_node: data_node.endpoint,
-            data_node_type: data_node.node_type,
             data_node_timeout: Some(data_node.request_timeout),
         };
 
@@ -365,7 +337,6 @@ mod tests {
         secret: Option<String>,
         no_metrics: bool,
         data_node: Option<String>,
-        data_node_type: Option<String>,
         data_node_timeout_sec: Option<String>,
     }
 
@@ -424,11 +395,6 @@ mod tests {
             self
         }
 
-        fn data_node_type(mut self, node_type: &str) -> Self {
-            self.data_node_type = Some(node_type.to_string());
-            self
-        }
-
         fn data_node_timeout_sec(mut self, timeout: &str) -> Self {
             self.data_node_timeout_sec = Some(timeout.to_string());
             self
@@ -452,7 +418,6 @@ mod tests {
             push_opt("--reward-address", self.reward_address.clone());
             push_opt("--secret", self.secret.clone());
             push_opt("--data-node", self.data_node.clone());
-            push_opt("--data-node-type", self.data_node_type.clone());
             push_opt(
                 "--data-node-timeout-sec",
                 self.data_node_timeout_sec.clone(),
@@ -646,13 +611,11 @@ mod tests {
             .node_socket_path("/path/to/socket")
             .solitary()
             .data_node("http://localhost:9000")
-            .data_node_type("dolos")
             .data_node_timeout_sec("60")
             .parse()
             .unwrap();
 
         assert_eq!(args.data_node.as_deref(), Some("http://localhost:9000"));
-        assert_eq!(args.data_node_type, DataNodeType::Dolos);
         assert_eq!(args.data_node_timeout, Some(60));
     }
 
@@ -662,7 +625,6 @@ mod tests {
             .node_socket_path("/path/to/socket")
             .solitary()
             .data_node("http://localhost:9000")
-            .data_node_type("dolos")
             .data_node_timeout_sec("60")
             .parse()
             .unwrap();
@@ -674,7 +636,6 @@ mod tests {
         let data_node = config.data_node.expect("data_node should be Some");
 
         assert_eq!(data_node.endpoint, "http://localhost:9000");
-        assert_eq!(data_node.node_type, DataNodeType::Dolos);
         assert_eq!(
             data_node.request_timeout,
             std::time::Duration::from_secs(60)

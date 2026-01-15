@@ -7,7 +7,6 @@ use crate::{
 };
 use axum::{Extension, Router, middleware::from_fn};
 use bf_common::{
-    cli::DataNodeType,
     config::Config,
     errors::{AppError, BlockfrostError},
 };
@@ -49,14 +48,8 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
-    // Data node (currently only Dolos is supported)
-    let data_node = if let Some(ref data_node_config) = config.data_node {
-        match data_node_config.node_type {
-            DataNodeType::Dolos => Some(Dolos::new(data_node_config)?),
-        }
-    } else {
-        None
-    };
+    // Data node (Dolos)
+    let data_node = config.data_node.as_ref().map(Dolos::new);
 
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
