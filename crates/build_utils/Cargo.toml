@@ -6,9 +6,9 @@ edition.workspace = true
 
 [dependencies]
 toml.workspace = true
-bzip2 = "0.4.3"
-tar = "0.4.38"
-zip = "0.6.6"
+bzip2.workspace = true
+tar.workspace = true
+zip.workspace = true
 reqwest.workspace = true
 
 [lints]

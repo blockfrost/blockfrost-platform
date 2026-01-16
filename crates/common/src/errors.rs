@@ -58,6 +58,12 @@ impl From<hex::FromHexError> for BlockfrostError {
     }
 }
 
+impl From<serde_json::Error> for BlockfrostError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::internal_server_error(format!("SerdeError: {err}"))
+    }
+}
+
 impl From<AppError> for BlockfrostError {
     fn from(err: AppError) -> Self {
         match err {
@@ -86,12 +92,6 @@ impl From<io::Error> for AppError {
 impl From<reqwest::Error> for BlockfrostError {
     fn from(e: reqwest::Error) -> Self {
         BlockfrostError::internal_server_error(format!("HTTP error: {e}"))
-    }
-}
-
-impl From<serde_json::Error> for BlockfrostError {
-    fn from(e: serde_json::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("JSON error: {e}"))
     }
 }
 
@@ -197,6 +197,11 @@ impl BlockfrostError {
     /// custom method not allowed error
     pub fn method_not_allowed() -> Self {
         Self::custom_400("Invalid path. Please check https://docs.blockfrost.io/".to_string())
+    }
+
+    /// custom method for ogmios version conflict
+    pub fn conflicting_ogmios_version() -> Self {
+        Self::custom_400("Conflicting ogmios version with provided input".to_string())
     }
 
     /// malformed range parameter error

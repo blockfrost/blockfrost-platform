@@ -1,5 +1,5 @@
 use crate::cli::Args;
-use crate::errors::AppError;
+use crate::errors::{AppError, BlockfrostError};
 use crate::genesis::{GenesisRegistry, genesis};
 use crate::types::Network;
 use bf_api_provider::types::GenesisResponse;
@@ -27,6 +27,7 @@ pub struct Config {
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
     pub data_sources: DataSources,
+    pub evaluator: Evaluator,
 }
 
 #[derive(Clone, Debug)]
@@ -52,6 +53,27 @@ pub enum Mode {
     Compact,
     Light,
     Full,
+}
+
+#[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Evaluator {
+    External,
+    Native,
+}
+
+impl TryFrom<String> for Evaluator {
+    type Error = BlockfrostError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "external" => Ok(Self::External),
+            "native" => Ok(Self::Native),
+            v => Err(BlockfrostError::custom_400(format!(
+                "Invalid evaluator: {v}"
+            ))),
+        }
+    }
 }
 
 impl std::fmt::Display for Mode {
@@ -117,6 +139,7 @@ impl Config {
             network,
             custom_genesis_config: args.custom_genesis_config,
             data_sources: DataSources { dolos: Some(dolos) },
+            evaluator: args.evaluator,
         })
     }
 

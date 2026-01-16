@@ -38,6 +38,7 @@ in {
     {package = internal.acropolis-process-replayer;}
     {package = internal.midnight.midnight-node;}
     {package = internal.midnight.midnight-indexer;}
+    {package = config.language.rust.packageSet.cargo;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
@@ -129,6 +130,10 @@ in {
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
         pkgs.websocat
+        pkgs.gnum4
+        pkgs.gnumake
+        pkgs.gawk
+        pkgs.diffutils
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         pkgs.pkg-config

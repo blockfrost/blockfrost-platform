@@ -1,5 +1,5 @@
 use crate::{
-    config::{Config, Mode},
+    config::{Config, Evaluator, Mode},
     errors::AppError,
     types::LogLevel,
 };
@@ -81,6 +81,9 @@ pub struct Args {
 
     #[clap(long = "dolos-timeout-sec", default_value = "30")]
     pub dolos_request_timeout: Option<u64>,
+
+    #[arg(long, default_value = "external")]
+    pub evaluator: Evaluator,
 }
 
 fn get_config_path() -> PathBuf {
@@ -187,6 +190,9 @@ impl Args {
         )
         .and_then(|it| LogLevel::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
+        let evaluator = Args::enum_prompt("Evaluator?", Evaluator::value_variants(), 0)
+            .and_then(|it| Evaluator::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
+
         // TODO: Maybe use [`inquire::CustomType`]?
         let server_address: IpAddr = Text::new("Enter the server IP address:")
             .with_default("0.0.0.0")
@@ -269,6 +275,7 @@ impl Args {
             custom_genesis_config: None,
             dolos_endpoint: dolos.endpoint,
             dolos_request_timeout: Some(dolos.request_timeout),
+            evaluator,
         };
 
         if !is_solitary {
