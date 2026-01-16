@@ -75,28 +75,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          image="${IMAGE}"
-          sha="${{ github.sha }}"
-
-          amd="${image}:${sha}-amd64"
-          arm="${image}:${sha}-arm64"
-
+          amd="${IMAGE}:${{ github.sha }}-amd64"
+          arm="${IMAGE}:${{ github.sha }}-arm64"
           args=()
 
           # commit SHA (multi-arch)
-          args+=(-t "${image}:${sha}")
+          args+=(-t "${IMAGE}:${{ github.sha }}")
 
           # `edge` on `main` and on releases
           if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "release" ]]; then
-            args+=(-t "${image}:edge")
+            args+=(-t "${IMAGE}:edge")
           fi
 
           # release tag and `latest`
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            args+=(-t "${image}:${{ github.event.release.tag_name }}")
+            args+=(-t "${IMAGE}:${{ github.event.release.tag_name }}")
 
             if [[ "${{ github.event.release.prerelease }}" != "true" ]]; then
-              args+=(-t "${image}:latest")
+              args+=(-t "${IMAGE}:latest")
             fi
           fi
 
