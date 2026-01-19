@@ -52,6 +52,9 @@ jobs:
             GIT_REVISION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Prevent the `unknown/unknown` architecture in the GitHub UI:
+          provenance: false
+          sbom: false
 
   merge:
     name: Create multi-arch manifests
