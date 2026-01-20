@@ -1,5 +1,5 @@
 [package]
-name = "blockfrost-platform-dolos"
+name = "blockfrost-platform-data-node"
 version.workspace = true
 license.workspace = true
 edition.workspace = true

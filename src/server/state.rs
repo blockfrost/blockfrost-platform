@@ -1,18 +1,18 @@
 use axum::extract::State;
 use bf_api_provider::types::GenesisResponse;
 use bf_common::{config::Config, errors::BlockfrostError, types::Network};
-use bf_dolos::client::Dolos;
+use bf_data_node::client::DataNode;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
     pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
-    pub data_node: Option<Dolos>,
+    pub data_node: Option<DataNode>,
 }
 
 impl AppState {
-    pub fn get_data_node(&self) -> Result<&Dolos, BlockfrostError> {
+    pub fn get_data_node(&self) -> Result<&DataNode, BlockfrostError> {
         self.data_node.as_ref().ok_or_else(|| {
             BlockfrostError::internal_server_error("Data node is not configured".to_string())
         })

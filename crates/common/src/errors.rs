@@ -24,8 +24,8 @@ pub enum AppError {
     #[error("Load balancer error: {0}")]
     LoadBalancer(String),
 
-    #[error("Dolos error: {0}")]
-    Dolos(String),
+    #[error("Data Node error: {0}")]
+    DataNode(String),
 }
 
 /// Main error type.
@@ -65,7 +65,7 @@ impl From<AppError> for BlockfrostError {
             AppError::Registration(e) => Self::internal_server_error(e),
             AppError::Server(e) => Self::internal_server_error(e),
             AppError::LoadBalancer(e) => Self::internal_server_error(e),
-            AppError::Dolos(e) => Self::internal_server_error(e),
+            AppError::DataNode(e) => Self::internal_server_error(e),
         }
     }
 }

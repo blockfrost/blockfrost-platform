@@ -1,21 +1,21 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{
     AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
     AccountsResponse, AccountsRewardsResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosAccounts<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeAccounts<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn accounts(&self) -> DolosAccounts<'_> {
-        DolosAccounts { inner: self }
+impl DataNode {
+    pub fn accounts(&self) -> DataNodeAccounts<'_> {
+        DataNodeAccounts { inner: self }
     }
 }
 
-impl DolosAccounts<'_> {
+impl DataNodeAccounts<'_> {
     pub async fn stake_address(&self, stake_address: &str) -> ApiResult<AccountsResponse> {
         let path = format!("accounts/{stake_address}");
 
