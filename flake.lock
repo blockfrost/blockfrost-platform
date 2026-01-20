@@ -35,11 +35,11 @@
     "blockfrost-tests": {
       "flake": false,
       "locked": {
-        "lastModified": 1765986307,
-        "narHash": "sha256-hEN4UeS9Gd2s+gDDw9QODqW0DAtZSbwkPKv6Dg3Wq5Y=",
+        "lastModified": 1768931329,
+        "narHash": "sha256-YR+cemfm4AMEJcUEr/tm0cis3rWKQ0dPFbjwhEVrV94=",
         "owner": "blockfrost",
         "repo": "blockfrost-tests",
-        "rev": "868ea9167e7cfb2aff4389d6bd4b327697c24aa2",
+        "rev": "1bbbe90f1d2e83be850f9f227ed6bb56f0b4a961",
         "type": "github"
       },
       "original": {
@@ -114,7 +114,9 @@
     },
     "devshell": {
       "inputs": {
-        "nixpkgs": ["nixpkgs"]
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1741473158,
@@ -149,7 +151,9 @@
     },
     "fenix": {
       "inputs": {
-        "nixpkgs": ["nixpkgs"],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
@@ -446,7 +450,10 @@
     },
     "treefmt-nix": {
       "inputs": {
-        "nixpkgs": ["mithril", "nixpkgs"]
+        "nixpkgs": [
+          "mithril",
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1748243702,
@@ -464,7 +471,9 @@
     },
     "treefmt-nix_2": {
       "inputs": {
-        "nixpkgs": ["nixpkgs"]
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1750931469,
