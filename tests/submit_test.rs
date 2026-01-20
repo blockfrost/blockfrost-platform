@@ -4,8 +4,8 @@ use common::asserts;
 
 mod tests {
     use crate::asserts;
-    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
     use crate::common::tx_builder::build_tx;
+    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
     use axum::{
         body::{Body, to_bytes},
         http::Request,
