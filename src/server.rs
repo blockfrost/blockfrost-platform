@@ -52,7 +52,8 @@ pub async fn build(
     let data_node = config.data_node.as_ref().map(DataNode::new).transpose()?;
 
     // Health monitor
-    let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
+    let health_monitor =
+        health_monitor::HealthMonitor::spawn(node_conn_pool.clone(), data_node.clone()).await;
 
     // Build a prefix
     let api_prefix = ApiPrefix(config.icebreakers_config.as_ref().map(|_| Uuid::new_v4()));

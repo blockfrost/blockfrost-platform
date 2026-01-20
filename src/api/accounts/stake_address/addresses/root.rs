@@ -13,7 +13,7 @@ pub async fn route(
 ) -> ApiResult<AccountsAddressesResponse> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
     let pagination = Pagination::from_query(pagination_query)?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
 
     data_node
         .accounts()

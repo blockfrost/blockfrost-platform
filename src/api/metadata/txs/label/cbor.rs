@@ -12,7 +12,7 @@ pub async fn route(
     Path(matadata_path): Path<MetadataPath>,
 ) -> ApiResult<MetadataLabelCborResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
 
     data_node
         .metadata()

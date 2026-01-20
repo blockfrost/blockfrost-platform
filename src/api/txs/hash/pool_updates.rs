@@ -12,7 +12,7 @@ pub async fn route(
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsPoolCertsResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
 
     data_node.txs().pool_updates(&path.hash, &pagination).await
 }

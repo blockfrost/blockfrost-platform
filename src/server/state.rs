@@ -12,7 +12,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn get_data_node(&self) -> Result<&DataNode, BlockfrostError> {
+    pub fn data_node(&self) -> Result<&DataNode, BlockfrostError> {
         self.data_node.as_ref().ok_or_else(|| {
             BlockfrostError::internal_server_error("Data node is not configured".to_string())
         })
