@@ -1,18 +1,18 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{BlocksResponse, BlocksSingleResponse};
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosBlocks<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeBlocks<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn blocks(&self) -> DolosBlocks<'_> {
-        DolosBlocks { inner: self }
+impl DataNode {
+    pub fn blocks(&self) -> DataNodeBlocks<'_> {
+        DataNodeBlocks { inner: self }
     }
 }
 
-impl DolosBlocks<'_> {
+impl DataNodeBlocks<'_> {
     pub async fn latest(&self) -> ApiResult<BlocksSingleResponse> {
         self.inner.client.get("blocks/latest", None).await
     }

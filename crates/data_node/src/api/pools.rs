@@ -1,18 +1,18 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{PoolsDelegatorsResponse, PoolsListExtendedResponse};
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosPools<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodePools<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn pools(&self) -> DolosPools<'_> {
-        DolosPools { inner: self }
+impl DataNode {
+    pub fn pools(&self) -> DataNodePools<'_> {
+        DataNodePools { inner: self }
     }
 }
 
-impl DolosPools<'_> {
+impl DataNodePools<'_> {
     pub async fn extended(&self, pagination: &Pagination) -> ApiResult<PoolsListExtendedResponse> {
         self.inner
             .client

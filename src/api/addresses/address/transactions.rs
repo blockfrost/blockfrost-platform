@@ -15,9 +15,9 @@ pub async fn route(
     let AddressesPath { address, asset: _ } = address_path;
     let pagination = Pagination::from_query(pagination_query)?;
     let address_info = AddressInfo::from_address(&address, state.config.network.clone())?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
 
-    dolos
+    data_node
         .addresses()
         .transactions(&address_info.address, &pagination)
         .await

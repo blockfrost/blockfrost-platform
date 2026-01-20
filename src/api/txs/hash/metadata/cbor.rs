@@ -12,7 +12,7 @@ pub async fn route(
     Path(path): Path<TxsPath>,
 ) -> ApiResult<TxsMetadataCborResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
 
-    dolos.txs().metadata_cbor(&path.hash, &pagination).await
+    data_node.txs().metadata_cbor(&path.hash, &pagination).await
 }

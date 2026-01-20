@@ -1,18 +1,18 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{NetworkErasResponse, NetworkResponse};
 use bf_common::types::ApiResult;
 
-pub struct DolosNetwork<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeNetwork<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn network(&self) -> DolosNetwork<'_> {
-        DolosNetwork { inner: self }
+impl DataNode {
+    pub fn network(&self) -> DataNodeNetwork<'_> {
+        DataNodeNetwork { inner: self }
     }
 }
 
-impl DolosNetwork<'_> {
+impl DataNodeNetwork<'_> {
     pub async fn get(&self) -> ApiResult<NetworkResponse> {
         self.inner.client.get("network", None).await
     }

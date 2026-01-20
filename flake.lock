@@ -114,9 +114,7 @@
     },
     "devshell": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": ["nixpkgs"]
       },
       "locked": {
         "lastModified": 1741473158,
@@ -151,9 +149,7 @@
     },
     "fenix": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ],
+        "nixpkgs": ["nixpkgs"],
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
@@ -450,10 +446,7 @@
     },
     "treefmt-nix": {
       "inputs": {
-        "nixpkgs": [
-          "mithril",
-          "nixpkgs"
-        ]
+        "nixpkgs": ["mithril", "nixpkgs"]
       },
       "locked": {
         "lastModified": 1748243702,
@@ -471,9 +464,7 @@
     },
     "treefmt-nix_2": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": ["nixpkgs"]
       },
       "locked": {
         "lastModified": 1750931469,

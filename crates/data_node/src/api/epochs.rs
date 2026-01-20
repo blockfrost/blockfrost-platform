@@ -1,18 +1,18 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::EpochsParamResponse;
 use bf_common::types::ApiResult;
 
-pub struct DolosEpochs<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeEpochs<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn epochs(&self) -> DolosEpochs<'_> {
-        DolosEpochs { inner: self }
+impl DataNode {
+    pub fn epochs(&self) -> DataNodeEpochs<'_> {
+        DataNodeEpochs { inner: self }
     }
 }
 
-impl DolosEpochs<'_> {
+impl DataNodeEpochs<'_> {
     pub async fn parameters(&self, number: &i32) -> ApiResult<EpochsParamResponse> {
         let path = format!("epochs/{number}/parameters");
 

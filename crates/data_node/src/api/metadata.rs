@@ -1,20 +1,20 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{
     MetadataLabelCborResponse, MetadataLabelJsonResponse, MetadataLabelsResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosMetadata<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeMetadata<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn metadata(&self) -> DolosMetadata<'_> {
-        DolosMetadata { inner: self }
+impl DataNode {
+    pub fn metadata(&self) -> DataNodeMetadata<'_> {
+        DataNodeMetadata { inner: self }
     }
 }
 
-impl DolosMetadata<'_> {
+impl DataNodeMetadata<'_> {
     pub async fn labels(&self, pagination: &Pagination) -> ApiResult<MetadataLabelsResponse> {
         self.inner
             .client

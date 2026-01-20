@@ -10,7 +10,7 @@ use bf_common::{
     config::Config,
     errors::{AppError, BlockfrostError},
 };
-use bf_dolos::client::Dolos;
+use bf_data_node::client::DataNode;
 use bf_node::pool::NodePool;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
@@ -48,8 +48,8 @@ pub async fn build(
     // Create node pool
     let node_conn_pool = NodePool::new(&config)?;
 
-    // Dolos
-    let dolos = Dolos::new(config.data_sources.dolos.as_ref())?;
+    // Data node
+    let data_node = config.data_node.as_ref().map(DataNode::new).transpose()?;
 
     // Health monitor
     let health_monitor = health_monitor::HealthMonitor::spawn(node_conn_pool.clone()).await;
@@ -73,7 +73,7 @@ pub async fn build(
     let app_state = AppState {
         config: config.clone(),
         genesis,
-        dolos,
+        data_node,
     };
 
     // Add layers

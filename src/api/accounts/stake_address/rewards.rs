@@ -13,9 +13,9 @@ pub async fn route(
 ) -> ApiResult<AccountsRewardsResponse> {
     let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.get_data_node()?;
 
-    dolos
+    data_node
         .accounts()
         .rewards(&account.stake_address, &pagination)
         .await

@@ -16,8 +16,9 @@ edition = "2021"
 [dependencies]
 bf-common.workspace = true
 bf-node.workspace = true
-bf-dolos.workspace = true
+bf-data-node.workspace = true
 bf-api-provider.workspace = true
+
 axum.workspace = true
 tokio.workspace = true
 futures.workspace = true
@@ -83,7 +84,7 @@ members = [
   "crates/common",
   "crates/api_provider",
   "crates/node",
-  "crates/dolos",
+  "crates/data_node",
 ]
 
 [workspace.dependencies]
@@ -94,7 +95,7 @@ bech32 = "0.9.1"
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
-bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
+bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "12.1.1"

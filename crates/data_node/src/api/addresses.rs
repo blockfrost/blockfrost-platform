@@ -1,20 +1,20 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{
     AddressesTransactionsResponse, AddressesUtxosAssetResponse, AddressesUtxosResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosAddresses<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeAddresses<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn addresses(&self) -> DolosAddresses<'_> {
-        DolosAddresses { inner: self }
+impl DataNode {
+    pub fn addresses(&self) -> DataNodeAddresses<'_> {
+        DataNodeAddresses { inner: self }
     }
 }
 
-impl DolosAddresses<'_> {
+impl DataNodeAddresses<'_> {
     pub async fn utxos(
         &self,
         address: &str,

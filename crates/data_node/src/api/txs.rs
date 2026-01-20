@@ -1,4 +1,4 @@
-use crate::client::Dolos;
+use crate::client::DataNode;
 use bf_api_provider::types::{
     TxsCborResponse, TxsDelegationsResponse, TxsMetadataCborResponse, TxsMetadataResponse,
     TxsMirsResponse, TxsPoolCertsResponse, TxsPoolRetiresResponse, TxsRedeemersResponse,
@@ -6,17 +6,17 @@ use bf_api_provider::types::{
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
-pub struct DolosTxs<'a> {
-    pub(crate) inner: &'a Dolos,
+pub struct DataNodeTxs<'a> {
+    pub(crate) inner: &'a DataNode,
 }
 
-impl Dolos {
-    pub fn txs(&self) -> DolosTxs<'_> {
-        DolosTxs { inner: self }
+impl DataNode {
+    pub fn txs(&self) -> DataNodeTxs<'_> {
+        DataNodeTxs { inner: self }
     }
 }
 
-impl DolosTxs<'_> {
+impl DataNodeTxs<'_> {
     pub async fn by_hash(&self, hash: &str) -> ApiResult<TxsSingleResponse> {
         let path = format!("txs/{hash}");
 

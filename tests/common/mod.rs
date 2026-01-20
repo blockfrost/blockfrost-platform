@@ -3,7 +3,7 @@ pub mod tx_builder;
 
 use axum::Router;
 use bf_common::{
-    config::{Config, DataSources, IcebreakersConfig, Mode},
+    config::{Config, IcebreakersConfig, Mode},
     types::{LogLevel, Network},
 };
 use bf_node::pool::NodePool;
@@ -49,7 +49,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
-        data_sources: DataSources { dolos: None },
+        data_node: None,
     };
 
     Arc::new(config)
