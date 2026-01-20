@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod asserts;
 pub mod mock_data_node;
 pub mod tx_builder;
