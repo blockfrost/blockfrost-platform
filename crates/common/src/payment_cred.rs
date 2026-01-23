@@ -235,4 +235,39 @@ mod tests {
             description
         );
     }
+
+    #[test]
+    fn test_to_bech32_with_addr_vk_prefix_returns_error() {
+        let address = "1c73279376bf71085068cd4167523f48695f3865564a497dc9292638".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::AddrVk);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_bech32_with_invalid_prefix_returns_error() {
+        let address = "1c73279376bf71085068cd4167523f48695f3865564a497dc9292638".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::Invalid);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_bech32_with_invalid_hex_returns_error() {
+        let address = "not_valid_hex".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::AddrVkh);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("cannot decode hex"));
+    }
+
+    #[test]
+    fn test_from_bech32_with_invalid_public_key_length() {
+        let result = PaymentCred::from_bech_32(
+            "addr_vk1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdtn6a9",
+        );
+
+        assert_eq!(result.prefix, PaymentCredPrefix::Invalid);
+        assert!(result.payload.is_none());
+    }
 }

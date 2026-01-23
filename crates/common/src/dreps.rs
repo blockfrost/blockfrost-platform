@@ -131,4 +131,53 @@ mod tests {
         let drep = drep.to_cip129().expect("Conversion failed");
         assert_eq!(drep.drep_id, fixture.expected_id);
     }
+
+    #[test]
+    fn test_to_cip129_invalid_prefix() {
+        let drep = DRepData {
+            drep_id: "pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy".to_string(),
+        };
+
+        let result = drep.to_cip129();
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid drep id prefix")
+        );
+    }
+
+    #[test]
+    fn test_to_cip129_invalid_length() {
+        // drep prefix but wrong data length (10 bytes, not 28 or 29)
+        let hrp = Hrp::parse("drep").unwrap();
+        let short_data = vec![0u8; 10];
+        let invalid_drep = bech32::encode::<Bech32>(hrp, &short_data).unwrap();
+
+        let drep = DRepData {
+            drep_id: invalid_drep,
+        };
+
+        let result = drep.to_cip129();
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid DRep ID length")
+        );
+    }
+
+    #[test]
+    fn test_to_cip129_invalid_bech32() {
+        let drep = DRepData {
+            drep_id: "halelujah_weed_is_legal".to_string(),
+        };
+
+        let result = drep.to_cip129();
+        assert!(result.is_err());
+    }
 }
