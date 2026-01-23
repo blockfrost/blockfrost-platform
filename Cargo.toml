@@ -91,7 +91,7 @@ members = [
 anyhow = "1.0.100"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
-bech32 = "0.9.1"
+bech32 = "0.11.1"
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
@@ -122,7 +122,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
-toml = "0.9.8"
+toml = "0.9.11"
 tracing = "0.1.44"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"

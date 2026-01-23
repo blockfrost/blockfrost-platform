@@ -1,5 +1,5 @@
 use crate::errors::BlockfrostError;
-use bech32::{FromBase32, ToBase32, Variant, decode, encode};
+use bech32::{Bech32, Hrp};
 use serde::Deserialize;
 
 const SPECIAL_DREP_IDS: &[&str] = &["drep_always_abstain", "drep_always_no_confidence"];
@@ -26,9 +26,9 @@ impl DRepData {
             });
         }
 
-        let (prefix, words, _) = decode(&self.drep_id)?;
+        let (hrp, raw_bytes) = bech32::decode(&self.drep_id)?;
 
-        let is_script = match prefix.as_str() {
+        let is_script = match hrp.as_str() {
             "drep" => false,
             "drep_script" => true,
             _ => {
@@ -37,8 +37,6 @@ impl DRepData {
                 ));
             },
         };
-
-        let raw_bytes = Vec::<u8>::from_base32(&words)?;
 
         match raw_bytes.len() {
             28 => {
@@ -50,7 +48,8 @@ impl DRepData {
                 let mut bytes_with_header = vec![header];
                 bytes_with_header.extend_from_slice(&raw_bytes);
 
-                let cip129_id = encode("drep", bytes_with_header.to_base32(), Variant::Bech32)?;
+                let hrp = Hrp::parse("drep")?;
+                let cip129_id = bech32::encode::<Bech32>(hrp, &bytes_with_header)?;
 
                 Ok(DRepData { drep_id: cip129_id })
             },

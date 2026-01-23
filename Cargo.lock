@@ -424,6 +424,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
+name = "bech32"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
+
+[[package]]
 name = "binary-layout"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -560,7 +566,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.22.1",
- "bech32 0.9.1",
+ "bech32 0.11.1",
  "bip39",
  "blockfrost",
  "blockfrost-platform-api-provider",
@@ -637,7 +643,7 @@ version = "0.0.3-rc.3"
 dependencies = [
  "anyhow",
  "axum",
- "bech32 0.9.1",
+ "bech32 0.11.1",
  "blockfrost-platform-api-provider",
  "blockfrost-platform-build-utils",
  "cardano-serialization-lib",
