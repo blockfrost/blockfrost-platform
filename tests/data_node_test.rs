@@ -69,10 +69,12 @@ mod tests {
 
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(!root_response.healthy);
-        assert!(root_response
-            .errors
-            .iter()
-            .any(|e| e.contains("Data node reports unhealthy status")));
+        assert!(
+            root_response
+                .errors
+                .iter()
+                .any(|e| e.contains("Data node reports unhealthy status"))
+        );
     }
 
     #[tokio::test]
@@ -89,9 +91,11 @@ mod tests {
 
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(!root_response.healthy);
-        assert!(root_response
-            .errors
-            .iter()
-            .any(|e| e.contains("Data node unreachable")));
+        assert!(
+            root_response
+                .errors
+                .iter()
+                .any(|e| e.contains("Data node unreachable"))
+        );
     }
 }
