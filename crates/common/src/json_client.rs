@@ -49,7 +49,6 @@ impl JsonClient {
         let status = resp.status();
         let body_text = resp.text().await?;
 
-        // bump
         let body: T = serde_json::from_str(&body_text).map_err(|e| {
             error!(
                 path,
