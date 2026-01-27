@@ -49,17 +49,34 @@ impl JsonClient {
         let status = resp.status();
         let body_text = resp.text().await?;
 
-        let body: T = serde_json::from_str(&body_text).map_err(|e| {
-            error!(
-                path,
-                url = %url_str,
-                status = %status,
-                response_body = %body_text,
-                error = %e,
-                "JsonClient failed to parse response"
-            );
-            e
-        })?;
+        // Parse response, log body on error for debugging
+        let body: T = match serde_json::from_str(&body_text) {
+            Ok(body) => body,
+            Err(e) => {
+                if body_text.is_empty() {
+                    error!(
+                        path,
+                        url = %url_str,
+                        status = %status,
+                        "JsonClient received empty response body"
+                    );
+
+                    return Err(BlockfrostError::internal_server_error(
+                        "Empty response from data node".to_string(),
+                    ));
+                }
+
+                error!(
+                    path,
+                    url = %url_str,
+                    status = %status,
+                    response_body = %body_text,
+                    error = %e,
+                    "JsonClient failed to parse response"
+                );
+                return Err(e.into());
+            },
+        };
 
         Ok(Json(body))
     }
