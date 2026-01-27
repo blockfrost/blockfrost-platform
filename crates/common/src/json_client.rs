@@ -9,7 +9,7 @@ use crate::types::ApiResult;
 use axum::Json;
 use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct JsonClient {
@@ -46,7 +46,20 @@ impl JsonClient {
             return Err(BlockfrostError::not_found());
         }
 
-        let body = resp.json::<T>().await?;
+        let status = resp.status();
+        let body_text = resp.text().await?;
+
+        let body: T = serde_json::from_str(&body_text).map_err(|e| {
+            error!(
+                path,
+                url = %url_str,
+                status = %status,
+                response_body = %body_text,
+                error = %e,
+                "JsonClient failed to parse response"
+            );
+            e
+        })?;
 
         Ok(Json(body))
     }
