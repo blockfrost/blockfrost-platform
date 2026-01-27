@@ -116,7 +116,7 @@ pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "bloc
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pretty_assertions = "1.4.1"
-reqwest = { version = "0.12.12", features = ["blocking"] }
+reqwest = { version = "0.13.1", features = ["blocking", "json"] }
 rstest = "0.26.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
