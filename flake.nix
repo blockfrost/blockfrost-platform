@@ -119,7 +119,7 @@
             "**/.gitignore"
             "**/.gitkeep"
             "**/.prettierrc"
-            "**/.yarnrc"
+            "**/pnpm-lock.yaml"
             "*.diff"
             "*.nsi"
             "*.png"
