@@ -45,6 +45,8 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
+          # Always load into the local Docker daemon for smoke test below
+          load: true
           push: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}
@@ -55,6 +57,12 @@ jobs:
           # Prevent the `unknown/unknown` architecture in the GitHub UI:
           provenance: false
           sbom: false
+
+      - name: 💨 Smoke test run with --version
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm "${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}" --version
 
   merge:
     name: Create multi-arch manifests
