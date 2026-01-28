@@ -119,6 +119,7 @@
             "**/.gitignore"
             "**/.gitkeep"
             "**/.prettierrc"
+            "**/tsconfig.json"
             "**/pnpm-lock.yaml"
             "*.diff"
             "*.nsi"
