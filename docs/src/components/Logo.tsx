@@ -8,9 +8,9 @@ export default function Logo() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // This pattern is needed for hydration mismatch prevention with next-themes
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
 
   if (!mounted) return null;
 
