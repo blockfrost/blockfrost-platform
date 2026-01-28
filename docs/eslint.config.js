@@ -5,7 +5,7 @@ const eslintConfig = [
   ...nextConfig,
   prettier,
   {
-    ignores: [".next/**", ".yarn/**", "node_modules/**", "out/**", "public/**"],
+    ignores: [".next/**", "node_modules/**", "out/**", "public/**"],
   },
   {
     files: ["**/_meta.js"],
