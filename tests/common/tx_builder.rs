@@ -4,13 +4,12 @@ use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
 use cardano_serialization_lib::{
     Address, BaseAddress, BigNum, Bip32PrivateKey, CoinSelectionStrategyCIP2, Credential,
-    LinearFee, NetworkId, PrivateKey, Transaction, TransactionBody, TransactionBuilder,
+    FixedTransaction, LinearFee, NetworkId, PrivateKey, TransactionBody, TransactionBuilder,
     TransactionBuilderConfigBuilder, TransactionHash, TransactionInput, TransactionOutput,
-    TransactionUnspentOutput, TransactionUnspentOutputs, TransactionWitnessSet, Vkeywitnesses,
-    hash_transaction, make_vkey_witness,
+    TransactionUnspentOutput, TransactionUnspentOutputs,
 };
 
-pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<Transaction> {
+pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<FixedTransaction> {
     let output_amount = BigNum::from_str("1000000");
     let mnemonic = "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early";
 
@@ -127,7 +126,9 @@ pub fn compose_transaction(
     tx_builder.add_change_if_needed(&change_addr)?;
 
     let tx_body = tx_builder.build()?;
-    let tx_hash = hex::encode(hash_transaction(&tx_body).to_bytes());
+    let fixed_tx = FixedTransaction::new_from_body_bytes(&tx_body.to_bytes())?;
+    let tx_hash = hex::encode(fixed_tx.transaction_hash().to_bytes());
+
     Ok((tx_hash, tx_body))
 }
 
@@ -170,14 +171,11 @@ pub fn mnemonic_to_private_key(mnemonic_str: &str) -> Result<Bip32PrivateKey> {
     Ok(Bip32PrivateKey::from_bip39_entropy(&entropy, &[]))
 }
 
-pub fn sign_transaction(tx_body: &TransactionBody, sign_key: &PrivateKey) -> Transaction {
-    let tx_hash = hash_transaction(tx_body);
-
-    let mut witnesses = TransactionWitnessSet::new();
-    let mut vkey_witnesses = Vkeywitnesses::new();
-
-    vkey_witnesses.add(&make_vkey_witness(&tx_hash, sign_key));
-    witnesses.set_vkeys(&vkey_witnesses);
-
-    Transaction::new(tx_body, &witnesses, None)
+pub fn sign_transaction(tx_body: &TransactionBody, sign_key: &PrivateKey) -> FixedTransaction {
+    let mut fixed_tx =
+        FixedTransaction::new_from_body_bytes(&tx_body.to_bytes()).expect("Invalid tx body");
+    fixed_tx
+        .sign_and_add_vkey_signature(sign_key)
+        .expect("Failed to sign transaction");
+    fixed_tx
 }

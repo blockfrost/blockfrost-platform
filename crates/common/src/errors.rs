@@ -46,9 +46,21 @@ impl From<std::num::TryFromIntError> for BlockfrostError {
     }
 }
 
-impl From<bech32::Error> for BlockfrostError {
-    fn from(err: bech32::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("Bech32 error: {err}"))
+impl From<bech32::DecodeError> for BlockfrostError {
+    fn from(err: bech32::DecodeError) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 decode error: {err}"))
+    }
+}
+
+impl From<bech32::EncodeError> for BlockfrostError {
+    fn from(err: bech32::EncodeError) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 encode error: {err}"))
+    }
+}
+
+impl From<bech32::primitives::hrp::Error> for BlockfrostError {
+    fn from(err: bech32::primitives::hrp::Error) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 HRP error: {err}"))
     }
 }
 

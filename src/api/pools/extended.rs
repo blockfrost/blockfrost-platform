@@ -7,7 +7,7 @@ pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<PoolsListExtendedResponse> {
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
     let pagination = Pagination::from_query(pagination_query)?;
 
     data_node.pools().extended(&pagination).await
