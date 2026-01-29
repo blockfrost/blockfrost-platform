@@ -148,7 +148,7 @@ jobs:
       - name: Run Hydra Tests
         timeout-minutes: 15
         env:
-          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node.socket
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
         run: |
