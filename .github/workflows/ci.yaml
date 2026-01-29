@@ -107,7 +107,7 @@ jobs:
         include:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
-            cardano_node_socket_path: /run/cardano-node/node.socket
+            cardano_node_socket_path: /run/cardano-node/node_preview.socket
             project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
             timeout_minutes: 5
