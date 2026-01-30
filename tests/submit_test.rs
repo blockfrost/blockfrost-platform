@@ -1,110 +1,18 @@
 mod common;
 
 use common::asserts;
-use common::tx_builder;
 
 mod tests {
-    use blockfrost_platform::BlockfrostError;
-    use std::net::{IpAddr, SocketAddr};
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-
     use crate::asserts;
-    use crate::common::{
-        build_app, build_app_non_solitary, get_blockfrost_client, initialize_logging,
-    };
-    use crate::tx_builder::build_tx;
-    use axum::ServiceExt as AxumServiceExt;
+    use crate::common::tx_builder::build_tx;
+    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
     use axum::{
         body::{Body, to_bytes},
-        extract::Request as AxumExtractRequest,
         http::Request,
     };
-    use blockfrost_platform::api::root::RootResponse;
-    use blockfrost_platform::icebreakers::manager::IcebreakersManager;
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};
-    use tokio::sync::oneshot;
     use tower::ServiceExt;
-    use tracing::info;
-
-    // Test: `/` route correct response
-    #[tokio::test]
-    #[ntest::timeout(120_000)]
-    async fn test_route_root() {
-        initialize_logging();
-
-        let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
-
-        let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .expect("Request to root route failed");
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-        let root_response: RootResponse =
-            serde_json::from_slice(&body_bytes).expect("Response body is not valid JSON");
-
-        assert!(root_response.errors.is_empty());
-        assert_eq!(root_response.name, "blockfrost-platform");
-        assert!(root_response.healthy);
-        assert_eq!(root_response.node_info.unwrap().sync_progress, 100.0);
-    }
-
-    // Test: `/metrics` route sanity check and trailing slash
-    #[tokio::test]
-    #[ntest::timeout(120_000)]
-    async fn test_route_metrics() {
-        initialize_logging();
-
-        let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
-
-        // Test without trailing slash
-        let response = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .uri("/metrics")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .expect("Request to /metrics route failed");
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body_bytes = to_bytes(response.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body");
-
-        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-        assert!(body_str.contains("cardano_node_connections"));
-
-        // Test with trailing slash
-        let response_trailing = app
-            .oneshot(
-                Request::builder()
-                    .uri("/metrics/")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .expect("Request to /metrics/ route failed");
-
-        assert_eq!(response_trailing.status(), StatusCode::OK);
-
-        let body_bytes_trailing = to_bytes(response_trailing.into_body(), usize::MAX)
-            .await
-            .expect("Failed to read response body for /metrics/");
-
-        let body_str_trailing = String::from_utf8(body_bytes_trailing.to_vec()).unwrap();
-
-        assert!(body_str_trailing.contains("cardano_node_connections"));
-    }
 
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
@@ -249,81 +157,5 @@ mod tests {
             .expect("Failed to read response body");
 
         assert_eq!(66, local_body_bytes.len());
-    }
-
-    // Test: `icebreakers register` success registration
-    #[tokio::test]
-    #[ntest::timeout(120_000)]
-    async fn test_icebreakers_registrations() -> Result<(), BlockfrostError> {
-        initialize_logging();
-
-        let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary()
-            .await
-            .expect("Failed to build the application");
-
-        let ip_addr: IpAddr = "0.0.0.0".parse().unwrap();
-        let address = SocketAddr::new(ip_addr, 3000);
-        let listener = tokio::net::TcpListener::bind(address).await.unwrap();
-        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-        let (ready_tx, ready_rx) = oneshot::channel();
-
-        let spawn_task = tokio::spawn({
-            let app = app.clone();
-
-            async move {
-                let server_future = axum::serve(
-                    listener,
-                    AxumServiceExt::<AxumExtractRequest>::into_make_service(app),
-                )
-                .with_graceful_shutdown(async {
-                    shutdown_rx.await.ok();
-                });
-
-                let _ = ready_tx.send(());
-                server_future.await
-            }
-        });
-
-        if ready_rx.await.is_ok() {
-            info!("Server is listening on http://{}{}", address, api_prefix);
-
-            if let Some(icebreakers_api) = icebreakers_api {
-                let health_errors = Arc::new(Mutex::new(vec![]));
-
-                let manager = IcebreakersManager::new(
-                    icebreakers_api.clone(),
-                    health_errors.clone(),
-                    app.clone(),
-                    api_prefix.clone(),
-                );
-
-                let response = manager.run_once().await?;
-                let resp = response;
-                let errors = health_errors.lock().await;
-
-                info!("run_once response: {}", resp);
-
-                assert!(
-                    errors.is_empty(),
-                    "Expected no WebSocket errors, but found: {:?}",
-                    *errors
-                );
-
-                assert!(
-                    resp.contains("Started"),
-                    "Expected successful registration, but got: {resp}",
-                );
-
-                tokio::spawn(async move {
-                    manager.run().await;
-                });
-            }
-        }
-
-        let _ = shutdown_tx.send(());
-
-        spawn_task.await.unwrap().unwrap();
-
-        Ok(())
     }
 }

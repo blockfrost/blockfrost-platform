@@ -1,5 +1,4 @@
 use crate::{errors::BlockfrostError, payment_cred::PaymentCred, types::Network};
-use bech32::decode;
 use core::fmt;
 use pallas_addresses::ByronAddress;
 use serde::Deserialize;
@@ -52,15 +51,11 @@ impl AddressInfo {
             return AddressType::Byron;
         }
 
-        decode(address).map_or(AddressType::Invalid, |info| {
-            let (prefix, _, _) = info;
-
-            match prefix.as_str() {
-                "addr" if network == Network::Mainnet => AddressType::Shelley,
-                "addr_test" if network != Network::Mainnet => AddressType::Shelley,
-                "addr_vkh" | "script" => AddressType::Shelley,
-                _ => AddressType::Invalid,
-            }
+        bech32::decode(address).map_or(AddressType::Invalid, |(hrp, _)| match hrp.as_str() {
+            "addr" if network == Network::Mainnet => AddressType::Shelley,
+            "addr_test" if network != Network::Mainnet => AddressType::Shelley,
+            "addr_vkh" | "script" => AddressType::Shelley,
+            _ => AddressType::Invalid,
         })
     }
 }
@@ -76,13 +71,12 @@ impl fmt::Display for AddressType {
 }
 
 pub fn is_stake_address_valid(input: &str, network: &Network) -> Result<bool, BlockfrostError> {
-    let bech32_info = decode(input).map_err(|_| BlockfrostError::invalid_stake_address())?;
-    let prefix_str = match bech32_info.0.as_ref() {
+    let (hrp, _) = bech32::decode(input).map_err(|_| BlockfrostError::invalid_stake_address())?;
+    let prefix_str = match hrp.as_str() {
         "stake" => Ok("stake"),
         "stake_test" => Ok("stake_test"),
-        _ => Err(bech32::Error::InvalidLength),
-    }
-    .map_err(|_| BlockfrostError::invalid_stake_address())?;
+        _ => Err(BlockfrostError::invalid_stake_address()),
+    }?;
 
     match network {
         Network::Mainnet if prefix_str == "stake" => Ok(true),

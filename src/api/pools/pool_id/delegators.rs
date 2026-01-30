@@ -13,7 +13,7 @@ pub async fn route(
 ) -> ApiResult<PoolsDelegatorsResponse> {
     let pool_data = PoolData::from_path(&pools_path.pool_id)?;
     let pagination = Pagination::from_query(pagination_query)?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
 
     data_node
         .pools()

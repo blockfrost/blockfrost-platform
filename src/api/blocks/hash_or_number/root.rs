@@ -8,7 +8,7 @@ pub async fn route(
     Path(blocks_path): Path<BlocksPath>,
 ) -> ApiResult<BlocksSingleResponse> {
     let block_data = BlockData::from_string(blocks_path.hash_or_number)?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
 
     data_node.blocks().by(&block_data.hash_or_number).await
 }

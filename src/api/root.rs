@@ -1,5 +1,6 @@
 use crate::health_monitor::HealthMonitor;
 use axum::{Extension, Json, http::StatusCode, response::IntoResponse};
+use bf_data_node::api::root::DataNodeRootResponse;
 use bf_node::sync_progress::NodeInfo;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,8 @@ pub struct RootResponse {
     pub revision: String,
     pub healthy: bool,
     pub node_info: Option<NodeInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_node: Option<DataNodeRootResponse>,
     pub errors: Vec<String>,
 }
 
@@ -27,6 +30,7 @@ pub async fn route(Extension(health_monitor): Extension<HealthMonitor>) -> impl 
         version: env!("CARGO_PKG_VERSION").to_string(),
         revision: env!("GIT_REVISION").to_string(),
         node_info: status.node_info,
+        data_node: status.data_node_info,
         healthy: status.healthy,
         errors: status.errors.into_iter().map(|e| e.to_string()).collect(),
     };
