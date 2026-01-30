@@ -36,7 +36,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
     dotenvy::dotenv().ok();
 
     let node_socket_path_env = env::var("CARDANO_NODE_SOCKET_PATH")
-        .unwrap_or_else(|_| "/run/cardano-node/node.socket".into());
+        .expect("Please, set the CARDANO_NODE_SOCKET_PATH environment variable.");
 
     let config = Config {
         server_address: "0.0.0.0".parse().unwrap(),
