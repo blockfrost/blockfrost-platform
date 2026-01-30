@@ -542,7 +542,7 @@ in
             fi
           }
           missing=0
-          for v in PROJECT_ID SUBMIT_MNEMONIC ; do
+          for v in PROJECT_ID SUBMIT_MNEMONIC CARDANO_NODE_SOCKET_PATH ; do
             require_env "$v"
           done
           if (( missing )); then
@@ -557,7 +557,7 @@ in
             --server-address 127.0.0.1 \
             --server-port "$platform_port" \
             --log-level info \
-            --node-socket-path "''${CARDANO_NODE_SOCKET_PATH:-/run/cardano-node/node.socket}" \
+            --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
             --mode compact \
             --solitary \
             --data-node "''${DOLOS_ENDPOINT}" \
