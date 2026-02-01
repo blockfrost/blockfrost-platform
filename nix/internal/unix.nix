@@ -580,7 +580,7 @@ in
           yarn --version
 
           yarn install
-          pnpm test:${lib.escapeShellArg network}
+          yarn test:${lib.escapeShellArg network}
         '';
       };
 
