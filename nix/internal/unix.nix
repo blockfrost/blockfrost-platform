@@ -504,7 +504,7 @@ in
           bash
           coreutils
           nodePackages.nodejs
-          nodePackages.pnpm
+          nodePackages.yarn
           curl
           jq
           (python3.withPackages (ps: with ps; [portpicker]))
@@ -577,9 +577,9 @@ in
 
           set -x
           node --version
-          pnpm --version
+          yarn --version
 
-          pnpm install
+          yarn install
           pnpm test:${lib.escapeShellArg network}
         '';
       };
