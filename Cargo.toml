@@ -61,6 +61,7 @@ anyhow.workspace = true
 bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
+cargo-audit = "0.22.0"
 
 [dev-dependencies]
 bf-api-provider.workspace = true
