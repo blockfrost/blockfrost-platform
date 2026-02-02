@@ -11,6 +11,6 @@ allow = [
   "BlueOak-1.0.0",
   "Zlib",
   "BSD-2-Clause",
-  "Apache-2.0 WITH LLVM-exception"
+  "Apache-2.0 WITH LLVM-exception",
 ]
 confidence-threshold = 0.8
