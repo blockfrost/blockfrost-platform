@@ -16,7 +16,7 @@ pub async fn route(
     let AddressPathWithAsset { address, asset } = address_path_with_asset;
     let pagination = Pagination::from_query(pagination_query)?;
     let address_info = AddressInfo::from_address(&address, app_state.config.network.clone())?;
-    let data_node = state.get_data_node()?;
+    let data_node = state.data_node()?;
     let asset_data = AssetData::from_query(asset)?;
 
     data_node

@@ -1,5 +1,5 @@
 use crate::errors::BlockfrostError;
-use bech32::{FromBase32, ToBase32, Variant, decode, encode};
+use bech32::{Bech32, Hrp};
 use serde::Deserialize;
 
 const SPECIAL_DREP_IDS: &[&str] = &["drep_always_abstain", "drep_always_no_confidence"];
@@ -26,9 +26,9 @@ impl DRepData {
             });
         }
 
-        let (prefix, words, _) = decode(&self.drep_id)?;
+        let (hrp, raw_bytes) = bech32::decode(&self.drep_id)?;
 
-        let is_script = match prefix.as_str() {
+        let is_script = match hrp.as_str() {
             "drep" => false,
             "drep_script" => true,
             _ => {
@@ -37,8 +37,6 @@ impl DRepData {
                 ));
             },
         };
-
-        let raw_bytes = Vec::<u8>::from_base32(&words)?;
 
         match raw_bytes.len() {
             28 => {
@@ -50,7 +48,8 @@ impl DRepData {
                 let mut bytes_with_header = vec![header];
                 bytes_with_header.extend_from_slice(&raw_bytes);
 
-                let cip129_id = encode("drep", bytes_with_header.to_base32(), Variant::Bech32)?;
+                let hrp = Hrp::parse("drep")?;
+                let cip129_id = bech32::encode::<Bech32>(hrp, &bytes_with_header)?;
 
                 Ok(DRepData { drep_id: cip129_id })
             },
@@ -131,5 +130,54 @@ mod tests {
 
         let drep = drep.to_cip129().expect("Conversion failed");
         assert_eq!(drep.drep_id, fixture.expected_id);
+    }
+
+    #[test]
+    fn test_to_cip129_invalid_prefix() {
+        let drep = DRepData {
+            drep_id: "pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy".to_string(),
+        };
+
+        let result = drep.to_cip129();
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid drep id prefix")
+        );
+    }
+
+    #[test]
+    fn test_to_cip129_invalid_length() {
+        // drep prefix but wrong data length (10 bytes, not 28 or 29)
+        let hrp = Hrp::parse("drep").unwrap();
+        let short_data = vec![0u8; 10];
+        let invalid_drep = bech32::encode::<Bech32>(hrp, &short_data).unwrap();
+
+        let drep = DRepData {
+            drep_id: invalid_drep,
+        };
+
+        let result = drep.to_cip129();
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid DRep ID length")
+        );
+    }
+
+    #[test]
+    fn test_to_cip129_invalid_bech32() {
+        let drep = DRepData {
+            drep_id: "halelujah_weed_is_legal".to_string(),
+        };
+
+        let result = drep.to_cip129();
+        assert!(result.is_err());
     }
 }
