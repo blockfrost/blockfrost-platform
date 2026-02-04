@@ -40,21 +40,21 @@ in
       };
 
     # Portable directory that can be run on any modern Darwin:
-    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName}")
+    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
-      name = unix.packageName;
+      name = unix.packageName.pname;
       buildCommand =
         drv.buildCommand
         + ''
           mkdir -p $out/libexec
-          mv $out/{${unix.packageName},lib} $out/libexec
+          mv $out/{${unix.packageName.pname},lib} $out/libexec
           mkdir -p $out/bin
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName},dolos} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
         '';
     });
 

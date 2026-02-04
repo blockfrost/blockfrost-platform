@@ -32,16 +32,16 @@ in
         bin_dir = "bin";
         exe_dir = "exe";
         lib_dir = "lib";
-      } "${unix.package}/libexec/${unix.packageName}")
+      } "${unix.package}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
-        name = unix.packageName;
+        name = unix.packageName.pname;
         buildCommand =
           drv.buildCommand
           + ''
             chmod -R +w $out
             ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/.
             chmod -R +w $out
-            ( cd $out ; ln -s bin/{${unix.packageName},dolos} ./ ; )
+            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos} ./ ; )
           '';
       });
 
