@@ -28,13 +28,13 @@ bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
-clap = { version = "4.5.26", features = ["derive"] }
+clap = { version = "4.5.57", features = ["derive"] }
 dirs = "6.0.0"
 futures = "0.3"
 futures-util = "0.3"
 hex = "0.4.3"
 inquire = "0.9"
-metrics = { version = "0.24.1", default-features = false }
+metrics = { version = "0.24.3", default-features = false }
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
@@ -44,14 +44,14 @@ pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "bloc
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pretty_assertions = "1.4.1"
-reqwest = { version = "0.12.12", features = ["blocking"] }
-rstest = "0.24.0"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-thiserror = "2.0.12"
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
-toml = "0.8.23"
-tracing = "0.1.41"
+reqwest = { version = "0.13.1", features = ["blocking", "json"] }
+rstest = "0.26.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
+toml = "0.9.11+spec-1.1.0"
+tracing = "0.1.44"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
 
