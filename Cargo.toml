@@ -46,6 +46,7 @@ pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blo
 pretty_assertions = "1.4.1"
 reqwest = { version = "0.13.1", default-features = false, features = [
   "blocking",
+  "http2",
   "json",
   "native-tls",
 ] }
