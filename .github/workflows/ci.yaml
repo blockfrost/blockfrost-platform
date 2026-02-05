@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
     inputs:
       upload_artifacts:
@@ -10,26 +11,25 @@ on:
         required: true
         default: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
 
 jobs:
-  lint_docker:
-    name: Lint Dockerfile
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Hadolint
-        run: |
-          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
-          chmod +x hadolint
-          sudo mv hadolint /usr/local/bin/hadolint
-
+      - uses: actions/checkout@v4
+      - name: Block Fixup Commit Merge
+        if: github.event_name == 'pull_request'
+        uses: 13rac1/block-fixup-merge-action@v2.0.0
       - name: Lint Dockerfile
-        run: hadolint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
 
   build_and_test:
     name: Build and Test
