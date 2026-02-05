@@ -24,7 +24,7 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
 serde.workspace = true
 tower-http = { version = "0.6.6", features = ["normalize-path"] }
-tower = "0.5.2"
+tower = { version = "0.5.2", features = ["limit"] }
 hyper = "1.6.0"
 serde_json.workspace = true
 clap.workspace = true

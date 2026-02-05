@@ -42,6 +42,9 @@ pub struct Args {
     #[arg(long, default_value = "3000")]
     pub server_port: u16,
 
+    #[arg(long, default_value = "2048")]
+    pub server_concurrency_limit: usize,
+
     #[arg(long, default_value = "info")]
     pub log_level: LogLevel,
 
@@ -269,6 +272,7 @@ impl Args {
             custom_genesis_config: None,
             data_node: data_node.endpoint,
             data_node_timeout: Some(data_node.request_timeout),
+            server_concurrency_limit: 2048,
         };
 
         if !is_solitary {
@@ -330,6 +334,7 @@ mod tests {
         node_socket_path: Option<String>,
         server_address: Option<String>,
         server_port: Option<u16>,
+        server_concurrency_limit: Option<usize>,
         log_level: Option<String>,
         mode: Option<String>,
         solitary: bool,
@@ -357,6 +362,11 @@ mod tests {
 
         fn server_port(mut self, port: u16) -> Self {
             self.server_port = Some(port);
+            self
+        }
+
+        fn server_concurrency_limit(mut self, limit: usize) -> Self {
+            self.server_concurrency_limit = Some(limit);
             self
         }
 
@@ -413,6 +423,10 @@ mod tests {
             push_opt("--node-socket-path", self.node_socket_path.clone());
             push_opt("--server-address", self.server_address.clone());
             push_opt("--server-port", self.server_port.map(|p| p.to_string()));
+            push_opt(
+                "--server-concurrency-limit",
+                self.server_concurrency_limit.map(|l| l.to_string()),
+            );
             push_opt("--log-level", self.log_level.clone());
             push_opt("--mode", self.mode.clone());
             push_opt("--reward-address", self.reward_address.clone());
@@ -655,5 +669,36 @@ mod tests {
             .unwrap();
 
         assert!(config.data_node.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_server_concurrency_limit_default() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        assert_eq!(config.server_concurrency_limit, 2048);
+    }
+
+    #[tokio::test]
+    async fn test_server_concurrency_limit_custom() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .server_concurrency_limit(512)
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        assert_eq!(config.server_concurrency_limit, 512);
     }
 }

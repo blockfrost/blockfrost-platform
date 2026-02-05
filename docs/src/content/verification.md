@@ -153,6 +153,11 @@ If verification fails, check these common issues:
 - Confirm port 3000 is accessible from your network
 - Check if you need to update to the latest binary.
 
+### Receiving 503 errors under load
+
+- The server has a concurrency limit (default: 2048 concurrent requests). If exceeded, additional requests receive a 503 response.
+- Increase the limit with `--server-concurrency-limit` if needed.
+
 ### Not appearing in Grafana
 
 - Allow up to 10 minutes for your node to appear

@@ -16,7 +16,7 @@ use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
 use std::sync::Arc;
-use tower::Layer;
+use tower::{Layer, limit::ConcurrencyLimitLayer};
 use tower_http::normalize_path::NormalizePathLayer;
 use uuid::Uuid;
 
@@ -94,7 +94,9 @@ pub async fn build(
     };
 
     let inner = NormalizePathLayer::trim_trailing_slash().layer(inner);
-    let app = Router::new().fallback_service(inner);
+    let app = Router::new()
+        .fallback_service(inner)
+        .layer(ConcurrencyLimitLayer::new(config.server_concurrency_limit));
 
     Ok((
         app,

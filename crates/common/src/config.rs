@@ -18,6 +18,7 @@ use tracing::Level;
 pub struct Config {
     pub server_address: std::net::IpAddr,
     pub server_port: u16,
+    pub server_concurrency_limit: usize,
     pub log_level: Level,
     pub node_socket_path: String,
     pub mode: Mode,
@@ -113,6 +114,7 @@ impl Config {
             network,
             custom_genesis_config: args.custom_genesis_config,
             data_node,
+            server_concurrency_limit: args.server_concurrency_limit,
         })
     }
 
