@@ -9,7 +9,7 @@ Default: 0.0.0.0
 Default: 3000
 
 `--server-concurrency-limit <LIMIT>`\
-Default: 2048\
+Default: 8192\
 Maximum number of concurrent requests the server will handle. Requests exceeding this limit will receive a 503 Service Unavailable response.
 
 `--network <NETWORK>` (required)\

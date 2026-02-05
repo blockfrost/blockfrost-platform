@@ -155,7 +155,7 @@ If verification fails, check these common issues:
 
 ### Receiving 503 errors under load
 
-- The server has a concurrency limit (default: 2048 concurrent requests). If exceeded, additional requests receive a 503 response.
+- The server has a concurrency limit (default: 8192 concurrent requests). If exceeded, additional requests receive a 503 response.
 - Increase the limit with `--server-concurrency-limit` if needed.
 
 ### Not appearing in Grafana

@@ -42,7 +42,7 @@ pub struct Args {
     #[arg(long, default_value = "3000")]
     pub server_port: u16,
 
-    #[arg(long, default_value = "2048")]
+    #[arg(long, default_value = "8192")]
     pub server_concurrency_limit: usize,
 
     #[arg(long, default_value = "info")]
@@ -272,7 +272,7 @@ impl Args {
             custom_genesis_config: None,
             data_node: data_node.endpoint,
             data_node_timeout: Some(data_node.request_timeout),
-            server_concurrency_limit: 2048,
+            server_concurrency_limit: 8192,
         };
 
         if !is_solitary {
@@ -683,7 +683,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(config.server_concurrency_limit, 2048);
+        assert_eq!(config.server_concurrency_limit, 8192);
     }
 
     #[tokio::test]
