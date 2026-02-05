@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       upload_artifacts:
@@ -19,6 +22,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  IMAGE: ghcr.io/blockfrost/blockfrost-platform
 
 jobs:
   checks:
@@ -174,3 +178,110 @@ jobs:
       - name: Check coverage
         timeout-minutes: 10
         run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11
+
+  oci_build:
+    name: OCI Build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+
+    env:
+      SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: 🧰 Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build (+ push if needed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          # Always load into the local Docker daemon for smoke test below
+          load: true
+          push: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
+          tags: |
+            ${{ env.IMAGE }}:${{ env.SHA }}-${{ matrix.arch }}
+          build-args: |
+            GIT_REVISION=${{ env.SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Prevent the `unknown/unknown` architecture in the GitHub UI:
+          provenance: false
+          sbom: false
+
+      - name: 💨 Smoke test run with --version
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm "${{ env.IMAGE }}:${{ env.SHA }}-${{ matrix.arch }}" --version
+
+  oci_merge:
+    name: Create multi-arch manifests
+    runs-on: ubuntu-latest
+    needs: [oci_build]
+    if: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
+
+    steps:
+      - name: 🧰 Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🧩 Create manifests (single publish)
+        shell: bash
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          amd="${IMAGE}:${SHA}-amd64"
+          arm="${IMAGE}:${SHA}-arm64"
+          args=()
+
+          # commit SHA (multi-arch)
+          args+=(-t "${IMAGE}:${SHA}")
+
+          # `edge` on `main` and on releases
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "release" ]]; then
+            args+=(-t "${IMAGE}:edge")
+          fi
+
+          # release tag and `latest`
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            args+=(-t "${IMAGE}:${{ github.event.release.tag_name }}")
+
+            if [[ "${{ github.event.release.prerelease }}" != "true" ]]; then
+              args+=(-t "${IMAGE}:latest")
+            fi
+          fi
+
+          set -x
+          docker buildx imagetools create "${args[@]}" "${amd}" "${arm}"
