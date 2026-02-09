@@ -12,7 +12,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tracing::{error, info, warn};
@@ -598,7 +598,7 @@ fn normalize_gateway_ws_url(input: &str) -> String {
 async fn derive_enterprise_address_from_vkey_json(
     vkey_json: &serde_json::Value,
     network: &Network,
-    node_socket_path: &PathBuf,
+    node_socket_path: &Path,
 ) -> Result<String> {
     let cardano_cli_exe =
         find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])

@@ -32,7 +32,7 @@ impl BlockfrostAPI {
 
         let asset_hex = &unit[self.policy_id_size..];
         let decoded = hex::decode(asset_hex)
-            .map_err(|err| APIError::License(format!("Hex decoding failed: {}", err)))?;
+            .map_err(|err| APIError::License(format!("Hex decoding failed: {err}")))?;
 
         let asset_name = AssetName(String::from_utf8_lossy(&decoded).to_string());
 

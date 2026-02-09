@@ -55,9 +55,7 @@ impl HydrasManager {
             config.lovelace_per_request * config.requests_per_microtransaction;
         if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
             Err(anyhow!(
-                "hydras-manager: Please make sure that each microtransaction will be larger than {} lovelace. Currently it would be {}.",
-                MIN_LOVELACE_PER_TRANSACTION,
-                microtransaction_lovelace,
+                "hydras-manager: Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}.",
             ))?
         }
 

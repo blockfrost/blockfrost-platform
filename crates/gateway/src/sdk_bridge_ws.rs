@@ -559,7 +559,7 @@ mod event_loop {
     ) -> Result<u64, String> {
         use anyhow::Context;
 
-        let url = format!("http://127.0.0.1:{}/snapshot/utxo", api_port);
+        let url = format!("http://127.0.0.1:{api_port}/snapshot/utxo");
 
         let v: serde_json::Value = reqwest::Client::new()
             .get(&url)

@@ -54,7 +54,7 @@ impl super::State {
     }
 
     pub(super) async fn lovelace_on_addr(&self, address: &str) -> Result<u64> {
-        let utxo_json = self.query_utxo_json(&address).await?;
+        let utxo_json = self.query_utxo_json(address).await?;
         Self::sum_lovelace_from_utxo_json(&utxo_json)
     }
 
@@ -348,7 +348,7 @@ impl super::State {
         let utxo_json = self.query_utxo_json(from_addr).await?;
         let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
 
-        let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
+        let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
         let client = reqwest::Client::new();
         let resp = client
             .post(url)
@@ -417,7 +417,7 @@ impl super::State {
     ) -> Result<()> {
         use anyhow::Context;
 
-        let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+        let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
         let utxo: Value = reqwest::Client::new()
             .get(&snapshot_url)
             .send()
@@ -451,9 +451,7 @@ impl super::State {
 
         if lovelace_total < amount_lovelace {
             return Err(anyhow!(
-                "insufficient lovelace in selected UTxO: {} < {}",
-                lovelace_total,
-                amount_lovelace
+                "insufficient lovelace in selected UTxO: {lovelace_total} < {amount_lovelace}"
             ));
         }
 
@@ -467,9 +465,9 @@ impl super::State {
                 "--tx-in",
                 &tx_in,
                 "--tx-out",
-                &format!("{}+{}", receiver_addr, amount_lovelace),
+                &format!("{receiver_addr}+{amount_lovelace}"),
                 "--tx-out",
-                &format!("{}+{}", sender_addr, change),
+                &format!("{sender_addr}+{change}"),
                 "--fee",
                 "0",
                 "--out-file",
@@ -510,7 +508,7 @@ impl super::State {
             serde_json::to_string(&payload)?
         );
 
-        let ws_url = format!("ws://127.0.0.1:{}/", hydra_api_port);
+        let ws_url = format!("ws://127.0.0.1:{hydra_api_port}/");
         send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(2)).await?;
 
         Ok(())

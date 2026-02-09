@@ -96,7 +96,7 @@ pub async fn run() -> Result<()> {
     )
     .await
     .unwrap_or_else(|e| {
-        eprintln!("Server error: {}", e);
+        eprintln!("Server error: {e}");
         std::process::exit(1);
     });
 

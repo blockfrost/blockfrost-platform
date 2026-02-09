@@ -17,7 +17,7 @@ mod git_revision {
         use std::process::Command;
 
         if env::var(GIT_REVISION).is_ok() {
-            println!("Environment variable {} is set. Not setting.", GIT_REVISION);
+            println!("Environment variable {GIT_REVISION} is set. Not setting.");
             return;
         }
 
@@ -38,7 +38,7 @@ mod git_revision {
                 .to_string()
         };
 
-        println!("cargo:rustc-env={}={}", GIT_REVISION, revision);
+        println!("cargo:rustc-env={GIT_REVISION}={revision}");
     }
 }
 
@@ -82,8 +82,7 @@ mod hydra_scripts_id {
         let (rev, href) = read_hydra_rev_and_ref(&flake_lock_json);
 
         let url = format!(
-            "https://raw.githubusercontent.com/cardano-scaling/hydra/{}/hydra-node/networks.json",
-            rev
+            "https://raw.githubusercontent.com/cardano-scaling/hydra/{rev}/hydra-node/networks.json"
         );
 
         let networks_json = fetch_cached(&url, &rev);
