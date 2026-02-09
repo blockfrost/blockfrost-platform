@@ -576,6 +576,55 @@ impl super::HydraConfig {
             .try_into()
             .context("utxo length does not fit into u64 (?)")
     }
+
+    pub(super) async fn hydra_snapshot_lovelace_for_address(
+        &self,
+        hydra_api_port: u16,
+        address: &str,
+    ) -> Result<u64> {
+        use anyhow::Context;
+
+        let url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+
+        let v: Value = reqwest::Client::new()
+            .get(&url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+            .context("snapshot/utxo: failed to decode JSON")?;
+
+        let obj = v
+            .as_object()
+            .context("snapshot/utxo: expected top-level JSON object")?;
+
+        let mut total: u64 = 0;
+        for (_k, entry) in obj.iter() {
+            if entry.get("address").and_then(Value::as_str) != Some(address) {
+                continue;
+            }
+
+            if let Some(value_obj) = entry.get("value").and_then(|v| v.as_object()) {
+                if let Some(lovelace_val) = value_obj.get("lovelace") {
+                    total = total
+                        .checked_add(Self::as_u64(lovelace_val)?)
+                        .ok_or(anyhow!("cannot add"))?;
+                    continue;
+                }
+            }
+
+            if let Some(amount_arr) = entry.get("amount").and_then(|v| v.as_array()) {
+                if let Some(lovelace_val) = amount_arr.first() {
+                    total = total
+                        .checked_add(Self::as_u64(lovelace_val)?)
+                        .ok_or(anyhow!("cannot add"))?;
+                }
+            }
+        }
+
+        Ok(total)
+    }
 }
 
 /// Reads a JSON file from disk.

@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex, mpsc, oneshot, watch};
 use tracing::{debug, error, info, warn};
 
 pub mod verifications;
@@ -12,11 +12,16 @@ pub mod verifications;
 #[derive(Clone)]
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
+    api_port_rx: watch::Receiver<Option<u16>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct HydraClientConfig {
     pub cardano_signing_key: PathBuf,
+    pub commit_ada: f64,
+    pub lovelace_per_request: u64,
+    pub requests_per_microtransaction: u64,
+    pub microtransactions_per_fanout: u64,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
@@ -44,6 +49,12 @@ pub struct KeyExchangeResponse {
     /// This being set to `true` means that the ceremony is successful, and the
     /// Gateway is going to start its own `hydra-node`, and the Platform should too.
     pub kex_done: bool,
+    #[serde(default)]
+    pub lovelace_per_request: u64,
+    #[serde(default)]
+    pub requests_per_microtransaction: u64,
+    #[serde(default)]
+    pub microtransactions_per_fanout: u64,
 }
 
 pub struct TerminateRequest;
@@ -61,7 +72,7 @@ impl HydraController {
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
         terminate_reqs: mpsc::Receiver<TerminateRequest>,
     ) -> Result<Self> {
-        let event_tx = State::spawn(
+        let (event_tx, api_port_rx) = State::spawn(
             config,
             network,
             node_socket_path,
@@ -72,11 +83,47 @@ impl HydraController {
             terminate_reqs,
         )
         .await?;
-        Ok(Self { event_tx })
+        Ok(Self {
+            event_tx,
+            api_port_rx,
+        })
     }
 
     pub async fn terminate(&self) {
         let _ = self.event_tx.send(Event::Terminate).await;
+    }
+
+    pub async fn account_one_request(&self) {
+        let _ = self.event_tx.send(Event::AccountOneRequest).await;
+    }
+
+    pub async fn send_payment(&self, amount_lovelace: u64, receiver_addr: String) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .event_tx
+            .send(Event::SendPayment {
+                amount_lovelace,
+                receiver_addr,
+                respond_to: tx,
+            })
+            .await;
+        rx.await.unwrap_or_else(|_| Err(anyhow!("payment request cancelled")))
+    }
+
+    pub fn api_port(&self) -> Option<u16> {
+        *self.api_port_rx.borrow()
+    }
+
+    pub async fn wait_api_port(&self) -> u16 {
+        let mut rx = self.api_port_rx.clone();
+        loop {
+            if let Some(port) = *rx.borrow() {
+                return port;
+            }
+            if rx.changed().await.is_err() {
+                return 0;
+            }
+        }
     }
 }
 
@@ -84,8 +131,45 @@ enum Event {
     Restart,
     Terminate,
     KeyExchangeResponse(KeyExchangeResponse),
+    FundCommitAddr,
     TryToCommit,
+    WaitForOpen,
     MonitorStates,
+    AccountOneRequest,
+    SendPayment {
+        amount_lovelace: u64,
+        receiver_addr: String,
+        respond_to: oneshot::Sender<Result<()>>,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PaymentParams {
+    lovelace_per_request: u64,
+    requests_per_microtransaction: u64,
+    microtransactions_per_fanout: u64,
+}
+
+impl PaymentParams {
+    fn from_config(config: &HydraClientConfig) -> Self {
+        Self {
+            lovelace_per_request: config.lovelace_per_request,
+            requests_per_microtransaction: config.requests_per_microtransaction,
+            microtransactions_per_fanout: config.microtransactions_per_fanout,
+        }
+    }
+
+    fn update_from_response(&mut self, resp: &KeyExchangeResponse) {
+        if resp.lovelace_per_request > 0 {
+            self.lovelace_per_request = resp.lovelace_per_request;
+        }
+        if resp.requests_per_microtransaction > 0 {
+            self.requests_per_microtransaction = resp.requests_per_microtransaction;
+        }
+        if resp.microtransactions_per_fanout > 0 {
+            self.microtransactions_per_fanout = resp.microtransactions_per_fanout;
+        }
+    }
 }
 
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
@@ -98,12 +182,18 @@ struct State {
     _health_errors: Arc<Mutex<Vec<String>>>,
     kex_requests: mpsc::Sender<KeyExchangeRequest>,
     api_port: u16,
+    api_port_tx: watch::Sender<Option<u16>>,
     hydra_node_exe: String,
     cardano_cli_exe: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
     last_hydra_head_state: String,
+    hydra_head_open: bool,
+    accounted_requests: u64,
+    commit_wallet_skey: PathBuf,
+    commit_wallet_addr: String,
     hydra_pid: Option<u32>,
+    payment_params: PaymentParams,
 }
 
 impl State {
@@ -121,7 +211,7 @@ impl State {
         kex_requests: mpsc::Sender<KeyExchangeRequest>,
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
         terminate_reqs: mpsc::Receiver<TerminateRequest>,
-    ) -> Result<mpsc::Sender<Event>> {
+    ) -> Result<(mpsc::Sender<Event>, watch::Receiver<Option<u16>>)> {
         let hydra_node_exe =
             crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
@@ -140,7 +230,9 @@ impl State {
             .join(gateway_prefix);
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
+        let (api_port_tx, api_port_rx) = watch::channel(None);
 
+        let payment_params = PaymentParams::from_config(&config);
         let self_ = Self {
             config,
             network,
@@ -150,12 +242,18 @@ impl State {
             _health_errors: health_errors,
             kex_requests,
             api_port: 0,
+            api_port_tx,
             hydra_node_exe,
             cardano_cli_exe,
             config_dir,
             event_tx: event_tx.clone(),
             last_hydra_head_state: String::new(),
+            hydra_head_open: false,
+            accounted_requests: 0,
+            commit_wallet_skey: PathBuf::new(),
+            commit_wallet_addr: String::new(),
             hydra_pid: None,
+            payment_params,
         };
 
         let platform_cardano_vkey = self_
@@ -207,7 +305,7 @@ impl State {
             }
         });
 
-        Ok(event_tx)
+        Ok((event_tx, api_port_rx))
     }
 
     async fn send(&self, event: Event) {
@@ -233,12 +331,14 @@ impl State {
                 let potential_fuel = self
                     .lovelace_on_payment_skey(&self.config.cardano_signing_key)
                     .await?;
-                if potential_fuel < Self::MIN_FUEL_LOVELACE {
+                let required_funds =
+                    Self::MIN_FUEL_LOVELACE + (self.config.commit_ada * 1_000_000.0) as u64;
+                if potential_fuel < required_funds {
                     Err(anyhow!(
-                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                        "hydra-controller: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
                         potential_fuel as f64 / 1_000_000.0,
                         self.config.cardano_signing_key,
-                        Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
+                        required_funds as f64 / 1_000_000.0,
                     ))?
                 }
 
@@ -260,7 +360,9 @@ impl State {
                     })
                     .await?;
 
-                // FIXME: resend the request periodically in case it gets lost – i.e. new `Event::KExTimeout`
+                self.hydra_head_open = false;
+                self.accounted_requests = 0;
+                self.commit_wallet_addr.clear();
             },
 
             Event::Terminate => {
@@ -300,40 +402,100 @@ impl State {
             },
 
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
+                self.payment_params.update_from_response(&kex_resp);
                 self.start_hydra_node(kex_resp).await?;
-                self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
                     .await
             },
 
-            Event::TryToCommit => {
-                let status = verifications::fetch_head_tag(self.api_port).await;
+            Event::FundCommitAddr => {
+                let status = verifications::fetch_head_tag(self.api_port).await?;
 
                 info!(
                     "hydra-controller: waiting for the Initial head status: status={:?}",
                     status
                 );
 
-                match status.as_deref() {
-                    Err(_) => {
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                            .await
-                    },
-                    Ok(status) => {
-                        self.last_hydra_head_state = status.to_string();
-                        if status == "Initial" {
-                            info!(
-                                "hydra-controller: submitting an empty Commit transaction to join the Hydra Head"
-                            );
-                            self.empty_commit_to_hydra(
-                                self.api_port,
-                                &self.config.cardano_signing_key,
-                            )
+                if status == "Initial" || status == "Open" {
+                    let commit_wallet = self.config_dir.join("commit-funds");
+                    self.commit_wallet_skey = commit_wallet.with_extension("sk");
+
+                    if !std::fs::exists(&self.commit_wallet_skey)? {
+                        self.new_cardano_keypair(&commit_wallet).await?;
+                    }
+
+                    self.commit_wallet_addr = self
+                        .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
+                        .await?;
+
+                    if status == "Initial" {
+                        let payer_addr = self
+                            .derive_enterprise_address_from_skey(&self.config.cardano_signing_key)
                             .await?;
-                        }
+                        self.fund_address(
+                            &payer_addr,
+                            &self.commit_wallet_addr,
+                            (self.config.commit_ada * 1_000_000.0).round() as u64,
+                            &self.config.cardano_signing_key,
+                        )
+                        .await?;
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await;
+                    } else {
+                        self.hydra_head_open = true;
                         self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
-                            .await
-                    },
+                            .await;
+                    }
+                } else {
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
+                        .await;
                 }
+            },
+
+            Event::TryToCommit => {
+                let commit_wallet_lovelace =
+                    self.lovelace_on_addr(&self.commit_wallet_addr).await?;
+                let lovelace_needed = 0.99 * self.config.commit_ada * 1_000_000.0;
+
+                info!(
+                    "hydra-controller: waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
+                    lovelace_needed.round(),
+                    commit_wallet_lovelace
+                );
+
+                if commit_wallet_lovelace as f64 >= lovelace_needed {
+                    info!(
+                        "hydra-controller: submitting a Commit transaction to join the Hydra Head"
+                    );
+                    self.commit_all_utxo_to_hydra(
+                        &self.commit_wallet_addr,
+                        self.api_port,
+                        &self.commit_wallet_skey,
+                    )
+                    .await?;
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                        .await;
+                } else {
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                        .await;
+                }
+            },
+
+            Event::WaitForOpen => {
+                let status = verifications::fetch_head_tag(self.api_port).await?;
+                info!(
+                    "hydra-controller: waiting for the Open head status: status={:?}",
+                    status
+                );
+                if status == "Open" {
+                    self.hydra_head_open = true;
+                } else {
+                    self.hydra_head_open = false;
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                        .await;
+                }
+                self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
+                    .await;
             },
 
             Event::MonitorStates => {
@@ -345,16 +507,44 @@ impl State {
                     self.last_hydra_head_state = new_status;
 
                     info!("hydra-controller: state changed from {old} to {new}");
+                }
 
-                    if new == "Initial" {
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
-                            .await;
-                        return Ok(());
-                    }
+                self.hydra_head_open = self.last_hydra_head_state == "Open";
+
+                if self.last_hydra_head_state == "Initial" {
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
+                        .await;
+                    return Ok(());
                 }
 
                 self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
                     .await
+            },
+
+            Event::AccountOneRequest => {
+                self.accounted_requests = self.accounted_requests.saturating_add(1);
+            },
+
+            Event::SendPayment {
+                amount_lovelace,
+                receiver_addr,
+                respond_to,
+            } => {
+                let res = if !self.hydra_head_open {
+                    Err(anyhow!("hydra head is not open"))
+                } else if self.commit_wallet_addr.is_empty() {
+                    Err(anyhow!("commit wallet is not initialized"))
+                } else {
+                    self.send_hydra_transaction(
+                        self.api_port,
+                        &self.commit_wallet_addr,
+                        &receiver_addr,
+                        &self.commit_wallet_skey,
+                        amount_lovelace,
+                    )
+                    .await
+                };
+                let _ = respond_to.send(res);
             },
         }
         Ok(())
@@ -366,6 +556,7 @@ impl State {
 
         self.api_port = verifications::find_free_tcp_port().await?;
         let metrics_port = verifications::find_free_tcp_port().await?;
+        let _ = self.api_port_tx.send(Some(self.api_port));
 
         // FIXME: somehow do shutdown once we’re killed
         // cf. <https://github.com/IntersectMBO/cardano-node/blob/10.6.1/cardano-node/src/Cardano/Node/Handlers/Shutdown.hs#L123-L148>

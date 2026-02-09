@@ -4,7 +4,7 @@ use axum::{
     Extension, Router,
     routing::{get, post},
 };
-use blockfrost_gateway::{api, blockfrost, config, db, hydra, load_balancer};
+use blockfrost_gateway::{api, blockfrost, config, db, hydra, load_balancer, sdk_bridge_ws};
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
@@ -32,14 +32,19 @@ async fn main() -> Result<()> {
 
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
-    let hydras_manager = if let Some(hydra) = &config.hydra {
+    let hydras_manager = if let Some(hydra) = &config.hydra_platform {
+        Some(hydra::server::HydrasManager::new(hydra, &config.server.network).await?)
+    } else {
+        None
+    };
+    let hydras_bridge_manager = if let Some(hydra) = &config.hydra_bridge {
         Some(hydra::server::HydrasManager::new(hydra, &config.server.network).await?)
     } else {
         None
     };
     let load_balancer = load_balancer::LoadBalancerState::new(hydras_manager).await;
 
-    let app = Router::new()
+    let base_router = Router::new()
         .route("/", get(root::route))
         .route("/register", post(register::route))
         .route("/ws", get(load_balancer::api::websocket_route))
@@ -60,6 +65,15 @@ async fn main() -> Result<()> {
         .layer(Extension(config.clone()))
         .layer(Extension(pool))
         .layer(Extension(blockfrost_api));
+
+    let sdk_bridge_state = sdk_bridge_ws::SdkBridgeState {
+        http_router: base_router.clone(),
+        hydras: hydras_bridge_manager,
+    };
+
+    let app = base_router
+        .route("/sdk/ws", get(sdk_bridge_ws::websocket_route))
+        .layer(Extension(sdk_bridge_state));
 
     let listener = tokio::net::TcpListener::bind(&config.server.address)
         .await

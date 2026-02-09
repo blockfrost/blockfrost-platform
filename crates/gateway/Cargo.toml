@@ -16,6 +16,7 @@ anyhow = "1.0.98"
 axum = { version = "0.7.5", features = ["ws"] }
 tokio = { version = "1.39.2", features = ["full"] }
 tokio-util = "0.7"
+tower = "0.5"
 futures = "0.3"
 futures-util = "0.3"
 kameo = "0.19"

@@ -65,7 +65,8 @@ pub struct ConfigInput {
     pub server: ServerInput,
     pub database: DbInput,
     pub blockfrost: BlockfrostInput,
-    pub hydra: Option<HydraConfig>,
+    pub hydra_platform: Option<HydraConfig>,
+    pub hydra_bridge: Option<HydraConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -73,7 +74,8 @@ pub struct Config {
     pub server: Server,
     pub database: Db,
     pub blockfrost: Blockfrost,
-    pub hydra: Option<HydraConfig>,
+    pub hydra_platform: Option<HydraConfig>,
+    pub hydra_bridge: Option<HydraConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -145,7 +147,8 @@ pub fn load_config(path: PathBuf) -> Config {
             project_id,
             nft_asset: toml_config.blockfrost.nft_asset,
         },
-        hydra: toml_config.hydra,
+        hydra_platform: toml_config.hydra_platform,
+        hydra_bridge: toml_config.hydra_bridge,
     };
 
     override_with_env(config)
@@ -198,6 +201,7 @@ fn override_with_env(config: Config) -> Config {
             project_id,
             nft_asset,
         },
-        hydra: config.hydra,
+        hydra_platform: config.hydra_platform,
+        hydra_bridge: config.hydra_bridge,
     }
 }

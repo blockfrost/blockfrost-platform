@@ -8,5 +8,6 @@ pub mod hydra;
 pub mod load_balancer;
 pub mod models;
 pub mod payload;
+pub mod sdk_bridge_ws;
 pub mod schema;
 pub mod types;

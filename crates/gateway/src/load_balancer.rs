@@ -21,13 +21,19 @@ pub struct AccessToken(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RequestId(Uuid);
 
+impl RequestId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonRequest {
     pub id: RequestId,
-    method: JsonRequestMethod,
-    path: String,
+    pub method: JsonRequestMethod,
+    pub path: String,
     pub header: Vec<JsonHeader>,
-    body_base64: String,
+    pub body_base64: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,8 +46,8 @@ pub struct JsonResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonHeader {
-    name: String,
-    value: String,
+    pub name: String,
+    pub value: String,
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -49,6 +55,15 @@ pub struct JsonHeader {
 pub enum JsonRequestMethod {
     GET,
     POST,
+}
+
+impl JsonRequestMethod {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            JsonRequestMethod::GET => "GET",
+            JsonRequestMethod::POST => "POST",
+        }
+    }
 }
 
 /// The WebSocket messages that we send.

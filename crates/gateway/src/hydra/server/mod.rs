@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, info, warn};
 
 pub mod verifications;
@@ -26,6 +26,13 @@ pub struct HydrasManager {
     /// This is `Arc<Arc<()>>` because we want all clones of the controller to only hold a single copy.
     #[allow(clippy::redundant_allocation)]
     controller_counter: Arc<Arc<()>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HydraPaymentParams {
+    pub lovelace_per_request: u64,
+    pub requests_per_microtransaction: u64,
+    pub microtransactions_per_fanout: u64,
 }
 
 impl HydrasManager {
@@ -119,6 +126,9 @@ impl HydrasManager {
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
             kex_done: false,
+            lovelace_per_request: self.config.toml.lovelace_per_request,
+            requests_per_microtransaction: self.config.toml.requests_per_microtransaction,
+            microtransactions_per_fanout: self.config.toml.microtransactions_per_fanout,
         })
     }
 
@@ -186,6 +196,18 @@ impl HydrasManager {
 
         Ok((ctl, final_resp))
     }
+
+    pub fn payment_params(&self) -> HydraPaymentParams {
+        HydraPaymentParams {
+            lovelace_per_request: self.config.toml.lovelace_per_request,
+            requests_per_microtransaction: self.config.toml.requests_per_microtransaction,
+            microtransactions_per_fanout: self.config.toml.microtransactions_per_fanout,
+        }
+    }
+
+    pub fn gateway_payment_address(&self) -> String {
+        self.config.gateway_cardano_addr.clone()
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -241,6 +263,7 @@ pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
     originator: AssetName,
     _controller_counter: Arc<()>,
+    api_port_rx: watch::Receiver<Option<u16>>,
 }
 
 // FIXME: send a Quit event on `drop()` of all controller instances
@@ -270,6 +293,9 @@ pub struct KeyExchangeResponse {
     /// This being set to `true` means that the ceremony is successful, and the
     /// Gateway is going to start its own `hydra-node`, and the Platform should too.
     pub kex_done: bool,
+    pub lovelace_per_request: u64,
+    pub requests_per_microtransaction: u64,
+    pub microtransactions_per_fanout: u64,
 }
 
 impl HydraController {
@@ -281,12 +307,13 @@ impl HydraController {
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
-        let event_tx =
+        let (event_tx, api_port_rx) =
             State::spawn(config, originator.clone(), reward_addr, kex_req, kex_resp).await?;
         Ok(Self {
             event_tx,
             originator,
             _controller_counter: controller_counter,
+            api_port_rx,
         })
     }
 
@@ -309,6 +336,22 @@ impl HydraController {
 
     pub async fn terminate(&self) {
         let _ = self.event_tx.send(Event::Terminate).await;
+    }
+
+    pub fn api_port(&self) -> Option<u16> {
+        *self.api_port_rx.borrow()
+    }
+
+    pub async fn wait_api_port(&self) -> u16 {
+        let mut rx = self.api_port_rx.clone();
+        loop {
+            if let Some(port) = *rx.borrow() {
+                return port;
+            }
+            if rx.changed().await.is_err() {
+                return 0;
+            }
+        }
     }
 }
 
@@ -345,6 +388,7 @@ struct State {
     reward_addr: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
+    api_port_tx: watch::Sender<Option<u16>>,
     kex_req: KeyExchangeRequest,
     kex_resp: KeyExchangeResponse,
     api_port: u16,
@@ -368,10 +412,11 @@ impl State {
         reward_addr: String,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
-    ) -> Result<mpsc::Sender<Event>> {
+    ) -> Result<(mpsc::Sender<Event>, watch::Receiver<Option<u16>>)> {
         let config_dir = mk_config_dir(&config.network, &originator)?;
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
+        let (api_port_tx, api_port_rx) = watch::channel(None);
 
         let mut self_ = Self {
             config,
@@ -379,6 +424,7 @@ impl State {
             reward_addr,
             config_dir,
             event_tx: event_tx.clone(),
+            api_port_tx,
             kex_req,
             kex_resp,
             api_port: 0,
@@ -413,7 +459,7 @@ impl State {
             }
         });
 
-        Ok(event_tx)
+        Ok((event_tx, api_port_rx))
     }
 
     async fn send(&self, event: Event) {
@@ -747,6 +793,7 @@ impl State {
 
         self.api_port = verifications::find_free_tcp_port().await?;
         self.metrics_port = verifications::find_free_tcp_port().await?;
+        let _ = self.api_port_tx.send(Some(self.api_port));
 
         // FIXME: somehow do shutdown once we’re killed
         // cf. <https://github.com/IntersectMBO/cardano-node/blob/10.6.1/cardano-node/src/Cardano/Node/Handlers/Shutdown.hs#L123-L148>
