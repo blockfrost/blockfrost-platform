@@ -1,9 +1,9 @@
 [package]
 name = "blockfrost-gateway"
-version = "1.3.3"
-license-file = "LICENSE"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 publish = false
-edition = "2021"
 build = "build.rs"
 
 [features]
@@ -40,7 +40,7 @@ dotenvy = "0.15.7"
 hex = "0.4.3"
 rand = "0.8.5"
 base64 = "0.21"
-uuid = "1.10"
+uuid.workspace = true
 hyper = "1.4.1"
 machine-uid = "0.5"
 blake3 = "1"
@@ -63,3 +63,6 @@ reqwest = { version = "0.12", default-features = false, features = [
   "blocking",
   "rustls-tls",
 ] }
+
+[lints]
+workspace = true

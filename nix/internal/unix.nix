@@ -21,7 +21,14 @@ in
 
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
-    src = craneLib.cleanCargoSource ../../.;
+    src = lib.cleanSourceWith {
+      src = lib.cleanSource ../../.;
+      filter = path: type:
+        craneLib.filterCargoSources path type
+        || lib.hasSuffix ".sql" path
+        || lib.hasSuffix "/LICENSE" path;
+      name = "source";
+    };
 
     packageName = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/crates/platform/Cargo.toml";};};
 
@@ -35,7 +42,8 @@ in
         ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
         buildInputs =
-          lib.optionals pkgs.stdenv.isLinux [
+          [pkgs.postgresql]
+          ++ lib.optionals pkgs.stdenv.isLinux [
             pkgs.openssl
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
@@ -59,10 +67,11 @@ in
 
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
+    gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
-    package = craneLib.buildPackage (commonArgs
+    blockfrost-platform = craneLib.buildPackage (commonArgs
       // {
         inherit cargoArtifacts GIT_REVISION;
         doCheck = false; # we run tests with `cargo-nextest` below
@@ -81,6 +90,22 @@ in
           inherit (platformCargoToml.package) description homepage;
         };
       });
+
+    blockfrost-gateway = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = gatewayCargoToml.package.name;
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = gatewayCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
+        cargoExtraArgs = "--package blockfrost-gateway";
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
 
     cargoChecks = {
       cargo-clippy = craneLib.cargoClippy (commonArgs
@@ -111,7 +136,8 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
     };
 
     nixChecks = {
@@ -323,14 +349,14 @@ in
       meta.description = "Builds a valid CBOR transaction for testing ‘/tx/submit’";
     };
 
-    releaseBaseUrl = "https://github.com/blockfrost/blockfrost-platform/releases/download/${package.version}";
+    releaseBaseUrl = "https://github.com/blockfrost/blockfrost-platform/releases/download/${blockfrost-platform.version}";
 
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
         nativeBuildInputs = with pkgs; [shellcheck];
         projectName = packageName.pname;
-        projectVersion = package.version;
+        projectVersion = blockfrost-platform.version;
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;
       } ''
@@ -557,7 +583,7 @@ in
 
           platform_port=$(python3 -m portpicker)
 
-          ${lib.getExe package} \
+          ${lib.getExe blockfrost-platform} \
             --server-address 127.0.0.1 \
             --server-port "$platform_port" \
             --log-level info \
@@ -606,6 +632,11 @@ in
     hydraNetworksJson = builtins.path {
       path = hydra-flake + "/hydra-node/networks.json";
     };
+
+    hydraScriptsEnvVars = map (network: {
+      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
+      value = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${network}.${hydraVersion};
+    }) ["mainnet" "preprod" "preview"];
 
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";

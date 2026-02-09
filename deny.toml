@@ -13,5 +13,14 @@ allow = [
   "BSD-2-Clause",
   "Apache-2.0 WITH LLVM-exception",
   "bzip2-1.0.6",
+  "CDLA-Permissive-2.0",
+  "OpenSSL",
 ]
+private = { ignore = true }
 confidence-threshold = 0.8
+
+[[licenses.clarify]]
+name = "ring"
+version = "0.17.8"
+expression = "Apache-2.0 AND ISC AND MIT AND OpenSSL"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
