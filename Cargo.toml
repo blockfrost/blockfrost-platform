@@ -5,6 +5,7 @@ license-file = "LICENSE"
 publish = false
 edition = "2021"
 build = "build.rs"
+default-run = "blockfrost-gateway"
 
 [features]
 default = []
