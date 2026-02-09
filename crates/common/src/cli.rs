@@ -413,29 +413,27 @@ mod tests {
         fn build_args_vec(&self) -> Vec<String> {
             let mut args = vec!["testing".to_string()];
 
-            let mut push_opt = |flag: &str, value: Option<String>| {
-                if let Some(v) = value {
-                    args.push(flag.to_string());
-                    args.push(v);
-                }
-            };
+            macro_rules! push_opt {
+                ($flag:expr, $field:expr) => {
+                    // 'ref v' borrows the value inside the Option.
+                    // This works for both String (avoiding move) and usize (Copy).
+                    if let Some(ref v) = $field {
+                        args.push($flag.to_string());
+                        args.push(v.to_string());
+                    }
+                };
+            }
 
-            push_opt("--node-socket-path", self.node_socket_path.clone());
-            push_opt("--server-address", self.server_address.clone());
-            push_opt("--server-port", self.server_port.map(|p| p.to_string()));
-            push_opt(
-                "--server-concurrency-limit",
-                self.server_concurrency_limit.map(|l| l.to_string()),
-            );
-            push_opt("--log-level", self.log_level.clone());
-            push_opt("--mode", self.mode.clone());
-            push_opt("--reward-address", self.reward_address.clone());
-            push_opt("--secret", self.secret.clone());
-            push_opt("--data-node", self.data_node.clone());
-            push_opt(
-                "--data-node-timeout-sec",
-                self.data_node_timeout_sec.clone(),
-            );
+            push_opt!("--node-socket-path", self.node_socket_path);
+            push_opt!("--server-address", self.server_address);
+            push_opt!("--server-port", self.server_port);
+            push_opt!("--server-concurrency-limit", self.server_concurrency_limit);
+            push_opt!("--log-level", self.log_level);
+            push_opt!("--mode", self.mode);
+            push_opt!("--reward-address", self.reward_address);
+            push_opt!("--secret", self.secret);
+            push_opt!("--data-node", self.data_node);
+            push_opt!("--data-node-timeout-sec", self.data_node_timeout_sec);
 
             // optional parameters
             if self.solitary {
