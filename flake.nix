@@ -90,8 +90,8 @@
       in {
         packages =
           {
-            default = internal.package;
-            blockfrost-platform = internal.package;
+            default = internal.blockfrost-platform;
+            inherit (internal) blockfrost-platform blockfrost-gateway;
             inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
@@ -160,7 +160,7 @@
             targetSystem: import ./nix/internal/windows.nix {inherit inputs targetSystem;}
           );
 
-        nixosModule = {
+        nixosModule.default = {
           pkgs,
           lib,
           ...
