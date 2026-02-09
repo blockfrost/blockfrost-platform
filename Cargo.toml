@@ -53,6 +53,14 @@ nix = { version = "0.30", default-features = false, features = ["signal"] }
 name = "blockfrost_gateway"
 path = "src/lib.rs"
 
+[[bin]]
+name = "blockfrost-gateway"
+path = "src/main.rs"
+
+[[bin]]
+name = "blockfrost-sdk-bridge"
+path = "src/bin/blockfrost_sdk_bridge.rs"
+
 [dev-dependencies]
 rstest = "0.26.1"
 

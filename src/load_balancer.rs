@@ -55,7 +55,7 @@ pub enum JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
-    HydraKExResponse(hydra::KeyExchangeResponse),
+    HydraKExResponse(hydra::server::KeyExchangeResponse),
     HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
@@ -66,7 +66,7 @@ pub enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RelayMessage {
     Response(JsonResponse),
-    HydraKExRequest(hydra::KeyExchangeRequest),
+    HydraKExRequest(hydra::server::KeyExchangeRequest),
     HydraTunnel(hydra::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
@@ -77,7 +77,7 @@ pub struct LoadBalancerState {
     pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
     pub background_worker: Arc<JoinHandle<()>>,
-    pub hydras: Option<hydra::HydrasManager>,
+    pub hydras: Option<hydra::server::HydrasManager>,
 }
 
 #[derive(Debug)]
@@ -111,7 +111,7 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new(hydras: Option<hydra::HydrasManager>) -> LoadBalancerState {
+    pub async fn new(hydras: Option<hydra::server::HydrasManager>) -> LoadBalancerState {
         let access_tokens = Arc::new(Mutex::new(HashMap::new()));
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
         let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
@@ -463,9 +463,11 @@ pub mod event_loop {
         let mut last_ping_id: u64 = 0;
         let mut disconnection_reason = None;
 
-        let mut initial_hydra_kex: Option<(hydra::KeyExchangeRequest, hydra::KeyExchangeResponse)> =
-            None;
-        let mut hydra_controller: Option<hydra::HydraController> = None;
+        let mut initial_hydra_kex: Option<(
+            hydra::server::KeyExchangeRequest,
+            hydra::server::KeyExchangeResponse,
+        )> = None;
+        let mut hydra_controller: Option<hydra::server::HydraController> = None;
 
         let tunnel_cancellation = CancellationToken::new();
         let mut tunnel_controller: Option<hydra::tunnel2::Tunnel> = None;
