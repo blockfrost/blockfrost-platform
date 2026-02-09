@@ -12,6 +12,7 @@ members = [
   "crates/api_provider",
   "crates/node",
   "crates/dolos",
+  "crates/gateway",
 ]
 default-members = ["crates/platform"]
 
@@ -62,6 +63,7 @@ toml = "0.8.23"
 tracing = "0.1.41"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
+uuid = { version = "1.10", features = ["serde", "v4"] }
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"
