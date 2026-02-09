@@ -98,9 +98,29 @@ in
         doCheck = false; # we run tests with `cargo-nextest` below
         meta.mainProgram = gatewayCargoToml.package.name;
         postInstall = ''
-          mv $out/bin $out/libexec
+          mkdir -p $out/libexec
+          mv $out/bin/${gatewayCargoToml.package.name} $out/libexec/
+          rm -r $out/bin
           mkdir -p $out/bin
           ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
+        cargoExtraArgs = "--package blockfrost-gateway";
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+      // rec {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = "blockfrost-sdk-bridge";
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = pname;
+        postInstall = ''
+          mkdir -p $out/libexec
+          mv $out/bin/${pname} $out/libexec/
+          rm -r $out/bin
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${pname} ./ ; )
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway";
