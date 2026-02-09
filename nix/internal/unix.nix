@@ -23,9 +23,12 @@ in
 
     src = craneLib.cleanCargoSource ../../.;
 
+    packageName = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/crates/platform/Cargo.toml";};};
+
     commonArgs =
       {
         inherit src;
+        inherit (packageName) pname;
         strictDeps = true;
         nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
           pkgs.pkg-config
@@ -54,9 +57,8 @@ in
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-    packageName = (craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/Cargo.toml";};}).pname;
-
-    cargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
+    workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
+    platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -68,15 +70,15 @@ in
           chmod -R +w $out
           mv $out/bin $out/libexec
           mkdir -p $out/bin
-          ln -sf $out/libexec/${packageName} $out/bin/
+          ln -sf $out/libexec/${packageName.pname} $out/bin/
         '';
         meta = {
-          mainProgram = packageName;
+          mainProgram = packageName.pname;
           license =
-            if cargoToml.workspace.package.license == "Apache-2.0"
+            if workspaceCargoToml.workspace.package.license == "Apache-2.0"
             then lib.licenses.asl20
-            else throw "unknown license in Cargo.toml: ${cargoToml.workspace.package.license}";
-          inherit (cargoToml.package) description homepage;
+            else throw "unknown license in Cargo.toml: ${workspaceCargoToml.workspace.package.license}";
+          inherit (platformCargoToml.package) description homepage;
         };
       });
 
@@ -95,11 +97,13 @@ in
         });
 
       cargo-audit = craneLib.cargoAudit {
+        inherit (packageName) pname;
         inherit src;
         inherit (inputs) advisory-db;
       };
 
       cargo-deny = craneLib.cargoDeny {
+        inherit (packageName) pname;
         inherit src;
       };
 
@@ -230,8 +234,8 @@ in
 
     stateDir =
       if pkgs.stdenv.isDarwin
-      then "Library/Application Support/${packageName}"
-      else ".local/share/${packageName}";
+      then "Library/Application Support/${packageName.pname}"
+      else ".local/share/${packageName.pname}";
 
     runNode = network:
       pkgs.writeShellScriptBin "run-node-${network}" ''
@@ -325,7 +329,7 @@ in
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
         nativeBuildInputs = with pkgs; [shellcheck];
-        projectName = packageName;
+        projectName = packageName.pname;
         projectVersion = package.version;
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;
@@ -573,7 +577,7 @@ in
           cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
-          cat ${../../tests/data/supported_endpoints.json} >endpoints-allowlist.json
+          cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
 
           set -x
           node --version

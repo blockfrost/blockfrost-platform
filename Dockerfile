@@ -13,7 +13,6 @@ ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
 FROM base AS planner
-COPY ./src	./src
 COPY ./crates	./crates
 COPY Cargo.toml	Cargo.lock	./
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -25,7 +24,6 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
   cargo chef cook --release --workspace --recipe-path recipe.json
-COPY ./src	./src
 COPY ./crates	./crates
 COPY Cargo.toml	Cargo.lock	./
 ARG GIT_REVISION
