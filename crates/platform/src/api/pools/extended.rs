@@ -7,8 +7,8 @@ pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<PoolsListExtendedResponse> {
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
     let pagination = Pagination::from_query(pagination_query)?;
 
-    dolos.pools().extended(&pagination).await
+    data_node.pools().extended(&pagination).await
 }

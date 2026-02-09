@@ -32,9 +32,9 @@ in
         bin_dir = "bin";
         exe_dir = "exe";
         lib_dir = "lib";
-      } "${unix.package}/libexec/${unix.packageName}")
+      } "${unix.package}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
-        name = unix.packageName;
+        name = unix.packageName.pname;
         buildCommand =
           drv.buildCommand
           + ''
@@ -43,7 +43,7 @@ in
             ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/.
             ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/.
             chmod -R +w $out
-            ( cd $out ; ln -s bin/{${unix.packageName},dolos,hydra-node,cardano-cli} ./ ; )
+            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
           '';
       });
 

@@ -1,5 +1,5 @@
 use crate::errors::BlockfrostError;
-use bech32::{ToBase32, decode};
+use bech32::{Bech32, Hrp};
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone)]
@@ -23,20 +23,21 @@ impl PoolData {
 
     pub fn validate_and_convert_pool(input: &str) -> Option<String> {
         if hex::decode(input).is_ok() {
-            let words = match hex::decode(input) {
-                Ok(bytes) => bytes.to_base32(),
+            let bytes = match hex::decode(input) {
+                Ok(bytes) => bytes,
                 _ => return None,
             };
-            let pool_id = match bech32::encode("pool", words, bech32::Variant::Bech32) {
+            let hrp = Hrp::parse("pool").ok()?;
+            let pool_id = match bech32::encode::<Bech32>(hrp, &bytes) {
                 Ok(pool_id) => pool_id,
                 Err(_) => return None,
             };
 
             Some(pool_id)
         } else {
-            let bech32_info = decode(input).ok()?;
+            let (hrp, _) = bech32::decode(input).ok()?;
 
-            if bech32_info.0 == "pool" {
+            if hrp.as_str() == "pool" {
                 return Some(input.to_string());
             }
 

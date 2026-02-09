@@ -1,6 +1,6 @@
 use crate::errors::BlockfrostError;
 
-use bech32::{FromBase32, ToBase32, decode};
+use bech32::{Bech32, Hrp};
 use cardano_serialization_lib::PublicKey;
 use serde::Deserialize;
 
@@ -37,17 +37,14 @@ impl PaymentCred {
             prefix: PaymentCredPrefix::Invalid,
         };
 
-        let decoded = decode(address);
-        let (hrp, data, _) = match decoded {
+        let decoded = bech32::decode(address);
+        let (hrp, data) = match decoded {
             Ok(info) => info,
             Err(_) => return empty_result,
         };
 
-        if hrp == "addr_vkh" {
-            let payload = match Vec::<u8>::from_base32(&data) {
-                Ok(payload) => payload,
-                Err(_) => return empty_result,
-            };
+        if hrp.as_str() == "addr_vkh" {
+            let payload = data;
 
             let payment_cred = format!("\\x{}", hex::encode(payload));
 
@@ -57,11 +54,8 @@ impl PaymentCred {
             };
         }
 
-        if hrp == "addr_vk" {
-            let payload = match Vec::<u8>::from_base32(&data) {
-                Ok(payload) => payload,
-                Err(_) => return empty_result,
-            };
+        if hrp.as_str() == "addr_vk" {
+            let payload = data;
 
             let pub_key = PublicKey::from_hex(&hex::encode(payload));
 
@@ -78,11 +72,8 @@ impl PaymentCred {
             }
         }
 
-        if hrp == "script" {
-            let payload = match Vec::<u8>::from_base32(&data) {
-                Ok(payload) => payload,
-                Err(_) => return empty_result,
-            };
+        if hrp.as_str() == "script" {
+            let payload = data;
 
             let payment_cred = format!("\\x{}", hex::encode(payload));
 
@@ -107,8 +98,8 @@ impl PaymentCred {
 
         match payment_cred_prefix {
             PaymentCredPrefix::AddrVkh | PaymentCredPrefix::Script => {
-                let words = match hex::decode(address) {
-                    Ok(bytes) => bytes.to_base32(),
+                let bytes = match hex::decode(address) {
+                    Ok(bytes) => bytes,
                     err => {
                         return Err(BlockfrostError::internal_server_error(format!(
                             "get_bech32_from_payment_cred hex decode error: {err:?}"
@@ -116,7 +107,7 @@ impl PaymentCred {
                     },
                 };
 
-                let prefix = match payment_cred_prefix {
+                let prefix_str = match payment_cred_prefix {
                     PaymentCredPrefix::AddrVkh => "addr_vkh",
                     PaymentCredPrefix::Script => "script",
                     err => {
@@ -126,11 +117,17 @@ impl PaymentCred {
                     },
                 };
 
-                let address = match bech32::encode(prefix, words, bech32::Variant::Bech32) {
+                let hrp = Hrp::parse(prefix_str).map_err(|e| {
+                    BlockfrostError::internal_server_error(format!(
+                        "get_bech32_from_payment_cred hrp parse error: {e:?}"
+                    ))
+                })?;
+
+                let address = match bech32::encode::<Bech32>(hrp, &bytes) {
                     Ok(address) => address,
                     err => {
                         return Err(BlockfrostError::internal_server_error(format!(
-                            "get_bech32_from_payment_cred hex decode error: {err:?}"
+                            "get_bech32_from_payment_cred encode error: {err:?}"
                         )));
                     },
                 };
@@ -237,5 +234,40 @@ mod tests {
             "{}",
             description
         );
+    }
+
+    #[test]
+    fn test_to_bech32_with_addr_vk_prefix_returns_error() {
+        let address = "1c73279376bf71085068cd4167523f48695f3865564a497dc9292638".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::AddrVk);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_bech32_with_invalid_prefix_returns_error() {
+        let address = "1c73279376bf71085068cd4167523f48695f3865564a497dc9292638".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::Invalid);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_bech32_with_invalid_hex_returns_error() {
+        let address = "not_valid_hex".to_string();
+        let result = PaymentCred::to_bech_32(&address, PaymentCredPrefix::AddrVkh);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("cannot decode hex"));
+    }
+
+    #[test]
+    fn test_from_bech32_with_invalid_public_key_length() {
+        let result = PaymentCred::from_bech_32(
+            "addr_vk1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdtn6a9",
+        );
+
+        assert_eq!(result.prefix, PaymentCredPrefix::Invalid);
+        assert!(result.payload.is_none());
     }
 }

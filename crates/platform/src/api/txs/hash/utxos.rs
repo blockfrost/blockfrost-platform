@@ -12,7 +12,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<TxsUtxosResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    dolos.txs().utxos(&path.hash, &pagination).await
+    data_node.txs().utxos(&path.hash, &pagination).await
 }

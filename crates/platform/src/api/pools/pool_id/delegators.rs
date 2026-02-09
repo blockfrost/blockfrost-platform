@@ -13,9 +13,9 @@ pub async fn route(
 ) -> ApiResult<PoolsDelegatorsResponse> {
     let pool_data = PoolData::from_path(&pools_path.pool_id)?;
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    dolos
+    data_node
         .pools()
         .delegators(&pool_data.pool_id, &pagination)
         .await

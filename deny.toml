@@ -13,6 +13,7 @@ allow = [
   "BSD-2-Clause",
   "CDLA-Permissive-2.0",
   "OpenSSL",
+  "Apache-2.0 WITH LLVM-exception",
 ]
 private = { ignore = true }
 confidence-threshold = 0.8

@@ -8,7 +8,7 @@ pub async fn route(
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<MetadataLabelsResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    dolos.metadata().labels(&pagination).await
+    data_node.metadata().labels(&pagination).await
 }

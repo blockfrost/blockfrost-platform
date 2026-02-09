@@ -12,9 +12,9 @@ pub async fn route(
     Path(matadata_path): Path<MetadataPath>,
 ) -> ApiResult<MetadataLabelJsonResponse> {
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    dolos
+    data_node
         .metadata()
         .label_json(&matadata_path.label, &pagination)
         .await

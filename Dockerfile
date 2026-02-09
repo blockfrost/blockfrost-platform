@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS base
+FROM lukemathwalker/cargo-chef:latest-rust-1-trixie AS base
 
 # hadolint ignore=DL3008
 RUN apt-get update \
@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
   cargo build --release
 
-FROM gcr.io/distroless/cc-debian12:dca9008b864a381b5ce97196a4d8399ac3c2fa65 AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
 
 ARG GIT_REVISION

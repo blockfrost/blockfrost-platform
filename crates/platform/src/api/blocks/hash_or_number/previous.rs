@@ -13,9 +13,9 @@ pub async fn route(
 ) -> ApiResult<BlocksResponse> {
     let block_data = BlockData::from_string(blocks_path.hash_or_number)?;
     let pagination = Pagination::from_query(pagination_query)?;
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    dolos
+    data_node
         .blocks()
         .previous(&block_data.hash_or_number, &pagination)
         .await

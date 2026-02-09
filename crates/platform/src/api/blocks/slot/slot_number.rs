@@ -7,9 +7,9 @@ pub async fn route(
     State(state): State<AppState>,
     Path(blocks_slot_path): Path<BlocksSlotPath>,
 ) -> ApiResult<BlocksSingleResponse> {
-    let dolos = state.get_dolos()?;
+    let data_node = state.data_node()?;
 
-    let response = dolos.blocks().by_slot(&blocks_slot_path.slot).await?;
+    let response = data_node.blocks().by_slot(&blocks_slot_path.slot).await?;
 
     Ok(response)
 }

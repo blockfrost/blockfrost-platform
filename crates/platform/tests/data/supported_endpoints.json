@@ -1,4 +1,5 @@
 [
+  "/health",
   "/txs/{hash}/mirs",
   "/txs/{hash}/pool_retires",
   "/txs/{hash}/pool_updates",
