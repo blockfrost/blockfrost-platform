@@ -8,7 +8,7 @@ use std::path::PathBuf;
 struct Cli {
     /// A prefunded L1 key file for paying the Hydra transaction fees on L1, ~13 ADA per L2 cycle.
     #[arg(long)]
-    pub hydra_cardano_signing_key: Option<PathBuf>,
+    pub hydra_cardano_signing_key: PathBuf,
 }
 
 fn main() {
