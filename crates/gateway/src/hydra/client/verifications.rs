@@ -127,46 +127,6 @@ impl super::State {
         Ok(address)
     }
 
-    pub(super) async fn derive_enterprise_address_from_vkey_json(
-        &self,
-        vkey_json: &serde_json::Value,
-    ) -> Result<String> {
-        let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args([
-                "address",
-                "build",
-                "--payment-verification-key-file",
-                "/dev/stdin",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()?;
-
-        {
-            let stdin = child.stdin.as_mut().ok_or(anyhow!(
-                "failed to open stdin for cardano-cli address build"
-            ))?;
-            use tokio::io::AsyncWriteExt;
-            let bytes = serde_json::to_vec(vkey_json)?;
-            stdin.write_all(&bytes).await?;
-        }
-
-        let addr_output = child.wait_with_output().await?;
-        if !addr_output.status.success() {
-            Err(anyhow!(
-                "cardano-cli address build failed: {}",
-                String::from_utf8_lossy(&addr_output.stderr)
-            ))?;
-        }
-
-        let address = String::from_utf8(addr_output.stdout)?.trim().to_string();
-        if address.is_empty() {
-            return Err(anyhow!("derived address is empty"));
-        }
-
-        Ok(address)
-    }
 
     async fn query_utxo_json(&self, address: &str) -> Result<String> {
         let output = tokio::process::Command::new(&self.cardano_cli_exe)
@@ -556,71 +516,6 @@ impl super::State {
         Ok(())
     }
 
-    pub(super) async fn empty_commit_to_hydra(
-        &self,
-        hydra_api_port: u16,
-        signing_skey: &Path,
-    ) -> Result<()> {
-        use anyhow::Context;
-        use reqwest::header;
-
-        let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
-        let client = reqwest::Client::new();
-        let resp = client
-            .post(url)
-            .header(header::CONTENT_TYPE, "application/json")
-            .body("{}")
-            .send()
-            .await
-            .context("failed to POST /commit to hydra-node")?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.bytes().await.unwrap_or_default();
-            return Err(anyhow!(
-                "hydra /commit failed with {}: {}",
-                status,
-                String::from_utf8_lossy(&body)
-            ));
-        }
-
-        let commit_tx_bytes = resp
-            .bytes()
-            .await
-            .context("failed to read hydra /commit response body")?
-            .to_vec();
-
-        let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
-            .context("hydra /commit response was not valid JSON")?;
-
-        let signed_tx = self
-            .cardano_cli_capture(
-                &[
-                    "latest",
-                    "transaction",
-                    "sign",
-                    "--tx-file",
-                    "/dev/stdin",
-                    "--signing-key-file",
-                    signing_skey
-                        .to_str()
-                        .ok_or_else(|| anyhow!("commit_funds_skey is not valid UTF-8"))?,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                Some(&commit_tx_bytes),
-            )
-            .await?
-            .0;
-
-        let _ = self
-            .cardano_cli_capture(
-                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&serde_json::to_vec(&signed_tx)?),
-            )
-            .await?;
-        Ok(())
-    }
 }
 
 /// Reads a JSON file from disk.
