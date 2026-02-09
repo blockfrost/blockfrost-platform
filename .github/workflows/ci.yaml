@@ -56,6 +56,12 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
+      - name: Install libpq (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libpq
+          brew link --force libpq
+
       - name: Fast check
         run: cargo check --workspace --all-targets --verbose
 
