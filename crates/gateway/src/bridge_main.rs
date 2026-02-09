@@ -1,12 +1,12 @@
-use anyhow::{Result, anyhow};
-use axum::extract::Request;
-use axum::response::IntoResponse;
-use axum::Router;
-use axum::routing::any;
 use crate::find_libexec;
 use crate::hydra;
-use crate::load_balancer::{JsonHeader, JsonRequest, JsonResponse, JsonRequestMethod, RequestId};
+use crate::load_balancer::{JsonHeader, JsonRequest, JsonRequestMethod, JsonResponse, RequestId};
 use crate::types::Network;
+use anyhow::{Result, anyhow};
+use axum::Router;
+use axum::extract::Request;
+use axum::response::IntoResponse;
+use axum::routing::any;
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -126,7 +126,10 @@ impl PaymentParams {
 
 #[tokio::main]
 pub async fn run() -> Result<()> {
-    tracing_subscriber::fmt().with_target(false).compact().init();
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .compact()
+        .init();
 
     let cli = Cli::parse();
     let gateway_ws_url = normalize_gateway_ws_url(&cli.gateway_ws_url);
@@ -196,7 +199,10 @@ pub async fn run() -> Result<()> {
         loop {
             tokio::time::sleep(WS_PING_TIMEOUT).await;
             ping_id += 1;
-            if send_ws_msg(&ping_tx, &BridgeMessage::Ping(ping_id)).await.is_err() {
+            if send_ws_msg(&ping_tx, &BridgeMessage::Ping(ping_id))
+                .await
+                .is_err()
+            {
                 break;
             }
         }
@@ -257,7 +263,8 @@ pub async fn run() -> Result<()> {
                             }
                         },
                         Ok(GatewayMessage::HydraKExResponse(resp)) => {
-                            if resp.machine_id != hydra::client::verifications::hashed_machine_id() {
+                            if resp.machine_id != hydra::client::verifications::hashed_machine_id()
+                            {
                                 let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
                                     hydra::tunnel2::TunnelConfig {
                                         expose_port: resp.proposed_platform_h2h_port,
@@ -267,7 +274,10 @@ pub async fn run() -> Result<()> {
                                     tunnel_cancellation.clone(),
                                 );
 
-                                tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await.expect("tunnel listener should start");
+                                tunnel_ctl
+                                    .spawn_listener(resp.gateway_h2h_port)
+                                    .await
+                                    .expect("tunnel listener should start");
 
                                 let ws_tx = bridge_state_for_ws.ws_tx.clone();
                                 tokio::spawn(async move {
@@ -300,7 +310,7 @@ pub async fn run() -> Result<()> {
                                 Err(err) => {
                                     error!("failed to derive gateway payment address: {err}");
                                     continue;
-                                }
+                                },
                             };
                             info!("gateway payment address: {addr}");
                             *bridge_state_for_ws.gateway_address.lock().await = Some(addr);
@@ -315,13 +325,17 @@ pub async fn run() -> Result<()> {
                             }
                         },
                         Ok(GatewayMessage::Ping(ping_id)) => {
-                            let _ = send_ws_msg(&bridge_state_for_ws.ws_tx, &BridgeMessage::Pong(ping_id)).await;
+                            let _ = send_ws_msg(
+                                &bridge_state_for_ws.ws_tx,
+                                &BridgeMessage::Pong(ping_id),
+                            )
+                            .await;
                         },
                         Ok(GatewayMessage::Pong(_)) => {},
                         Ok(GatewayMessage::Error { code, msg }) => {
                             warn!("gateway error: {code}: {msg}");
                         },
-                        Err(err) => warn!("unparsable gateway message: {err}")
+                        Err(err) => warn!("unparsable gateway message: {err}"),
                     }
                 },
                 Ok(tokio_tungstenite::tungstenite::Message::Close(frame)) => {
@@ -384,12 +398,9 @@ async fn handle_request(
         ));
     }
 
-    ensure_credit(&state).await.map_err(|msg| {
-        (
-            hyper::StatusCode::PAYMENT_REQUIRED,
-            msg,
-        )
-    })?;
+    ensure_credit(&state)
+        .await
+        .map_err(|msg| (hyper::StatusCode::PAYMENT_REQUIRED, msg))?;
 
     let json_req = request_to_json(req).await?;
     let request_id = json_req.id.clone();
@@ -493,9 +504,7 @@ async fn request_to_json(
     })
 }
 
-async fn json_to_response(
-    json: JsonResponse,
-) -> Result<hyper::Response<axum::body::Body>, String> {
+async fn json_to_response(json: JsonResponse) -> Result<hyper::Response<axum::body::Body>, String> {
     use axum::body::Body;
     use hyper::Response;
     use hyper::StatusCode;
@@ -505,19 +514,17 @@ async fn json_to_response(
             Body::empty()
         } else {
             use base64::{Engine as _, engine::general_purpose};
-            let body_bytes: Vec<u8> =
-                general_purpose::STANDARD
-                    .decode(json.body_base64)
-                    .map_err(|err| {
-                        format!("Invalid base64 encoding of response body_base64: {err}")
-                    })?;
+            let body_bytes: Vec<u8> = general_purpose::STANDARD
+                .decode(json.body_base64)
+                .map_err(|err| format!("Invalid base64 encoding of response body_base64: {err}"))?;
             Body::from(body_bytes)
         }
     };
 
-    let mut rv = Response::builder().status(StatusCode::from_u16(json.code).map_err(|err| {
-        format!("Invalid response status code {}: {err}", json.code)
-    })?);
+    let mut rv = Response::builder().status(
+        StatusCode::from_u16(json.code)
+            .map_err(|err| format!("Invalid response status code {}: {err}", json.code))?,
+    );
 
     for h in json.header {
         rv = rv.header(h.name, h.value);

@@ -1,10 +1,10 @@
+use crate::{api, blockfrost, config, db, hydra, load_balancer, sdk_bridge_ws};
 use anyhow::Result;
 use api::{register, root};
 use axum::{
     Extension, Router,
     routing::{get, post},
 };
-use crate::{api, blockfrost, config, db, hydra, load_balancer, sdk_bridge_ws};
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};

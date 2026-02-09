@@ -574,7 +574,6 @@ impl super::HydraConfig {
             .try_into()
             .context("utxo length does not fit into u64 (?)")
     }
-
 }
 
 /// Reads a JSON file from disk.

@@ -733,9 +733,7 @@ pub mod event_loop {
             fail_request(
                 request,
                 StatusCode::BAD_GATEWAY,
-                &format!(
-                    "relay disconnected with in-progress requests: {disconnection_reason_}"
-                ),
+                &format!("relay disconnected with in-progress requests: {disconnection_reason_}"),
                 asset_name,
             )
             .await;

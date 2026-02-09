@@ -127,7 +127,6 @@ impl super::State {
         Ok(address)
     }
 
-
     async fn query_utxo_json(&self, address: &str) -> Result<String> {
         let output = tokio::process::Command::new(&self.cardano_cli_exe)
             .envs(self.cardano_cli_env())
@@ -513,7 +512,6 @@ impl super::State {
 
         Ok(())
     }
-
 }
 
 /// Reads a JSON file from disk.

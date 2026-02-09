@@ -107,7 +107,8 @@ impl HydraController {
                 respond_to: tx,
             })
             .await;
-        rx.await.unwrap_or_else(|_| Err(anyhow!("payment request cancelled")))
+        rx.await
+            .unwrap_or_else(|_| Err(anyhow!("payment request cancelled")))
     }
 
     pub fn api_port(&self) -> Option<u16> {

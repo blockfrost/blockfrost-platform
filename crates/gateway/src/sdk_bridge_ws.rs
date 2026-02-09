@@ -131,7 +131,15 @@ mod event_loop {
                         },
                         (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
                             let bridge_machine_id = req.machine_id.clone();
-                            match hydras.spawn_new(&crate::types::AssetName("sdk-bridge".into()), "", initial_kex, req).await {
+                            match hydras
+                                .spawn_new(
+                                    &crate::types::AssetName("sdk-bridge".into()),
+                                    "",
+                                    initial_kex,
+                                    req,
+                                )
+                                .await
+                            {
                                 Ok((ctl, resp)) => {
                                     hydra_controller = Some(ctl.clone());
 
@@ -146,7 +154,10 @@ mod event_loop {
                                                 tunnel_cancellation.clone(),
                                             );
 
-                                        tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("tunnel listener should start");
+                                        tunnel_ctl
+                                            .spawn_listener(resp.proposed_platform_h2h_port)
+                                            .await
+                                            .expect("tunnel listener should start");
 
                                         let socket_tx_ = socket_tx.clone();
                                         tokio::spawn(async move {
@@ -177,11 +188,7 @@ mod event_loop {
                                                 return;
                                             }
                                             watch_credits(
-                                                credits,
-                                                params,
-                                                address,
-                                                api_port,
-                                                cancel,
+                                                credits, params, address, api_port, cancel,
                                             )
                                             .await;
                                         }));
@@ -197,7 +204,10 @@ mod event_loop {
                         },
                         (false, Some(hydras), _, _) => {
                             match hydras
-                                .initialize_key_exchange(&crate::types::AssetName("sdk-bridge".into()), req.clone())
+                                .initialize_key_exchange(
+                                    &crate::types::AssetName("sdk-bridge".into()),
+                                    req.clone(),
+                                )
                                 .await
                             {
                                 Ok(resp) => {
@@ -233,7 +243,7 @@ mod event_loop {
                         let response = error_response(
                             request.id.clone(),
                             402,
-                            "Hydra credits depleted; please prepay", 
+                            "Hydra credits depleted; please prepay",
                         );
                         let _ = event_tx.send(BridgeEvent::NewResponse(response)).await;
                         continue;
@@ -428,15 +438,14 @@ mod event_loop {
                 Body::empty()
             } else {
                 use base64::{Engine as _, engine::general_purpose};
-                let body_bytes: Vec<u8> =
-                    general_purpose::STANDARD
-                        .decode(json.body_base64)
-                        .map_err(|err| {
-                            (
-                                StatusCode::BAD_REQUEST,
-                                format!("Invalid base64 encoding of body_base64: {err}"),
-                            )
-                        })?;
+                let body_bytes: Vec<u8> = general_purpose::STANDARD
+                    .decode(json.body_base64)
+                    .map_err(|err| {
+                        (
+                            StatusCode::BAD_REQUEST,
+                            format!("Invalid base64 encoding of body_base64: {err}"),
+                        )
+                    })?;
                 Body::from(body_bytes)
             }
         };
@@ -467,10 +476,13 @@ mod event_loop {
             .headers()
             .iter()
             .flat_map(|(name, value)| {
-                value.to_str().ok().map(|value| crate::load_balancer::JsonHeader {
-                    name: name.to_string(),
-                    value: value.to_string(),
-                })
+                value
+                    .to_str()
+                    .ok()
+                    .map(|value| crate::load_balancer::JsonHeader {
+                        name: name.to_string(),
+                        value: value.to_string(),
+                    })
             })
             .collect();
 
@@ -498,7 +510,11 @@ mod event_loop {
         })
     }
 
-    fn error_response(request_id: crate::load_balancer::RequestId, code: u16, msg: &str) -> JsonResponse {
+    fn error_response(
+        request_id: crate::load_balancer::RequestId,
+        code: u16,
+        msg: &str,
+    ) -> JsonResponse {
         use base64::{Engine as _, engine::general_purpose};
         JsonResponse {
             id: request_id,
@@ -537,9 +553,9 @@ mod event_loop {
                         let delta = current - guard.last_balance;
                         let gained = delta / microtx_lovelace;
                         if gained > 0 {
-                            guard.available = guard
-                                .available
-                                .saturating_add(gained.saturating_mul(params.requests_per_microtransaction));
+                            guard.available = guard.available.saturating_add(
+                                gained.saturating_mul(params.requests_per_microtransaction),
+                            );
                             guard.last_balance = guard
                                 .last_balance
                                 .saturating_add(gained.saturating_mul(microtx_lovelace));
@@ -553,10 +569,7 @@ mod event_loop {
         }
     }
 
-    async fn snapshot_lovelace_for_address(
-        api_port: u16,
-        address: &str,
-    ) -> Result<u64, String> {
+    async fn snapshot_lovelace_for_address(api_port: u16, address: &str) -> Result<u64, String> {
         use anyhow::Context;
 
         let url = format!("http://127.0.0.1:{api_port}/snapshot/utxo");
