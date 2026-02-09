@@ -3,7 +3,7 @@
 use bf_common::cli::Args;
 use blockfrost_platform::{
     AppError,
-    hydra::HydraController,
+    hydra::client::HydraController,
     icebreakers::manager::IcebreakersManager,
     server::{build, logging::setup_tracing},
 };

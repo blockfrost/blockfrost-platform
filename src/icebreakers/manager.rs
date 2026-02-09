@@ -61,9 +61,9 @@ impl IcebreakersManager {
     pub async fn run(
         self,
         hydra_kex: (
-            mpsc::Receiver<hydra::KeyExchangeRequest>,
-            mpsc::Sender<hydra::KeyExchangeResponse>,
-            mpsc::Sender<hydra::TerminateRequest>,
+            mpsc::Receiver<hydra::client::KeyExchangeRequest>,
+            mpsc::Sender<hydra::client::KeyExchangeResponse>,
+            mpsc::Sender<hydra::client::TerminateRequest>,
         ),
     ) {
         let (dest_watch_tx, dest_watch_rx) = watch::channel(None);
@@ -72,9 +72,9 @@ impl IcebreakersManager {
         // For now, we’re passing a pair with changeable destination of
         // requests, as we run multiple load balancers to multiple gateways:
         let mutable_hydra_kex: (
-            watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
-            mpsc::Sender<hydra::KeyExchangeResponse>,
-            mpsc::Sender<hydra::TerminateRequest>,
+            watch::Sender<Option<mpsc::Sender<hydra::client::KeyExchangeRequest>>>,
+            mpsc::Sender<hydra::client::KeyExchangeResponse>,
+            mpsc::Sender<hydra::client::TerminateRequest>,
         ) = (dest_watch_tx, hydra_kex.1, hydra_kex.2);
 
         tokio::spawn(async move {
