@@ -11,15 +11,15 @@ in
   unix
   // rec {
     archive = let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.package.pname}-archive" {
+      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {
         passthru = {inherit outFileName;};
       } ''
-        cp -r ${bundle} ${unix.package.pname}
+        cp -r ${bundle} ${unix.blockfrost-platform.pname}
 
         mkdir -p $out
-        tar -cjvf $out/${outFileName} ${unix.package.pname}/
+        tar -cjvf $out/${outFileName} ${unix.blockfrost-platform.pname}/
 
         # Make it downloadable from Hydra:
         mkdir -p $out/nix-support
@@ -127,9 +127,9 @@ in
               <key>CFBundleDisplayName</key>
               <string>${appName}</string>
               <key>CFBundleVersion</key>
-              <string>${unix.package.version}-${inputs.self.shortRev or "dirty"}</string>
+              <string>${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}</string>
               <key>CFBundleShortVersionString</key>
-              <string>${unix.package.version}</string>
+              <string>${unix.blockfrost-platform.version}</string>
               <key>CFBundleIconFile</key>
               <string>iconset</string>
               <key>LSMinimumSystemVersion</key>
@@ -244,7 +244,7 @@ in
     };
 
     make-dmg = {doSign ? false}: let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
       credentials = "/var/lib/buildkite-agent-default/signing.sh";
       codeSigningConfig = "/var/lib/buildkite-agent-default/code-signing-config.json";
       signingConfig = "/var/lib/buildkite-agent-default/signing-config.json";
