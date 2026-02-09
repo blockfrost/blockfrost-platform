@@ -3,10 +3,10 @@ use axum::extract::Request;
 use axum::response::IntoResponse;
 use axum::Router;
 use axum::routing::any;
-use blockfrost_gateway::find_libexec;
-use blockfrost_gateway::hydra;
-use blockfrost_gateway::load_balancer::{JsonHeader, JsonRequest, JsonResponse, JsonRequestMethod, RequestId};
-use blockfrost_gateway::types::Network;
+use crate::find_libexec;
+use crate::hydra;
+use crate::load_balancer::{JsonHeader, JsonRequest, JsonResponse, JsonRequestMethod, RequestId};
+use crate::types::Network;
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -125,7 +125,7 @@ impl PaymentParams {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run() -> Result<()> {
     tracing_subscriber::fmt().with_target(false).compact().init();
 
     let cli = Cli::parse();

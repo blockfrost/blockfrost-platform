@@ -4,7 +4,7 @@ use axum::{
     Extension, Router,
     routing::{get, post},
 };
-use blockfrost_gateway::{api, blockfrost, config, db, hydra, load_balancer, sdk_bridge_ws};
+use crate::{api, blockfrost, config, db, hydra, load_balancer, sdk_bridge_ws};
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+pub async fn run() -> Result<()> {
     dotenvy::dotenv().ok();
 
     let arguments = Args::parse();

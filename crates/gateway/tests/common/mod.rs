@@ -1,3 +1,5 @@
+#![cfg(not(windows))]
+
 use axum::{
     Extension, Router,
     routing::{any, get},

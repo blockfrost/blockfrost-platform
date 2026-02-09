@@ -1,8 +1,13 @@
+#[cfg(not(windows))]
 fn main() {
     git_revision::set();
     hydra_scripts_id::set();
 }
 
+#[cfg(windows)]
+fn main() {}
+
+#[cfg(not(windows))]
 mod git_revision {
     use std::env;
 
@@ -37,6 +42,7 @@ mod git_revision {
     }
 }
 
+#[cfg(not(windows))]
 mod hydra_scripts_id {
     use std::{
         collections::HashMap,
