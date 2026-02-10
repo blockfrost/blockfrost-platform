@@ -10,13 +10,13 @@ in
   unix
   // rec {
     archive = let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.package.pname}-archive" {} ''
-        cp -r ${bundle} ${unix.package.pname}
+      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {} ''
+        cp -r ${bundle} ${unix.blockfrost-platform.pname}
 
         mkdir -p $out
-        tar -cjvf $out/${outFileName} ${unix.package.pname}/
+        tar -cjvf $out/${outFileName} ${unix.blockfrost-platform.pname}/
 
         # Make it downloadable from Hydra:
         mkdir -p $out/nix-support
@@ -32,7 +32,7 @@ in
         bin_dir = "bin";
         exe_dir = "exe";
         lib_dir = "lib";
-      } "${unix.package}/libexec/${unix.packageName.pname}")
+      } "${unix.blockfrost-platform}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
         name = unix.packageName.pname;
         buildCommand =
@@ -40,8 +40,10 @@ in
           + ''
             chmod -R +w $out
             ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/.
+            ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/.
+            ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/.
             chmod -R +w $out
-            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos} ./ ; )
+            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
           '';
       });
 
@@ -51,4 +53,18 @@ in
       exe_dir = "exe";
       lib_dir = "lib";
     } "${unix.dolos}/bin/dolos";
+
+    bundle-hydra = nix-bundle-exe {
+      inherit pkgs;
+      bin_dir = "bin";
+      exe_dir = "exe";
+      lib_dir = "lib";
+    } "${unix.hydra-node}/bin/hydra-node";
+
+    bundle-cardano-cli = nix-bundle-exe {
+      inherit pkgs;
+      bin_dir = "bin";
+      exe_dir = "exe";
+      lib_dir = "lib";
+    } "${unix.cardano-cli}/bin/cardano-cli";
   }

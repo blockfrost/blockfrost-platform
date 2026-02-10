@@ -11,15 +11,15 @@ in
   unix
   // rec {
     archive = let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.package.pname}-archive" {
+      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {
         passthru = {inherit outFileName;};
       } ''
-        cp -r ${bundle} ${unix.package.pname}
+        cp -r ${bundle} ${unix.blockfrost-platform.pname}
 
         mkdir -p $out
-        tar -cjvf $out/${outFileName} ${unix.package.pname}/
+        tar -cjvf $out/${outFileName} ${unix.blockfrost-platform.pname}/
 
         # Make it downloadable from Hydra:
         mkdir -p $out/nix-support
@@ -40,7 +40,7 @@ in
       };
 
     # Portable directory that can be run on any modern Darwin:
-    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName.pname}")
+    bundle = (nix-bundle-exe-lib-subdir "${unix.blockfrost-platform}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
       name = unix.packageName.pname;
       buildCommand =
@@ -52,9 +52,11 @@ in
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
+          ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/libexec/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
         '';
     });
 
@@ -62,11 +64,15 @@ in
 
     bundle-dolos = nix-bundle-exe-lib-subdir "${unix.dolos}/bin/dolos";
 
+    bundle-hydra = nix-bundle-exe-lib-subdir "${unix.hydra-node}/bin/hydra-node";
+
+    bundle-cardano-cli = nix-bundle-exe-lib-subdir "${unix.cardano-cli}/bin/cardano-cli";
+
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
     homebrew-tap =
       pkgs.runCommandNoCC "homebrew-repo" {
-        inherit (unix.package) version;
+        inherit (unix.blockfrost-platform) version;
         url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
       } ''
@@ -121,9 +127,9 @@ in
               <key>CFBundleDisplayName</key>
               <string>${appName}</string>
               <key>CFBundleVersion</key>
-              <string>${unix.package.version}-${inputs.self.shortRev or "dirty"}</string>
+              <string>${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}</string>
               <key>CFBundleShortVersionString</key>
-              <string>${unix.package.version}</string>
+              <string>${unix.blockfrost-platform.version}</string>
               <key>CFBundleIconFile</key>
               <string>iconset</string>
               <key>LSMinimumSystemVersion</key>
@@ -238,7 +244,7 @@ in
     };
 
     make-dmg = {doSign ? false}: let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.dmg";
       credentials = "/var/lib/buildkite-agent-default/signing.sh";
       codeSigningConfig = "/var/lib/buildkite-agent-default/code-signing-config.json";
       signingConfig = "/var/lib/buildkite-agent-default/signing-config.json";

@@ -16,8 +16,10 @@ bf-api-provider.workspace = true
 
 axum.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+bytes.workspace = true
 tungstenite = { version = "0.26", features = ["native-tls"] }
 tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 tracing.workspace = true
@@ -56,6 +58,13 @@ anyhow.workspace = true
 bech32.workspace = true
 cardano-serialization-lib.workspace = true
 ntest = "0.9.3"
+sysinfo.workspace = true
+machine-uid = "0.5"
+blake3 = "1"
+getrandom = "0.3"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 
 [dev-dependencies]
 bf-api-provider.workspace = true

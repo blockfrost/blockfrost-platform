@@ -8,6 +8,7 @@ pub mod crates;
 pub mod dreps;
 pub mod epochs;
 pub mod errors;
+pub mod find_libexec;
 pub mod genesis;
 pub mod json_client;
 pub mod metadata;

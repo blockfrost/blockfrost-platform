@@ -47,7 +47,9 @@ in rec {
 
   GIT_REVISION = inputs.self.rev or "dirty";
 
-  package = craneLib.buildPackage (commonArgs
+  package = blockfrost-platform;
+
+  blockfrost-platform = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
@@ -177,6 +179,8 @@ in rec {
       '';
     };
 
+  # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
+  # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.

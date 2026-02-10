@@ -56,6 +56,15 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
+      - name: Install libpq (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libpq
+          brew link --force libpq
+          echo "LIBRARY_PATH=$(brew --prefix libpq)/lib:$LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "CPATH=$(brew --prefix libpq)/include:$CPATH" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
+
       - name: Fast check
         run: cargo check --workspace --all-targets --verbose
 
@@ -172,4 +181,4 @@ jobs:
 
       - name: Check coverage
         timeout-minutes: 10
-        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11
+        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 7.2

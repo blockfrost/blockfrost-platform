@@ -19,6 +19,18 @@ pub enum Network {
     Custom,
 }
 
+impl Network {
+    // FIXME: use serde? But it allocs
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Mainnet => "mainnet",
+            Self::Preprod => "preprod",
+            Self::Preview => "preview",
+            Self::Custom => "custom",
+        }
+    }
+}
+
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {

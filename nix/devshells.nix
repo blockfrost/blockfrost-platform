@@ -45,6 +45,7 @@ in {
       package = internal.rustPackages.cargo;
     }
     {package = internal.rustPackages.rust-analyzer;}
+    {package = pkgs.doctl;}
     {
       category = "handy";
       package = internal.runNode "preview";
@@ -94,6 +95,7 @@ in {
       then pkgs.gcc
       else pkgs.clang;
     includes = internal.commonArgs.buildInputs;
+    libraries = internal.commonArgs.buildInputs;
   };
 
   language.rust = {
@@ -103,7 +105,8 @@ in {
   };
 
   env =
-    [
+    internal.hydraScriptsEnvVars
+    ++ [
       {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
@@ -119,7 +122,11 @@ in {
       # Embed `openssl` in `RPATH`:
       {
         name = "RUSTFLAGS";
-        eval = ''"-C link-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl)"'';
+        eval = ''"-Clink-arg=-fuse-ld=bfd -Clink-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl libpq | tr ' ' :)"'';
+      }
+      {
+        name = "LD_LIBRARY_PATH";
+        eval = lib.mkForce "";
       }
     ];
 

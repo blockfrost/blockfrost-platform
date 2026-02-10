@@ -12,6 +12,7 @@ members = [
   "crates/api_provider",
   "crates/node",
   "crates/data_node",
+  "crates/gateway",
 ]
 default-members = ["crates/platform"]
 
@@ -26,6 +27,8 @@ bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
+bytes = "1"
+tokio-util = "0.7"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
 clap = { version = "4.5.26", features = ["derive"] }
@@ -48,12 +51,19 @@ reqwest = { version = "0.12.12", features = ["blocking"] }
 rstest = "0.24.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+sysinfo = "0.33.1"
 thiserror = "2.0.12"
-tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "signal"] }
+tokio = { version = "1.43.0", features = [
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "process",
+] }
 toml = "0.8.23"
 tracing = "0.1.41"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
+uuid = { version = "1.10", features = ["serde", "v4"] }
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"

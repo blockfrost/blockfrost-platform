@@ -27,6 +27,7 @@ pub struct Config {
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
     pub data_node: Option<DataNodeConfig>,
+    pub hydra: Option<HydraConfig>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
@@ -39,6 +40,11 @@ pub struct DataNodeConfig {
 pub struct IcebreakersConfig {
     pub reward_address: String,
     pub secret: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct HydraConfig {
+    pub cardano_signing_key: PathBuf,
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
@@ -101,6 +107,17 @@ impl Config {
             }
         });
 
+        let hydra = if args.hydra_cardano_signing_key.is_some() {
+            let cardano_signing_key = args.hydra_cardano_signing_key.ok_or(AppError::Server(
+                "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
+            ))?;
+            Some(HydraConfig {
+                cardano_signing_key,
+            })
+        } else {
+            None
+        };
+
         Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
@@ -113,6 +130,7 @@ impl Config {
             network,
             custom_genesis_config: args.custom_genesis_config,
             data_node,
+            hydra,
         })
     }
 
