@@ -40,7 +40,7 @@ in
       };
 
     # Portable directory that can be run on any modern Darwin:
-    bundle = (nix-bundle-exe-lib-subdir "${unix.package}/libexec/${unix.packageName.pname}")
+    bundle = (nix-bundle-exe-lib-subdir "${unix.blockfrost-platform}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
       name = unix.packageName.pname;
       buildCommand =
@@ -72,7 +72,7 @@ in
     # repo. We replace that workdir on each release.
     homebrew-tap =
       pkgs.runCommandNoCC "homebrew-repo" {
-        inherit (unix.package) version;
+        inherit (unix.blockfrost-platform) version;
         url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
       } ''

@@ -47,7 +47,9 @@ in rec {
 
   GIT_REVISION = inputs.self.rev or "dirty";
 
-  package = craneLib.buildPackage (commonArgs
+  package = blockfrost-platform;
+
+  blockfrost-platform = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
