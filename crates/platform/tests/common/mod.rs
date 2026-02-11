@@ -45,6 +45,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
     let config = Config {
         server_address: "0.0.0.0".parse().unwrap(),
         server_port: 3000,
+        server_concurrency_limit: 2048,
         log_level: LogLevel::Info.into(),
         mode: Mode::Compact,
         node_socket_path: node_socket_path_env,
@@ -106,6 +107,7 @@ pub fn test_config_with_data_node(
     let config = Config {
         server_address: "0.0.0.0".parse().unwrap(),
         server_port: 3000,
+        server_concurrency_limit: 2048,
         log_level: LogLevel::Info.into(),
         mode: Mode::Compact,
         node_socket_path: node_socket_path_env,
