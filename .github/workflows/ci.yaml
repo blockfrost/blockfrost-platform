@@ -23,7 +23,7 @@ env:
   IMAGE: ghcr.io/blockfrost/blockfrost-platform
 
 jobs:
-  checks:
+  check_flake_lock:
     name: Check flake.lock is up to date
     runs-on: [self-hosted, Linux, X64, nixos]
     steps:
