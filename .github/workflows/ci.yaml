@@ -24,7 +24,21 @@ env:
 
 jobs:
   checks:
-    name: Checks
+    name: Check flake.lock is up to date
+    runs-on: [self-hosted, Linux, X64, nixos]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # if this fails, it means that flake.nix inputs
+      # were changed but flake.lock was not updated
+      # in which case running `nix flake lock` should fix it
+      # `nix flake show` also works
+      - name: Assert flake.lock is up to date
+        run: nix flake lock --no-update-lock-file
+
+  lint_docker:
+    name: Lint Dockerfile
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -92,7 +106,7 @@ jobs:
   platform_integration_tests:
     name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: [build_and_test]
+    needs: [build_and_test, check_flake_lock]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -106,7 +120,7 @@ jobs:
   blockfrost_integration_tests:
     name: Blockfrost Integration Tests (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: [build_and_test]
+    needs: [build_and_test, check_flake_lock]
     strategy:
       fail-fast: false
       matrix:
@@ -147,6 +161,7 @@ jobs:
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option
     runs-on: [self-hosted, Linux, X64, nixos]
+    needs: check_flake_lock
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
