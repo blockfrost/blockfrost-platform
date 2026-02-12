@@ -13,5 +13,6 @@ allow = [
   "Zlib",
   "BSD-2-Clause",
   "Apache-2.0 WITH LLVM-exception",
+  "bzip2-1.0.6",
 ]
 confidence-threshold = 0.8
