@@ -1,114 +1,36 @@
-[package]
-name = "blockfrost-platform"
-version.workspace = true
-license.workspace = true
-edition.workspace = true
-description = "The Blockfrost platform transforms your Cardano node infrastructure into a high-performance JSON API endpoint."
-homepage = "https://platform.blockfrost.io"
-repository = "https://github.com/blockfrost/blockfrost-platform"
-build = "build.rs"
-
 [workspace.package]
 version = "0.0.3-rc.3"
 license = "Apache-2.0"
 edition = "2021"
-
-[dependencies]
-bf-common.workspace = true
-bf-node.workspace = true
-bf-dolos.workspace = true
-bf-api-provider.workspace = true
-axum.workspace = true
-tokio.workspace = true
-futures.workspace = true
-futures-util.workspace = true
-bf-tx-evaluator.workspace = true
-bf-testgen.workspace = true
-bf-error-decoder.workspace = true
-bf-build-utils.workspace = true
-tungstenite = { version = "0.26", features = ["native-tls"] }
-tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
-tracing.workspace = true
-tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
-serde.workspace = true
-tower-http = { version = "0.6.6", features = ["normalize-path"] }
-tower = "0.5.2"
-hyper = "1.6.0"
-serde_json.workspace = true
-clap.workspace = true
-toml.workspace = true
-thiserror.workspace = true
-sentry = "0.41.0"
-base64 = "0.22.1"
-pallas.workspace = true
-pallas-network.workspace = true
-pallas-crypto.workspace = true
-pallas-traverse.workspace = true
-pallas-codec.workspace = true
-pallas-addresses.workspace = true
-pallas-primitives.workspace = true
-pallas-hardano.workspace = true
-reqwest.workspace = true
-hex.workspace = true
-metrics.workspace = true
-metrics-exporter-prometheus.workspace = true
-metrics-process.workspace = true
-chrono.workspace = true
-serde_with.workspace = true
-dotenvy = "0.15.7"
-uuid = { version = "1.10.0", features = ["v4"] }
-twelf.workspace = true
-dirs.workspace = true
-inquire.workspace = true
-anyhow.workspace = true
-bech32.workspace = true
-cardano-serialization-lib.workspace = true
-ntest = "0.9.3"
-
-[features]
-tarpaulin = []
-
-[dev-dependencies]
-bf-api-provider.workspace = true
-tracing-test = "0.2.5"
-rstest = "0.24.0"
-pretty_assertions = "1.4.1"
-cardano-serialization-lib.workspace = true
-bip39 = "2.1.0"
-blockfrost = "1.1.0"
-
-[target.'cfg(target_env = "musl")'.dependencies]
-jemalloc = "0.3"
-
-[build-dependencies]
-bf-build-utils.workspace = true
-
 [workspace]
+resolver = "2"
 members = [
+  "crates/platform",
+  "crates/build_utils",
   "crates/common",
   "crates/api_provider",
   "crates/node",
-  "crates/dolos",
+  "crates/data_node",
   "crates/tx_evaluator",
   "crates/testgen",
   "crates/error_decoder",
-  "crates/build_utils",
 ]
+default-members = ["crates/platform"]
 [workspace.dependencies]
 anyhow = "1.0.100"
 async-trait = "0.1.89"
-axum = { version = "0.8.7", features = ["ws"] }
-bech32 = "0.9.1"
+axum = { version = "0.8.8", features = ["ws"] }
+bech32 = "0.11.1"
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
-bf-dolos = { path = "crates/dolos", package = "blockfrost-platform-dolos" }
+bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 bf-tx-evaluator = { path = "crates/tx_evaluator", package = "blockfrost-platform-tx-evaluator" }
 bf-testgen = { path = "crates/testgen", package = "blockfrost-platform-testgen" }
 bf-error-decoder = { path = "crates/error_decoder", package = "blockfrost-platform-error-decoder" }
 blockfrost-openapi = "0.1.83"
-cardano-serialization-lib = "12.1.1"
+cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
 clap = { version = "4.5.26", features = ["derive"] }
 dirs = "6.0.0"
@@ -153,6 +75,3 @@ sysinfo = "0.33.1"
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"
-
-[lints]
-workspace = true

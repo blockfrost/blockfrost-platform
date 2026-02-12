@@ -129,6 +129,7 @@ in {
       [
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
+        pkgs.hadolint
         pkgs.websocat
         pkgs.gnum4
         pkgs.gnumake

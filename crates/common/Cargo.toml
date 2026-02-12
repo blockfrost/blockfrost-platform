@@ -21,11 +21,9 @@ dirs.workspace = true
 url.workspace = true
 toml.workspace = true
 futures.workspace = true
-tokio.workspace = true
 twelf.workspace = true
 inquire.workspace = true
 anyhow.workspace = true
-futures-util.workspace = true
 clap.workspace = true
 pallas-addresses.workspace = true
 
@@ -33,6 +31,7 @@ pallas-addresses.workspace = true
 rstest.workspace = true
 pretty_assertions.workspace = true
 proptest.workspace = true
+tokio.workspace = true
 
 [build-dependencies]
 bf-build-utils.workspace = true

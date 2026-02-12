@@ -24,8 +24,8 @@ pub enum AppError {
     #[error("Load balancer error: {0}")]
     LoadBalancer(String),
 
-    #[error("Dolos error: {0}")]
-    Dolos(String),
+    #[error("Data Node error: {0}")]
+    DataNode(String),
 }
 
 /// Main error type.
@@ -46,9 +46,21 @@ impl From<std::num::TryFromIntError> for BlockfrostError {
     }
 }
 
-impl From<bech32::Error> for BlockfrostError {
-    fn from(err: bech32::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("Bech32 error: {err}"))
+impl From<bech32::DecodeError> for BlockfrostError {
+    fn from(err: bech32::DecodeError) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 decode error: {err}"))
+    }
+}
+
+impl From<bech32::EncodeError> for BlockfrostError {
+    fn from(err: bech32::EncodeError) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 encode error: {err}"))
+    }
+}
+
+impl From<bech32::primitives::hrp::Error> for BlockfrostError {
+    fn from(err: bech32::primitives::hrp::Error) -> Self {
+        BlockfrostError::internal_server_error(format!("Bech32 HRP error: {err}"))
     }
 }
 
@@ -71,7 +83,7 @@ impl From<AppError> for BlockfrostError {
             AppError::Registration(e) => Self::internal_server_error(e),
             AppError::Server(e) => Self::internal_server_error(e),
             AppError::LoadBalancer(e) => Self::internal_server_error(e),
-            AppError::Dolos(e) => Self::internal_server_error(e),
+            AppError::DataNode(e) => Self::internal_server_error(e),
         }
     }
 }

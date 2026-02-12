@@ -12,8 +12,23 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
 
 jobs:
+  check_flake_lock:
+    name: Check flake.lock is up to date
+    runs-on: [self-hosted, Linux, X64, nixos]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # if this fails, it means that flake.nix inputs
+      # were changed but flake.lock was not updated
+      # in which case running `nix flake lock` should fix it
+      # `nix flake show` also works
+      - name: Assert flake.lock is up to date
+        run: nix flake lock --no-update-lock-file
+
   lint_docker:
     name: Lint Dockerfile
     runs-on: ubuntu-latest
@@ -62,8 +77,8 @@ jobs:
         run: cargo build --workspace --release --verbose
 
       - name: Test
-        run: cargo test --workspace --lib --verbose
         timeout-minutes: 10
+        run: cargo test --workspace --lib --verbose
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -87,43 +102,50 @@ jobs:
   platform_integration_tests:
     name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: build_and_test
+    needs: [build_and_test, check_flake_lock]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Integration Tests
-        run: nix develop .# --command cargo test --verbose --test endpoints_test
+        timeout-minutes: 10
+        env:
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
+        run: nix develop .# --command cargo test --verbose --test '*_test'
 
   blockfrost_integration_tests:
     name: Blockfrost Integration Tests (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: build_and_test
+    needs: [build_and_test, check_flake_lock]
     strategy:
       fail-fast: false
       matrix:
         include:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
-            cardano_node_socket_path: /run/cardano-node/node.socket
+            cardano_node_socket_path: /run/cardano-node/node_preview.socket
             project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
+            timeout_minutes: 5
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
             cardano_node_socket_path: /run/cardano-node/node_preprod.socket
             project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
+            timeout_minutes: 5
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
             cardano_node_socket_path: /run/cardano-node/node_mainnet.socket
             project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
+            timeout_minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Blockfrost Tests
         continue-on-error: true
+        timeout-minutes: ${{ fromJSON(matrix.timeout_minutes) }}
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
           SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
@@ -135,13 +157,15 @@ jobs:
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option
     runs-on: [self-hosted, Linux, X64, nixos]
+    needs: check_flake_lock
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Hydra Tests
+        timeout-minutes: 15
         env:
-          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node.socket
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
         run: |
@@ -153,7 +177,7 @@ jobs:
     needs: build_and_test
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -161,49 +185,6 @@ jobs:
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
-      - name: Generate coverage report
-        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --out html --output-dir coverage --fail-under 11
-
-      - name: Upload coverage report for GitHub Pages
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: coverage/
-
-  pages:
-    name: Prepare coverage for GitHub Pages
-    if: ${{ github.ref == 'refs/heads/main' }}
-    needs: coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v3
-
-      - name: Download coverage artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-html
-          path: coverage
-
-      - name: Copy to index.html
-        run: cp coverage/tarpaulin-report.html coverage/index.html
-
-      - name: Upload coverage folder
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: coverage/
-
-  deploy:
-    name: Deploy to GitHub Pages
-    if: ${{ github.ref == 'refs/heads/main' }}
-    needs: pages
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - name: Deploy
-        uses: actions/deploy-pages@v4
+      - name: Check coverage
+        timeout-minutes: 10
+        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11

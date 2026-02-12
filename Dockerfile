@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS base
+FROM lukemathwalker/cargo-chef:latest-rust-1-trixie AS base
 
 # hadolint ignore=DL3008
 RUN apt-get update \
@@ -13,7 +13,6 @@ ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 WORKDIR /app
 
 FROM base AS planner
-COPY ./src	./src
 COPY ./crates	./crates
 COPY Cargo.toml	Cargo.lock	./
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -25,7 +24,6 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
   cargo chef cook --release --workspace --recipe-path recipe.json
-COPY ./src	./src
 COPY ./crates	./crates
 COPY Cargo.toml	Cargo.lock	./
 ARG GIT_REVISION
@@ -34,7 +32,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
   cargo build --release
 
-FROM gcr.io/distroless/cc-debian12:dca9008b864a381b5ce97196a4d8399ac3c2fa65 AS runtime
+FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
 
 ARG GIT_REVISION
