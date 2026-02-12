@@ -275,17 +275,15 @@ jobs:
 
       - name: Create manifests (single publish)
         shell: bash
-        env:
-          SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          amd="${IMAGE}:${SHA}-amd64"
-          arm="${IMAGE}:${SHA}-arm64"
+          amd="${IMAGE}:${{ github.sha }}-amd64"
+          arm="${IMAGE}:${{ github.sha }}-arm64"
           args=()
 
           # commit SHA (multi-arch)
-          args+=(-t "${IMAGE}:${SHA}")
+          args+=(-t "${IMAGE}:${{ github.sha }}")
 
           # `edge` on `main` and on releases
           if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "release" ]]; then
