@@ -2,6 +2,9 @@ name: CI
 
 on:
   push:
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       upload_artifacts:
@@ -10,9 +13,14 @@ on:
         required: true
         default: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  IMAGE: ghcr.io/blockfrost/blockfrost-platform
 
 jobs:
   check_flake_lock:
@@ -35,15 +43,27 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install Hadolint
-        run: |
-          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 -o hadolint
-          chmod +x hadolint
-          sudo mv hadolint /usr/local/bin/hadolint
-
+      - name: Block Fixup Commit Merge
+        if: github.event_name == 'pull_request'
+        uses: 13rac1/block-fixup-merge-action@v2.0.0
       - name: Lint Dockerfile
-        run: hadolint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint with Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   build_and_test:
     name: Build and Test
@@ -58,7 +78,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Cache Cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -70,21 +90,12 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
-      - name: Fast check
-        run: cargo check --workspace --all-targets --verbose
-
       - name: Build
         run: cargo build --workspace --release --verbose
 
       - name: Test
         timeout-minutes: 10
         run: cargo test --workspace --lib --verbose
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Lint with Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
@@ -126,26 +137,26 @@ jobs:
             cardano_node_socket_path: /run/cardano-node/node_preview.socket
             project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
-            timeout_minutes: 5
+            timeout: 5
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
             cardano_node_socket_path: /run/cardano-node/node_preprod.socket
             project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
-            timeout_minutes: 5
+            timeout: 5
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
             cardano_node_socket_path: /run/cardano-node/node_mainnet.socket
             project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
-            timeout_minutes: 15
+            timeout: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Blockfrost Tests
         continue-on-error: true
-        timeout-minutes: ${{ fromJSON(matrix.timeout_minutes) }}
+        timeout-minutes: ${{ matrix.timeout }}
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
           SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
@@ -174,7 +185,7 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
-    needs: build_and_test
+    needs: [build_and_test]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -188,3 +199,105 @@ jobs:
       - name: Check coverage
         timeout-minutes: 10
         run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11
+
+  oci_build:
+    name: OCI Build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (+ push if needed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          # Always load into the local Docker daemon for smoke test below
+          load: true
+          push: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}
+          build-args: |
+            GIT_REVISION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Prevent the `unknown/unknown` architecture in the GitHub UI:
+          provenance: false
+          sbom: false
+
+      - name: Smoke test run with --version
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm "${{ env.IMAGE }}:${{ github.sha }}-${{ matrix.arch }}" --version
+
+  oci_merge:
+    name: Create multi-arch manifests
+    runs-on: ubuntu-latest
+    needs: [oci_build]
+    if: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
+
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifests (single publish)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          amd="${IMAGE}:${{ github.sha }}-amd64"
+          arm="${IMAGE}:${{ github.sha }}-arm64"
+          args=()
+
+          # commit SHA (multi-arch)
+          args+=(-t "${IMAGE}:${{ github.sha }}")
+
+          # `edge` on `main` and on releases
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "release" ]]; then
+            args+=(-t "${IMAGE}:edge")
+          fi
+
+          # release tag and `latest`
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            args+=(-t "${IMAGE}:${{ github.event.release.tag_name }}")
+
+            if [[ "${{ github.event.release.prerelease }}" != "true" ]]; then
+              args+=(-t "${IMAGE}:latest")
+            fi
+          fi
+
+          set -x
+          docker buildx imagetools create "${args[@]}" "${amd}" "${arm}"
