@@ -1,0 +1,25 @@
+[package]
+name = "blockfrost-platform-tx-evaluator"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+bf-common.workspace = true
+bf-testgen.workspace = true
+bf-node.workspace = true
+serde.workspace = true
+hex.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+pallas-network.workspace = true
+pallas-crypto.workspace = true
+pallas-traverse.workspace = true
+pallas-codec.workspace = true
+pallas-primitives.workspace = true
+pallas-addresses.workspace = true
+pallas-validate.workspace = true
+chrono.workspace = true
+
+[features]
+tarpaulin = []

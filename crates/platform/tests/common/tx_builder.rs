@@ -8,7 +8,7 @@ use cardano_serialization_lib::{
     TransactionBuilderConfigBuilder, TransactionHash, TransactionInput, TransactionOutput,
     TransactionUnspentOutput, TransactionUnspentOutputs,
 };
-
+#[allow(dead_code)]
 pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<FixedTransaction> {
     let output_amount = BigNum::from_str("1000000");
     let mnemonic = "bright despair immune pause column saddle legal minimum erode thank silver ordinary pet next symptom second grow chapter fiber donate humble syrup glad early";

@@ -12,6 +12,9 @@ members = [
   "crates/api_provider",
   "crates/node",
   "crates/data_node",
+  "crates/tx_evaluator",
+  "crates/testgen",
+  "crates/error_decoder",
 ]
 default-members = ["crates/platform"]
 
@@ -25,6 +28,9 @@ bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-b
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
+bf-tx-evaluator = { path = "crates/tx_evaluator", package = "blockfrost-platform-tx-evaluator" }
+bf-testgen = { path = "crates/testgen", package = "blockfrost-platform-testgen" }
+bf-error-decoder = { path = "crates/error_decoder", package = "blockfrost-platform-error-decoder" }
 blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
@@ -35,14 +41,19 @@ futures-util = "0.3"
 hex = "0.4.3"
 inquire = "0.9"
 metrics = { version = "0.24.3", default-features = false }
-pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+metrics-exporter-prometheus = { version = "0.16.1", default-features = false }
+metrics-process = "2.4.0"
+pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5" }
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha5", features = [
+  "phase2",
+] }
 pretty_assertions = "1.4.1"
 reqwest = { version = "0.13.1", default-features = false, features = [
   "blocking",
@@ -53,12 +64,21 @@ reqwest = { version = "0.13.1", default-features = false, features = [
 rstest = "0.26.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+serde_with = "3.12.0"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
-toml = "0.9.11+spec-1.1.0"
+toml = "0.9.11"
 tracing = "0.1.44"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
+crossbeam = "0.8"
+deadpool = "0.12.1"
+num_cpus = "1"
+proptest = "1.6"
+bzip2 = "0.4.3"
+tar = "0.4.38"
+zip = "0.6.6"
+sysinfo = "0.33.1"
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"

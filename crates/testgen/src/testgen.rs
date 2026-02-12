@@ -1,4 +1,5 @@
 use bf_common::errors::AppError;
+use serde::Deserialize;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};
@@ -11,19 +12,29 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info};
 
 #[derive(Clone)]
-pub struct FallbackDecoder {
-    sender: mpsc::Sender<FDRequest>,
-    current_child_pid: Arc<AtomicU32>,
+pub struct Testgen {
+    sender: mpsc::Sender<TestgenRequest>,
+    pub current_child_pid: Arc<AtomicU32>,
 }
 
-struct FDRequest {
-    cbor: Vec<u8>,
-    response_tx: oneshot::Sender<Result<serde_json::Value, String>>,
+pub struct TestgenRequest {
+    payload: String,
+    response: oneshot::Sender<Result<TestgenResponse, String>>,
 }
 
-impl FallbackDecoder {
+#[derive(Debug, Deserialize)]
+pub enum TestgenResponse {
+    #[serde(rename = "json")]
+    Ok(serde_json::Value),
+    #[serde(rename = "error")]
+    Err(serde_json::Value),
+}
+/// Testgen is an executable that we use to run some functionality that are readily/easily available
+/// in Haskell codebase like the ledger.
+/// The name is 'testgen' since it was initially implemented to generate test cases.
+impl Testgen {
     /// Starts a new child process.
-    pub fn spawn() -> Result<Self, AppError> {
+    pub fn spawn(variant: &str) -> Result<Self, AppError> {
         let testgen_hs_path = Self::find_testgen_hs().map_err(AppError::Server)?;
 
         info!(
@@ -33,14 +44,15 @@ impl FallbackDecoder {
 
         let current_child_pid = Arc::new(AtomicU32::new(u32::MAX));
         let current_child_pid_clone = current_child_pid.clone();
-        let (sender, mut receiver) = mpsc::channel::<FDRequest>(128);
+        let variant_clone = variant.to_string();
+        let (sender, mut receiver) = mpsc::channel::<TestgenRequest>(128);
 
         // Clone `testgen_hs_path` for the thread.
         let testgen_hs_path_for_thread = testgen_hs_path.clone();
 
         thread::spawn(move || {
             // For retries:
-            let mut last_unfulfilled_request: Option<FDRequest> = None;
+            let mut last_unfulfilled_request: Option<TestgenRequest> = None;
 
             loop {
                 let single_run = Self::spawn_child(
@@ -48,6 +60,7 @@ impl FallbackDecoder {
                     &mut receiver,
                     &mut last_unfulfilled_request,
                     &current_child_pid_clone,
+                    &variant_clone,
                 );
                 let restart_delay = std::time::Duration::from_secs(1);
                 error!(
@@ -64,14 +77,17 @@ impl FallbackDecoder {
         })
     }
 
-    /// Decodes a CBOR error using the child process.
-    pub async fn decode(&self, cbor: &[u8]) -> Result<serde_json::Value, String> {
-        let (response_tx, response_rx) = oneshot::channel();
+    /// Sends the payload to the child process.
+    pub async fn decode(&self, cbor: &[u8]) -> Result<TestgenResponse, String> {
+        self.send(hex::encode(cbor)).await
+    }
+
+    /// Sends the payload to the child process.
+    pub async fn send(&self, payload: String) -> Result<TestgenResponse, String> {
+        let (response, response_rx) = oneshot::channel();
+
         self.sender
-            .send(FDRequest {
-                cbor: cbor.to_vec(),
-                response_tx,
-            })
+            .send(TestgenRequest { payload, response })
             .await
             .map_err(|err| format!("FallbackDecoder: failed to send request: {err:?}"))?;
 
@@ -143,36 +159,6 @@ impl FallbackDecoder {
         ))
     }
 
-    /// This function is called at startup, so that we make sure that the worker is reasonable.
-    pub async fn startup_sanity_test(&self) -> Result<(), String> {
-        let input = hex::decode("8182068182028200a0").map_err(|err| err.to_string())?;
-        let result = self.decode(&input).await;
-        let expected = serde_json::json!({
-          "contents": {
-            "contents": {
-              "contents": {
-                "era": "ShelleyBasedEraConway",
-                "error": [
-                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
-                ],
-                "kind": "ShelleyTxValidationError"
-              },
-              "tag": "TxValidationErrorInCardanoMode"
-            },
-            "tag": "TxCmdTxSubmitValidationError"
-          },
-          "tag": "TxSubmitFail"
-        });
-
-        if result == Ok(expected) {
-            Ok(())
-        } else {
-            Err(format!(
-                "FallbackDecoder: startup_sanity_test failed: {result:?}"
-            ))
-        }
-    }
-
     /// Returns the current child PID:
     pub fn child_pid(&self) -> Option<u32> {
         match self.current_child_pid.load(atomic::Ordering::Relaxed) {
@@ -181,20 +167,15 @@ impl FallbackDecoder {
         }
     }
 
-    #[cfg(test)]
-    /// A single global [`FallbackDecoder`] that you can cheaply use in tests.
-    pub fn instance() -> Self {
-        GLOBAL_INSTANCE.clone()
-    }
-
     fn spawn_child(
         testgen_hs_path: &str,
-        receiver: &mut mpsc::Receiver<FDRequest>,
-        last_unfulfilled_request: &mut Option<FDRequest>,
+        receiver: &mut mpsc::Receiver<TestgenRequest>,
+        last_unfulfilled_request: &mut Option<TestgenRequest>,
         current_child_pid: &Arc<AtomicU32>,
+        variant: &str,
     ) -> Result<(), String> {
         let mut child = proc::Command::new(testgen_hs_path)
-            .arg("deserialize-stream")
+            .arg(variant)
             .stdin(proc::Stdio::piped())
             .stdout(proc::Stdio::piped())
             .spawn()
@@ -218,8 +199,8 @@ impl FallbackDecoder {
 
     fn process_requests(
         child: &mut proc::Child,
-        receiver: &mut mpsc::Receiver<FDRequest>,
-        last_unfulfilled_request: &mut Option<FDRequest>,
+        receiver: &mut mpsc::Receiver<TestgenRequest>,
+        last_unfulfilled_request: &mut Option<TestgenRequest>,
     ) -> Result<(), String> {
         let stdin = child
             .stdin
@@ -237,15 +218,17 @@ impl FallbackDecoder {
             .map(|a| (a, true))
             .or_else(|| receiver.blocking_recv().map(|a| (a, false)))
         {
-            let cbor_hex = hex::encode(&request.cbor);
+            let payload = request.payload.clone();
             *last_unfulfilled_request = Some(request);
 
-            let mut ask_and_receive = || -> Result<Result<serde_json::Value, String>, String> {
-                writeln!(stdin, "{cbor_hex}")
+            let mut ask_and_receive = || -> Result<Result<TestgenResponse, String>, String> {
+                writeln!(stdin, "{payload}")
                     .map_err(|err| format!("couldn’t write to stdin: {err:?}"))?;
 
                 match stdout_lines.next() {
-                    Some(Ok(line)) => Ok(Self::parse_json(&line)),
+                    Some(Ok(line)) => Ok(Ok(serde_json::from_str::<TestgenResponse>(&line)
+                        .map_err(|e| e.to_string())?)),
+
                     Some(Err(e)) => Err(format!("failed to read from subprocess: {e}")),
                     None => Err("no output from subprocess".to_string()),
                 }
@@ -268,7 +251,7 @@ impl FallbackDecoder {
                 // unwrap is safe, the other side would have to drop for a
                 // panic – can’t happen, because we control it:
                 request
-                    .response_tx
+                    .response
                     .send(response)
                     .unwrap_or_else(|_| unreachable!());
             }
@@ -279,81 +262,11 @@ impl FallbackDecoder {
 
         Err("request channel closed, won’t happen".to_string())
     }
-
-    fn parse_json(input: &str) -> Result<serde_json::Value, String> {
-        let mut parsed: serde_json::Value =
-            serde_json::from_str(input).map_err(|e| e.to_string())?;
-
-        parsed
-            .as_object()
-            .and_then(|obj| {
-                if obj.len() == 1 {
-                    obj.get("error")
-                        .and_then(|v| v.as_str())
-                        .map(|s| Err(s.to_string()))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                parsed
-                    .get_mut("json")
-                    .map(serde_json::Value::take)
-                    .ok_or_else(|| "Missing 'json' field".to_string())
-            })
-    }
 }
 
 fn partition_result<A, E>(ae: Result<A, E>) -> (Result<A, ()>, Result<(), E>) {
     match ae {
         Err(err) => (Err(()), Err(err)),
         Ok(ok) => (Ok(ok), Ok(())),
-    }
-}
-
-#[cfg(test)]
-static GLOBAL_INSTANCE: std::sync::LazyLock<FallbackDecoder> =
-    std::sync::LazyLock::new(|| FallbackDecoder::spawn().expect("Failed to spawn FallbackDecoder"));
-
-#[cfg(test)]
-mod tests {
-    #[cfg(not(feature = "tarpaulin"))]
-    use super::*;
-    #[tokio::test]
-    //#[tracing_test::traced_test]
-    #[cfg(not(feature = "tarpaulin"))]
-    async fn test_fallback_decoder() {
-        let decoder = FallbackDecoder::spawn().unwrap();
-
-        // Wait for it to come up:
-        decoder.startup_sanity_test().await.unwrap();
-
-        // Now, kill our child to test the restart logic:
-        sysinfo::System::new_all()
-            .process(sysinfo::Pid::from_u32(decoder.child_pid().unwrap()))
-            .unwrap()
-            .kill();
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-        let input = hex::decode("8182068183051a000c275b1a000b35ec").unwrap();
-        let result = decoder.decode(&input).await;
-
-        assert_eq!(
-            result,
-            Ok(serde_json::json!({"contents":
-                 {"contents":
-                  {"contents":
-                   {"era": "ShelleyBasedEraConway", "error":
-                    ["ConwayTreasuryValueMismatch (Mismatch {mismatchSupplied = Coin 734700, mismatchExpected = Coin 796507})"],
-                    "kind": "ShelleyTxValidationError"
-                    },
-                    "tag": "TxValidationErrorInCardanoMode"
-                }, "tag": "TxCmdTxSubmitValidationError"
-            },
-                "tag": "TxSubmitFail"
-                }
-            ))
-        );
     }
 }

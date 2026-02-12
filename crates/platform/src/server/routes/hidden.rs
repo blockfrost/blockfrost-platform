@@ -1,6 +1,7 @@
+use crate::api::utils;
 use crate::api::{
     accounts, addresses, assets, blocks, epochs, governance, health, ledger, metadata, network,
-    pools, scripts, tx, txs, utils,
+    pools, scripts, tx, txs,
 };
 use crate::middlewares::metrics::track_http_metrics;
 use crate::server::state::AppState;
@@ -135,9 +136,9 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/txs/{hash}/required_signers", get(txs::hash::required_signers::route))
         .route("/txs/{hash}/cbor", get(txs::hash::cbor::route))
 
-        // utils
-        .route("/utils/tx/evaluate", post(utils::txs::evaluate::root::route))
-        .route("/utils/tx/evaluate/utxos", post(utils::txs::evaluate::utxos::route));
+        // tx evaluate
+        .route("/utils/tx/evaluate",post(utils::txs::evaluate::root::route))
+        .route("/utils/tx/evaluate/utxos",post(utils::txs::evaluate::utxos::route));
 
     if enable_metrics {
         router = router.route_layer(from_fn(track_http_metrics));
