@@ -108,7 +108,6 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
 ### 4. Forwarding requests
 
 1. The most important load balancer endpoints are `GET /{api_prefix}/{path}`, and `POST /{api_prefix}/{path}`:
-
    - Using the example above, once you issue: `curl -fsSL https://icebreakers-api.blockfrost.io/b0be51e5-e5fe-4e42-98a9-2246173bea19/`, this request will be translated into a JSON message, and sent over the WebSocket connection with IcebreakerX (identified by its `api_prefix`):
 
      ```json
