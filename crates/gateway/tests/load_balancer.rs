@@ -18,7 +18,7 @@ async fn test_websocket_connection_invalid_token() {
     let router = build_router(lb.clone()).await;
     let (addr, server_handle) = start_server(router).await;
 
-    let url = format!("ws://{}", addr);
+    let url = format!("ws://{addr}");
     let request = hyper::Request::builder()
         .uri(&url)
         .header("Authorization", "Bearer invalid")
@@ -43,8 +43,8 @@ async fn test_websocket_request_response_flow() {
     let router = build_router(lb.clone()).await;
     let (addr, server_handle) = start_server(router).await;
 
-    let ws_url = format!("ws://{}/ws", addr);
-    let http_url = format!("http://{}", addr);
+    let ws_url = format!("ws://{addr}/ws");
+    let http_url = format!("http://{addr}");
 
     let request = hyper::Request::builder()
         .uri(&ws_url)
@@ -100,7 +100,7 @@ async fn test_websocket_request_response_flow() {
 
     let client = reqwest::Client::new();
     let res = client
-        .get(format!("{}/{}/test", http_url, prefix))
+        .get(format!("{http_url}/{prefix}/test"))
         .send()
         .await
         .expect("http request failed");

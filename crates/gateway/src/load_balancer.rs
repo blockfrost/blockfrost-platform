@@ -252,7 +252,7 @@ pub mod api {
         Extension(load_balancer): Extension<LoadBalancerState>,
         req: Request,
     ) -> Result<impl IntoResponse, APIError> {
-        handle_prefix_route(load_balancer, uuid, format!("/{}", rest), req).await
+        handle_prefix_route(load_balancer, uuid, format!("/{rest}"), req).await
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -313,7 +313,7 @@ pub mod api {
             let api_prefix = Uuid::parse_str(&uuid).map_err(|_| {
                 (
                     StatusCode::NOT_FOUND,
-                    format!("unparsable UUID prefix: {}", uuid),
+                    format!("unparsable UUID prefix: {uuid}"),
                 )
             })?;
 
@@ -326,7 +326,7 @@ pub mod api {
                     .ok_or_else(|| {
                         (
                             StatusCode::NOT_FOUND,
-                            format!("relay {} not found for request: {}", api_prefix, rest),
+                            format!("relay {api_prefix} not found for request: {rest}"),
                         )
                     })
                     .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))?;
@@ -686,8 +686,7 @@ pub mod event_loop {
                         request,
                         StatusCode::BAD_GATEWAY,
                         &format!(
-                            "relay disconnected with pending requests: {}",
-                            disconnection_reason_
+                            "relay disconnected with pending requests: {disconnection_reason_}"
                         ),
                         asset_name,
                     )
@@ -711,10 +710,7 @@ pub mod event_loop {
             fail_request(
                 request,
                 StatusCode::BAD_GATEWAY,
-                &format!(
-                    "relay disconnected with in-progress requests: {}",
-                    disconnection_reason_
-                ),
+                &format!("relay disconnected with in-progress requests: {disconnection_reason_}"),
                 asset_name,
             )
             .await;
@@ -929,8 +925,7 @@ pub mod event_loop {
                 // This branch is practically impossible, but for the sake of completeness:
                 // Let’s break 'event_loop, this seems the most elegant.
                 let err = format!(
-                    "error when serializing request to JSON (this will never happen): {:?}",
-                    err
+                    "error when serializing request to JSON (this will never happen): {err:?}"
                 );
                 error!("load balancer: {}: {}", asset_name.as_str(), err);
                 Err(err)
@@ -991,7 +986,7 @@ pub mod event_loop {
 
         let send_result = match json {
             Ok(msg) => send_json_msg(socket_tx, &msg, asset_name).await,
-            Err(err) => Err(format!("error when serializing request to JSON: {:?}", err)), // impossible
+            Err(err) => Err(format!("error when serializing request to JSON: {err:?}")), // impossible
         };
 
         match send_result {
@@ -1002,7 +997,7 @@ pub mod event_loop {
                 Ok(())
             },
             Err(err) => {
-                let err = format!("error when sending request to relay: {:?}", err);
+                let err = format!("error when sending request to relay: {err:?}");
 
                 if let Some(request) = relay_state
                     .requests_in_progress
@@ -1065,7 +1060,7 @@ async fn request_to_json(
         &Method::POST => Ok(JsonRequestMethod::POST),
         other => Err((
             StatusCode::BAD_REQUEST,
-            format!("unhandled request method: {}", other),
+            format!("unhandled request method: {other}"),
         )),
     })?;
 

@@ -55,7 +55,7 @@ impl IntoResponse for APIError {
                 ApiError {
                     status: "failed".to_string(),
                     reason: "no_license".to_string(),
-                    details: format!("Address: {} does not contain the license.", address),
+                    details: format!("Address: {address} does not contain the license."),
                 },
             ),
             APIError::NotAccessible { ip, port } => (

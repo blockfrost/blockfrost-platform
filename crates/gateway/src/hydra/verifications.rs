@@ -388,7 +388,7 @@ impl super::HydraConfig {
         let utxo_json = self.query_utxo_json(from_addr).await?;
         let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
 
-        let url = format!("http://127.0.0.1:{}/commit", hydra_api_port);
+        let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
         let client = reqwest::Client::new();
         let resp = client
             .post(url)
@@ -457,7 +457,7 @@ impl super::HydraConfig {
     ) -> Result<()> {
         use anyhow::Context;
 
-        let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+        let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
         let utxo: Value = reqwest::Client::new()
             .get(&snapshot_url)
             .send()
@@ -491,9 +491,7 @@ impl super::HydraConfig {
 
         if lovelace_total < amount_lovelace {
             return Err(anyhow!(
-                "insufficient lovelace in selected UTxO: {} < {}",
-                lovelace_total,
-                amount_lovelace
+                "insufficient lovelace in selected UTxO: {lovelace_total} < {amount_lovelace}"
             ));
         }
 
@@ -507,9 +505,9 @@ impl super::HydraConfig {
                 "--tx-in",
                 &tx_in,
                 "--tx-out",
-                &format!("{}+{}", receiver_addr, amount_lovelace),
+                &format!("{receiver_addr}+{amount_lovelace}"),
                 "--tx-out",
-                &format!("{}+{}", sender_addr, change),
+                &format!("{sender_addr}+{change}"),
                 "--fee",
                 "0",
                 "--out-file",
@@ -550,7 +548,7 @@ impl super::HydraConfig {
             serde_json::to_string(&payload)?
         );
 
-        let ws_url = format!("ws://127.0.0.1:{}/", hydra_api_port);
+        let ws_url = format!("ws://127.0.0.1:{hydra_api_port}/");
         send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(2)).await?;
 
         Ok(())
@@ -559,7 +557,7 @@ impl super::HydraConfig {
     pub(super) async fn hydra_utxo_count(&self, hydra_api_port: u16) -> Result<u64> {
         use anyhow::Context;
 
-        let url = format!("http://127.0.0.1:{}/snapshot/utxo", hydra_api_port);
+        let url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
 
         let v: Value = reqwest::Client::new()
             .get(&url)
@@ -718,7 +716,7 @@ pub async fn send_one_websocket_msg(
 }
 
 pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
-    let url = format!("http://127.0.0.1:{}/head", hydra_api_port);
+    let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
     let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
 
