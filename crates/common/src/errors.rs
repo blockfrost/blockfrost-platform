@@ -264,11 +264,6 @@ impl IntoResponse for BlockfrostError {
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
-        // log only server errors
-        if self.status_code >= 500 {
-            error!("Error occurred: {} - {}", self.error, self.message);
-        }
-
         let error_response = self.clone();
 
         (status_code, Json(error_response)).into_response()
