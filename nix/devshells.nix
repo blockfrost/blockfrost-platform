@@ -132,6 +132,7 @@ in {
       [
         pkgs.unixtools.xxd
         internal.rustPackages.clippy
+        pkgs.hadolint
         pkgs.websocat
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [

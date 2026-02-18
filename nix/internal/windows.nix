@@ -20,8 +20,11 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
+  packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
+
   commonArgs = {
     inherit src;
+    inherit (packageName) pname;
     strictDeps = true;
 
     CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
@@ -41,8 +44,6 @@ in rec {
 
   # For better caching:
   cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-
-  packageName = (craneLib.crateNameFromCargoToml {cargoToml = src + "/Cargo.toml";}).pname;
 
   GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -189,9 +190,9 @@ in rec {
       buildInputs = with pkgs; [zip];
       outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
-      cp -r ${bundle} ${packageName}
+      cp -r ${bundle} ${packageName.pname}
       mkdir -p $out
-      zip -q -r $out/$outFileName ${packageName}/
+      zip -q -r $out/$outFileName ${packageName.pname}/
 
       # Make it downloadable from Hydra:
       mkdir -p $out/nix-support
@@ -275,6 +276,6 @@ in rec {
         fi
       ''}
       mkdir -p $out
-      mv with-icon.exe $out/${packageName}.exe
+      mv with-icon.exe $out/${packageName.pname}.exe
     '';
 }

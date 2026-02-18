@@ -20,7 +20,7 @@
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.0.0-rc.3";
+      url = "github:txpipe/dolos/v1.0.0-rc.5";
       flake = false;
     };
     acropolis = {
@@ -119,7 +119,8 @@
             "**/.gitignore"
             "**/.gitkeep"
             "**/.prettierrc"
-            "**/.yarnrc"
+            "**/tsconfig.json"
+            "**/pnpm-lock.yaml"
             "*.diff"
             "*.nsi"
             "*.png"
