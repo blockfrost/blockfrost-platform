@@ -48,7 +48,7 @@ metrics-process = "2.4.3"
 chrono.workspace = true
 serde_with = "3.16.1"
 dotenvy = "0.15.7"
-uuid = { version = "1.20.0", features = ["v4"] }
+uuid = { version = "1.21.0", features = ["v4"] }
 twelf.workspace = true
 dirs.workspace = true
 inquire.workspace = true
@@ -59,10 +59,10 @@ ntest = "0.9.5"
 
 [dev-dependencies]
 bf-api-provider.workspace = true
-tracing-test = "0.2.5"
+tracing-test = "0.2.6"
 rstest = "0.26.1"
 pretty_assertions = "1.4.1"
-proptest = "1.9.0"
+proptest = "1.10.0"
 cardano-serialization-lib.workspace = true
 bip39 = "2.2.2"
 blockfrost = "1.2.1"
