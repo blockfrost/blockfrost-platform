@@ -1,6 +1,6 @@
 use crate::icebreakers::api::IcebreakersAPI;
 use crate::server::state::ApiPrefix;
-use crate::{hydra, load_balancer};
+use crate::{hydra_client, load_balancer};
 use axum::Router;
 use bf_common::errors::BlockfrostError;
 use std::sync::Arc;
@@ -61,9 +61,9 @@ impl IcebreakersManager {
     pub async fn run(
         self,
         hydra_kex: (
-            mpsc::Receiver<hydra::KeyExchangeRequest>,
-            mpsc::Sender<hydra::KeyExchangeResponse>,
-            mpsc::Sender<hydra::TerminateRequest>,
+            mpsc::Receiver<hydra_client::KeyExchangeRequest>,
+            mpsc::Sender<hydra_client::KeyExchangeResponse>,
+            mpsc::Sender<hydra_client::TerminateRequest>,
         ),
     ) {
         let (dest_watch_tx, dest_watch_rx) = watch::channel(None);
@@ -72,9 +72,9 @@ impl IcebreakersManager {
         // For now, we’re passing a pair with changeable destination of
         // requests, as we run multiple load balancers to multiple gateways:
         let mutable_hydra_kex: (
-            watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
-            mpsc::Sender<hydra::KeyExchangeResponse>,
-            mpsc::Sender<hydra::TerminateRequest>,
+            watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
+            mpsc::Sender<hydra_client::KeyExchangeResponse>,
+            mpsc::Sender<hydra_client::TerminateRequest>,
         ) = (dest_watch_tx, hydra_kex.1, hydra_kex.2);
 
         tokio::spawn(async move {

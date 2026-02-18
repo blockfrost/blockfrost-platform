@@ -1,5 +1,5 @@
 use crate::errors::APIError;
-use crate::hydra;
+use crate::hydra_server_platform;
 use crate::types::AssetName;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -55,8 +55,8 @@ pub enum JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
-    HydraKExResponse(hydra::KeyExchangeResponse),
-    HydraTunnel(hydra::tunnel2::TunnelMsg),
+    HydraKExResponse(hydra_server_platform::KeyExchangeResponse),
+    HydraTunnel(hydra_server_platform::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
     Error { code: u64, msg: String },
@@ -66,8 +66,8 @@ pub enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RelayMessage {
     Response(JsonResponse),
-    HydraKExRequest(hydra::KeyExchangeRequest),
-    HydraTunnel(hydra::tunnel2::TunnelMsg),
+    HydraKExRequest(hydra_server_platform::KeyExchangeRequest),
+    HydraTunnel(hydra_server_platform::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -77,7 +77,7 @@ pub struct LoadBalancerState {
     pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
     pub background_worker: Arc<JoinHandle<()>>,
-    pub hydras: Option<hydra::HydrasManager>,
+    pub hydras: Option<hydra_server_platform::HydrasManager>,
 }
 
 #[derive(Debug)]
@@ -111,7 +111,7 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new(hydras: Option<hydra::HydrasManager>) -> LoadBalancerState {
+    pub async fn new(hydras: Option<hydra_server_platform::HydrasManager>) -> LoadBalancerState {
         let access_tokens = Arc::new(Mutex::new(HashMap::new()));
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
         let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
@@ -463,12 +463,14 @@ pub mod event_loop {
         let mut last_ping_id: u64 = 0;
         let mut disconnection_reason = None;
 
-        let mut initial_hydra_kex: Option<(hydra::KeyExchangeRequest, hydra::KeyExchangeResponse)> =
-            None;
-        let mut hydra_controller: Option<hydra::HydraController> = None;
+        let mut initial_hydra_kex: Option<(
+            hydra_server_platform::KeyExchangeRequest,
+            hydra_server_platform::KeyExchangeResponse,
+        )> = None;
+        let mut hydra_controller: Option<hydra_server_platform::HydraController> = None;
 
         let tunnel_cancellation = CancellationToken::new();
-        let mut tunnel_controller: Option<hydra::tunnel2::Tunnel> = None;
+        let mut tunnel_controller: Option<hydra_server_platform::tunnel2::Tunnel> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -531,11 +533,11 @@ pub mod event_loop {
                                     // on different machines:
                                     if platform_machine_id != resp.machine_id {
                                         let (tunnel_ctl, mut tunnel_rx) =
-                                            hydra::tunnel2::Tunnel::new(
-                                                hydra::tunnel2::TunnelConfig {
+                                            hydra_server_platform::tunnel2::Tunnel::new(
+                                                hydra_server_platform::tunnel2::TunnelConfig {
                                                     expose_port: resp.gateway_h2h_port,
                                                     id_prefix_bit: true,
-                                                    ..(hydra::tunnel2::TunnelConfig::default())
+                                                    ..(hydra_server_platform::tunnel2::TunnelConfig::default())
                                                 },
                                                 tunnel_cancellation.clone(),
                                             );
