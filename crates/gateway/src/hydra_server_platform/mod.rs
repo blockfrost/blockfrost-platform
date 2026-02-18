@@ -8,7 +8,6 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-pub mod tunnel;
 pub mod tunnel2;
 pub mod verifications;
 
