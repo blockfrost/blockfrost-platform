@@ -21,8 +21,8 @@ impl ChainStalenessMonitor {
     pub fn new() -> Self {
         Self {
             last_chain_advancement: std::time::Instant::now(),
-            last_chain_block:
-                "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            last_chain_block: "0000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
             errors: Arc::new(Mutex::new(vec![])),
         }
     }
