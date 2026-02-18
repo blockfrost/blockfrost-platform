@@ -24,13 +24,26 @@ use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
 #[cfg(test)]
-async fn verify_one(cbor: &str) {
+pub(crate) async fn verify_one(cbor: &str) {
     use pallas_hardano::display::haskell_error::serialize_error;
 
     use crate::external::ExternalDecoder;
 
     let cbor = hex::decode(cbor).unwrap();
-    let reference_json = ExternalDecoder::instance().decode(&cbor).await.unwrap();
+    let reference_json = match ExternalDecoder::instance().decode(&cbor).await {
+        Ok(value) => value,
+        Err(shared_decoder_err) => {
+            // Recover from a poisoned shared decoder process by retrying with a fresh one.
+            let fresh_decoder = ExternalDecoder::spawn()
+                .expect("Failed to spawn a fresh ExternalDecoder for retry");
+            fresh_decoder.decode(&cbor).await.unwrap_or_else(|fresh_decoder_err| {
+                panic!(
+                    "Failed to decode reference JSON with both shared and fresh ExternalDecoder instances. shared_error={shared_decoder_err}, fresh_error={fresh_decoder_err}, cbor={}",
+                    hex::encode(&cbor)
+                )
+            })
+        },
+    };
 
     let our_decoding = decode_error(&cbor);
 

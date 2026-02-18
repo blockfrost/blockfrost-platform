@@ -1,5 +1,6 @@
 use bf_common::errors::AppError;
 use serde::Deserialize;
+use serde::de;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self as proc, Command};
@@ -22,12 +23,34 @@ pub struct TestgenRequest {
     response: oneshot::Sender<Result<TestgenResponse, String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub enum TestgenResponse {
-    #[serde(rename = "json")]
     Ok(serde_json::Value),
-    #[serde(rename = "error")]
     Err(serde_json::Value),
+}
+
+#[derive(Deserialize)]
+struct TestgenResponseWire {
+    #[serde(default)]
+    json: Option<serde_json::Value>,
+    #[serde(default)]
+    error: Option<serde_json::Value>,
+}
+
+impl<'de> Deserialize<'de> for TestgenResponse {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = TestgenResponseWire::deserialize(deserializer)?;
+        match (wire.json, wire.error) {
+            (Some(json), _) => Ok(Self::Ok(json)),
+            (None, Some(error)) => Ok(Self::Err(error)),
+            (None, None) => Err(de::Error::custom(
+                "invalid testgen-hs response: missing both `json` and `error`",
+            )),
+        }
+    }
 }
 /// Testgen is an executable that we use to run some functionality that are readily/easily available
 /// in Haskell codebase like the ledger.

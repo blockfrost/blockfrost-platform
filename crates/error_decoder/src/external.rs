@@ -66,12 +66,9 @@ static GLOBAL_INSTANCE: std::sync::LazyLock<ExternalDecoder> =
 
 #[cfg(test)]
 mod tests {
-    use pallas_hardano::display::haskell_error::serialize_error;
-    #[cfg(test)]
-    use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
-
     #[cfg(not(feature = "tarpaulin"))]
     use super::*;
+    use crate::tests::specific::verify_one;
     #[tokio::test]
     //#[tracing_test::traced_test]
     #[cfg(not(feature = "tarpaulin"))]
@@ -109,50 +106,6 @@ mod tests {
             ))
         );
     }
-
-    /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
-    /// deserializer against the Haskell one. Use it for specific cases.
-    #[cfg(test)]
-    async fn verify_one(cbor: &str) {
-        use crate::external::ExternalDecoder;
-
-        let cbor = hex::decode(cbor).unwrap();
-        let reference_json = ExternalDecoder::instance().decode(&cbor).await.unwrap();
-
-        let our_decoding = decode_error(&cbor);
-
-        let our_json = serialize_error(our_decoding);
-        assert_json_eq!(reference_json, our_json)
-    }
-
-    #[cfg(test)]
-    fn decode_error(cbor: &[u8]) -> TxValidationError {
-        use pallas_codec::minicbor;
-
-        let mut decoder = minicbor::Decoder::new(cbor);
-        decoder.decode().unwrap()
-    }
-
-    #[cfg(test)]
-    macro_rules! assert_json_eq {
-        ($left:expr, $right:expr) => {
-            if $left != $right {
-                let left_pretty = serde_json::to_string_pretty(&$left).unwrap();
-                let right_pretty = serde_json::to_string_pretty(&$right).unwrap();
-                panic!(
-                    concat!(
-                        "assertion `left == right` failed\n",
-                        "  left:\n    {}\n  right:\n    {}",
-                    ),
-                    left_pretty.replace("\n", "\n    "),
-                    right_pretty.replace("\n", "\n    "),
-                );
-            }
-        };
-    }
-
-    #[cfg(test)]
-    pub(crate) use assert_json_eq; // export it
 
     #[tokio::test]
     #[allow(non_snake_case)]
