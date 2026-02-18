@@ -52,15 +52,21 @@ in
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
+          ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/libexec/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
         '';
     });
 
     bundle-testgen-hs = nix-bundle-exe-lib-subdir (lib.getExe unix.testgen-hs);
 
     bundle-dolos = nix-bundle-exe-lib-subdir "${unix.dolos}/bin/dolos";
+
+    bundle-hydra = nix-bundle-exe-lib-subdir "${unix.hydra-node}/bin/hydra-node";
+
+    bundle-cardano-cli = nix-bundle-exe-lib-subdir "${unix.cardano-cli}/bin/cardano-cli";
 
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.

@@ -16,6 +16,7 @@ bf-api-provider.workspace = true
 
 axum.workspace = true
 tokio.workspace = true
+tokio-util = "0.7"
 futures.workspace = true
 futures-util.workspace = true
 tungstenite = { version = "0.28.0", features = ["native-tls"] }
@@ -32,6 +33,10 @@ toml.workspace = true
 thiserror.workspace = true
 sentry = "0.46.2"
 base64 = "0.22.1"
+blake3 = "1"
+bytes = "1"
+getrandom = "0.3"
+machine-uid = "0.5"
 pallas.workspace = true
 pallas-network.workspace = true
 pallas-crypto.workspace = true
@@ -66,6 +71,9 @@ proptest = "1.9.0"
 cardano-serialization-lib.workspace = true
 bip39 = "2.2.2"
 blockfrost = "1.2.1"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc = "0.3"

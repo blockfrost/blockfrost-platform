@@ -177,6 +177,8 @@ in rec {
       '';
     };
 
+  # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
+  # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.
