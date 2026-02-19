@@ -56,7 +56,7 @@ pub struct AdditionalUtxoV6 {
 pub struct ValueV6 {
     pub ada: LovelaceV6,
     #[serde(flatten)]
-    pub assets: HashMap<String, Vec<(String, u64)>>,
+    pub assets: HashMap<String, HashMap<String, u64>>,
 }
 
 /// If language is native, the json structure can be one of cbor or json
