@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicU64, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -30,19 +30,16 @@ pub struct HydraConfig {
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
     credits_available: Arc<AtomicU64>,
-    head_open: Arc<AtomicBool>,
 }
 
 #[derive(Debug)]
 pub enum CreditError {
-    HeadNotOpen,
     InsufficientCredits,
 }
 
 impl std::fmt::Display for CreditError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CreditError::HeadNotOpen => write!(f, "hydra head is not open"),
             CreditError::InsufficientCredits => write!(f, "insufficient prepaid credits"),
         }
     }
@@ -92,28 +89,21 @@ impl HydraController {
         terminate_reqs: mpsc::Receiver<TerminateRequest>,
     ) -> Result<Self> {
         let credits_available = Arc::new(AtomicU64::new(0));
-        let head_open = Arc::new(AtomicBool::new(false));
         let event_tx = State::spawn(
             config,
             kex_requests,
             kex_responses,
             terminate_reqs,
             credits_available.clone(),
-            head_open.clone(),
         )
         .await?;
         Ok(Self {
             event_tx,
             credits_available,
-            head_open,
         })
     }
 
     pub fn try_reserve_credit(&self) -> Result<(), CreditError> {
-        if !self.head_open.load(Ordering::SeqCst) {
-            return Err(CreditError::HeadNotOpen);
-        }
-
         let mut current = self.credits_available.load(Ordering::SeqCst);
         loop {
             if current == 0 {
@@ -181,7 +171,6 @@ struct State {
     hydra_head_open: bool,
     head_open_initialized: bool,
     credits_available: Arc<AtomicU64>,
-    head_open_flag: Arc<AtomicBool>,
     credits_last_balance: u64,
     accounted_requests: u64,
     sent_microtransactions: u64,
@@ -200,7 +189,6 @@ impl State {
         kex_responses: mpsc::Receiver<KeyExchangeResponse>,
         terminate_reqs: mpsc::Receiver<TerminateRequest>,
         credits_available: Arc<AtomicU64>,
-        head_open_flag: Arc<AtomicBool>,
     ) -> Result<mpsc::Sender<Event>> {
         let hydra_node_exe =
             crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
@@ -235,7 +223,6 @@ impl State {
             hydra_head_open: false,
             head_open_initialized: false,
             credits_available,
-            head_open_flag,
             credits_last_balance: 0,
             accounted_requests: 0,
             sent_microtransactions: 0,
@@ -344,7 +331,6 @@ impl State {
                     .await?;
 
                 self.hydra_head_open = false;
-                self.head_open_flag.store(false, Ordering::SeqCst);
                 self.credits_available.store(0, Ordering::SeqCst);
                 self.credits_last_balance = 0;
                 self.accounted_requests = 0;
@@ -617,8 +603,6 @@ impl State {
                     self.on_head_open().await?;
                 } else {
                     self.hydra_head_open = false;
-                    self.head_open_flag.store(false, Ordering::SeqCst);
-                    self.credits_available.store(0, Ordering::SeqCst);
                     self.credits_last_balance = 0;
                     self.head_open_initialized = false;
                 }
@@ -764,14 +748,11 @@ impl State {
     async fn on_head_open(&mut self) -> Result<()> {
         if self.head_open_initialized {
             self.hydra_head_open = true;
-            self.head_open_flag.store(true, Ordering::SeqCst);
             return Ok(());
         }
 
         self.head_open_initialized = true;
         self.hydra_head_open = true;
-        self.head_open_flag.store(true, Ordering::SeqCst);
-        self.credits_available.store(0, Ordering::SeqCst);
         self.credits_last_balance = 0;
         self.accounted_requests = 0;
         self.sent_microtransactions = 0;

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicU64, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -241,20 +241,17 @@ impl HydraConfig {
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
     credits_available: Arc<AtomicU64>,
-    head_open: Arc<AtomicBool>,
     _controller_counter: Arc<()>,
 }
 
 #[derive(Debug)]
 pub enum CreditError {
-    HeadNotOpen,
     InsufficientCredits,
 }
 
 impl std::fmt::Display for CreditError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CreditError::HeadNotOpen => write!(f, "hydra head is not open"),
             CreditError::InsufficientCredits => write!(f, "insufficient prepaid credits"),
         }
     }
@@ -304,20 +301,17 @@ impl HydraController {
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
         let credits_available = Arc::new(AtomicU64::new(0));
-        let head_open = Arc::new(AtomicBool::new(false));
         let event_tx = State::spawn(
             config,
             customer_id.clone(),
             kex_req,
             kex_resp,
             credits_available.clone(),
-            head_open.clone(),
         )
         .await?;
         Ok(Self {
             event_tx,
             credits_available,
-            head_open,
             _controller_counter: controller_counter,
         })
     }
@@ -328,10 +322,6 @@ impl HydraController {
     }
 
     pub fn try_consume_credit(&self) -> Result<(), CreditError> {
-        if !self.head_open.load(Ordering::SeqCst) {
-            return Err(CreditError::HeadNotOpen);
-        }
-
         let mut current = self.credits_available.load(Ordering::SeqCst);
         loop {
             if current == 0 {
@@ -392,7 +382,6 @@ struct State {
     hydra_peers_connected: bool,
     hydra_head_open: bool,
     credits_available: Arc<AtomicU64>,
-    head_open_flag: Arc<AtomicBool>,
     credits_last_balance: u64,
     received_microtransactions: u64,
     is_closing: bool,
@@ -408,7 +397,6 @@ impl State {
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
         credits_available: Arc<AtomicU64>,
-        head_open_flag: Arc<AtomicBool>,
     ) -> Result<mpsc::Sender<Event>> {
         let config_dir = mk_config_dir(&config.network, &customer_id)?;
         let customer_log_id = format!("customer-{customer_id}");
@@ -427,7 +415,6 @@ impl State {
             hydra_peers_connected: false,
             hydra_head_open: false,
             credits_available,
-            head_open_flag,
             credits_last_balance: 0,
             received_microtransactions: 0,
             is_closing: false,
@@ -477,7 +464,6 @@ impl State {
             Event::Restart => {
                 info!("hydra-controller: {}: starting…", self.customer_log_id);
                 self.hydra_head_open = false;
-                self.head_open_flag.store(false, Ordering::SeqCst);
                 self.credits_available.store(0, Ordering::SeqCst);
                 self.credits_last_balance = 0;
                 self.received_microtransactions = 0;
@@ -570,8 +556,6 @@ impl State {
                 );
                 if status == "Open" {
                     self.hydra_head_open = true;
-                    self.head_open_flag.store(true, Ordering::SeqCst);
-                    self.credits_available.store(0, Ordering::SeqCst);
                     self.credits_last_balance = 0;
                     self.received_microtransactions = 0;
                     self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
@@ -655,7 +639,6 @@ impl State {
 
             Event::TryToClose => {
                 self.hydra_head_open = false;
-                self.head_open_flag.store(false, Ordering::SeqCst);
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Close"}),

@@ -261,13 +261,6 @@ pub mod event_loop {
                             } else {
                                 match ctl.try_consume_credit() {
                                     Ok(()) => None,
-                                    Err(hydra_server_bridge::CreditError::HeadNotOpen) => {
-                                        Some(error_response(
-                                            request_id,
-                                            StatusCode::SERVICE_UNAVAILABLE,
-                                            "Hydra head is not open".to_string(),
-                                        ))
-                                    },
                                     Err(hydra_server_bridge::CreditError::InsufficientCredits) => {
                                         Some(error_response(
                                             request_id,

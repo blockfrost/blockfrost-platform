@@ -38,9 +38,6 @@ async fn proxy_route(
 
     match state.bridge.hydra().try_reserve_credit() {
         Ok(()) => (),
-        Err(crate::hydra_client::CreditError::HeadNotOpen) => {
-            return (StatusCode::SERVICE_UNAVAILABLE, "Hydra head is not open").into_response();
-        },
         Err(crate::hydra_client::CreditError::InsufficientCredits) => {
             return (StatusCode::PAYMENT_REQUIRED, "Prepaid credits exhausted").into_response();
         },
