@@ -10,7 +10,7 @@ connection_string = 'postgresql://user:pass@host:port/db'
 project_id = 'preview_BLOCKFROST_PROJECT_ID'
 nft_asset = '4213fc3eac8c781ac85514dd1de9aaabcd5a3a81cc2df4f413b9b295'
 
-[hydra]
+[hydra_platform]
 max_concurrent_hydra_nodes = 2
 cardano_signing_key = "/home/mw/.config/blockfrost-platform/hydra/tmp_their_keys/payment.sk"
 node_socket_path = "/home/mw/.local/share/blockfrost-platform/preview/node.socket"
