@@ -1,0 +1,38 @@
+[package]
+name = "blockfrost-sdk-bridge"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tokio-util = "0.7"
+futures.workspace = true
+futures-util.workspace = true
+tokio-tungstenite = { version = "0.28.0", features = ["native-tls"] }
+tungstenite = { version = "0.28.0", features = ["native-tls"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+uuid.workspace = true
+base64 = "0.22.1"
+hyper = "1.8.1"
+bytes = "1"
+machine-uid = "0.5"
+blake3 = "1"
+getrandom = "0.3"
+reqwest.workspace = true
+dirs.workspace = true
+url.workspace = true
+hex.workspace = true
+
+[lints]
+workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.30", default-features = false, features = ["signal"] }

@@ -643,6 +643,7 @@ dependencies = [
  "tokio-tungstenite 0.24.0",
  "tokio-util",
  "toml 0.9.11+spec-1.1.0",
+ "tower",
  "tracing",
  "tracing-subscriber",
  "tungstenite 0.24.0",
@@ -817,6 +818,37 @@ dependencies = [
  "tokio",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
+]
+
+[[package]]
+name = "blockfrost-sdk-bridge"
+version = "0.0.3-rc.3"
+dependencies = [
+ "anyhow",
+ "axum 0.8.8",
+ "base64 0.22.1",
+ "blake3",
+ "bytes",
+ "clap",
+ "dirs",
+ "futures",
+ "futures-util",
+ "getrandom 0.3.2",
+ "hex",
+ "hyper",
+ "machine-uid",
+ "nix",
+ "reqwest 0.13.1",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite 0.28.0",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "tungstenite 0.28.0",
+ "url",
+ "uuid",
 ]
 
 [[package]]
