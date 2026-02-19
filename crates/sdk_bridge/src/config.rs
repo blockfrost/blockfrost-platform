@@ -14,7 +14,7 @@ pub struct Args {
     )]
     pub gateway_ws_url: String,
 
-    #[arg(long, default_value = "127.0.0.1:3001")]
+    #[arg(long, default_value = "127.0.0.1:3002")]
     pub listen_address: String,
 
     #[arg(long, value_enum)]
