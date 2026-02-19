@@ -13,6 +13,7 @@ pub mod tunnel2;
 pub mod verifications;
 
 const MIN_FUEL_LOVELACE: u64 = 15_000_000;
+const MIN_COMMIT_TOPUP_LOVELACE: u64 = 1_000_000;
 const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Debug)]
@@ -491,17 +492,38 @@ impl State {
                         let params = self.payment_params.clone().ok_or(anyhow!(
                             "payment parameters not set before funding commit address"
                         ))?;
-                        self.fund_address(
-                            &self
-                                .derive_enterprise_address_from_skey(
-                                    &self.config.cardano_signing_key,
-                                )
-                                .await?,
-                            &self.commit_wallet_addr,
-                            (params.commit_ada * 1_000_000.0).round() as u64,
-                            &self.config.cardano_signing_key,
-                        )
-                        .await?;
+
+                        let target_lovelace = (params.commit_ada * 1_000_000.0).round() as u64;
+                        let current_lovelace = self
+                            .lovelace_on_payment_skey(&self.commit_wallet_skey)
+                            .await?;
+
+                        if current_lovelace < target_lovelace {
+                            let mut top_up = target_lovelace - current_lovelace;
+                            if top_up < MIN_COMMIT_TOPUP_LOVELACE {
+                                top_up = MIN_COMMIT_TOPUP_LOVELACE;
+                            }
+                            info!(
+                                "hydra-controller: topping up commit address by {} lovelace (current={}, target={})",
+                                top_up, current_lovelace, target_lovelace
+                            );
+                            self.fund_address(
+                                &self
+                                    .derive_enterprise_address_from_skey(
+                                        &self.config.cardano_signing_key,
+                                    )
+                                    .await?,
+                                &self.commit_wallet_addr,
+                                top_up,
+                                &self.config.cardano_signing_key,
+                            )
+                            .await?;
+                        } else {
+                            info!(
+                                "hydra-controller: commit address already funded (current={}, target={})",
+                                current_lovelace, target_lovelace
+                            );
+                        }
 
                         self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                             .await
@@ -590,7 +612,7 @@ impl State {
                     info!("hydra-controller: state changed from {old} to {new}");
 
                     if new == "Initial" {
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
+                        self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
                             .await;
                     }
                 }
