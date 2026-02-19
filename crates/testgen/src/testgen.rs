@@ -162,14 +162,24 @@ impl Testgen {
             let target_dir = PathBuf::from(root).join(&target_dir_from_env);
             search_paths.push(target_dir.join("debug").join("testgen-hs").join(exe_name));
             search_paths.push(target_dir.join("release").join("testgen-hs").join(exe_name));
-            search_paths.push(target_dir.join("testgen-hs").join("extracted").join(exe_name));
+            search_paths.push(
+                target_dir
+                    .join("testgen-hs")
+                    .join("extracted")
+                    .join(exe_name),
+            );
         }
 
         // Compile-time CARGO_MANIFEST_DIR always points to this crate.
         let target_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(target_dir_from_env);
         search_paths.push(target_dir.join("debug").join("testgen-hs").join(exe_name));
         search_paths.push(target_dir.join("release").join("testgen-hs").join(exe_name));
-        search_paths.push(target_dir.join("testgen-hs").join("extracted").join(exe_name));
+        search_paths.push(
+            target_dir
+                .join("testgen-hs")
+                .join("extracted")
+                .join(exe_name),
+        );
 
         // Docker image fallback.
         search_paths.push(PathBuf::from("/app/testgen-hs"));
