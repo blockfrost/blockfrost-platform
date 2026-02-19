@@ -702,6 +702,7 @@ dependencies = [
 name = "blockfrost-platform-error-decoder"
 version = "0.1.0"
 dependencies = [
+ "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "blockfrost-platform-testgen",
  "hex",
