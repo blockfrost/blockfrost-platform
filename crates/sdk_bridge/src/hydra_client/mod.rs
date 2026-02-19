@@ -179,6 +179,7 @@ struct State {
     last_hydra_head_state: String,
     hydra_pid: Option<u32>,
     hydra_head_open: bool,
+    head_open_initialized: bool,
     credits_available: Arc<AtomicU64>,
     head_open_flag: Arc<AtomicBool>,
     credits_last_balance: u64,
@@ -232,6 +233,7 @@ impl State {
             last_hydra_head_state: String::new(),
             hydra_pid: None,
             hydra_head_open: false,
+            head_open_initialized: false,
             credits_available,
             head_open_flag,
             credits_last_balance: 0,
@@ -348,6 +350,7 @@ impl State {
                 self.accounted_requests = 0;
                 self.sent_microtransactions = 0;
                 self.prepay_sent = false;
+                self.head_open_initialized = false;
                 self.last_hydra_head_state = String::new();
             },
 
@@ -584,17 +587,10 @@ impl State {
                     status
                 );
                 if status == "Open" {
-                    self.hydra_head_open = true;
-                    self.head_open_flag.store(true, Ordering::SeqCst);
-                    self.credits_available.store(0, Ordering::SeqCst);
-                    self.credits_last_balance = 0;
-                    self.prepay_sent = false;
                     self.last_hydra_head_state = status.clone();
-                    self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
-                        .await;
                     self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
                         .await;
-                    self.send_prepay_microtransaction().await?;
+                    self.on_head_open().await?;
                 } else {
                     self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                         .await
@@ -618,13 +614,13 @@ impl State {
                 }
 
                 if new_status == "Open" {
-                    self.hydra_head_open = true;
-                    self.head_open_flag.store(true, Ordering::SeqCst);
+                    self.on_head_open().await?;
                 } else {
                     self.hydra_head_open = false;
                     self.head_open_flag.store(false, Ordering::SeqCst);
                     self.credits_available.store(0, Ordering::SeqCst);
                     self.credits_last_balance = 0;
+                    self.head_open_initialized = false;
                 }
 
                 self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
@@ -762,6 +758,27 @@ impl State {
 
         self.sent_microtransactions += 1;
         self.prepay_sent = true;
+        Ok(())
+    }
+
+    async fn on_head_open(&mut self) -> Result<()> {
+        if self.head_open_initialized {
+            self.hydra_head_open = true;
+            self.head_open_flag.store(true, Ordering::SeqCst);
+            return Ok(());
+        }
+
+        self.head_open_initialized = true;
+        self.hydra_head_open = true;
+        self.head_open_flag.store(true, Ordering::SeqCst);
+        self.credits_available.store(0, Ordering::SeqCst);
+        self.credits_last_balance = 0;
+        self.accounted_requests = 0;
+        self.sent_microtransactions = 0;
+        self.prepay_sent = false;
+        self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
+            .await;
+        self.send_prepay_microtransaction().await?;
         Ok(())
     }
 

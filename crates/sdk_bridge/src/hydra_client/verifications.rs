@@ -5,6 +5,8 @@ use tracing::info;
 
 use crate::types::Network;
 
+const MIN_OUTPUT_LOVELACE: u64 = 840_450;
+
 /// FIXME: don’t use `cardano-cli`.
 ///
 /// FIXME: proper errors, not `anyhow!`
@@ -425,6 +427,34 @@ impl super::State {
     ) -> Result<()> {
         use anyhow::Context;
 
+        fn utxo_lovelace(entry: &Value) -> Option<u64> {
+            if let Some(v) = entry.pointer("/value/lovelace") {
+                if let Some(n) = v.as_u64() {
+                    return Some(n);
+                }
+                if let Some(s) = v.as_str() {
+                    return s.parse().ok();
+                }
+            }
+
+            if let Some(amounts) = entry.get("amount").and_then(Value::as_array) {
+                for item in amounts {
+                    if item.get("unit").and_then(Value::as_str) == Some("lovelace") {
+                        if let Some(q) = item.get("quantity") {
+                            if let Some(n) = q.as_u64() {
+                                return Some(n);
+                            }
+                            if let Some(s) = q.as_str() {
+                                return s.parse().ok();
+                            }
+                        }
+                    }
+                }
+            }
+
+            None
+        }
+
         let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
         let utxo: Value = reqwest::Client::new()
             .get(&snapshot_url)
@@ -446,42 +476,90 @@ impl super::State {
             }
         }
 
-        let (tx_in, chosen_entry) = filtered
-            .iter()
-            .next()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .ok_or_else(|| anyhow!("no UTxO found for sender address"))?;
-
-        let lovelace_total = chosen_entry
-            .pointer("/value/lovelace")
-            .and_then(Value::as_u64)
-            .context("utxo entry: expected .value.lovelace as integer")?;
-
-        if lovelace_total < amount_lovelace {
+        if amount_lovelace < MIN_OUTPUT_LOVELACE {
             return Err(anyhow!(
-                "insufficient lovelace in selected UTxO: {lovelace_total} < {amount_lovelace}"
+                "amount_lovelace {amount_lovelace} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}"
             ));
         }
 
-        let change = lovelace_total - amount_lovelace;
+        let mut candidates: Vec<(String, u64)> = Vec::new();
+        for (k, v) in filtered.iter() {
+            let lovelace_total = utxo_lovelace(v).context("utxo entry: expected lovelace value")?;
+            candidates.push((k.clone(), lovelace_total));
+        }
+
+        if candidates.is_empty() {
+            return Err(anyhow!("no UTxO found for sender address"));
+        }
+
+        candidates.sort_by_key(|(_, value)| *value);
+
+        let min_total = amount_lovelace
+            .checked_add(MIN_OUTPUT_LOVELACE)
+            .ok_or_else(|| anyhow!("amount_lovelace overflow"))?;
+
+        let mut selected: Vec<String> = Vec::new();
+        let mut selected_total: u64 = 0;
+
+        if let Some((tx_in, total)) = candidates
+            .iter()
+            .find(|(_, total)| *total == amount_lovelace)
+        {
+            selected.push(tx_in.clone());
+            selected_total = *total;
+        } else if let Some((tx_in, total)) = candidates
+            .iter()
+            .find(|(_, total)| *total > amount_lovelace && *total >= min_total)
+        {
+            selected.push(tx_in.clone());
+            selected_total = *total;
+        } else {
+            for (tx_in, total) in &candidates {
+                selected_total = selected_total
+                    .checked_add(*total)
+                    .ok_or_else(|| anyhow!("utxo sum overflow"))?;
+                selected.push(tx_in.clone());
+                if selected_total == amount_lovelace || selected_total >= min_total {
+                    break;
+                }
+            }
+        }
+
+        if selected_total < amount_lovelace {
+            return Err(anyhow!(
+                "insufficient lovelace in available UTxOs: {selected_total} < {amount_lovelace}"
+            ));
+        }
+
+        let change = selected_total - amount_lovelace;
+        if change > 0 && change < MIN_OUTPUT_LOVELACE {
+            return Err(anyhow!(
+                "change output {change} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}"
+            ));
+        }
 
         let tx_body: serde_json::Value = {
-            let args: &[&str] = &[
-                "latest",
-                "transaction",
-                "build-raw",
-                "--tx-in",
-                &tx_in,
-                "--tx-out",
-                &format!("{receiver_addr}+{amount_lovelace}"),
-                "--tx-out",
-                &format!("{sender_addr}+{change}"),
-                "--fee",
-                "0",
-                "--out-file",
-                "/dev/stdout",
+            let mut args = vec![
+                "latest".to_string(),
+                "transaction".to_string(),
+                "build-raw".to_string(),
             ];
-            self.cardano_cli_capture(args, None).await?.0
+            for tx_in in &selected {
+                args.push("--tx-in".to_string());
+                args.push(tx_in.clone());
+            }
+            args.push("--tx-out".to_string());
+            args.push(format!("{receiver_addr}+{amount_lovelace}"));
+            if change > 0 {
+                args.push("--tx-out".to_string());
+                args.push(format!("{sender_addr}+{change}"));
+            }
+            args.push("--fee".to_string());
+            args.push("0".to_string());
+            args.push("--out-file".to_string());
+            args.push("/dev/stdout".to_string());
+            let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            self.cardano_cli_capture(&args_ref, None).await?.0
         };
 
         let tx_signed: serde_json::Value = {
