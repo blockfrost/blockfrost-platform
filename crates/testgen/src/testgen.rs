@@ -124,42 +124,68 @@ impl Testgen {
 
     /// Searches for `testgen-hs` in multiple directories.
     pub fn find_testgen_hs() -> Result<String, String> {
-        let env_var_dir: Option<PathBuf> = env::var("TESTGEN_HS_PATH")
-            .ok()
-            .and_then(|a| PathBuf::from(a).parent().map(|a| a.to_path_buf()));
-
-        // This is the most important one for relocatable directories (that keep the initial
-        // structure) on Windows, Linux, macOS:
-        let current_exe_dir: Option<PathBuf> =
-            std::fs::canonicalize(env::current_exe().map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?
-                .parent()
-                .map(|a| a.to_path_buf().join("testgen-hs"));
-
-        let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
-            .ok()
-            .map(|root| PathBuf::from(root).join("target/testgen-hs/extracted/testgen-hs"));
-
-        let docker_path: Option<PathBuf> = Some(PathBuf::from("/app/testgen-hs"));
-
-        let system_path: Vec<PathBuf> = env::var("PATH")
-            .map(|p| env::split_paths(&p).collect())
-            .unwrap_or_default();
-
-        let search_path: Vec<PathBuf> =
-            vec![env_var_dir, current_exe_dir, cargo_target_dir, docker_path]
-                .into_iter()
-                .flatten()
-                .chain(system_path)
-                .collect();
-
         let exe_name = if cfg!(target_os = "windows") {
             "testgen-hs.exe"
         } else {
             "testgen-hs"
         };
 
-        debug!("{} search directories = {:?}", exe_name, search_path);
+        let mut search_paths: Vec<PathBuf> = Vec::new();
+
+        if let Ok(path) = env::var("TESTGEN_HS_PATH") {
+            search_paths.push(PathBuf::from(path));
+        }
+
+        if let Some(path) = option_env!("TESTGEN_HS_PATH") {
+            search_paths.push(PathBuf::from(path));
+        }
+
+        // This is the most important one for relocatable directories (that keep the initial
+        // structure) on Windows, Linux, macOS.
+        if let Ok(current_exe) = env::current_exe() {
+            if let Ok(current_exe) = std::fs::canonicalize(current_exe) {
+                if let Some(exe_dir) = current_exe.parent() {
+                    search_paths.push(exe_dir.join(exe_name));
+
+                    // build_utils::testgen_hs::ensure extracts to target/{debug|release}/testgen-hs.
+                    if let Some(profile_dir) = exe_dir.parent() {
+                        search_paths.push(profile_dir.join("testgen-hs").join(exe_name));
+                    }
+                }
+            }
+        }
+
+        let target_dir_from_env = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
+
+        // Runtime CARGO_MANIFEST_DIR can point to the current package (e.g. error_decoder tests).
+        if let Ok(root) = env::var("CARGO_MANIFEST_DIR") {
+            let target_dir = PathBuf::from(root).join(&target_dir_from_env);
+            search_paths.push(target_dir.join("debug").join("testgen-hs").join(exe_name));
+            search_paths.push(target_dir.join("release").join("testgen-hs").join(exe_name));
+            search_paths.push(target_dir.join("testgen-hs").join("extracted").join(exe_name));
+        }
+
+        // Compile-time CARGO_MANIFEST_DIR always points to this crate.
+        let target_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(target_dir_from_env);
+        search_paths.push(target_dir.join("debug").join("testgen-hs").join(exe_name));
+        search_paths.push(target_dir.join("release").join("testgen-hs").join(exe_name));
+        search_paths.push(target_dir.join("testgen-hs").join("extracted").join(exe_name));
+
+        // Docker image fallback.
+        search_paths.push(PathBuf::from("/app/testgen-hs"));
+
+        // System PATH lookup.
+        search_paths.extend(
+            env::var("PATH")
+                .map(|p| {
+                    env::split_paths(&p)
+                        .map(|dir| dir.join(exe_name))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
+        );
+
+        debug!("{} search paths = {:?}", exe_name, search_paths);
 
         // Checks if the path is runnable. Adjust for platform specifics if needed.
         // TODO: check that the --version matches what we expect.
@@ -167,9 +193,13 @@ impl Testgen {
             Command::new(path).arg("--version").output().is_ok()
         }
 
-        // Look in each candidate directory to find a matching file
-        for candidate in &search_path {
-            let path = candidate.join(exe_name);
+        // Look in each candidate path to find a matching executable.
+        for candidate in &search_paths {
+            let path = if candidate.file_name().is_some_and(|name| name == exe_name) {
+                candidate.clone()
+            } else {
+                candidate.join(exe_name)
+            };
 
             if path.is_file() && is_our_executable(path.as_path()) {
                 return Ok(path.to_string_lossy().to_string());
@@ -178,7 +208,7 @@ impl Testgen {
 
         Err(format!(
             "No valid `{}` binary found in {:?}.",
-            exe_name, &search_path
+            exe_name, &search_paths
         ))
     }
 

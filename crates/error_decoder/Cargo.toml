@@ -3,6 +3,7 @@ name = "blockfrost-platform-error-decoder"
 version = "0.1.0"
 license = "Apache-2.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 bf-common.workspace = true
@@ -17,6 +18,9 @@ pallas-codec.workspace = true
 
 [features]
 tarpaulin = []
+
+[build-dependencies]
+bf-build-utils.workspace = true
 
 [dev-dependencies]
 bf-testgen = { workspace = true, features = ["test-utils"] }
