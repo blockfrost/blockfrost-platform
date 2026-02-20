@@ -1,3 +1,5 @@
+#![cfg(not(feature = "tarpaulin"))]
+
 use bf_testgen::tests::{CaseType, check_generated_cases};
 use pallas_hardano::display::haskell_error::serialize_error;
 use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
