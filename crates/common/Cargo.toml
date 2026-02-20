@@ -30,6 +30,7 @@ pallas-addresses.workspace = true
 [dev-dependencies]
 rstest.workspace = true
 pretty_assertions.workspace = true
+proptest.workspace = true
 tokio.workspace = true
 
 [build-dependencies]

@@ -202,6 +202,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "allocator-api2"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -271,6 +277,21 @@ name = "anyhow"
 version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+
+[[package]]
+name = "ar_archive_writer"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eb93bbb63b9c227414f6eb3a0adfddca591a8ce1e9b60661bb08969b87e340b"
+dependencies = [
+ "object 0.37.3",
+]
+
+[[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "async-trait"
@@ -360,7 +381,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.36.7",
  "rustc-demangle",
  "windows-targets 0.52.6",
 ]
@@ -441,7 +462,7 @@ version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90dbd31c98227229239363921e60fcf5e558e43ec69094d46fc4996f08d1d5bc"
 dependencies = [
- "bitcoin_hashes",
+ "bitcoin_hashes 0.13.0",
  "serde",
  "unicode-normalization",
 ]
@@ -468,13 +489,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9425c3bf7089c983facbae04de54513cce73b41c7f9ff8c845b54e7bc64ebbfb"
 
 [[package]]
+name = "bitcoin-io"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dee39a0ee5b4095224a0cfc6bf4cc1baf0f9624b96b367e53b66d974e51d953"
+
+[[package]]
 name = "bitcoin_hashes"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1930a4dabfebb8d7d9992db18ebe3ae2876f0a305fab206fd168df931ede293b"
 dependencies = [
  "bitcoin-internals",
- "hex-conservative",
+ "hex-conservative 0.1.2",
+]
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26ec84b80c482df901772e931a9a681e26a1b9ee2302edeff23cb30328745c8b"
+dependencies = [
+ "bitcoin-io",
+ "hex-conservative 0.2.2",
 ]
 
 [[package]]
@@ -551,6 +588,7 @@ dependencies = [
  "blockfrost-platform-common",
  "blockfrost-platform-data-node",
  "blockfrost-platform-node",
+ "blockfrost-platform-tx-evaluator",
  "cardano-serialization-lib",
  "chrono",
  "clap",
@@ -632,6 +670,7 @@ dependencies = [
  "pallas-addresses",
  "pallas-network",
  "pretty_assertions",
+ "proptest",
  "reqwest 0.13.1",
  "rstest",
  "serde",
@@ -661,6 +700,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockfrost-platform-error-decoder"
+version = "0.1.0"
+dependencies = [
+ "blockfrost-platform-build-utils",
+ "blockfrost-platform-common",
+ "blockfrost-platform-testgen",
+ "hex",
+ "pallas-codec",
+ "pallas-hardano",
+ "pallas-network",
+ "serde_json",
+ "sysinfo 0.33.1",
+ "tokio",
+]
+
+[[package]]
 name = "blockfrost-platform-node"
 version = "0.0.3-rc.3"
 dependencies = [
@@ -682,10 +737,58 @@ dependencies = [
  "reqwest 0.13.1",
  "serde",
  "serde_json",
- "sysinfo",
+ "sysinfo 0.37.2",
  "tokio",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
+]
+
+[[package]]
+name = "blockfrost-platform-testgen"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-platform-common",
+ "chrono",
+ "crossbeam",
+ "hex",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "blockfrost-platform-tx-evaluator"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-platform-common",
+ "blockfrost-platform-node",
+ "blockfrost-platform-testgen",
+ "chrono",
+ "hex",
+ "pallas-addresses",
+ "pallas-codec",
+ "pallas-crypto",
+ "pallas-network",
+ "pallas-primitives",
+ "pallas-traverse",
+ "pallas-validate",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "blst"
+version = "0.3.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcdb4c7013139a150f9fc55d123186dbfaba0d912817466282c73ac49e71fb45"
+dependencies = [
+ "cc",
+ "glob",
+ "threadpool",
+ "zeroize",
 ]
 
 [[package]]
@@ -810,6 +913,19 @@ dependencies = [
  "serde",
  "wasm-bindgen",
  "windows-link 0.1.1",
+]
+
+[[package]]
+name = "chumsky"
+version = "1.0.0-alpha.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7b80276986f86789dc56ca6542d53bba9cda3c66091ebbe7bd96fc1bdf20f1f"
+dependencies = [
+ "hashbrown 0.14.5",
+ "regex-automata 0.3.9",
+ "serde",
+ "stacker",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -1625,6 +1741,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash",
+ "allocator-api2",
 ]
 
 [[package]]
@@ -1674,6 +1791,15 @@ name = "hex-conservative"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212ab92002354b4819390025006c897e8140934349e8635c9b077f47b4dcbd20"
+
+[[package]]
+name = "hex-conservative"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fda06d18ac606267c40c04e41b9947729bf8b9efe74bd4e82b61a5f26a510b9f"
+dependencies = [
+ "arrayvec",
+]
 
 [[package]]
 name = "hmac"
@@ -1856,6 +1982,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "ibig"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1fcc7f316b2c079dde77564a1360639c1a956a23fa96122732e416cb10717bb"
+dependencies = [
+ "cfg-if",
+ "num-traits",
+ "static_assertions",
 ]
 
 [[package]]
@@ -2285,7 +2422,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
 dependencies = [
- "regex-automata",
+ "regex-automata 0.4.9",
 ]
 
 [[package]]
@@ -2374,12 +2511,32 @@ dependencies = [
 
 [[package]]
 name = "minicbor"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0452a60c1863c1f50b5f77cd295e8d2786849f35883f0b9e18e7e6e1b5691b0"
+dependencies = [
+ "minicbor-derive 0.15.3",
+]
+
+[[package]]
+name = "minicbor"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acb9d59e79ad66121ab441a0d1950890906a41e01ae14145ecf8401aa8894f50"
 dependencies = [
  "half",
- "minicbor-derive",
+ "minicbor-derive 0.16.2",
+]
+
+[[package]]
+name = "minicbor-derive"
+version = "0.15.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd2209fff77f705b00c737016a48e73733d7fbccb8b007194db148f03561fb70"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -2639,6 +2796,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.37.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2714,7 +2880,7 @@ dependencies = [
 [[package]]
 name = "pallas"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "pallas-addresses",
  "pallas-codec",
@@ -2731,7 +2897,7 @@ dependencies = [
 [[package]]
 name = "pallas-addresses"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "base58",
  "bech32 0.9.1",
@@ -2746,10 +2912,10 @@ dependencies = [
 [[package]]
 name = "pallas-codec"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
- "minicbor",
+ "minicbor 0.26.4",
  "serde",
  "thiserror 1.0.69",
 ]
@@ -2757,7 +2923,7 @@ dependencies = [
 [[package]]
 name = "pallas-configs"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "base64 0.22.1",
  "num-rational",
@@ -2772,7 +2938,7 @@ dependencies = [
 [[package]]
 name = "pallas-crypto"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "cryptoxide",
  "hex",
@@ -2785,7 +2951,7 @@ dependencies = [
 [[package]]
 name = "pallas-hardano"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "binary-layout",
  "hex",
@@ -2805,7 +2971,7 @@ dependencies = [
 [[package]]
 name = "pallas-network"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "byteorder",
  "hex",
@@ -2822,7 +2988,7 @@ dependencies = [
 [[package]]
 name = "pallas-primitives"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "pallas-codec",
@@ -2834,7 +3000,7 @@ dependencies = [
 [[package]]
 name = "pallas-traverse"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "itertools 0.13.0",
@@ -2850,7 +3016,7 @@ dependencies = [
 [[package]]
 name = "pallas-txbuilder"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "hex",
  "pallas-addresses",
@@ -2866,7 +3032,7 @@ dependencies = [
 [[package]]
 name = "pallas-utxorpc"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "pallas-codec",
  "pallas-crypto",
@@ -2880,7 +3046,7 @@ dependencies = [
 [[package]]
 name = "pallas-validate"
 version = "1.0.0-alpha.2"
-source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha4#eadd97143a13d153d18a7b2ee2de3ff32a9494e8"
+source = "git+https://github.com/blockfrost/pallas.git?tag=blockfrost-platform-0.0.3-alpha5#b35d3bd96f29cb19b80fbc0acfa038532ddd0da4"
 dependencies = [
  "chrono",
  "hex",
@@ -2893,6 +3059,7 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "tracing",
+ "uplc-turbo",
 ]
 
 [[package]]
@@ -3133,7 +3300,7 @@ dependencies = [
  "rand 0.9.0",
  "rand_chacha 0.9.0",
  "rand_xorshift",
- "regex-syntax",
+ "regex-syntax 0.8.5",
  "rusty-fork",
  "tempfile",
  "unarray",
@@ -3189,6 +3356,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
 dependencies = [
  "prost",
+]
+
+[[package]]
+name = "psm"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3852766467df634d74f0b2d7819bf8dc483a0eb2e3b0f50f756f9cfe8b0d18d8"
+dependencies = [
+ "ar_archive_writer",
+ "cc",
 ]
 
 [[package]]
@@ -3351,6 +3528,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rayon"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "368f01d005bf8fd9b1206fb6fa653e6c4a81ceb1466406b81792d87c5677a58f"
+dependencies = [
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
+dependencies = [
+ "crossbeam-deque",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "rdrand"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3407,8 +3604,19 @@ checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-automata",
- "regex-syntax",
+ "regex-automata 0.4.9",
+ "regex-syntax 0.8.5",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59b23e92ee4318893fa3fe3e6fb365258efbfe6ac6ab30f090cdcbb7aa37efa9"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax 0.7.5",
 ]
 
 [[package]]
@@ -3419,7 +3627,7 @@ checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-syntax",
+ "regex-syntax 0.8.5",
 ]
 
 [[package]]
@@ -3427,6 +3635,12 @@ name = "regex-lite"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
+
+[[package]]
+name = "regex-syntax"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "regex-syntax"
@@ -3733,6 +3947,26 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "secp256k1"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b50c5943d326858130af85e049f2661ba3c78b26589b8ab98e65e80ae44a1252"
+dependencies = [
+ "bitcoin_hashes 0.14.1",
+ "rand 0.8.5",
+ "secp256k1-sys",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4387882333d3aa8cb20530a17c69a3752e97837832f34f6dccc760e715001d9"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "security-framework"
@@ -4166,6 +4400,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "stacker"
+version = "0.1.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d74a23609d509411d10e2176dc2a4346e3b4aea2e7b1869f19fdedbc71c013"
+dependencies = [
+ "cc",
+ "cfg-if",
+ "libc",
+ "psm",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4217,6 +4470,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.33.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fc858248ea01b66f19d8e8a6d55f41deaf91e9d495246fd01368d99935c6c01"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
+ "memchr",
+ "ntapi",
+ "rayon",
+ "windows 0.57.0",
 ]
 
 [[package]]
@@ -4332,6 +4599,15 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
@@ -4663,7 +4939,7 @@ dependencies = [
  "matchers",
  "nu-ansi-term",
  "once_cell",
- "regex-automata",
+ "regex-automata 0.4.9",
  "sharded-slab",
  "smallvec",
  "thread_local",
@@ -4805,6 +5081,23 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "uplc-turbo"
+version = "0.1.0"
+source = "git+https://github.com/txpipe/uplc-turbo.git?rev=bd174b3#bd174b318a69b09d4b67642e60b60cc2be51b087"
+dependencies = [
+ "blst",
+ "bumpalo",
+ "chumsky",
+ "cryptoxide",
+ "ibig",
+ "minicbor 0.25.1",
+ "num-traits",
+ "once_cell",
+ "secp256k1",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "ureq"
@@ -5061,6 +5354,16 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
+dependencies = [
+ "windows-core 0.57.0",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows"
 version = "0.61.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5ee8f3d025738cb02bad7868bbb5f8a6327501e870bf51f1b455b0a2454a419"
@@ -5104,12 +5407,24 @@ dependencies = [
 
 [[package]]
 name = "windows-core"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
+dependencies = [
+ "windows-implement 0.57.0",
+ "windows-interface 0.57.0",
+ "windows-result 0.1.2",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-core"
 version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4763c1de310c86d75a878046489e2e5ba02c649d185f21c67d4cf8a56d098980"
 dependencies = [
- "windows-implement",
- "windows-interface",
+ "windows-implement 0.60.2",
+ "windows-interface 0.59.3",
  "windows-link 0.1.1",
  "windows-result 0.3.4",
  "windows-strings 0.4.2",
@@ -5121,8 +5436,8 @@ version = "0.62.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb"
 dependencies = [
- "windows-implement",
- "windows-interface",
+ "windows-implement 0.60.2",
+ "windows-interface 0.59.3",
  "windows-link 0.2.1",
  "windows-result 0.4.1",
  "windows-strings 0.5.1",
@@ -5151,9 +5466,31 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "windows-implement"
 version = "0.60.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5212,6 +5549,15 @@ dependencies = [
  "windows-link 0.1.1",
  "windows-result 0.3.4",
  "windows-strings 0.4.2",
+]
+
+[[package]]
+name = "windows-result"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e383302e8ec8515204254685643de10811af0ed97ea37210dc26fb0032647f8"
+dependencies = [
+ "windows-targets 0.52.6",
 ]
 
 [[package]]

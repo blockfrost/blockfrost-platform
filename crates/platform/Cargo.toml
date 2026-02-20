@@ -13,6 +13,7 @@ bf-common.workspace = true
 bf-node.workspace = true
 bf-data-node.workspace = true
 bf-api-provider.workspace = true
+bf-tx-evaluator.workspace = true
 
 axum.workspace = true
 tokio.workspace = true

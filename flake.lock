@@ -322,7 +322,7 @@
       },
       "original": {
         "owner": "nixos",
-        "ref": "nixpkgs-unstable",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -434,16 +434,16 @@
     "testgen-hs": {
       "flake": false,
       "locked": {
-        "lastModified": 1751542906,
-        "narHash": "sha256-FYz1P11du5tSakpl2ec9CGdwEB5h+0FcdGPU3zXte60=",
+        "lastModified": 1770889609,
+        "narHash": "sha256-5TOk7ruNxCj/meOPvl0gksW9g1X+WrFCrTxFzRk/xjA=",
         "owner": "input-output-hk",
         "repo": "testgen-hs",
-        "rev": "7d58736ed578a9ccf8337376b302bb188b74303f",
+        "rev": "e7fd2b0336a886c343c2905cf2db3d96247ac65b",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "10.4.1.1",
+        "ref": "10.4.1.2",
         "repo": "testgen-hs",
         "type": "github"
       }

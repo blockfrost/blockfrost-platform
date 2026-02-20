@@ -18,7 +18,66 @@ done
 ```
 */
 
-use super::verify_one;
+#[cfg(test)]
+use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
+
+/// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
+/// deserializer against the Haskell one. Use it for specific cases.
+#[cfg(test)]
+pub(crate) async fn verify_one(cbor: &str) {
+    use pallas_hardano::display::haskell_error::serialize_error;
+
+    use crate::external::ExternalDecoder;
+
+    let cbor = hex::decode(cbor).unwrap();
+    let reference_json = match ExternalDecoder::instance().decode(&cbor).await {
+        Ok(value) => value,
+        Err(shared_decoder_err) => {
+            // Recover from a poisoned shared decoder process by retrying with a fresh one.
+            let fresh_decoder = ExternalDecoder::spawn()
+                .expect("Failed to spawn a fresh ExternalDecoder for retry");
+            fresh_decoder.decode(&cbor).await.unwrap_or_else(|fresh_decoder_err| {
+                panic!(
+                    "Failed to decode reference JSON with both shared and fresh ExternalDecoder instances. shared_error={shared_decoder_err}, fresh_error={fresh_decoder_err}, cbor={}",
+                    hex::encode(&cbor)
+                )
+            })
+        },
+    };
+
+    let our_decoding = decode_error(&cbor);
+
+    let our_json = serialize_error(our_decoding);
+    assert_json_eq!(reference_json, our_json)
+}
+#[cfg(test)]
+fn decode_error(bytes: &[u8]) -> TxValidationError {
+    use pallas_codec::minicbor;
+
+    let mut decoder = minicbor::Decoder::new(bytes);
+    decoder.decode().unwrap()
+}
+
+#[cfg(test)]
+macro_rules! assert_json_eq {
+    ($left:expr, $right:expr) => {
+        if $left != $right {
+            let left_pretty = serde_json::to_string_pretty(&$left).unwrap();
+            let right_pretty = serde_json::to_string_pretty(&$right).unwrap();
+            panic!(
+                concat!(
+                    "assertion `left == right` failed\n",
+                    "  left:\n    {}\n  right:\n    {}",
+                ),
+                left_pretty.replace("\n", "\n    "),
+                right_pretty.replace("\n", "\n    "),
+            );
+        }
+    };
+}
+
+#[cfg(test)]
+pub(crate) use assert_json_eq; // export it
 
 #[tokio::test]
 #[allow(non_snake_case)]

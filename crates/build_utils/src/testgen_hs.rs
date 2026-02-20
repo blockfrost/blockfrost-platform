@@ -10,13 +10,13 @@ use zip::ZipArchive;
 
 const TESTGEN_HS_PATH: &str = "TESTGEN_HS_PATH";
 
-pub fn ensure() {
+pub fn ensure(_target_os: &str, _arch: &str) {
     if env::var(TESTGEN_HS_PATH).is_ok() {
         println!("Environment variable {TESTGEN_HS_PATH} is set. Skipping the download.");
         return;
     }
 
-    let testgen_lib_version = "10.4.1.1";
+    let testgen_lib_version = "10.4.1.2";
 
     let target_os = if cfg!(target_os = "macos") {
         "darwin"
