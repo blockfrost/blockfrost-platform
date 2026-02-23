@@ -9,6 +9,7 @@ pub mod hydra_server_platform;
 pub mod load_balancer;
 pub mod models;
 pub mod payload;
+#[cfg(not(target_os = "windows"))]
 pub mod schema;
 pub mod sdk_bridge_ws;
 pub mod types;
