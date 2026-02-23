@@ -9,7 +9,7 @@ use crate::types::ApiResult;
 use axum::Json;
 use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct JsonClient {
@@ -43,6 +43,11 @@ impl JsonClient {
         info!(path, url = %url_str, ?pagination, "JsonClient GET");
 
         if resp.status() == 404 {
+            warn!(
+                path,
+                url = %url_str,
+                "JsonClient received 404 from backend"
+            );
             return Err(BlockfrostError::not_found());
         }
 
