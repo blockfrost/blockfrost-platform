@@ -16,7 +16,7 @@ members = [
 default-members = ["crates/platform"]
 
 [workspace.dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.101"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
 bech32 = "0.11.1"
@@ -28,7 +28,7 @@ bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
-clap = { version = "4.5.57", features = ["derive"] }
+clap = { version = "4.5.59", features = ["derive"] }
 dirs = "6.0.0"
 futures = "0.3"
 futures-util = "0.3"
@@ -44,7 +44,7 @@ pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "bloc
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pretty_assertions = "1.4.1"
-reqwest = { version = "0.13.1", default-features = false, features = [
+reqwest = { version = "0.13.2", default-features = false, features = [
   "blocking",
   "http2",
   "json",
@@ -55,7 +55,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
-toml = "0.9.11+spec-1.1.0"
+toml = "1.0.2"
 tracing = "0.1.44"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"

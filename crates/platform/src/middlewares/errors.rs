@@ -15,24 +15,37 @@ use std::convert::Infallible;
 
 pub async fn error_middleware(request: Request, next: Next) -> Result<Response, Infallible> {
     let request_path = request.uri().path().to_string();
+    let request_uri = request.uri().to_string();
     let response = next.run(request).await;
     let status_code = response.status();
 
     // Transform timeout to internal server error for user
     // 504 Gateway Timeout
     if response.status() == StatusCode::REQUEST_TIMEOUT {
+        tracing::warn!(
+            path = %request_path,
+            uri = %request_uri,
+            "Request timeout"
+        );
         return Ok(BlockfrostError::internal_server_error_user().into_response());
     }
 
     // Transform our custom METHOD_NOT_ALLOWED err
     // to 405 status code
     if response.status() == StatusCode::METHOD_NOT_ALLOWED {
+        tracing::warn!(
+            path = %request_path,
+            uri = %request_uri,
+            "Method not allowed"
+        );
         return Ok(BlockfrostError::method_not_allowed().into_response());
     }
 
     // Transform server errors to internal server error for user – except for 503 from the root route
     if response.status().is_server_error() && response.status() != StatusCode::SERVICE_UNAVAILABLE {
-        handle_server_error(response, &request_path, status_code).await
+        handle_server_error(response, &request_path, &request_uri, status_code).await
+    } else if response.status().is_client_error() {
+        log_client_error(response, &request_path, &request_uri, status_code).await
     } else {
         Ok(response)
     }
@@ -41,40 +54,93 @@ pub async fn error_middleware(request: Request, next: Next) -> Result<Response, 
 async fn handle_server_error(
     response: Response,
     request_path: &str,
+    request_uri: &str,
     status_code: StatusCode,
 ) -> Result<Response, Infallible> {
     let body = response.into_body();
 
     match to_bytes(body, usize::MAX).await {
-        Ok(bytes) => parse_and_log_error(bytes, request_path, status_code).await,
+        Ok(bytes) => parse_and_log_error(bytes, request_path, request_uri, status_code).await,
         Err(e) => {
-            log_and_capture_error("Failed to read body", e, request_path, status_code);
+            log_and_capture_error(
+                "Failed to read body",
+                e,
+                request_path,
+                request_uri,
+                status_code,
+            );
         },
     }
 
     Ok(BlockfrostError::internal_server_error_user().into_response())
 }
 
-async fn parse_and_log_error(bytes: Bytes, request_path: &str, status_code: StatusCode) {
+async fn log_client_error(
+    response: Response,
+    request_path: &str,
+    request_uri: &str,
+    status_code: StatusCode,
+) -> Result<Response, Infallible> {
+    let (parts, body) = response.into_parts();
+
+    match to_bytes(body, usize::MAX).await {
+        Ok(bytes) => {
+            let error_detail = match serde_json::from_slice::<BlockfrostError>(&bytes) {
+                Ok(bf_error) => format!("{} - {}", bf_error.error, bf_error.message),
+                Err(_) => String::from_utf8_lossy(&bytes).to_string(),
+            };
+
+            tracing::warn!(
+                path = %request_path,
+                uri = %request_uri,
+                status = %status_code,
+                "Client error: {}",
+                error_detail,
+            );
+
+            // Reconstruct the response with the original body
+            Ok(Response::from_parts(parts, axum::body::Body::from(bytes)))
+        },
+        Err(_) => {
+            // Body read failed; return a generic error
+            Ok(BlockfrostError::internal_server_error_user().into_response())
+        },
+    }
+}
+
+async fn parse_and_log_error(
+    bytes: Bytes,
+    request_path: &str,
+    request_uri: &str,
+    status_code: StatusCode,
+) {
     match serde_json::from_slice::<BlockfrostError>(&bytes) {
         Ok(error_info) => {
             tracing::error!(
-                "{status_code} in `{}` message: `{}`",
-                request_path,
-                error_info.message
+                path = %request_path,
+                uri = %request_uri,
+                status = %status_code,
+                "Server error: {} - {}",
+                error_info.error,
+                error_info.message,
             );
             log_to_sentry("|", format!("{error_info:?}"), request_path, status_code)
         },
         Err(e) => {
-            println!("Failed to parse body as JSON: {e:?}");
+            let body_str = String::from_utf8_lossy(&bytes);
+            tracing::error!(
+                path = %request_path,
+                uri = %request_uri,
+                status = %status_code,
+                body = %body_str,
+                "Server error: failed to parse body as JSON: {e:?}",
+            );
             log_to_sentry(
                 "JSON Parse Error",
                 format!("{e:?}"),
                 request_path,
                 status_code,
             );
-            let body_str = String::from_utf8_lossy(&bytes);
-            println!("Raw Body: {body_str}");
         },
     }
 }
@@ -83,14 +149,16 @@ fn log_and_capture_error(
     message: &str,
     error: impl std::fmt::Debug,
     request_path: &str,
+    request_uri: &str,
     status_code: StatusCode,
 ) {
     tracing::error!(
-        "{}: {:?}, Path: {}, Status: {}",
+        path = %request_path,
+        uri = %request_uri,
+        status = %status_code,
+        "{}: {:?}",
         message,
         error,
-        request_path,
-        status_code,
     );
 
     let exception = Exception {
@@ -101,7 +169,7 @@ fn log_and_capture_error(
 
     let event = Event {
         message: Some(format!(
-            "{message}: Path: {request_path}, Status: {status_code}"
+            "{message}: URI: {request_uri}, Status: {status_code}"
         )),
         level: Level::Error,
         exception: vec![exception].into(),
@@ -183,6 +251,20 @@ mod tests {
         None,
         StatusCode::BAD_REQUEST,
         Some(BlockfrostError::method_not_allowed().message)
+    )]
+    // Bad request -> passes through with body preserved
+    #[case(
+        StatusCode::BAD_REQUEST,
+        Some(r#"{"error":"Bad Request","message":"hola hola skola vola","status_code":400}"#),
+        StatusCode::BAD_REQUEST,
+        Some("hola hola skola vola".to_string())
+    )]
+    // Not found -> passes through with body preserved
+    #[case(
+        StatusCode::NOT_FOUND,
+        Some(r#"{"error":"Not Found","message":"nic","status_code":404}"#),
+        StatusCode::NOT_FOUND,
+        Some("nic".to_string())
     )]
     // Success
     #[case(StatusCode::OK, Some("Success"), StatusCode::OK, None)]
