@@ -19,7 +19,7 @@ members = [
 default-members = ["crates/platform"]
 
 [workspace.dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.101"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
 bech32 = "0.11.1"
@@ -34,7 +34,7 @@ bf-error-decoder = { path = "crates/error_decoder", package = "blockfrost-platfo
 blockfrost-openapi = "0.1.83"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
-clap = { version = "4.5.57", features = ["derive"] }
+clap = { version = "4.5.59", features = ["derive"] }
 dirs = "6.0.0"
 futures = "0.3"
 futures-util = "0.3"
@@ -55,7 +55,7 @@ pallas-validate = { git = "https://github.com/blockfrost/pallas.git", tag = "blo
   "phase2",
 ] }
 pretty_assertions = "1.4.1"
-reqwest = { version = "0.13.1", default-features = false, features = [
+reqwest = { version = "0.13.2", default-features = false, features = [
   "blocking",
   "http2",
   "json",
@@ -67,7 +67,7 @@ serde_json = "1.0.149"
 serde_with = "3.12.0"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
-toml = "0.9.11"
+toml = "1.0.2"
 tracing = "0.1.44"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
