@@ -1,20 +1,31 @@
 use crate::errors::APIError;
-use crate::{
-    models::{Request, RequestNewItem, User},
-    schema,
-};
+use crate::models::{Request, RequestNewItem, User};
+
+#[cfg(not(target_os = "windows"))]
+use crate::schema;
+#[cfg(not(target_os = "windows"))]
 use deadpool_diesel::postgres::{Manager, Pool};
+#[cfg(not(target_os = "windows"))]
 use diesel::prelude::*;
+#[cfg(not(target_os = "windows"))]
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+#[cfg(not(target_os = "windows"))]
 use schema::users::dsl::*;
 
+#[cfg(not(target_os = "windows"))]
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
+#[cfg(not(target_os = "windows"))]
 #[derive(Clone)]
 pub struct DB {
     pool: Pool,
 }
 
+#[cfg(target_os = "windows")]
+#[derive(Clone)]
+pub struct DB;
+
+#[cfg(not(target_os = "windows"))]
 impl DB {
     pub async fn new(database_url: &str) -> Self {
         let manager = Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
@@ -64,5 +75,20 @@ impl DB {
         } else {
             Err(APIError::Unauthorized())
         }
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl DB {
+    pub async fn new(_database_url: &str) -> Self {
+        unimplemented!("Postgres-backed DB is not available for Windows targets");
+    }
+
+    pub async fn insert_request(&self, _request: RequestNewItem) -> Result<Request, APIError> {
+        unimplemented!("Postgres-backed DB is not available for Windows targets");
+    }
+
+    pub async fn authorize_user(&self, _secret_param: String) -> Result<User, APIError> {
+        unimplemented!("Postgres-backed DB is not available for Windows targets");
     }
 }

@@ -16,7 +16,14 @@ in rec {
 
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
 
-  src = craneLib.cleanCargoSource ../../.;
+  src = lib.cleanSourceWith {
+    src = lib.cleanSource ../../.;
+    filter = path: type:
+      craneLib.filterCargoSources path type
+      || lib.hasSuffix ".sql" path
+      || lib.hasSuffix "/LICENSE" path;
+    name = "source";
+  };
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
@@ -36,6 +43,8 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
+    # Unfortunately, `pkgsCross.postgresql` is broken on Windows, so making the
+    # `blockfrost-gateway` work there will be much more tinkering.
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pkgsCross.windows.pthreads
@@ -58,6 +67,22 @@ in rec {
         find -name 'build.rs' -delete
       '';
     });
+
+  gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  blockfrost-gateway = craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts GIT_REVISION;
+      pname = gatewayCargoToml.package.name;
+      doCheck = false; # we run Windows tests on real Windows on GHA
+      cargoExtraArgs = "--package blockfrost-gateway";
+      postPatch = ''
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
+      '';
+    }
+    // (builtins.listToAttrs inputs.self.internal.x86_64-linux.hydraScriptsEnvVars));
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;
