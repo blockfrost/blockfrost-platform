@@ -121,7 +121,11 @@ mod tests {
 
         let local_body_str = String::from_utf8(local_body_bytes.to_vec())
             .expect("Failed to convert bytes to string");
-        assert!(local_body_str.contains("MultiAsset cannot contain zeros"));
+
+        assert!(
+            local_body_str.contains("MultiAsset cannot contain zeros"),
+            "Expected error message to contain 'MultiAsset cannot contain zeros', got: {local_body_str}"
+        );
     }
 
     // Test: build `/tx/submit` success - tx is accepted by the node
@@ -145,7 +149,7 @@ mod tests {
             .await
             .expect("Request to /tx/submit failed");
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let status = response.status();
 
         assert!(
             response
@@ -158,6 +162,15 @@ mod tests {
             .await
             .expect("Failed to read response body");
 
-        assert_eq!(66, local_body_bytes.len());
+        let local_body_str = String::from_utf8(local_body_bytes.to_vec())
+            .expect("Failed to convert bytes to string");
+
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "Expected 200 OK, got {status}: {local_body_str}"
+        );
+
+        assert_eq!(66, local_body_str.len());
     }
 }
