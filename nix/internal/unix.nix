@@ -191,9 +191,28 @@ in
       })
       .defaultNix;
 
+    cardano-node-release-linux = let
+      archive = pkgs.fetchzip {
+        name = "cardano-node-10.6.2-linux";
+        url = "https://github.com/IntersectMBO/cardano-node/releases/download/10.6.2/cardano-node-10.6.2-linux-amd64.tar.gz";
+        hash = "sha256-gLrTB2Ul8viqvLLRfBxfkYNdeVE+J06DJFQFaZXfoO8=";
+        stripRoot = false;
+      };
+      mkTool = bin:
+        pkgs.runCommandNoCC bin {} ''
+          mkdir -p $out/bin
+          ln -s ${archive}/bin/${bin} $out/bin/${bin}
+        ''
+        // {meta.mainProgram = bin;};
+    in {
+      cardano-node = mkTool "cardano-node";
+      cardano-cli = mkTool "cardano-cli";
+      cardano-submit-api = mkTool "cardano-submit-api";
+    };
+
     cardano-node-packages =
       {
-        x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
+        x86_64-linux = cardano-node-release-linux;
         inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
       }
       .${
