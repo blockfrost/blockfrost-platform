@@ -25,7 +25,7 @@ bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-b
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
-blockfrost-openapi = "0.1.83"
+blockfrost-openapi = "0.1.85"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
 clap = { version = "4.5.59", features = ["derive"] }
