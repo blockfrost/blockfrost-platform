@@ -90,15 +90,6 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
-      - name: Cache vcpkg binary packages (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg\binary-cache
-          key: vcpkg-${{ runner.os }}-libpq-${{ hashFiles('.github/workflows/ci.yaml') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-libpq-
-
       - name: Install libpq (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -108,37 +99,19 @@ jobs:
           echo "CPATH=$(brew --prefix libpq)/include:$CPATH" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
-      - name: Install libpq (Windows)
+      - name: Set up libpq (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
-          if (-not $vcpkgRoot) {
-            $vcpkgRoot = "C:\vcpkg"
-          }
-          if (-not (Test-Path "$vcpkgRoot\vcpkg.exe")) {
-            throw "vcpkg not found at $vcpkgRoot"
-          }
-          $env:VCPKG_ROOT = $vcpkgRoot
-          $env:VCPKG_INSTALLATION_ROOT = $vcpkgRoot
-          $binaryCache = Join-Path $vcpkgRoot "binary-cache"
-          New-Item -ItemType Directory -Path $binaryCache -Force | Out-Null
-          $env:VCPKG_DEFAULT_BINARY_CACHE = $binaryCache
-          $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
-          & "$vcpkgRoot\vcpkg.exe" install libpq:x64-windows
-
-          $libDir = Join-Path $vcpkgRoot "installed\x64-windows\lib"
-          $includeDir = Join-Path $vcpkgRoot "installed\x64-windows\include"
-          $binDir = Join-Path $vcpkgRoot "installed\x64-windows\bin"
-
-          "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "VCPKG_INSTALLATION_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "VCPKG_DEFAULT_TRIPLET=x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "PQ_LIB_DIR=$libDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "PQ_INCLUDE_DIR=$includeDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "LIB=$libDir;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "INCLUDE=$includeDir;$env:INCLUDE" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-          "PATH=$binDir;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          $pgDir = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory |
+                   Sort-Object Name -Descending |
+                   Select-Object -First 1
+          if (-not $pgDir) { throw "PostgreSQL installation not found" }
+          $pg = $pgDir.FullName
+          "PQ_LIB_DIR=$pg\lib"          >> $env:GITHUB_ENV
+          "LIB=$pg\lib;$env:LIB"        >> $env:GITHUB_ENV
+          "INCLUDE=$pg\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          "PATH=$pg\bin;$env:PATH"       >> $env:GITHUB_ENV
 
       - name: Build
         run: cargo build --workspace --release --verbose
