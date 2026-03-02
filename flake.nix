@@ -22,13 +22,9 @@
         inputs.treefmt-nix.flakeModule
       ];
 
-      flake.internal = lib.genAttrs config.systems (
-        targetSystem: import ./nix/internal/unix.nix {inherit inputs targetSystem;}
-      );
-
       systems = [
         "x86_64-linux"
-        # "aarch64-linux"
+        "aarch64-linux"
         "aarch64-darwin"
         "x86_64-darwin"
       ];
@@ -59,6 +55,38 @@
               path = ./rustfmt.toml;
             })
           ];
+        };
+      };
+
+      flake = {
+        internal = lib.genAttrs config.systems (
+          targetSystem: import ./nix/internal/unix.nix {inherit inputs targetSystem;}
+        );
+
+        hydraJobs = let
+          allJobs = {
+            blockfrost-gateway = lib.genAttrs config.systems (
+              targetSystem: inputs.self.internal.${targetSystem}.package
+            );
+            devshell = lib.genAttrs config.systems (
+              targetSystem: inputs.self.devShells.${targetSystem}.default
+            );
+            inherit (inputs.self) checks;
+          };
+        in
+          allJobs
+          // {
+            required = inputs.nixpkgs.legacyPackages.x86_64-linux.releaseTools.aggregate {
+              name = "github-required";
+              meta.description = "All jobs required to pass CI";
+              constituents = lib.collect lib.isDerivation allJobs;
+            };
+          };
+
+        nixConfig = {
+          extra-substituters = ["https://cache.iog.io"];
+          extra-trusted-public-keys = ["hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="];
+          allow-import-from-derivation = "true";
         };
       };
     });
