@@ -16,7 +16,7 @@
       flake = false;
     };
     cardano-node = {
-      url = "github:IntersectMBO/cardano-node/10.5.3";
+      url = "github:IntersectMBO/cardano-node/10.6.2";
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
