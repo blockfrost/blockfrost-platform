@@ -113,6 +113,7 @@
             shfmt.enable = true;
             taplo.enable = true; # TOML
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            yamllint.enable = true;
           };
           settings.global.excludes = [
             "**/.eslintignore"
