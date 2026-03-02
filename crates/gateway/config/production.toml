@@ -1,0 +1,11 @@
+[server]
+address = '0.0.0.0:3000'
+log_level = 'info'
+url = 'https://api.domain.com'
+
+[database]
+connection_string = 'postgresql://user:pass@host:port/db'
+
+[blockfrost]
+project_id = 'BLOCKFROST_PROJECT_ID'
+nft_asset = '1152c0d2a6105237fd60ef5e59be916da926aa15bdd959c5a7a69c27'
