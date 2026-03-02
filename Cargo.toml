@@ -15,6 +15,7 @@ members = [
   "crates/tx_evaluator",
   "crates/testgen",
   "crates/error_decoder",
+  "crates/gateway",
 ]
 default-members = ["crates/platform"]
 
@@ -31,7 +32,7 @@ bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 bf-tx-evaluator = { path = "crates/tx_evaluator", package = "blockfrost-platform-tx-evaluator" }
 bf-testgen = { path = "crates/testgen", package = "blockfrost-platform-testgen" }
 bf-error-decoder = { path = "crates/error_decoder", package = "blockfrost-platform-error-decoder" }
-blockfrost-openapi = "0.1.83"
+blockfrost-openapi = "0.1.85"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
 clap = { version = "4.5.59", features = ["derive"] }
@@ -79,6 +80,7 @@ bzip2 = "0.4.3"
 tar = "0.4.38"
 zip = "0.6.6"
 sysinfo = "0.33.1"
+uuid = { version = "1.10", features = ["serde", "v4"] }
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"
