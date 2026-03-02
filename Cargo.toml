@@ -76,9 +76,6 @@ crossbeam = "0.8"
 deadpool = "0.12.1"
 num_cpus = "1"
 proptest = "1.6"
-bzip2 = "0.4.3"
-tar = "0.4.38"
-zip = "0.6.6"
 sysinfo = "0.33.1"
 uuid = { version = "1.10", features = ["serde", "v4"] }
 
