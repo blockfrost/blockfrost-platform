@@ -30,8 +30,6 @@ rand = "0.8.5"
 base64 = "0.21"
 uuid.workspace = true
 hyper = "1.4.1"
-
-[target.'cfg(not(target_os = "windows"))'.dependencies]
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
 diesel = { version = "2.2.3", features = ["chrono", "postgres"] }
 diesel_migrations = "2"
