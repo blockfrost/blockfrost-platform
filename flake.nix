@@ -96,6 +96,7 @@
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
             blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-platform;
+            blockfrost-gateway-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-gateway;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -175,7 +176,7 @@
             blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.blockfrost-platform
             );
-            blockfrost-gateway = lib.genAttrs config.systems (
+            blockfrost-gateway = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.blockfrost-gateway
             );
             devshell = lib.genAttrs config.systems (
