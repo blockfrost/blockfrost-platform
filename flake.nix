@@ -175,6 +175,9 @@
             blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.blockfrost-platform
             );
+            blockfrost-gateway = lib.genAttrs config.systems (
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-gateway
+            );
             devshell = lib.genAttrs config.systems (
               targetSystem: inputs.self.devShells.${targetSystem}.default
             );
