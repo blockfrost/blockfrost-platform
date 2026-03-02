@@ -10,8 +10,8 @@ mod schema;
 
 use api::{register, root};
 use axum::{
-    routing::{get, post},
     Extension, Router,
+    routing::{get, post},
 };
 use clap::Parser;
 use colored::Colorize;
@@ -85,7 +85,7 @@ async fn main() {
     )
     .await
     .unwrap_or_else(|e| {
-        eprintln!("Server error: {}", e);
+        eprintln!("Server error: {e}");
         std::process::exit(1);
     });
 }

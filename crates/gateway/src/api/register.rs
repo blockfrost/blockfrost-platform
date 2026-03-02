@@ -92,7 +92,12 @@ pub async fn route(
         .and_then(|val| val.to_str().ok())
     {
         // multiple ips are provided, take the first.
-        ip_header_value.split(',').next().unwrap_or("").trim().to_string()
+        ip_header_value
+            .split(',')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_string()
     } else {
         // fallback to the IP from the connection info (useful for localhost testing)
         addr.ip().to_string()
@@ -100,7 +105,7 @@ pub async fn route(
 
     let ip_address: IpAddr = ip_string
         .parse()
-        .map_err(|_| APIError::Validation(format!("Invalid IP address: {}", ip_string)))?;
+        .map_err(|_| APIError::Validation(format!("Invalid IP address: {ip_string}")))?;
 
     let skip_port_check_secret = std::env::var("SKIP_PORT_CHECK_SECRET").ok();
 
@@ -168,7 +173,7 @@ pub async fn route(
         route: payload.api_prefix,
         load_balancers: vec![LoadBalancer {
             // We can’t know if it’s HTTPS or HTTP here, so we have to count on `blockfrost-platform`:
-            uri: format!("//{}/ws", our_host),
+            uri: format!("//{our_host}/ws"),
             access_token: token,
         }],
     };

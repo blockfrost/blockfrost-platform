@@ -116,13 +116,20 @@ mod tests {
     fn port_out_of_range_fails(mut valid_payload: Payload, #[case] port: i32) {
         valid_payload.port = port;
 
-        assert_validation_err_contains(valid_payload.validate(), "Port must be between 1 and 65535");
+        assert_validation_err_contains(
+            valid_payload.validate(),
+            "Port must be between 1 and 65535",
+        );
     }
 
     #[rstest]
     #[case("1234567", true)] // 7 -> error
     #[case("12345678", false)] // 8 -> ok
-    fn secret_min_length(mut valid_payload: Payload, #[case] secret: &str, #[case] expect_err: bool) {
+    fn secret_min_length(
+        mut valid_payload: Payload,
+        #[case] secret: &str,
+        #[case] expect_err: bool,
+    ) {
         valid_payload.secret = secret.into();
 
         let res = valid_payload.validate();
