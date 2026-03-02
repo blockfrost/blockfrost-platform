@@ -99,15 +99,33 @@ jobs:
           echo "CPATH=$(brew --prefix libpq)/include:$CPATH" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
-      - name: Set up libpq (Windows)
+      - name: Install libpq (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $pgDir = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory |
-                   Sort-Object Name -Descending |
-                   Select-Object -First 1
-          if (-not $pgDir) { throw "PostgreSQL installation not found" }
-          echo "PQ_LIB_DIR=$($pgDir.FullName)\lib" >> $env:GITHUB_ENV
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkgRoot) {
+            $vcpkgRoot = "C:\vcpkg"
+          }
+          if (-not (Test-Path "$vcpkgRoot\vcpkg.exe")) {
+            throw "vcpkg not found at $vcpkgRoot"
+          }
+          $env:VCPKG_ROOT = $vcpkgRoot
+          $env:VCPKG_INSTALLATION_ROOT = $vcpkgRoot
+          & "$vcpkgRoot\vcpkg.exe" install libpq:x64-windows
+
+          $libDir = Join-Path $vcpkgRoot "installed\x64-windows\lib"
+          $includeDir = Join-Path $vcpkgRoot "installed\x64-windows\include"
+          $binDir = Join-Path $vcpkgRoot "installed\x64-windows\bin"
+
+          "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "VCPKG_INSTALLATION_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "VCPKG_DEFAULT_TRIPLET=x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "PQ_LIB_DIR=$libDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "PQ_INCLUDE_DIR=$includeDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "LIB=$libDir;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "INCLUDE=$includeDir;$env:INCLUDE" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
+          "PATH=$binDir;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
 
       - name: Build
         run: cargo build --workspace --release --verbose
