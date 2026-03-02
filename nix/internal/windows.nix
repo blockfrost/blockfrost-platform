@@ -16,7 +16,14 @@ in rec {
 
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
 
-  src = craneLib.cleanCargoSource ../../.;
+  src = lib.cleanSourceWith {
+    src = lib.cleanSource ../../.;
+    filter = path: type:
+      craneLib.filterCargoSources path type
+      || lib.hasSuffix ".sql" path
+      || lib.hasSuffix "/LICENSE" path;
+    name = "source";
+  };
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
@@ -36,6 +43,8 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
+    # Unfortunately, `pkgsCross.postgresql` is broken on Windows, so making the
+    # `blockfrost-gateway` work there will be much more tinkering.
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pkgsCross.windows.pthreads
@@ -47,7 +56,7 @@ in rec {
 
   GIT_REVISION = inputs.self.rev or "dirty";
 
-  package = craneLib.buildPackage (commonArgs
+  blockfrost-platform = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
@@ -58,6 +67,22 @@ in rec {
         find -name 'build.rs' -delete
       '';
     });
+
+  gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  blockfrost-gateway = craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts GIT_REVISION;
+      pname = gatewayCargoToml.package.name;
+      doCheck = false; # we run Windows tests on real Windows on GHA
+      cargoExtraArgs = "--package blockfrost-gateway";
+      postPatch = ''
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
+      '';
+    }
+    // (builtins.listToAttrs inputs.self.internal.x86_64-linux.hydraScriptsEnvVars));
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;
@@ -81,8 +106,8 @@ in rec {
   uninstaller =
     pkgs.runCommandNoCC "uninstaller" {
       buildInputs = [nsis pkgs.wine];
-      projectName = package.pname;
-      projectVersion = package.version;
+      projectName = blockfrost-platform.pname;
+      projectVersion = blockfrost-platform.version;
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
     } ''
       mkdir home
@@ -116,12 +141,12 @@ in rec {
   };
 
   make-installer = {doSign ? false}: let
-    outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
+    outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
     installer-nsi =
       pkgs.runCommandNoCC "installer.nsi" {
         inherit outFileName;
-        projectName = package.pname;
-        projectVersion = package.version;
+        projectName = blockfrost-platform.pname;
+        projectVersion = blockfrost-platform.version;
         installerIconPath = "icon.ico";
         lockfileName = "lockfile";
       } ''
@@ -186,7 +211,7 @@ in rec {
   archive =
     pkgs.runCommandNoCC "archive" {
       buildInputs = with pkgs; [zip];
-      outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
+      outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
       cp -r ${bundle} ${packageName.pname}
       mkdir -p $out
@@ -243,7 +268,7 @@ in rec {
   };
 
   packageWithIcon =
-    pkgs.runCommand package.name {
+    pkgs.runCommand blockfrost-platform.name {
       buildInputs = with pkgs; [
         wine
         winetricks
@@ -260,7 +285,7 @@ in rec {
         set +e
         wine ${resource-hacker}/ResourceHacker.exe \
           -log res-hack.log \
-          -open "$(winepath -w ${package}/bin/*.exe)" \
+          -open "$(winepath -w ${blockfrost-platform}/bin/*.exe)" \
           -save with-icon.exe \
           -action addoverwrite \
           -res "$(winepath -w ${icon})" \

@@ -90,12 +90,12 @@
       in {
         packages =
           {
-            default = internal.package;
-            blockfrost-platform = internal.package;
+            default = internal.blockfrost-platform;
+            inherit (internal) blockfrost-platform blockfrost-gateway;
             inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
-            blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.package;
+            blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-platform;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -160,7 +160,7 @@
             targetSystem: import ./nix/internal/windows.nix {inherit inputs targetSystem;}
           );
 
-        nixosModule = {
+        nixosModule.default = {
           pkgs,
           lib,
           ...
@@ -173,7 +173,10 @@
           crossSystems = ["x86_64-windows"];
           allJobs = {
             blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
-              targetSystem: inputs.self.internal.${targetSystem}.package
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-platform
+            );
+            blockfrost-gateway = lib.genAttrs config.systems (
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-gateway
             );
             devshell = lib.genAttrs config.systems (
               targetSystem: inputs.self.devShells.${targetSystem}.default
