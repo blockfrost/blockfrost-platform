@@ -90,6 +90,15 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, rust-src, clippy
 
+      - name: Cache vcpkg binary packages (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\binary-cache
+          key: vcpkg-${{ runner.os }}-libpq-${{ hashFiles('.github/workflows/ci.yaml') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-libpq-
+
       - name: Install libpq (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -112,6 +121,10 @@ jobs:
           }
           $env:VCPKG_ROOT = $vcpkgRoot
           $env:VCPKG_INSTALLATION_ROOT = $vcpkgRoot
+          $binaryCache = Join-Path $vcpkgRoot "binary-cache"
+          New-Item -ItemType Directory -Path $binaryCache -Force | Out-Null
+          $env:VCPKG_DEFAULT_BINARY_CACHE = $binaryCache
+          $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
           & "$vcpkgRoot\vcpkg.exe" install libpq:x64-windows
 
           $libDir = Join-Path $vcpkgRoot "installed\x64-windows\lib"
