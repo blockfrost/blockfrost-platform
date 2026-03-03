@@ -44,7 +44,7 @@ pub fn ensure(_target_os: &str, _arch: &str) {
 
     let file_name = format!("testgen-hs-{testgen_lib_version}-{arch}-{target_os}");
     let download_url = format!(
-        "https://github.com/input-output-hk/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
+        "https://github.com/blockfrost/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
     );
 
     println!("Looking for {file_name}");

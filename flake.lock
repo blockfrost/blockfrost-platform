@@ -436,13 +436,13 @@
       "locked": {
         "lastModified": 1771934095,
         "narHash": "sha256-xhr86Djy92/vGTZvzob6Ej/DZ6LzV7yeBzWZqxIaB1M=",
-        "owner": "input-output-hk",
+        "owner": "blockfrost",
         "repo": "testgen-hs",
         "rev": "5f269d46a7bf03a34c1da299ef52a902a2e9e9c3",
         "type": "github"
       },
       "original": {
-        "owner": "input-output-hk",
+        "owner": "blockfrost",
         "ref": "10.6.2.0",
         "repo": "testgen-hs",
         "type": "github"
