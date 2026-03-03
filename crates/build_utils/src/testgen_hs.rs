@@ -16,7 +16,7 @@ pub fn ensure(_target_os: &str, _arch: &str) {
         return;
     }
 
-    let testgen_lib_version = "10.4.1.2";
+    let testgen_lib_version = "10.6.2.0";
 
     let target_os = if cfg!(target_os = "macos") {
         "darwin"
