@@ -6,7 +6,6 @@ mod errors;
 mod load_balancer;
 mod models;
 mod payload;
-#[cfg(not(target_os = "windows"))]
 mod schema;
 
 use api::{register, root};

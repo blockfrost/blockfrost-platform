@@ -27,6 +27,9 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
+  # Cross-compile libpq for Windows (pkgsCross.postgresql is broken in Nixpkgs):
+  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross;};
+
   packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
 
   commonArgs = {
@@ -43,8 +46,9 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
-    # Unfortunately, `pkgsCross.postgresql` is broken on Windows, so making the
-    # `blockfrost-gateway` work there will be much more tinkering.
+    PQ_LIB_DIR = "${libpq-windows}/lib";
+    PQ_LIB_STATIC = "1";
+
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pkgsCross.windows.pthreads
@@ -81,8 +85,7 @@ in rec {
         done
         find -name 'build.rs' -delete
       '';
-    }
-    // (builtins.listToAttrs inputs.self.internal.x86_64-linux.hydraScriptsEnvVars));
+    });
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;

@@ -99,6 +99,20 @@ jobs:
           echo "CPATH=$(brew --prefix libpq)/include:$CPATH" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=$(brew --prefix libpq)/lib/pkgconfig:$PKG_CONFIG_PATH" >> "$GITHUB_ENV"
 
+      - name: Set up libpq (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $pgDir = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory |
+                   Sort-Object Name -Descending |
+                   Select-Object -First 1
+          if (-not $pgDir) { throw "PostgreSQL installation not found" }
+          $pg = $pgDir.FullName
+          "PQ_LIB_DIR=$pg\lib"          >> $env:GITHUB_ENV
+          "LIB=$pg\lib;$env:LIB"        >> $env:GITHUB_ENV
+          "INCLUDE=$pg\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          "PATH=$pg\bin;$env:PATH"       >> $env:GITHUB_ENV
+
       - name: Build
         run: cargo build --workspace --release --verbose
 
