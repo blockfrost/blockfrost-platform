@@ -602,6 +602,7 @@ in
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
           cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-blacklist.json
 
           set -x
           node --version
