@@ -433,6 +433,7 @@ fn convert_protocol_param(
                 plutus_v1: models.plutus_v1,
                 plutus_v2: models.plutus_v2,
                 plutus_v3: models.plutus_v3,
+                plutus_v4: models.plutus_v4,
                 unknown: BTreeMap::new(), // unknowns doesn't matter
             }
         },
@@ -733,6 +734,7 @@ mod tests {
                 plutus_v1: Some(vec![1, 2, 3]),
                 plutus_v2: Some(vec![4, 5, 6]),
                 plutus_v3: Some(vec![7, 8, 9]),
+                plutus_v4: None,
                 unknown: [].to_vec().into(),
             }),
             execution_costs: Some(queries_v16::ExUnitPrices {

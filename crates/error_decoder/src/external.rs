@@ -33,7 +33,7 @@ impl ExternalDecoder {
               "contents": {
                 "era": "ShelleyBasedEraConway",
                 "error": [
-                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList []}))"
                 ],
                 "kind": "ShelleyTxValidationError"
               },
@@ -703,10 +703,12 @@ mod tests {
         verify_one("8182068282038207a18201581c0304b9a8d416cb28dc1cd1aeab86512be01bce92df92cae3e26d688e01820182008200820180").await
     }
 
+    // CBOR updated: cardano-node 10.6.x changed MaxTxSizeUTxO field type from
+    // Integer to Word32, so the original negative values (-1) are no longer valid.
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn test_cbor_146() {
-        verify_one("818206818201820083030020").await
+        verify_one("818206818201820083030001").await
     }
     #[tokio::test]
     #[allow(non_snake_case)]
@@ -817,10 +819,12 @@ mod tests {
     async fn test_cbor_165() {
         verify_one("81820682820481581c44bf89b534d14268692ebb5128dc106fdb1da9ec8ccf88f54574ee2882038208841a000ec2b8581df10e53a9b14eaff458b5916eab0a38801b38a71524b739a737b55b209a8504825820acdb5224782959c8854ffba6a7135a5f54bc4704d7b478d604d5bfeef320766c01d9010280a18200581c2e59179c73f58e833e8ec4572dd495199f664823cd6cbaf18857adfd00d81e821b5b2d2a1156963df71b8ac7230489e8000082782068747470733a2f2f57774970335271505a77434673715853616145792e636f6d5820bee3107a03e3aa281ae0ed7ef52a599f4a2285beda7bd3f1dabb855de9a1a4ca").await
     }
+    // CBOR updated: cardano-node 10.6.x changed MaxTxSizeUTxO field type from
+    // Integer to Word32, so the original negative values (-1) are no longer valid.
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn test_cbor_166() {
-        verify_one("8182068282018200830320208201820a80").await
+        verify_one("8182068282018200830301018201820a80").await
     }
     #[tokio::test]
     #[allow(non_snake_case)]
