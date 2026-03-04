@@ -12,6 +12,11 @@ on:
         type: boolean
         required: true
         default: true
+      clean_runner_disk:
+        description: "Aggressively clean runner disk (target/debug/) before self-hosted jobs — use when disk is full"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -29,6 +34,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Free disk space
+        if: ${{ inputs.clean_runner_disk }}
+        run: |
+          nix-collect-garbage -d
+          rm -rf target/debug/
 
       # if this fails, it means that flake.nix inputs
       # were changed but flake.lock was not updated
@@ -127,9 +138,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: nix-collect-garbage -d
-
       - name: Run Integration Tests
         timeout-minutes: 10
         env:
@@ -166,9 +174,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: nix-collect-garbage -d
-
       - name: Run Blockfrost Tests
         continue-on-error: true
         timeout-minutes: ${{ matrix.timeout }}
@@ -187,9 +192,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Free disk space
-        run: nix-collect-garbage -d
 
       - name: Run Hydra Tests
         timeout-minutes: 15
