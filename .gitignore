@@ -31,7 +31,6 @@ result-*
 
 /cardano-node-configs
 /cardano-node
-/data
 
 /testgen-hs
 /testgen-hs.exe
