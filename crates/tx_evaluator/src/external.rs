@@ -66,8 +66,8 @@ impl ExternalEvaluator {
         Ok(evaluator)
     }
 
-    /// Sends repeatative data as the first communication so we don't need to send every time.
-    /// Also makes sure the child processes behaves as expected.
+    /// Sends repetitive data as the first communication so we don't need to send every time.
+    /// Also makes sure the child process behaves as expected.
     async fn init(&self, config: ChainConfigCache) -> Result<serde_json::Value, AppError> {
         use pallas_codec::minicbor::to_vec;
 
@@ -96,12 +96,6 @@ impl ExternalEvaluator {
             ))
         })?;
 
-        /*
-        (self.testgen.send(payload).await).map_err(|err| {
-            AppError::Server(format!("ExternalEvaluator: Failed to initialize: {err}"))
-        })
-        */
-        // println!("1 -> {}", payload);
         match self.testgen.send(payload).await {
             Ok(response) => match response {
                 TestgenResponse::Ok(value) => Ok(value),

@@ -441,8 +441,8 @@ pub struct ExecCost {
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TxEvalResultV5 {
-    SUCCESS(TxEvalSuccessV5),
-    FAILURE(TxEvalFailureV5),
+    Success(TxEvalSuccessV5),
+    Failure(TxEvalFailureV5),
 }
 
 #[derive(Deserialize)]
@@ -467,8 +467,8 @@ pub struct TxValidator {
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TxEvalResultV6 {
-    SUCCESS(TxEvalSuccessV6),
-    FAILURE(TxEvalFailureV6),
+    Success(TxEvalSuccessV6),
+    Failure(TxEvalFailureV6),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -486,9 +486,9 @@ pub struct TxEvalFailureV6 {
 #[derive(Serialize, Deserialize)]
 pub enum TxValidatorV6 {
     #[serde(rename = "spend:1")]
-    SPEND,
+    Spend,
     #[serde(rename = "mint:0")]
-    MINT,
+    Mint,
 }
 
 impl From<TxEvalSuccessV5> for TxEvalResult {
@@ -521,8 +521,8 @@ impl From<TxEvalFailureV5> for TxEvalResult {
 impl From<TxEvalResultV5> for TxEvalResult {
     fn from(value: TxEvalResultV5) -> Self {
         match value {
-            TxEvalResultV5::SUCCESS(success) => TxEvalResult::from(success),
-            TxEvalResultV5::FAILURE(fail) => TxEvalResult::from(fail),
+            TxEvalResultV5::Success(success) => TxEvalResult::from(success),
+            TxEvalResultV5::Failure(fail) => TxEvalResult::from(fail),
         }
     }
 }
@@ -555,9 +555,9 @@ impl From<TxEvalResult> for TxEvalFailureV5 {
 impl From<TxEvalResult> for TxEvalResultV5 {
     fn from(value: TxEvalResult) -> Self {
         if value.success {
-            TxEvalResultV5::SUCCESS(value.into())
+            TxEvalResultV5::Success(value.into())
         } else {
-            TxEvalResultV5::FAILURE(value.into())
+            TxEvalResultV5::Failure(value.into())
         }
     }
 }
@@ -584,8 +584,8 @@ impl From<TxEvalFailureV6> for TxEvalFailureV5 {
 impl From<TxEvalResultV6> for TxEvalResultV5 {
     fn from(value: TxEvalResultV6) -> Self {
         match value {
-            TxEvalResultV6::SUCCESS(success) => TxEvalResultV5::SUCCESS(success.into()),
-            TxEvalResultV6::FAILURE(fail) => TxEvalResultV5::FAILURE(fail.into()),
+            TxEvalResultV6::Success(success) => TxEvalResultV5::Success(success.into()),
+            TxEvalResultV6::Failure(fail) => TxEvalResultV5::Failure(fail.into()),
         }
     }
 }
@@ -648,7 +648,7 @@ impl FromStr for TxValidator {
 
             Ok(TxValidator { tag, index })
         } else {
-            Err("Invalid input format for TxValidator: {s}".to_string())
+            Err(format!("Invalid input format for TxValidator: {s}"))
         }
     }
 }

@@ -71,7 +71,7 @@ pub fn wrap_response_v6(resp: TestgenResponse, id: serde_json::Value) -> serde_j
                 let failures: Vec<_> = decoded
                     .into_iter()
                     .filter_map(|r| {
-                        if let TxEvalResultV6::FAILURE(f) = r {
+                        if let TxEvalResultV6::Failure(f) = r {
                             Some(f)
                         } else {
                             None
@@ -101,7 +101,7 @@ pub fn wrap_response_v6(resp: TestgenResponse, id: serde_json::Value) -> serde_j
 
 pub fn is_success_v6(results: &[TxEvalResultV6]) -> bool {
     if let Some(first_result) = results.first() {
-        matches!(first_result, TxEvalResultV6::SUCCESS(_))
+        matches!(first_result, TxEvalResultV6::Success(_))
     } else {
         false
     }
