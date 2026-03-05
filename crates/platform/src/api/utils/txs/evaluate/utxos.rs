@@ -27,10 +27,7 @@ pub async fn route(
     // Allow only application/json content type
     validate_content_type(&headers, &["application/json"])?;
 
-    let version: u8 = query
-        .version
-        .parse()
-        .map_err(|_| BlockfrostError::custom_400(format!("invalid version {}", query.version)))?;
+    let version = query.version;
 
     let is_external_evaluator = is_external_evaluator(
         query.evaluator,

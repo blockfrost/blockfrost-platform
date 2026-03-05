@@ -64,9 +64,9 @@ impl SlotConfig {
 
     pub fn by_network_magic(network_magic: &u32) -> Self {
         match network_magic {
-            764824073 => Self::preview(),
-            1 => Self::mainnet(),
-            2 => Self::preprod(),
+            764824073 => Self::mainnet(),
+            1 => Self::preprod(),
+            2 => Self::preview(),
             _ => Self::default(),
         }
     }

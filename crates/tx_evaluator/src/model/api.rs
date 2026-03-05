@@ -176,7 +176,6 @@ pub enum EvaluationError {
     Deserialization(DeserializationErrorData),
 }
 
-pub enum EvaluateTransactionError {}
 #[derive(Serialize, Debug)]
 pub struct DeserializationErrorData {
     pub shelley: String,
@@ -483,14 +482,6 @@ pub struct TxEvalFailureV6 {
     pub error: serde_json::Value,
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum TxValidatorV6 {
-    #[serde(rename = "spend:1")]
-    Spend,
-    #[serde(rename = "mint:0")]
-    Mint,
-}
-
 impl From<TxEvalSuccessV5> for TxEvalResult {
     fn from(value: TxEvalSuccessV5) -> Self {
         TxEvalResult {
@@ -543,7 +534,7 @@ impl From<TxEvalResult> for TxEvalSuccessV5 {
 impl From<TxEvalResult> for TxEvalFailureV5 {
     fn from(value: TxEvalResult) -> Self {
         TxEvalFailureV5 {
-            error: serde_json::Value::String(value.logs[0].clone()),
+            error: serde_json::Value::String(value.logs.into_iter().next().unwrap_or_default()),
             validator: TxValidator {
                 tag: value.tag,
                 index: value.index,

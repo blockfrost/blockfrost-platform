@@ -53,8 +53,8 @@ impl ExternalDecoder {
         }
     }
 
-    #[cfg(test)]
     /// A single global [`ExternalDecoder`] that you can cheaply use in tests.
+    #[cfg(test)]
     pub fn instance() -> Self {
         GLOBAL_INSTANCE.clone()
     }
