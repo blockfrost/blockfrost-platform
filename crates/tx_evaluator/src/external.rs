@@ -131,7 +131,7 @@ impl ExternalEvaluator {
             },
         };
 
-        let txins = extract_inputs(multi_era_tx);
+        let txins = extract_inputs(multi_era_tx)?;
 
         let utxos_from_node = node.await?.get_utxos_for_txins(txins).await?;
 

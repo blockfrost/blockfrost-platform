@@ -166,7 +166,7 @@ pub async fn evaluate_tx_with_pp(
     }
     let mut node = node_pool.get().await?;
 
-    let txins = extract_inputs(multi_era_tx.clone());
+    let txins = extract_inputs(multi_era_tx.clone())?;
 
     let utxos_from_node = node.get_utxos_for_txins(txins).await?;
 
@@ -602,35 +602,37 @@ fn convert_protocol_param(
     Ok(MultiEraProtocolParameters::Conway(conway_pp))
 }
 
-pub fn extract_inputs(tx: MultiEraTx) -> TxIns {
-    let txins = match tx {
-        MultiEraTx::AlonzoCompatible(x, _) => x
+pub fn extract_inputs(tx: MultiEraTx) -> Result<TxIns, BlockfrostError> {
+    match tx {
+        MultiEraTx::AlonzoCompatible(x, _) => Ok(x
             .transaction_body
             .inputs
             .iter()
             .map(convert_alonzo_txin)
-            .collect(),
-        MultiEraTx::Babbage(x) => x
+            .collect()),
+        MultiEraTx::Babbage(x) => Ok(x
             .transaction_body
             .inputs
             .iter()
             .map(convert_alonzo_txin)
-            .collect(),
-        MultiEraTx::Byron(x) => x
+            .collect()),
+        MultiEraTx::Byron(x) => Ok(x
             .transaction
             .inputs
             .iter()
             .map(convert_byron_txin)
-            .collect(),
-        MultiEraTx::Conway(x) => x
+            .collect()),
+        MultiEraTx::Conway(x) => Ok(x
             .transaction_body
             .inputs
             .iter()
             .map(convert_alonzo_txin)
-            .collect(),
-        _ => unreachable!("unknown era transaction"),
-    };
-    txins
+            .collect()),
+        other => Err(BlockfrostError::custom_400(format!(
+            "unsupported transaction era: {}",
+            other.era()
+        ))),
+    }
 }
 
 fn convert_alonzo_txin(txin: &TransactionInput) -> queries_v16::TransactionInput {
