@@ -646,7 +646,9 @@ fn convert_byron_txin(txin: &byron::TxIn) -> queries_v16::TransactionInput {
             transaction_id: *tx,
             index: *idx as u64,
         },
-        _ => unreachable!(),
+        _ => unreachable!(
+            "TxIn::Other is a CBOR forward-compatibility variant that never appears in actual Byron chain data"
+        ),
     }
 }
 
