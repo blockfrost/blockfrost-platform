@@ -55,8 +55,7 @@ pub async fn evaluate_binary_tx(
     tx_cbor_binary: &[u8],
     utxos: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
-    let slot_config = pallas_validate::phase2::script_context::SlotConfig::default();
-    evaluate_tx(node_pool, tx_cbor_binary, &slot_config, utxos).await
+    evaluate_tx(node_pool, tx_cbor_binary, utxos).await
 }
 
 pub async fn evaluate_encoded_tx(
@@ -73,18 +72,25 @@ pub async fn evaluate_encoded_tx(
 pub async fn evaluate_tx(
     node_pool: NodePool,
     tx_cbor_binary: &[u8],
-    slot_config: &SlotConfig,
     utxo_set: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
     let mut node = node_pool.get().await?;
 
     match node.genesis_config_and_pp().await {
         Ok((genesis_config, protocol_params)) => {
+            let bf_slot = bf_common::chain_config::SlotConfig::by_network_magic(
+                &genesis_config.network_magic,
+            );
+            let slot_config = SlotConfig {
+                slot_length: bf_slot.slot_length,
+                zero_slot: bf_slot.zero_slot,
+                zero_time: bf_slot.zero_time,
+            };
             let protocol_params: MultiEraProtocolParameters =
                 convert_protocol_param(protocol_params, genesis_config)?;
             evaluate_tx_with_pp(
                 tx_cbor_binary,
-                slot_config,
+                &slot_config,
                 utxo_set,
                 protocol_params,
                 node_pool,
