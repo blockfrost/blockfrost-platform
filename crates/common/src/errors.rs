@@ -214,7 +214,7 @@ impl BlockfrostError {
     /// custom method for ogmios version conflict
     pub fn conflicting_ogmios_version() -> Self {
         Self::custom_400(
-            "The Ogmios version in the query parameter does not match the request body format."
+            "The `?version` query parameter (Ogmios protocol version: 5 or 6) does not match the format of the request body."
                 .to_string(),
         )
     }
