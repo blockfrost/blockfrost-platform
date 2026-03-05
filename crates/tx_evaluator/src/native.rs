@@ -447,7 +447,7 @@ fn convert_protocol_param(
         epoch_length: genesis.epoch_length as u64,
         slot_length: genesis.slot_length as u64,
         desired_number_of_stake_pools: pp.desired_number_of_stake_pools.unwrap() as u32,
-        protocol_version: (7, 0), // hardcoded,
+        protocol_version: pp.protocol_version.unwrap(),
         ada_per_utxo_byte: pp.ada_per_utxo_byte.unwrap().into(),
         cost_models_for_script_languages: {
             let models = pp.cost_models_for_script_languages.unwrap();
@@ -887,7 +887,7 @@ mod tests {
             assert_eq!(conway_pp.key_deposit, 2_000_000);
             assert_eq!(conway_pp.pool_deposit, 500_000_000);
             assert_eq!(conway_pp.min_pool_cost, 340_000_000);
-            assert_eq!(conway_pp.protocol_version, (7, 0));
+            assert_eq!(conway_pp.protocol_version, (10, 0));
 
             // Check cost models
             assert_eq!(
