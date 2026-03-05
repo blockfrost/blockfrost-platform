@@ -99,6 +99,9 @@ pub fn wrap_response_v6(resp: TestgenResponse, id: serde_json::Value) -> serde_j
     }
 }
 
+/// Checks whether the evaluation results represent success by inspecting only the first element.
+/// The evaluator always returns a homogeneous list — either all successes or all failures —
+/// so the first element is sufficient to determine the outcome.
 pub fn is_success_v6(results: &[TxEvalResultV6]) -> bool {
     if let Some(first_result) = results.first() {
         matches!(first_result, TxEvalResultV6::Success(_))

@@ -22,6 +22,18 @@ pub fn is_external_evaluator(
                 Ok(false)
             }
         },
-        None => Ok(evaluator_config == &Evaluator::External),
+        None => {
+            if evaluator_config == &Evaluator::External {
+                if external_evaluator_opt.is_none() {
+                    Err(BlockfrostError::internal_server_error(
+                        "External evaluator is configured but not available".to_string(),
+                    ))
+                } else {
+                    Ok(true)
+                }
+            } else {
+                Ok(false)
+            }
+        },
     }
 }
