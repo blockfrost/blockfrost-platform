@@ -137,8 +137,8 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/txs/{hash}/cbor", get(txs::hash::cbor::route))
 
         // tx evaluate
-        .route("/utils/tx/evaluate",post(utils::txs::evaluate::root::route))
-        .route("/utils/tx/evaluate/utxos",post(utils::txs::evaluate::utxos::route));
+        .route("/utils/txs/evaluate",post(utils::txs::evaluate::root::route))
+        .route("/utils/txs/evaluate/utxos",post(utils::txs::evaluate::utxos::route));
 
     if enable_metrics {
         router = router.route_layer(from_fn(track_http_metrics));

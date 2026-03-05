@@ -38,6 +38,6 @@
   "/genesis",
   "/addresses/{address}/transactions",
   "/addresses/{address}/utxos",
-  "/utils/tx/evaluate",
-  "/utils/tx/evaluate/utxos"
+  "/utils/txs/evaluate",
+  "/utils/txs/evaluate/utxos"
 ]
