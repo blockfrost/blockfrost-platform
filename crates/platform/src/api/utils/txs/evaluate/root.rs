@@ -35,9 +35,11 @@ pub async fn route(
         &fallback_evaluator_opt,
     )?;
 
-    match query.version.parse::<u8>().map_err(|_| {
-        BlockfrostError::custom_400(format!("invalid version {}", query.version))
-    })? {
+    match query
+        .version
+        .parse::<u8>()
+        .map_err(|_| BlockfrostError::custom_400(format!("invalid version {}", query.version)))?
+    {
         5 => {
             if is_external_evaluator {
                 Ok(Json(

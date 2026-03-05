@@ -19,8 +19,8 @@ pub fn wrap_response_v5(resp: TestgenResponse, mirror: serde_json::Value) -> ser
     match resp {
         TestgenResponse::Ok(value) => {
             // The external evaluator returns a v6-like structure, but we need to convert it to v5.
-            let v6_results: Vec<TxEvalResultV6> = serde_json::from_value(value)
-                .expect("ExternalEvaluator: invalid v6 result format");
+            let v6_results: Vec<TxEvalResultV6> =
+                serde_json::from_value(value).expect("ExternalEvaluator: invalid v6 result format");
             let v5: Vec<TxEvalResultV5> = v6_results.into_iter().map(|r| r.into()).collect();
             wrap_success_response_v5(v5, mirror)
         },

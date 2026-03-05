@@ -8,8 +8,7 @@ use pallas_codec::{
 
 use pallas_network::miniprotocols::{
     localstate::queries_v16::{
-        DatumOption, PostAlonsoTransactionOutput, TransactionOutput, UTxO,
-        Value as NetworkValue,
+        DatumOption, PostAlonsoTransactionOutput, TransactionOutput, UTxO, Value as NetworkValue,
     },
     localtxsubmission::primitives::ScriptRef,
 };
@@ -206,7 +205,9 @@ impl ExternalEvaluator {
                 Self::build_transaction_output(
                     txin,
                     create_address(&tout.address),
-                    tout.script.as_ref().map(|s| CborWrap(ScriptRef::from(s.clone()))),
+                    tout.script
+                        .as_ref()
+                        .map(|s| CborWrap(ScriptRef::from(s.clone()))),
                     convert_to_network_value(&tout.value),
                     convert_to_datum_option_network(&tout.datum),
                 )
