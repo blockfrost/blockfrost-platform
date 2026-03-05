@@ -127,9 +127,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: nix-collect-garbage -d
-
       - name: Run Integration Tests
         timeout-minutes: 10
         env:
@@ -167,9 +164,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: nix-collect-garbage -d
-
       - name: Run Blockfrost Tests
         continue-on-error: true
         timeout-minutes: ${{ matrix.timeout }}
@@ -188,9 +182,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Free disk space
-        run: nix-collect-garbage -d
 
       - name: Run Hydra Tests
         timeout-minutes: 15
