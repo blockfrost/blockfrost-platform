@@ -16,7 +16,7 @@ async fn init_genesis_config(
     match node.genesis_config_and_pp().await {
         Ok((genesis_config, protocol_params)) => Ok((genesis_config, protocol_params)),
         Err(e) => Err(AppError::Server(format!(
-            "Could not fetching genesis and protocol parameters. Is the Cardano node running? {e}"
+            "Could not fetch genesis and protocol parameters. Is the Cardano node running? {e}"
         ))),
     }
 }

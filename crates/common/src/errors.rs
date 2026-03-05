@@ -72,7 +72,7 @@ impl From<hex::FromHexError> for BlockfrostError {
 
 impl From<serde_json::Error> for BlockfrostError {
     fn from(err: serde_json::Error) -> Self {
-        Self::internal_server_error(format!("SerdeError: {err}"))
+        Self::internal_server_error(format!("JSON error: {err}"))
     }
 }
 
@@ -213,7 +213,10 @@ impl BlockfrostError {
 
     /// custom method for ogmios version conflict
     pub fn conflicting_ogmios_version() -> Self {
-        Self::custom_400("Conflicting ogmios version with provided input".to_string())
+        Self::custom_400(
+            "The Ogmios version in the query parameter does not match the request body format."
+                .to_string(),
+        )
     }
 
     pub fn not_implemented(message: impl Into<String>) -> Self {
