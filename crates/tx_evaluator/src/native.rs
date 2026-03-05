@@ -61,7 +61,7 @@ pub async fn evaluate_binary_tx(
 
 pub async fn evaluate_encoded_tx(
     node_pool: NodePool,
-    tx_cbor: &String,
+    tx_cbor: &str,
     utxos: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
     let tx_cbor_binary = hex::decode(tx_cbor)
