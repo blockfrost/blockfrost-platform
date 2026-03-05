@@ -7,9 +7,13 @@ use pallas_codec::{
 };
 
 use pallas_network::miniprotocols::{
-    localstate::queries_v16::{PostAlonsoTransactionOutput, TransactionOutput, UTxO},
+    localstate::queries_v16::{
+        DatumOption, PostAlonsoTransactionOutput, TransactionOutput, UTxO,
+        Value as NetworkValue,
+    },
     localtxsubmission::primitives::ScriptRef,
 };
+use pallas_primitives::Bytes;
 use pallas_primitives::KeyValuePairs;
 use pallas_traverse::MultiEraTx;
 use serde::Serialize;
@@ -169,6 +173,22 @@ impl ExternalEvaluator {
         })?;
         Ok(response)
     }
+    fn build_transaction_output(
+        txin: UTxO,
+        address: Bytes,
+        script_ref: Option<CborWrap<ScriptRef>>,
+        amount: NetworkValue,
+        inline_datum: Option<DatumOption>,
+    ) -> (UTxO, TransactionOutput) {
+        let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
+            address,
+            script_ref,
+            amount,
+            inline_datum,
+        });
+        (txin, txout)
+    }
+
     pub async fn evaluate_binary_tx_v5(
         &self,
         node_pool: NodePool,
@@ -179,31 +199,17 @@ impl ExternalEvaluator {
             .unwrap_or_default()
             .iter()
             .map(|(utxo, tout)| {
-                let inline_datum = convert_to_datum_option_network(&tout.datum);
-
                 let txin = UTxO {
                     transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.tx_id).unwrap(),
                     index: AnyUInt::U64(utxo.index),
                 };
-
-                // A Cardano address (either legacy format or new format).
-                let address = create_address(&tout.address);
-
-                let script_ref: Option<CborWrap<ScriptRef>> = tout.script.as_ref().map(|script| {
-                    let script_ref = ScriptRef::from(script.clone());
-                    CborWrap(script_ref)
-                });
-
-                let amount = convert_to_network_value(&tout.value);
-
-                let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
-                    address,
-                    script_ref,
-                    amount,
-                    inline_datum,
-                });
-
-                (txin, txout)
+                Self::build_transaction_output(
+                    txin,
+                    create_address(&tout.address),
+                    tout.script.as_ref().map(|s| CborWrap(ScriptRef::from(s.clone()))),
+                    convert_to_network_value(&tout.value),
+                    convert_to_datum_option_network(&tout.datum),
+                )
             })
             .collect();
 
@@ -223,32 +229,18 @@ impl ExternalEvaluator {
             .unwrap_or_default()
             .iter()
             .map(|utxo| {
-                let inline_datum = convert_to_datum_option_network(&utxo.datum);
-
                 let txin = UTxO {
                     transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.transaction.id)
                         .unwrap(),
                     index: AnyUInt::U64(utxo.index),
                 };
-
-                // A Cardano address (either legacy format or new format).
-                let address = create_address(&utxo.address);
-
-                let script_ref: Option<CborWrap<ScriptRef>> = utxo.script.as_ref().map(|script| {
-                    let script_ref = ScriptRef::from(script);
-                    CborWrap(script_ref)
-                });
-
-                let amount = convert_to_network_value_v6(&utxo.value);
-
-                let txout = TransactionOutput::Current(PostAlonsoTransactionOutput {
-                    address,
-                    script_ref,
-                    amount,
-                    inline_datum,
-                });
-
-                (txin, txout)
+                Self::build_transaction_output(
+                    txin,
+                    create_address(&utxo.address),
+                    utxo.script.as_ref().map(|s| CborWrap(ScriptRef::from(s))),
+                    convert_to_network_value_v6(&utxo.value),
+                    convert_to_datum_option_network(&utxo.datum),
+                )
             })
             .collect();
 
