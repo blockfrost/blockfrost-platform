@@ -5,7 +5,7 @@ allow = [
   "BSD-3-Clause",
   "CC0-1.0",
   "ISC",
-  "LGPL-3.0",
+  "LGPL-3.0",                       # r-efi (MIT OR Apache-2.0 OR LGPL-2.1-or-later); needed because LGPL-2.1-or-later covers LGPL-3.0
   "MIT",
   "Unicode-3.0",
   "MPL-2.0",

@@ -85,7 +85,14 @@ pub struct Args {
     #[clap(long = "data-node-timeout-sec", default_value = "30")]
     pub data_node_timeout: Option<u64>,
 
-    #[arg(long, default_value = "external")]
+    #[arg(
+        long,
+        default_value = "external",
+        long_help = "Transaction evaluator to use.\n\n\
+            'external' (default): uses the bundled testgen-hs binary; production-ready.\n\
+            'native': uses pallas-validate; experimental and currently produces \
+            incorrect results — do not use in production."
+    )]
     pub evaluator: Evaluator,
 }
 
