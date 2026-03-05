@@ -209,8 +209,7 @@ impl ExternalEvaluator {
 
         let response = self
             .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
-            .await
-            .unwrap();
+            .await?;
         Ok(wrap_response_v5(response, serde_json::Value::Null))
     }
 
@@ -255,8 +254,7 @@ impl ExternalEvaluator {
 
         let response = self
             .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
-            .await
-            .unwrap();
+            .await?;
         Ok(wrap_response_v6(response, serde_json::Value::Null))
     }
 }

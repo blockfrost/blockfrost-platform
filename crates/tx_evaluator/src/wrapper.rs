@@ -19,7 +19,8 @@ pub fn wrap_response_v5(resp: TestgenResponse, mirror: serde_json::Value) -> ser
     match resp {
         TestgenResponse::Ok(value) => {
             // The external evaluator returns a v6-like structure, but we need to convert it to v5.
-            let v6_results: Vec<TxEvalResultV6> = serde_json::from_value(value).unwrap();
+            let v6_results: Vec<TxEvalResultV6> = serde_json::from_value(value)
+                .expect("ExternalEvaluator: invalid v6 result format");
             let v5: Vec<TxEvalResultV5> = v6_results.into_iter().map(|r| r.into()).collect();
             wrap_success_response_v5(v5, mirror)
         },
@@ -38,9 +39,9 @@ pub fn wrap_success_response_v5(
     let mut result_map = Map::with_capacity(response.len());
     for r in response {
         serde_json::to_value(r)
-            .unwrap()
+            .expect("TxEvalResultV5: serialization failed")
             .as_object()
-            .unwrap()
+            .expect("TxEvalResultV5: expected object")
             .iter()
             .for_each(|(key, val)| {
                 result_map.insert(key.to_string(), val.clone());
@@ -60,34 +61,40 @@ pub fn wrap_success_response_v5(
 pub fn wrap_response_v6(resp: TestgenResponse, id: serde_json::Value) -> serde_json::Value {
     match resp {
         TestgenResponse::Ok(value) => {
-            println!("value6 {:?}", value);
-            let decoded: Vec<TxEvalResultV6> = serde_json::from_value(value).unwrap();
+            let decoded: Vec<TxEvalResultV6> =
+                serde_json::from_value(value).expect("ExternalEvaluator: invalid v6 result format");
 
             if is_success_v6(&decoded) {
                 wrap_success_response_v6(decoded, id)
             } else {
-                {
-                    json!({
-                        "jsonrpc": "2.0",
-                        "method": "evaluateTransaction",
-                        "error": "hello error",
-                        "id": id,
-                    }
-                    )
-                }
+                // @todo error format needs to be crafted per Ogmios v6 spec
+                let failures: Vec<_> = decoded
+                    .into_iter()
+                    .filter_map(|r| {
+                        if let TxEvalResultV6::FAILURE(f) = r {
+                            Some(f)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                json!({
+                    "jsonrpc": "2.0",
+                    "method": "evaluateTransaction",
+                    "error": serde_json::to_value(&failures).unwrap_or_default(),
+                    "id": id,
+                })
             }
         },
-        TestgenResponse::Err(err) =>
-        // @todo error format needs to be crafted
-        {
+        TestgenResponse::Err(err) => {
+            // @todo error format needs to be crafted per Ogmios v6 spec
             let err = error_value_to_string(err);
             json!({
                 "jsonrpc": "2.0",
                 "method": "evaluateTransaction",
                 "error": generate_error_response_v6(err),
                 "id": id,
-            }
-            )
+            })
         },
     }
 }
@@ -118,7 +125,7 @@ pub fn wrap_success_response_v6(
     json!({
         "jsonrpc": "2.0",
         "method": "evaluateTransaction",
-        "result": serde_json::to_value(value).unwrap(),
+        "result": serde_json::to_value(value).expect("TxEvalResultV6: serialization failed"),
         "id": id,
     }
     )
