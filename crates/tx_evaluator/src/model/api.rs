@@ -8,6 +8,16 @@ use pallas_validate::phase2::tx::TxEvalResult;
 use serde::de;
 use serde::{Deserialize, Serialize, ser::SerializeMap};
 
+fn decode_script_hex(s: &str) -> Bytes {
+    Bytes::from(hex::decode(s).expect("invalid hex-encoded script CBOR"))
+}
+
+fn decode_pubkey_hash(st: &str) -> [u8; 28] {
+    let mut bytes = [0u8; 28];
+    hex::decode_to_slice(st, &mut bytes).expect("invalid hex-encoded pubkey hash");
+    bytes
+}
+
 // JSON request
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
@@ -224,18 +234,18 @@ impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
         use pallas_primitives::conway::ScriptRef;
         match script {
             Script::PlutusV1(s) => {
-                ScriptRef::PlutusV1Script(PlutusScript::<1>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)))
             },
             Script::PlutusV2(s) => {
-                ScriptRef::PlutusV2Script(PlutusScript::<2>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)))
             },
             Script::PlutusV3(s) => {
-                ScriptRef::PlutusV3Script(PlutusScript::<3>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)))
             },
             Script::Native(script_native) => {
                 use pallas_primitives::conway::NativeScript;
                 let script: NativeScript = script_native.into();
-                let r_script: KeepRaw<'_, NativeScript> = script.into(); // @todo: does not generate a valid raw CBOR 
+                let r_script: KeepRaw<'_, NativeScript> = script.into(); // @todo: does not generate a valid raw CBOR
                 ScriptRef::NativeScript(r_script)
             },
         }
@@ -244,20 +254,22 @@ impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
 
 impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
     fn from(script: Script) -> Self {
-        use pallas_network::miniprotocols::localtxsubmission::primitives::PlutusScript;
-        use pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef;
+        use pallas_network::miniprotocols::localtxsubmission::primitives::{
+            PlutusScript, ScriptRef,
+        };
         match script {
             Script::PlutusV1(s) => {
-                ScriptRef::PlutusV1Script(PlutusScript::<1>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)))
             },
             Script::PlutusV2(s) => {
-                ScriptRef::PlutusV2Script(PlutusScript::<2>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)))
             },
             Script::PlutusV3(s) => {
-                ScriptRef::PlutusV3Script(PlutusScript::<3>(Bytes::from(hex::decode(s).unwrap())))
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)))
             },
             Script::Native(script_native) => {
-                let script: pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript = script_native.into();
+                let script: pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript =
+                    script_native.into();
                 ScriptRef::NativeScript(script)
             },
         }
@@ -266,27 +278,29 @@ impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitiv
 
 impl From<&ScriptV6> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
     fn from(script: &ScriptV6) -> Self {
-        use pallas_network::miniprotocols::localtxsubmission::primitives::PlutusScript;
-        use pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef;
+        use pallas_network::miniprotocols::localtxsubmission::primitives::{
+            PlutusScript, ScriptRef,
+        };
         match script {
-            ScriptV6::PlutusV1 { cbor } => ScriptRef::PlutusV1Script(PlutusScript::<1>(
-                Bytes::from(hex::decode(cbor).unwrap()),
-            )),
-            ScriptV6::PlutusV2 { cbor } => ScriptRef::PlutusV2Script(PlutusScript::<2>(
-                Bytes::from(hex::decode(cbor).unwrap()),
-            )),
-            ScriptV6::PlutusV3 { cbor } => ScriptRef::PlutusV3Script(PlutusScript::<3>(
-                Bytes::from(hex::decode(cbor).unwrap()),
-            )),
-            ScriptV6::Native { cbor, json } => cbor.clone().map_or_else(
+            ScriptV6::PlutusV1 { cbor } => {
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(cbor)))
+            },
+            ScriptV6::PlutusV2 { cbor } => {
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(cbor)))
+            },
+            ScriptV6::PlutusV3 { cbor } => {
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(cbor)))
+            },
+            ScriptV6::Native { cbor, json } => cbor.as_deref().map_or_else(
                 || {
                     json.clone()
                         .map(|j| ScriptRef::NativeScript(j.into()))
-                        .unwrap()
+                        .expect("ScriptV6::Native: neither cbor nor json provided")
                 },
                 |c| {
                     ScriptRef::NativeScript(
-                        pallas_codec::minicbor::decode(&hex::decode(c).unwrap()).unwrap(),
+                        pallas_codec::minicbor::decode(&decode_script_hex(c))
+                            .expect("ScriptV6::Native: invalid CBOR in native script"),
                     )
                 },
             ),
@@ -309,16 +323,14 @@ impl From<ScriptNative>
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
             ScriptNative::NOf(h_map) => {
-                let (n_str, scripts) = h_map.into_iter().next().unwrap();
+                let (n_str, scripts) = h_map.into_iter().next().expect("NOf: empty map");
                 NativeScript::ScriptNOfK(
-                    n_str.parse::<u32>().unwrap(),
+                    n_str.parse::<u32>().expect("NOf: invalid n key"),
                     scripts.into_iter().map(|s| s.into()).collect(),
                 )
             },
             ScriptNative::Signature(st) => {
-                let mut bytes = [0; 28];
-                hex::decode_to_slice(st, &mut bytes).unwrap();
-                NativeScript::ScriptPubkey(bytes.into())
+                NativeScript::ScriptPubkey(decode_pubkey_hash(&st).into())
             },
         }
     }
@@ -331,11 +343,7 @@ impl From<ScriptNativeV6>
         use ScriptNativeV6::*;
         use pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript;
         match script {
-            Signature { from } => {
-                let mut bytes = [0; 28];
-                hex::decode_to_slice(from, &mut bytes).unwrap();
-                NativeScript::ScriptPubkey(bytes.into())
-            },
+            Signature { from } => NativeScript::ScriptPubkey(decode_pubkey_hash(&from).into()),
             Any { from } => NativeScript::ScriptAny(from.into_iter().map(|s| s.into()).collect()),
             All { from } => NativeScript::ScriptAll(from.into_iter().map(|s| s.into()).collect()),
             Some { at_least, from } => {
@@ -360,16 +368,14 @@ impl From<ScriptNative> for pallas_primitives::conway::NativeScript {
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
             ScriptNative::NOf(h_map) => {
-                let (n_str, scripts) = h_map.into_iter().next().unwrap();
+                let (n_str, scripts) = h_map.into_iter().next().expect("NOf: empty map");
                 NativeScript::ScriptNOfK(
-                    n_str.parse::<u32>().unwrap(),
+                    n_str.parse::<u32>().expect("NOf: invalid n key"),
                     scripts.into_iter().map(|s| s.into()).collect(),
                 )
             },
             ScriptNative::Signature(st) => {
-                let mut bytes = [0; 28];
-                hex::decode_to_slice(st, &mut bytes).unwrap();
-                NativeScript::ScriptPubkey(bytes.into())
+                NativeScript::ScriptPubkey(decode_pubkey_hash(&st).into())
             },
         }
     }
