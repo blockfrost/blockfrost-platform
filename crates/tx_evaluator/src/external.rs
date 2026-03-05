@@ -248,7 +248,10 @@ impl ExternalEvaluator {
                     Ok(Self::build_transaction_output(
                         txin,
                         create_address(&utxo.address)?,
-                        utxo.script.as_ref().map(|s| CborWrap(ScriptRef::from(s))),
+                        utxo.script
+                            .as_ref()
+                            .map(|s| ScriptRef::try_from(s).map(CborWrap))
+                            .transpose()?,
                         convert_to_network_value_v6(&utxo.value),
                         convert_to_datum_option_network(&utxo.datum)?,
                     ))

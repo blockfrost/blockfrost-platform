@@ -2,6 +2,7 @@ use core::fmt;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use bf_common::errors::BlockfrostError;
 use pallas_primitives::{Bytes, ExUnits, KeepRaw, conway::RedeemerTag};
 use pallas_validate::phase2::EvalReport;
 use pallas_validate::phase2::tx::TxEvalResult;
@@ -275,12 +276,16 @@ impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitiv
     }
 }
 
-impl From<&ScriptV6> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
-    fn from(script: &ScriptV6) -> Self {
+impl TryFrom<&ScriptV6>
+    for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef
+{
+    type Error = BlockfrostError;
+
+    fn try_from(script: &ScriptV6) -> Result<Self, Self::Error> {
         use pallas_network::miniprotocols::localtxsubmission::primitives::{
             PlutusScript, ScriptRef,
         };
-        match script {
+        Ok(match script {
             ScriptV6::PlutusV1 { cbor } => {
                 ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(cbor)))
             },
@@ -290,20 +295,23 @@ impl From<&ScriptV6> for pallas_network::miniprotocols::localtxsubmission::primi
             ScriptV6::PlutusV3 { cbor } => {
                 ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(cbor)))
             },
-            ScriptV6::Native { cbor, json } => cbor.as_deref().map_or_else(
-                || {
+            ScriptV6::Native { cbor, json } => match cbor.as_deref() {
+                Some(c) => ScriptRef::NativeScript(
+                    pallas_codec::minicbor::decode(&decode_script_hex(c)).map_err(|e| {
+                        BlockfrostError::custom_400(format!("invalid CBOR in native script: {e}"))
+                    })?,
+                ),
+                None => ScriptRef::NativeScript(
                     json.clone()
-                        .map(|j| ScriptRef::NativeScript(j.into()))
-                        .expect("ScriptV6::Native: neither cbor nor json provided")
-                },
-                |c| {
-                    ScriptRef::NativeScript(
-                        pallas_codec::minicbor::decode(&decode_script_hex(c))
-                            .expect("ScriptV6::Native: invalid CBOR in native script"),
-                    )
-                },
-            ),
-        }
+                        .ok_or_else(|| {
+                            BlockfrostError::custom_400(
+                                "ScriptV6::Native: neither cbor nor json provided".to_string(),
+                            )
+                        })?
+                        .into(),
+                ),
+            },
+        })
     }
 }
 
