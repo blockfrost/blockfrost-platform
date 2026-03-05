@@ -1,25 +1,17 @@
-use crate::{
-    BlockfrostError, api::utils::txs::evaluate::model::EvaluateQuery, server::state::AppState,
-};
+use crate::{BlockfrostError, api::utils::txs::evaluate::model::EvaluateQuery};
 use axum::{
     Extension, Json,
-    extract::{self, Query, State},
+    extract::{self, Query},
     response::IntoResponse,
 };
 use bf_common::{helpers::binary_or_hex_heuristic, validation::validate_content_type};
 use bf_node::pool::NodePool;
-use bf_tx_evaluator::{
-    external::ExternalEvaluator,
-    helpers::is_external_evaluator,
-    model::api::{TxEvaluationRequest, convert_eval_report_v5},
-    native::evaluate_binary_tx,
-};
+use bf_tx_evaluator::{external::ExternalEvaluator, model::api::TxEvaluationRequest};
 use hyper::HeaderMap;
 
 pub async fn route(
-    State(app_state): State<AppState>,
     Extension(node): Extension<NodePool>,
-    Extension(fallback_evaluator_opt): Extension<Option<ExternalEvaluator>>,
+    Extension(fallback_evaluator): Extension<Option<ExternalEvaluator>>,
     headers: HeaderMap,
     Query(query): Query<EvaluateQuery>,
     extract::Json(tx_request): extract::Json<TxEvaluationRequest>,
@@ -29,11 +21,9 @@ pub async fn route(
 
     let version = query.version;
 
-    let is_external_evaluator = is_external_evaluator(
-        query.evaluator,
-        &app_state.config.evaluator,
-        &fallback_evaluator_opt,
-    )?;
+    let evaluator = fallback_evaluator.ok_or_else(|| {
+        BlockfrostError::internal_server_error("External evaluator is not available".to_string())
+    })?;
 
     // safeguarding version and input data conflicts
     match tx_request {
@@ -42,22 +32,11 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.transaction.cbor.as_bytes());
-
-                let result = if is_external_evaluator {
-                    fallback_evaluator_opt
-                        .ok_or_else(|| {
-                            BlockfrostError::internal_server_error(
-                                "External evaluator is not available".to_string(),
-                            )
-                        })?
+                Ok(Json(
+                    evaluator
                         .evaluate_binary_tx_v6(node, tx_cbor.as_slice(), request.additional_utxo)
-                        .await?
-                } else {
-                    return Err(BlockfrostError::not_implemented(
-                        "native evaluator for v6 is not implemented yet",
-                    ));
-                };
-                Ok(Json(result))
+                        .await?,
+                ))
             }
         },
         TxEvaluationRequest::V5Cbor(request) => {
@@ -65,27 +44,15 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.cbor.as_bytes());
-                let result = if is_external_evaluator {
-                    fallback_evaluator_opt
-                        .ok_or_else(|| {
-                            BlockfrostError::internal_server_error(
-                                "External evaluator is not available".to_string(),
-                            )
-                        })?
+                Ok(Json(
+                    evaluator
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),
                             request.additional_utxo_set,
                         )
-                        .await?
-                } else {
-                    let r = convert_eval_report_v5(
-                        evaluate_binary_tx(node, tx_cbor.as_slice(), request.additional_utxo_set)
-                            .await?,
-                    );
-                    serde_json::to_value(r).map_err(BlockfrostError::from)?
-                };
-                Ok(Json(result))
+                        .await?,
+                ))
             }
         },
         TxEvaluationRequest::V5Evaluate(request) => {
@@ -93,25 +60,15 @@ pub async fn route(
                 Err(BlockfrostError::conflicting_ogmios_version())
             } else {
                 let tx_cbor = binary_or_hex_heuristic(request.evaluate.as_bytes());
-                let result = if is_external_evaluator {
-                    fallback_evaluator_opt
-                        .ok_or_else(|| {
-                            BlockfrostError::internal_server_error(
-                                "External evaluator is not available".to_string(),
-                            )
-                        })?
+                Ok(Json(
+                    evaluator
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),
                             request.additional_utxo_set,
                         )
-                        .await?
-                } else {
-                    return Err(BlockfrostError::not_implemented(
-                        "native evaluator for v5 evaluate is not implemented yet",
-                    ));
-                };
-                Ok(Json(result))
+                        .await?,
+                ))
             }
         },
     }
