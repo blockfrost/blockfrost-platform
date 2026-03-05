@@ -159,6 +159,21 @@ fn process_error_array(errors: &[Value]) -> Value {
     })
 }
 
+fn insert_script_failure(
+    script_failures: &mut Map<String, Value>,
+    key: &str,
+    field: &str,
+    value: Value,
+) {
+    let entry = script_failures
+        .entry(key.to_string())
+        .or_insert_with(|| json!({}));
+
+    if let Some(obj) = entry.as_object_mut() {
+        obj.insert(field.to_string(), value);
+    }
+}
+
 fn extract_key_and_error_code(err: &Value) -> (String, i64) {
     let validator = &err["validator"];
     let error_code = err["error"]["code"].as_i64().unwrap_or_default();
@@ -169,7 +184,7 @@ fn extract_key_and_error_code(err: &Value) -> (String, i64) {
     (key, error_code)
 }
 
-fn covert_purpose(purpose: &str) -> &str {
+fn convert_purpose(purpose: &str) -> &str {
     if purpose == "withdraw" {
         return "withdrawal";
     }
@@ -187,18 +202,12 @@ fn handle_cannot_create_evaluation_context(
     key: &str,
 ) {
     if let Some(reason) = err["error"]["data"]["reason"].as_str() {
-        let entry = script_failures
-            .entry(key.to_string())
-            .or_insert_with(|| json!({}));
-
-        if let Some(obj) = entry.as_object_mut() {
-            obj.insert(
-                "CannotCreateEvaluationContext".to_string(),
-                json!({
-                    "reason": reason,
-                }),
-            );
-        }
+        insert_script_failure(
+            script_failures,
+            key,
+            "CannotCreateEvaluationContext",
+            json!({ "reason": reason }),
+        );
     }
 }
 
@@ -220,19 +229,12 @@ fn handle_unknown_input_referenced_by_redeemer(
             .and_then(|i| i.as_i64())
             .unwrap_or_default();
 
-        let entry = script_failures
-            .entry(key.to_string())
-            .or_insert_with(|| json!({}));
-
-        if let Some(obj) = entry.as_object_mut() {
-            obj.insert(
-                "unknownInputReferencedByRedeemer".to_string(),
-                json!({
-                    "txId": tx_id,
-                    "index": index,
-                }),
-            );
-        }
+        insert_script_failure(
+            script_failures,
+            key,
+            "unknownInputReferencedByRedeemer",
+            json!({ "txId": tx_id, "index": index }),
+        );
     }
 }
 
@@ -243,7 +245,7 @@ fn handle_missing_scripts(err: &Value, script_failures: &mut Map<String, Value>,
             .map(|script| {
                 let index = script["index"].to_string();
                 let mut purpose = script["purpose"].as_str().unwrap_or_default();
-                purpose = covert_purpose(purpose);
+                purpose = convert_purpose(purpose);
                 format!("{}:{}", purpose, index)
             })
             .collect();
@@ -308,13 +310,12 @@ fn handle_extraneous_redeemers(err: &Value, script_failures: &mut Map<String, Va
             extra_redeemers.push(format!("{}:{}", purpose, index));
         }
 
-        let entry = script_failures
-            .entry(key.to_string())
-            .or_insert_with(|| json!({}));
-
-        let obj = entry.as_object_mut().unwrap();
-
-        obj.insert("extraRedeemers".to_string(), json!(extra_redeemers));
+        insert_script_failure(
+            script_failures,
+            key,
+            "extraRedeemers",
+            json!(extra_redeemers),
+        );
     }
 }
 
@@ -325,15 +326,11 @@ fn handle_no_cost_models(err: &Value, script_failures: &mut Map<String, Value>, 
             .filter_map(|model| model.as_str())
             .collect();
 
-        let entry = script_failures
-            .entry(key.to_string())
-            .or_insert_with(|| json!({}));
-
-        let obj = entry.as_object_mut().unwrap();
-
         if !missing_models.is_empty() {
-            obj.insert(
-                "noCostModelForLanguage".to_string(),
+            insert_script_failure(
+                script_failures,
+                key,
+                "noCostModelForLanguage",
                 json!(missing_models[0]),
             );
         }
