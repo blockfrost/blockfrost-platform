@@ -1,5 +1,5 @@
 use crate::{
-    config::{Config, Evaluator, Mode},
+    config::{Config, Mode},
     errors::AppError,
     types::LogLevel,
 };
@@ -84,16 +84,6 @@ pub struct Args {
 
     #[clap(long = "data-node-timeout-sec", default_value = "30")]
     pub data_node_timeout: Option<u64>,
-
-    #[arg(
-        long,
-        default_value = "external",
-        long_help = "Transaction evaluator to use.\n\n\
-            'external' (default): uses the bundled testgen-hs binary; production-ready.\n\
-            'native': uses pallas-validate; experimental and currently produces \
-            incorrect results — do not use in production."
-    )]
-    pub evaluator: Evaluator,
 }
 
 fn get_config_path() -> PathBuf {
@@ -200,9 +190,6 @@ impl Args {
         )
         .and_then(|it| LogLevel::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
 
-        let evaluator = Args::enum_prompt("Evaluator?", Evaluator::value_variants(), 0)
-            .and_then(|it| Evaluator::from_str(it.as_str(), true).map_err(|e| anyhow!(e)))?;
-
         // TODO: Maybe use [`inquire::CustomType`]?
         let server_address: IpAddr = Text::new("Enter the server IP address:")
             .with_default("0.0.0.0")
@@ -286,7 +273,6 @@ impl Args {
             data_node: data_node.endpoint,
             data_node_timeout: Some(data_node.request_timeout),
             server_concurrency_limit: 8192,
-            evaluator,
         };
 
         if !is_solitary {

@@ -137,7 +137,7 @@ impl Config {
             custom_genesis_config: args.custom_genesis_config,
             data_node,
             server_concurrency_limit: args.server_concurrency_limit,
-            evaluator: args.evaluator,
+            evaluator: Evaluator::External,
         })
     }
 
