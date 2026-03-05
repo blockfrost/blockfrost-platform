@@ -16,7 +16,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate")
+            .uri("/utils/txs/evaluate")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -25,7 +25,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"
@@ -54,7 +54,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=5")
+            .uri("/utils/txs/evaluate?version=5")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -63,7 +63,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"
@@ -93,7 +93,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=5&evaluator=native")
+            .uri("/utils/txs/evaluate?version=5&evaluator=native")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -102,7 +102,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"
@@ -130,7 +130,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=6")
+            .uri("/utils/txs/evaluate?version=6")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -139,7 +139,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"
@@ -168,7 +168,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=53")
+            .uri("/utils/txs/evaluate?version=53")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -177,7 +177,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
 
         assert_eq!(response.status(), 400, "Response was successful");
 
@@ -203,7 +203,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=5")
+            .uri("/utils/txs/evaluate?version=5")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -212,7 +212,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"
@@ -244,7 +244,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate?version=6")
+            .uri("/utils/txs/evaluate?version=6")
             .header("Content-Type", "application/cbor")
             .body(Body::from(tx_hex))
             .unwrap();
@@ -253,7 +253,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(
             response.status().is_success(),
             "Response was not successful"

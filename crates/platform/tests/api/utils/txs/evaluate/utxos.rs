@@ -27,7 +27,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate/utxos")
+            .uri("/utils/txs/evaluate/utxos")
             .header("Content-Type", "application/json")
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -36,7 +36,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
 
         assert!(response.status().is_success(), "Response should success");
 
@@ -77,7 +77,7 @@ mod tests {
         // prepare the request
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/utils/tx/evaluate/utxos")
+            .uri("/utils/txs/evaluate/utxos")
             .header("Content-Type", "application/json")
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -86,7 +86,7 @@ mod tests {
         let response = app
             .oneshot(request)
             .await
-            .expect("Request to /utils/tx/evaluate failed");
+            .expect("Request to /utils/txs/evaluate failed");
         assert!(response.status().is_success(), "Response should success");
 
         // Convert the response body to bytes
