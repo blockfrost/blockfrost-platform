@@ -91,9 +91,9 @@ pub async fn evaluate_tx(
             )
             .await
         },
-        Err(e) => Err(BlockfrostError::custom_400(
-            "Error fetching protocol parameters: ".to_string() + &e.to_string(),
-        )),
+        Err(e) => Err(BlockfrostError::internal_server_error(format!(
+            "Error fetching protocol parameters: {e}"
+        ))),
     }
 }
 
@@ -166,7 +166,7 @@ pub async fn evaluate_tx_with_pp(
     }
     let mut node = node_pool.get().await?;
 
-    let txins = extract_inputs(multi_era_tx.clone())?;
+    let txins = extract_inputs(&multi_era_tx)?;
 
     let utxos_from_node = node.get_utxos_for_txins(txins).await?;
 
@@ -602,7 +602,7 @@ fn convert_protocol_param(
     Ok(MultiEraProtocolParameters::Conway(conway_pp))
 }
 
-pub fn extract_inputs(tx: MultiEraTx) -> Result<TxIns, BlockfrostError> {
+pub fn extract_inputs(tx: &MultiEraTx) -> Result<TxIns, BlockfrostError> {
     match tx {
         MultiEraTx::AlonzoCompatible(x, _) => Ok(x
             .transaction_body
