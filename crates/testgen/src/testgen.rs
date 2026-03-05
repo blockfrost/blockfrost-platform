@@ -10,7 +10,7 @@ use std::sync::{
 };
 use std::{env, thread};
 use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 #[derive(Clone)]
 pub struct Testgen {
@@ -44,7 +44,14 @@ impl<'de> Deserialize<'de> for TestgenResponse {
     {
         let wire = TestgenResponseWire::deserialize(deserializer)?;
         match (wire.json, wire.error) {
-            (Some(json), _) => Ok(Self::Ok(json)),
+            (Some(json), Some(err)) => {
+                warn!(
+                    "testgen-hs response has both `json` and `error` fields, discarding error: {:?}",
+                    err
+                );
+                Ok(Self::Ok(json))
+            },
+            (Some(json), None) => Ok(Self::Ok(json)),
             (None, Some(error)) => Ok(Self::Err(error)),
             (None, None) => Err(de::Error::custom(
                 "invalid testgen-hs response: missing both `json` and `error`",
