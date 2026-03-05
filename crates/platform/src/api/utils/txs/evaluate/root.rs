@@ -44,7 +44,11 @@ pub async fn route(
             if is_external_evaluator {
                 Ok(Json(
                     fallback_evaluator_opt
-                        .unwrap()
+                        .ok_or_else(|| {
+                            BlockfrostError::internal_server_error(
+                                "External evaluator is not available".to_string(),
+                            )
+                        })?
                         .evaluate_binary_tx_v5(node, tx_cbor_binary.as_slice(), None)
                         .await?,
                 ))
@@ -60,12 +64,18 @@ pub async fn route(
             if is_external_evaluator {
                 Ok(Json(
                     fallback_evaluator_opt
-                        .unwrap()
+                        .ok_or_else(|| {
+                            BlockfrostError::internal_server_error(
+                                "External evaluator is not available".to_string(),
+                            )
+                        })?
                         .evaluate_binary_tx_v6(node, tx_cbor_binary.as_slice(), None)
                         .await?,
                 ))
             } else {
-                todo!("native evaluator for v6 not implemented yet")
+                Err(BlockfrostError::not_implemented(
+                    "native evaluator for v6 is not implemented yet",
+                ))
             }
         },
         version => Err(BlockfrostError::custom_400(format!(

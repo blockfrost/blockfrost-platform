@@ -64,7 +64,8 @@ pub async fn evaluate_encoded_tx(
     tx_cbor: &String,
     utxos: Option<AdditionalUtxoSet>,
 ) -> Result<EvalReport, BlockfrostError> {
-    let tx_cbor_binary = hex::decode(tx_cbor).unwrap();
+    let tx_cbor_binary = hex::decode(tx_cbor)
+        .map_err(|e| BlockfrostError::custom_400(format!("invalid transaction hex: {e}")))?;
 
     evaluate_binary_tx(node_pool, &tx_cbor_binary, utxos).await
 }
@@ -106,7 +107,8 @@ pub async fn evaluate_tx_with_pp(
     /*
      * Prepare transaction
      */
-    let multi_era_tx = MultiEraTx::decode(tx_cbor_binary).unwrap();
+    let multi_era_tx = MultiEraTx::decode(tx_cbor_binary)
+        .map_err(|e| BlockfrostError::custom_400(format!("invalid transaction CBOR: {e}")))?;
 
     /*
      * make codec safe utxo for conway
@@ -115,8 +117,9 @@ pub async fn evaluate_tx_with_pp(
     let mut utxos: UtxoMap = UtxoMap::new();
     for (tx_in, tx_out) in utxo_set.unwrap_or_default() {
         let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
-            transaction_id: pallas_primitives::Hash::<32>::from_str(&tx_in.tx_id)
-                .expect("Invalid tx_id in additional utxo set"),
+            transaction_id: pallas_primitives::Hash::<32>::from_str(&tx_in.tx_id).map_err(|e| {
+                BlockfrostError::custom_400(format!("invalid tx_id '{}': {e}", tx_in.tx_id))
+            })?,
             index: tx_in.index,
         };
 
@@ -127,12 +130,12 @@ pub async fn evaluate_tx_with_pp(
          * Prepare transaction output
          */
 
-        let address = create_address(&tx_out.address);
+        let address = create_address(&tx_out.address)?;
 
         let value: pallas_primitives::conway::Value = convert_to_primitive_value(&tx_out.value);
 
-        let datum_vec = convert_to_datum_option(&tx_out.datum);
-        let datum_option = create_raw_datum_option(&datum_vec);
+        let datum_vec = convert_to_datum_option(&tx_out.datum)?;
+        let datum_option = create_raw_datum_option(&datum_vec)?;
 
         let script_ref: Option<CborWrap<ScriptRef>> =
             tx_out.script.map(|script| CborWrap(script.into()));
@@ -144,14 +147,18 @@ pub async fn evaluate_tx_with_pp(
             script_ref,
         };
 
-        let tx_out_cbor = pallas_codec::minicbor::to_vec(post_alonzo).unwrap();
+        let tx_out_cbor = pallas_codec::minicbor::to_vec(post_alonzo).map_err(|e| {
+            BlockfrostError::internal_server_error(format!("UTxO serialization failed: {e}"))
+        })?;
         let post_alonzo = pallas_codec::minicbor::decode::<
             pallas_codec::utils::KeepRaw<
                 '_,
                 pallas_primitives::conway::PostAlonzoTransactionOutput,
             >,
         >(&tx_out_cbor)
-        .unwrap();
+        .map_err(|e| {
+            BlockfrostError::internal_server_error(format!("UTxO deserialization failed: {e}"))
+        })?;
         let tx_out = pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
         let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
 
@@ -173,14 +180,18 @@ pub async fn evaluate_tx_with_pp(
         let multi_era_in: MultiEraInput =
             MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(alonzo_tx_in)));
 
-        let tx_out_cbor = pallas_codec::minicbor::to_vec(txout).unwrap();
+        let tx_out_cbor = pallas_codec::minicbor::to_vec(txout).map_err(|e| {
+            BlockfrostError::internal_server_error(format!("UTxO serialization failed: {e}"))
+        })?;
         let post_alonzo = pallas_codec::minicbor::decode::<
             pallas_codec::utils::KeepRaw<
                 '_,
                 pallas_primitives::conway::PostAlonzoTransactionOutput,
             >,
         >(&tx_out_cbor)
-        .unwrap();
+        .map_err(|e| {
+            BlockfrostError::internal_server_error(format!("UTxO deserialization failed: {e}"))
+        })?;
 
         let tx_out = pallas_primitives::conway::TransactionOutput::<'_>::PostAlonzo(post_alonzo);
 
@@ -198,52 +209,63 @@ pub async fn evaluate_tx_with_pp(
     }
 }
 
-pub fn create_address(addr: &str) -> Bytes {
+pub fn create_address(addr: &str) -> Result<Bytes, BlockfrostError> {
     Address::from_bech32(addr)
-        .unwrap_or_else(|_| Address::from_hex(addr).unwrap())
-        .to_vec()
-        .into()
+        .or_else(|_| Address::from_hex(addr))
+        .map(|a| a.to_vec().into())
+        .map_err(|e| BlockfrostError::custom_400(format!("invalid address '{addr}': {e}")))
 }
 
-pub fn convert_to_datum_option(datum: &Option<String>) -> Vec<u8> {
-    {
-        match datum {
-            Some(d) => {
-                let datum_bytes = hex::decode(d).unwrap();
-                let datum_option = DatumOption::Data(CborWrap(
-                    pallas_codec::minicbor::decode(&datum_bytes).unwrap(),
-                ));
-                pallas_codec::minicbor::to_vec(datum_option).unwrap()
-            },
-            None => Vec::new(),
-        }
+pub fn convert_to_datum_option(datum: &Option<String>) -> Result<Vec<u8>, BlockfrostError> {
+    match datum {
+        Some(d) => {
+            let datum_bytes = hex::decode(d)
+                .map_err(|e| BlockfrostError::custom_400(format!("invalid datum hex: {e}")))?;
+            let datum_option = DatumOption::Data(CborWrap(
+                pallas_codec::minicbor::decode(&datum_bytes)
+                    .map_err(|e| BlockfrostError::custom_400(format!("invalid datum CBOR: {e}")))?,
+            ));
+            pallas_codec::minicbor::to_vec(datum_option).map_err(|e| {
+                BlockfrostError::internal_server_error(format!("datum serialization failed: {e}"))
+            })
+        },
+        None => Ok(Vec::new()),
     }
 }
 
 pub fn convert_to_datum_option_network(
     datum: &Option<String>,
-) -> Option<pallas_network::miniprotocols::localstate::queries_v16::DatumOption> {
-    {
-        match datum {
-            Some(d) => {
-                let datum_bytes = hex::decode(d).unwrap();
-                let datum_option =
-                    pallas_network::miniprotocols::localstate::queries_v16::DatumOption::Data(
-                        CborWrap(pallas_codec::minicbor::decode(&datum_bytes).unwrap()),
-                    );
-                Some(datum_option)
-            },
-            None => None,
-        }
+) -> Result<
+    Option<pallas_network::miniprotocols::localstate::queries_v16::DatumOption>,
+    BlockfrostError,
+> {
+    match datum {
+        Some(d) => {
+            let datum_bytes = hex::decode(d)
+                .map_err(|e| BlockfrostError::custom_400(format!("invalid datum hex: {e}")))?;
+            let datum_option =
+                pallas_network::miniprotocols::localstate::queries_v16::DatumOption::Data(
+                    CborWrap(pallas_codec::minicbor::decode(&datum_bytes).map_err(|e| {
+                        BlockfrostError::custom_400(format!("invalid datum CBOR: {e}"))
+                    })?),
+                );
+            Ok(Some(datum_option))
+        },
+        None => Ok(None),
     }
 }
 
-pub fn create_raw_datum_option<'a>(datum_vec: &'a [u8]) -> Option<KeepRaw<'a, DatumOption<'a>>> {
+pub fn create_raw_datum_option<'a>(
+    datum_vec: &'a [u8],
+) -> Result<Option<KeepRaw<'a, DatumOption<'a>>>, BlockfrostError> {
     if datum_vec.is_empty() {
-        None
+        Ok(None)
     } else {
-        let raw: KeepRaw<'a, DatumOption<'a>> = pallas_codec::minicbor::decode(datum_vec).unwrap();
-        Some(raw)
+        pallas_codec::minicbor::decode(datum_vec)
+            .map(Some)
+            .map_err(|e| {
+                BlockfrostError::internal_server_error(format!("datum decode failed: {e}"))
+            })
     }
 }
 

@@ -197,22 +197,30 @@ impl ExternalEvaluator {
         let user_utxos = additional_utxos
             .unwrap_or_default()
             .iter()
-            .map(|(utxo, tout)| {
-                let txin = UTxO {
-                    transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.tx_id).unwrap(),
-                    index: AnyUInt::U64(utxo.index),
-                };
-                Self::build_transaction_output(
-                    txin,
-                    create_address(&tout.address),
-                    tout.script
-                        .as_ref()
-                        .map(|s| CborWrap(ScriptRef::from(s.clone()))),
-                    convert_to_network_value(&tout.value),
-                    convert_to_datum_option_network(&tout.datum),
-                )
-            })
-            .collect();
+            .map(
+                |(utxo, tout)| -> Result<(UTxO, TransactionOutput), BlockfrostError> {
+                    let txin = UTxO {
+                        transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.tx_id)
+                            .map_err(|e| {
+                                BlockfrostError::custom_400(format!(
+                                    "invalid tx_id '{}': {e}",
+                                    utxo.tx_id
+                                ))
+                            })?,
+                        index: AnyUInt::U64(utxo.index),
+                    };
+                    Ok(Self::build_transaction_output(
+                        txin,
+                        create_address(&tout.address)?,
+                        tout.script
+                            .as_ref()
+                            .map(|s| CborWrap(ScriptRef::from(s.clone()))),
+                        convert_to_network_value(&tout.value),
+                        convert_to_datum_option_network(&tout.datum)?,
+                    ))
+                },
+            )
+            .collect::<Result<Vec<_>, _>>()?;
 
         let response = self
             .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
@@ -229,21 +237,30 @@ impl ExternalEvaluator {
         let user_utxos = additional_utxos
             .unwrap_or_default()
             .iter()
-            .map(|utxo| {
-                let txin = UTxO {
-                    transaction_id: pallas_crypto::hash::Hash::<32>::from_str(&utxo.transaction.id)
-                        .unwrap(),
-                    index: AnyUInt::U64(utxo.index),
-                };
-                Self::build_transaction_output(
-                    txin,
-                    create_address(&utxo.address),
-                    utxo.script.as_ref().map(|s| CborWrap(ScriptRef::from(s))),
-                    convert_to_network_value_v6(&utxo.value),
-                    convert_to_datum_option_network(&utxo.datum),
-                )
-            })
-            .collect();
+            .map(
+                |utxo| -> Result<(UTxO, TransactionOutput), BlockfrostError> {
+                    let txin = UTxO {
+                        transaction_id: pallas_crypto::hash::Hash::<32>::from_str(
+                            &utxo.transaction.id,
+                        )
+                        .map_err(|e| {
+                            BlockfrostError::custom_400(format!(
+                                "invalid transaction id '{}': {e}",
+                                utxo.transaction.id
+                            ))
+                        })?,
+                        index: AnyUInt::U64(utxo.index),
+                    };
+                    Ok(Self::build_transaction_output(
+                        txin,
+                        create_address(&utxo.address)?,
+                        utxo.script.as_ref().map(|s| CborWrap(ScriptRef::from(s))),
+                        convert_to_network_value_v6(&utxo.value),
+                        convert_to_datum_option_network(&utxo.datum)?,
+                    ))
+                },
+            )
+            .collect::<Result<Vec<_>, _>>()?;
 
         let response = self
             .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)

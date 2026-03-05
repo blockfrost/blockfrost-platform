@@ -48,11 +48,17 @@ pub async fn route(
 
                 let result = if is_external_evaluator {
                     fallback_evaluator_opt
-                        .unwrap()
+                        .ok_or_else(|| {
+                            BlockfrostError::internal_server_error(
+                                "External evaluator is not available".to_string(),
+                            )
+                        })?
                         .evaluate_binary_tx_v6(node, tx_cbor.as_slice(), request.additional_utxo)
                         .await?
                 } else {
-                    todo!("native evaluator for v6 not implemented yet")
+                    return Err(BlockfrostError::not_implemented(
+                        "native evaluator for v6 is not implemented yet",
+                    ));
                 };
                 Ok(Json(result))
             }
@@ -64,7 +70,11 @@ pub async fn route(
                 let tx_cbor = binary_or_hex_heuristic(request.cbor.as_bytes());
                 let result = if is_external_evaluator {
                     fallback_evaluator_opt
-                        .unwrap()
+                        .ok_or_else(|| {
+                            BlockfrostError::internal_server_error(
+                                "External evaluator is not available".to_string(),
+                            )
+                        })?
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),
@@ -76,7 +86,7 @@ pub async fn route(
                         evaluate_binary_tx(node, tx_cbor.as_slice(), request.additional_utxo_set)
                             .await?,
                     );
-                    serde_json::to_value(r).unwrap()
+                    serde_json::to_value(r).map_err(BlockfrostError::from)?
                 };
                 Ok(Json(result))
             }
@@ -88,7 +98,11 @@ pub async fn route(
                 let tx_cbor = binary_or_hex_heuristic(request.evaluate.as_bytes());
                 let result = if is_external_evaluator {
                     fallback_evaluator_opt
-                        .unwrap()
+                        .ok_or_else(|| {
+                            BlockfrostError::internal_server_error(
+                                "External evaluator is not available".to_string(),
+                            )
+                        })?
                         .evaluate_binary_tx_v5(
                             node,
                             tx_cbor.as_slice(),
@@ -96,7 +110,9 @@ pub async fn route(
                         )
                         .await?
                 } else {
-                    todo!("native evaluator for v5 not implemented yet")
+                    return Err(BlockfrostError::not_implemented(
+                        "native evaluator for v5 evaluate is not implemented yet",
+                    ));
                 };
                 Ok(Json(result))
             }
