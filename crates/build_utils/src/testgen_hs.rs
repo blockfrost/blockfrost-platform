@@ -16,25 +16,10 @@ pub fn ensure() {
         return;
     }
 
-    let testgen_lib_version = "10.4.1.1";
+    let testgen_lib_version = "10.6.2.0";
 
-    let target_os = if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "linux") {
-        "linux"
-    } else if cfg!(target_os = "windows") {
-        "windows"
-    } else {
-        panic!("Unsupported OS");
-    };
-
-    let arch = if cfg!(target_arch = "x86_64") {
-        "x86_64"
-    } else if cfg!(target_arch = "aarch64") {
-        "aarch64"
-    } else {
-        panic!("Unsupported architecture");
-    };
+    let target_os = super::target::os();
+    let arch = super::target::arch();
 
     let suffix = if target_os == "windows" {
         ".zip"
@@ -44,7 +29,7 @@ pub fn ensure() {
 
     let file_name = format!("testgen-hs-{testgen_lib_version}-{arch}-{target_os}");
     let download_url = format!(
-        "https://github.com/input-output-hk/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
+        "https://github.com/blockfrost/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
     );
 
     println!("Looking for {file_name}");

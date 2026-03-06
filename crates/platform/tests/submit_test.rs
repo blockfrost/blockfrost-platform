@@ -48,7 +48,6 @@ mod tests {
     }
 
     // FIXME: unignore this test after <https://github.com/blockfrost/blockfrost-platform/issues/459>.
-    #[ignore]
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
     #[ntest::timeout(120_000)]

@@ -7,11 +7,12 @@ use crate::{
 };
 use axum::{Extension, Router, middleware::from_fn};
 use bf_common::{
-    config::Config,
+    config::{Config, Evaluator},
     errors::{AppError, BlockfrostError},
 };
 use bf_data_node::client::DataNode;
-use bf_node::pool::NodePool;
+use bf_node::{chain_config::init_caches, pool::NodePool};
+use bf_tx_evaluator::external::ExternalEvaluator;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
 use state::{ApiPrefix, AppState};
@@ -61,6 +62,16 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
+    // Initialize chain configurations
+    let chain_config_cache = init_caches(node_conn_pool.clone()).await?;
+
+    let fallback_evaluator = if config.evaluator == Evaluator::External {
+        // Initialize the Haskell-based tx evaluator
+        Some(ExternalEvaluator::spawn(chain_config_cache).await?)
+    } else {
+        None
+    };
+
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
     let hidden_api_routes = get_hidden_api_routes(!config.no_metrics);
@@ -83,6 +94,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
+            .layer(Extension(fallback_evaluator))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found());
 

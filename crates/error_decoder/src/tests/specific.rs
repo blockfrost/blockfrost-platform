@@ -18,7 +18,66 @@ done
 ```
 */
 
-use super::verify_one;
+#[cfg(test)]
+use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
+
+/// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
+/// deserializer against the Haskell one. Use it for specific cases.
+#[cfg(test)]
+pub(crate) async fn verify_one(cbor: &str) {
+    use pallas_hardano::display::haskell_error::serialize_error;
+
+    use crate::external::ExternalDecoder;
+
+    let cbor = hex::decode(cbor).unwrap();
+    let reference_json = match ExternalDecoder::instance().decode(&cbor).await {
+        Ok(value) => value,
+        Err(shared_decoder_err) => {
+            // Recover from a poisoned shared decoder process by retrying with a fresh one.
+            let fresh_decoder = ExternalDecoder::spawn()
+                .expect("Failed to spawn a fresh ExternalDecoder for retry");
+            fresh_decoder.decode(&cbor).await.unwrap_or_else(|fresh_decoder_err| {
+                panic!(
+                    "Failed to decode reference JSON with both shared and fresh ExternalDecoder instances. shared_error={shared_decoder_err}, fresh_error={fresh_decoder_err}, cbor={}",
+                    hex::encode(&cbor)
+                )
+            })
+        },
+    };
+
+    let our_decoding = decode_error(&cbor);
+
+    let our_json = serialize_error(our_decoding);
+    assert_json_eq!(reference_json, our_json)
+}
+#[cfg(test)]
+fn decode_error(bytes: &[u8]) -> TxValidationError {
+    use pallas_codec::minicbor;
+
+    let mut decoder = minicbor::Decoder::new(bytes);
+    decoder.decode().unwrap()
+}
+
+#[cfg(test)]
+macro_rules! assert_json_eq {
+    ($left:expr, $right:expr) => {
+        if $left != $right {
+            let left_pretty = serde_json::to_string_pretty(&$left).unwrap();
+            let right_pretty = serde_json::to_string_pretty(&$right).unwrap();
+            panic!(
+                concat!(
+                    "assertion `left == right` failed\n",
+                    "  left:\n    {}\n  right:\n    {}",
+                ),
+                left_pretty.replace("\n", "\n    "),
+                right_pretty.replace("\n", "\n    "),
+            );
+        }
+    };
+}
+
+#[cfg(test)]
+pub(crate) use assert_json_eq; // export it
 
 #[tokio::test]
 #[allow(non_snake_case)]
@@ -612,10 +671,12 @@ async fn test_cbor_145() {
     verify_one("8182068282038207a18201581c0304b9a8d416cb28dc1cd1aeab86512be01bce92df92cae3e26d688e01820182008200820180").await
 }
 
+// CBOR updated: cardano-node 10.6.x changed MaxTxSizeUTxO field type from
+// Integer to Word32, so the original negative values (-1) are no longer valid.
 #[tokio::test]
 #[allow(non_snake_case)]
 async fn test_cbor_146() {
-    verify_one("818206818201820083030020").await
+    verify_one("818206818201820083030001").await
 }
 #[tokio::test]
 #[allow(non_snake_case)]
@@ -726,10 +787,12 @@ async fn test_cbor_164() {
 async fn test_cbor_165() {
     verify_one("81820682820481581c44bf89b534d14268692ebb5128dc106fdb1da9ec8ccf88f54574ee2882038208841a000ec2b8581df10e53a9b14eaff458b5916eab0a38801b38a71524b739a737b55b209a8504825820acdb5224782959c8854ffba6a7135a5f54bc4704d7b478d604d5bfeef320766c01d9010280a18200581c2e59179c73f58e833e8ec4572dd495199f664823cd6cbaf18857adfd00d81e821b5b2d2a1156963df71b8ac7230489e8000082782068747470733a2f2f57774970335271505a77434673715853616145792e636f6d5820bee3107a03e3aa281ae0ed7ef52a599f4a2285beda7bd3f1dabb855de9a1a4ca").await
 }
+// CBOR updated: cardano-node 10.6.x changed MaxTxSizeUTxO field type from
+// Integer to Word32, so the original negative values (-1) are no longer valid.
 #[tokio::test]
 #[allow(non_snake_case)]
 async fn test_cbor_166() {
-    verify_one("8182068282018200830320208201820a80").await
+    verify_one("8182068282018200830301018201820a80").await
 }
 #[tokio::test]
 #[allow(non_snake_case)]

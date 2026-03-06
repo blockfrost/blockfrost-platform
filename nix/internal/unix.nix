@@ -37,14 +37,17 @@ in
         inherit src;
         inherit (packageName) pname;
         strictDeps = true;
-        nativeBuildInputs = lib.optionals pkgs.stdenv.isLinux [
-          pkgs.pkg-config
-        ];
+        nativeBuildInputs =
+          [pkgs.gnum4]
+          ++ lib.optionals pkgs.stdenv.isLinux [
+            pkgs.pkg-config
+          ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
         buildInputs =
           [pkgs.postgresql]
           ++ lib.optionals pkgs.stdenv.isLinux [
             pkgs.openssl
+            pkgs.gnum4
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
