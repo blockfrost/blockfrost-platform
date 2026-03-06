@@ -65,12 +65,8 @@ pub async fn build(
     // Initialize chain configurations
     let chain_config_cache = init_caches(node_conn_pool.clone()).await?;
 
-    let fallback_evaluator = if config.evaluator == Evaluator::External {
-        // Initialize the Haskell-based tx evaluator
-        Some(ExternalEvaluator::spawn(chain_config_cache).await?)
-    } else {
-        None
-    };
+    // Initialize the Haskell-based tx evaluator
+    let tx_evaluator = Some(ExternalEvaluator::spawn(chain_config_cache).await?);
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
@@ -94,7 +90,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
-            .layer(Extension(fallback_evaluator))
+            .layer(Extension(tx_evaluator))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found());
 

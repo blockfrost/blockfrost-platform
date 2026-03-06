@@ -55,7 +55,6 @@ pub enum Mode {
 #[serde(rename_all = "lowercase")]
 pub enum Evaluator {
     External,
-    Native,
 }
 
 impl TryFrom<String> for Evaluator {
@@ -64,7 +63,6 @@ impl TryFrom<String> for Evaluator {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.as_str() {
             "external" => Ok(Self::External),
-            "native" => Ok(Self::Native),
             v => Err(BlockfrostError::custom_400(format!(
                 "Invalid evaluator: {v}"
             ))),

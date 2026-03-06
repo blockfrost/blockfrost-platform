@@ -46,7 +46,7 @@ impl<'de> Deserialize<'de> for TestgenResponse {
         match (wire.json, wire.error) {
             (Some(json), Some(err)) => {
                 warn!(
-                    "testgen-hs response has both `json` and `error` fields, discarding error: {:?}",
+                    "testgen-hs response has both `json` and `error` fields, discarding error: {}",
                     err
                 );
                 Ok(Self::Ok(json))
@@ -94,8 +94,8 @@ impl Testgen {
                 );
                 let restart_delay = std::time::Duration::from_secs(1);
                 error!(
-                    "FallbackDecoder: will restart in {:?} because of a subprocess error: {:?}",
-                    restart_delay, single_run
+                    "Testgen: will restart in {restart_delay:?} because of a subprocess error: {}",
+                    single_run.err().unwrap_or_else(|| "unknown".to_string())
                 );
                 std::thread::sleep(restart_delay);
             }
@@ -119,14 +119,11 @@ impl Testgen {
         self.sender
             .send(TestgenRequest { payload, response })
             .await
-            .map_err(|err| format!("FallbackDecoder: failed to send request: {err:?}"))?;
+            .map_err(|err| format!("Testgen: failed to send request: {err:?}"))?;
 
-        response_rx.await.unwrap_or_else(|err| {
-            unreachable!(
-                "FallbackDecoder: worker thread dropped (can’t happen): {:?}",
-                err
-            )
-        })
+        response_rx
+            .await
+            .map_err(|err| format!("Testgen: worker thread dropped: {err:?}"))?
     }
 
     /// Searches for `testgen-hs` in multiple directories.
@@ -309,19 +306,14 @@ impl Testgen {
                     Err(_) => Err("repeated internal failure".to_string()),
                 };
 
-                // unwrap is safe, the other side would have to drop for a
-                // panic – can’t happen, because we control it:
-                request
-                    .response
-                    .send(response)
-                    .unwrap_or_else(|_| unreachable!());
+                let _ = request.response.send(response);
             }
 
             // Now break the loop, and restart everything if we failed:
             result_for_logs?
         }
 
-        Err("request channel closed, won’t happen".to_string())
+        Err("request channel closed".to_string())
     }
 }
 

@@ -208,7 +208,8 @@ impl ExternalEvaluator {
                         create_address(&tout.address)?,
                         tout.script
                             .as_ref()
-                            .map(|s| CborWrap(ScriptRef::from(s.clone()))),
+                            .map(|s| ScriptRef::try_from(s.clone()).map(CborWrap))
+                            .transpose()?,
                         convert_to_network_value(&tout.value),
                         convert_to_datum_option_network(&tout.datum)?,
                     ))

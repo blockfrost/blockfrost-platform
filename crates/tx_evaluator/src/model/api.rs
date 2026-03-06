@@ -9,14 +9,18 @@ use pallas_validate::phase2::tx::TxEvalResult;
 use serde::de;
 use serde::{Deserialize, Serialize, ser::SerializeMap};
 
-fn decode_script_hex(s: &str) -> Bytes {
-    Bytes::from(hex::decode(s).expect("invalid hex-encoded script CBOR"))
+fn decode_script_hex(s: &str) -> Result<Bytes, BlockfrostError> {
+    hex::decode(s)
+        .map(Bytes::from)
+        .map_err(|e| BlockfrostError::custom_400(format!("invalid hex-encoded script CBOR: {e}")))
 }
 
-fn decode_pubkey_hash(st: &str) -> [u8; 28] {
+fn decode_pubkey_hash(st: &str) -> Result<[u8; 28], BlockfrostError> {
     let mut bytes = [0u8; 28];
-    hex::decode_to_slice(st, &mut bytes).expect("invalid hex-encoded pubkey hash");
-    bytes
+    hex::decode_to_slice(st, &mut bytes).map_err(|e| {
+        BlockfrostError::custom_400(format!("invalid hex-encoded pubkey hash: {e}"))
+    })?;
+    Ok(bytes)
 }
 
 // JSON request
@@ -228,51 +232,55 @@ impl<'de> Deserialize<'de> for DeserializationErrorData {
     }
 }
 
-impl From<Script> for pallas_primitives::conway::ScriptRef<'_> {
-    fn from(script: Script) -> Self {
+impl TryFrom<Script> for pallas_primitives::conway::ScriptRef<'_> {
+    type Error = BlockfrostError;
+
+    fn try_from(script: Script) -> Result<Self, Self::Error> {
         use pallas_primitives::PlutusScript;
         use pallas_primitives::conway::ScriptRef;
-        match script {
+        Ok(match script {
             Script::PlutusV1(s) => {
-                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)))
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)?))
             },
             Script::PlutusV2(s) => {
-                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)))
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)?))
             },
             Script::PlutusV3(s) => {
-                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)))
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)?))
             },
             Script::Native(script_native) => {
                 use pallas_primitives::conway::NativeScript;
-                let script: NativeScript = script_native.into();
+                let script: NativeScript = script_native.try_into()?;
                 let r_script: KeepRaw<'_, NativeScript> = script.into(); // @todo: does not generate a valid raw CBOR
                 ScriptRef::NativeScript(r_script)
             },
-        }
+        })
     }
 }
 
-impl From<Script> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
-    fn from(script: Script) -> Self {
+impl TryFrom<Script> for pallas_network::miniprotocols::localtxsubmission::primitives::ScriptRef {
+    type Error = BlockfrostError;
+
+    fn try_from(script: Script) -> Result<Self, Self::Error> {
         use pallas_network::miniprotocols::localtxsubmission::primitives::{
             PlutusScript, ScriptRef,
         };
-        match script {
+        Ok(match script {
             Script::PlutusV1(s) => {
-                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)))
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(&s)?))
             },
             Script::PlutusV2(s) => {
-                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)))
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(&s)?))
             },
             Script::PlutusV3(s) => {
-                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)))
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(&s)?))
             },
             Script::Native(script_native) => {
                 let script: pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript =
-                    script_native.into();
+                    script_native.try_into()?;
                 ScriptRef::NativeScript(script)
             },
-        }
+        })
     }
 }
 
@@ -287,17 +295,17 @@ impl TryFrom<&ScriptV6>
         };
         Ok(match script {
             ScriptV6::PlutusV1 { cbor } => {
-                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(cbor)))
+                ScriptRef::PlutusV1Script(PlutusScript::<1>(decode_script_hex(cbor)?))
             },
             ScriptV6::PlutusV2 { cbor } => {
-                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(cbor)))
+                ScriptRef::PlutusV2Script(PlutusScript::<2>(decode_script_hex(cbor)?))
             },
             ScriptV6::PlutusV3 { cbor } => {
-                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(cbor)))
+                ScriptRef::PlutusV3Script(PlutusScript::<3>(decode_script_hex(cbor)?))
             },
             ScriptV6::Native { cbor, json } => match cbor.as_deref() {
                 Some(c) => ScriptRef::NativeScript(
-                    pallas_codec::minicbor::decode(&decode_script_hex(c)).map_err(|e| {
+                    pallas_codec::minicbor::decode(&decode_script_hex(c)?).map_err(|e| {
                         BlockfrostError::custom_400(format!("invalid CBOR in native script: {e}"))
                     })?,
                 ),
@@ -308,83 +316,128 @@ impl TryFrom<&ScriptV6>
                                 "ScriptV6::Native: neither cbor nor json provided".to_string(),
                             )
                         })?
-                        .into(),
+                        .try_into()?,
                 ),
             },
         })
     }
 }
 
-impl From<ScriptNative>
+impl TryFrom<ScriptNative>
     for pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript
 {
-    fn from(script: ScriptNative) -> Self {
+    type Error = BlockfrostError;
+
+    fn try_from(script: ScriptNative) -> Result<Self, Self::Error> {
         use pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript;
-        match script {
-            ScriptNative::Any(scripts) => {
-                NativeScript::ScriptAny(scripts.into_iter().map(|s| s.into()).collect())
-            },
-            ScriptNative::All(scripts) => {
-                NativeScript::ScriptAll(scripts.into_iter().map(|s| s.into()).collect())
-            },
+        Ok(match script {
+            ScriptNative::Any(scripts) => NativeScript::ScriptAny(
+                scripts
+                    .into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
+            ScriptNative::All(scripts) => NativeScript::ScriptAll(
+                scripts
+                    .into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
             ScriptNative::NOf(h_map) => {
-                let (n_str, scripts) = h_map.into_iter().next().expect("NOf: empty map");
+                let (n_str, scripts) = h_map
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| BlockfrostError::custom_400("NOf: empty map".to_string()))?;
                 NativeScript::ScriptNOfK(
-                    n_str.parse::<u32>().expect("NOf: invalid n key"),
-                    scripts.into_iter().map(|s| s.into()).collect(),
+                    n_str.parse::<u32>().map_err(|e| {
+                        BlockfrostError::custom_400(format!("NOf: invalid n key: {e}"))
+                    })?,
+                    scripts
+                        .into_iter()
+                        .map(|s| s.try_into())
+                        .collect::<Result<_, _>>()?,
                 )
             },
             ScriptNative::Signature(st) => {
-                NativeScript::ScriptPubkey(decode_pubkey_hash(&st).into())
+                NativeScript::ScriptPubkey(decode_pubkey_hash(&st)?.into())
             },
-        }
+        })
     }
 }
 
-impl From<ScriptNativeV6>
+impl TryFrom<ScriptNativeV6>
     for pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript
 {
-    fn from(script: ScriptNativeV6) -> Self {
+    type Error = BlockfrostError;
+
+    fn try_from(script: ScriptNativeV6) -> Result<Self, Self::Error> {
         use ScriptNativeV6::*;
         use pallas_network::miniprotocols::localtxsubmission::primitives::NativeScript;
-        match script {
-            Signature { from } => NativeScript::ScriptPubkey(decode_pubkey_hash(&from).into()),
-            Any { from } => NativeScript::ScriptAny(from.into_iter().map(|s| s.into()).collect()),
-            All { from } => NativeScript::ScriptAll(from.into_iter().map(|s| s.into()).collect()),
-            Some { at_least, from } => {
-                NativeScript::ScriptNOfK(at_least, from.into_iter().map(|s| s.into()).collect())
-            },
+        Ok(match script {
+            Signature { from } => NativeScript::ScriptPubkey(decode_pubkey_hash(&from)?.into()),
+            Any { from } => NativeScript::ScriptAny(
+                from.into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
+            All { from } => NativeScript::ScriptAll(
+                from.into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
+            Some { at_least, from } => NativeScript::ScriptNOfK(
+                at_least,
+                from.into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
             Before { slot } => NativeScript::InvalidHereafter(slot),
             After { slot } => NativeScript::InvalidBefore(slot),
-        }
+        })
     }
 }
 
-impl From<ScriptNative> for pallas_primitives::conway::NativeScript {
-    fn from(script: ScriptNative) -> Self {
+impl TryFrom<ScriptNative> for pallas_primitives::conway::NativeScript {
+    type Error = BlockfrostError;
+
+    fn try_from(script: ScriptNative) -> Result<Self, Self::Error> {
         use pallas_primitives::conway::NativeScript;
-        match script {
-            ScriptNative::Any(scripts) => {
-                NativeScript::ScriptAny(scripts.into_iter().map(|s| s.into()).collect())
-            },
-            ScriptNative::All(scripts) => {
-                NativeScript::ScriptAll(scripts.into_iter().map(|s| s.into()).collect())
-            },
+        Ok(match script {
+            ScriptNative::Any(scripts) => NativeScript::ScriptAny(
+                scripts
+                    .into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
+            ScriptNative::All(scripts) => NativeScript::ScriptAll(
+                scripts
+                    .into_iter()
+                    .map(|s| s.try_into())
+                    .collect::<Result<_, _>>()?,
+            ),
             ScriptNative::ExpiresAt(time) => NativeScript::InvalidHereafter(time),
             ScriptNative::StartsAt(time) => NativeScript::InvalidBefore(time),
             ScriptNative::NOf(h_map) => {
-                let (n_str, scripts) = h_map.into_iter().next().expect("NOf: empty map");
+                let (n_str, scripts) = h_map
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| BlockfrostError::custom_400("NOf: empty map".to_string()))?;
                 NativeScript::ScriptNOfK(
-                    n_str.parse::<u32>().expect("NOf: invalid n key"),
-                    scripts.into_iter().map(|s| s.into()).collect(),
+                    n_str.parse::<u32>().map_err(|e| {
+                        BlockfrostError::custom_400(format!("NOf: invalid n key: {e}"))
+                    })?,
+                    scripts
+                        .into_iter()
+                        .map(|s| s.try_into())
+                        .collect::<Result<_, _>>()?,
                 )
             },
             ScriptNative::Signature(st) => {
-                NativeScript::ScriptPubkey(decode_pubkey_hash(&st).into())
+                NativeScript::ScriptPubkey(decode_pubkey_hash(&st)?.into())
             },
-        }
+        })
     }
 }
 

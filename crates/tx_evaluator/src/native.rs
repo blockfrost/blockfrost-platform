@@ -80,7 +80,8 @@ pub async fn evaluate_tx(
         Ok((genesis_config, protocol_params)) => {
             let bf_slot = bf_common::chain_config::SlotConfig::by_network_magic(
                 &genesis_config.network_magic,
-            );
+            )
+            .map_err(BlockfrostError::internal_server_error)?;
             let slot_config = SlotConfig {
                 slot_length: bf_slot.slot_length,
                 zero_slot: bf_slot.zero_slot,
@@ -143,8 +144,10 @@ pub async fn evaluate_tx_with_pp(
         let datum_vec = convert_to_datum_option(&tx_out.datum)?;
         let datum_option = create_raw_datum_option(&datum_vec)?;
 
-        let script_ref: Option<CborWrap<ScriptRef>> =
-            tx_out.script.map(|script| CborWrap(script.into()));
+        let script_ref: Option<CborWrap<ScriptRef>> = tx_out
+            .script
+            .map(|script| -> Result<_, BlockfrostError> { Ok(CborWrap(script.try_into()?)) })
+            .transpose()?;
 
         let post_alonzo = pallas_primitives::conway::PostAlonzoTransactionOutput {
             address,

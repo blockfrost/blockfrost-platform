@@ -6,7 +6,7 @@ use crate::pool::NodePool;
 pub async fn init_caches(node_pool: NodePool) -> Result<ChainConfigCache, AppError> {
     let (genesis_config, protocol_params) = init_genesis_config(node_pool).await?;
 
-    Ok(ChainConfigCache::new(genesis_config, protocol_params))
+    ChainConfigCache::new(genesis_config, protocol_params).map_err(AppError::Server)
 }
 
 async fn init_genesis_config(

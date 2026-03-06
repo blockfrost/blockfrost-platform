@@ -10,10 +10,13 @@ pub struct ChainConfigCache {
 }
 
 impl ChainConfigCache {
-    pub fn new(genesis_config: GenesisConfig, protocol_params: CurrentProtocolParam) -> Self {
-        let slot_config = SlotConfig::by_network_magic(&genesis_config.network_magic);
+    pub fn new(
+        genesis_config: GenesisConfig,
+        protocol_params: CurrentProtocolParam,
+    ) -> Result<Self, String> {
+        let slot_config = SlotConfig::by_network_magic(&genesis_config.network_magic)?;
 
-        Self {
+        Ok(Self {
             genesis_config,
             protocol_params,
             slot_config,
@@ -21,7 +24,7 @@ impl ChainConfigCache {
             // Byron=0, Shelley=1, Allegra=2, Mary=3, Alonzo=4, Babbage=5, Conway=6.
             // Hardcoded to Conway (6) since that is the only era we currently support.
             era: 6,
-        }
+        })
     }
 }
 
@@ -62,18 +65,12 @@ impl SlotConfig {
         }
     }
 
-    pub fn by_network_magic(network_magic: &u32) -> Self {
+    pub fn by_network_magic(network_magic: &u32) -> Result<Self, String> {
         match network_magic {
-            764824073 => Self::mainnet(),
-            1 => Self::preprod(),
-            2 => Self::preview(),
-            _ => Self::default(),
+            764824073 => Ok(Self::mainnet()),
+            1 => Ok(Self::preprod()),
+            2 => Ok(Self::preview()),
+            _ => Err(format!("unsupported network_magic: {network_magic}")),
         }
-    }
-}
-
-impl Default for SlotConfig {
-    fn default() -> Self {
-        SlotConfig::mainnet()
     }
 }
