@@ -96,7 +96,7 @@ in rec {
       hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
 
-  nsis = import ./windows-nsis.nix {nsisNixpkgs = inputs.nixpkgs-nsis;};
+  nsis = pkgs.nsis;
 
   nsis-plugins = {
     EnVar = pkgs.fetchzip {

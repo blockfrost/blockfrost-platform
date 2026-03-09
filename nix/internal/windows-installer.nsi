@@ -14,6 +14,7 @@ OutFile "@outFileName@"
 VIProductVersion 0.0.0.0
 VIAddVersionKey "ProductVersion" @projectVersion@
 Unicode true
+ManifestDPIAware true
 RequestExecutionLevel Highest
 InstallDir "$PROGRAMFILES64\@projectName@"
 InstallDirRegKey HKLM "Software\@projectName@" "Install_Dir"
