@@ -394,9 +394,19 @@ in
       mainnet = "https://aggregator.release-mainnet.api.mithril.network/aggregator";
     };
 
+    # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
+    # https://github.com/fjall-rs/fjall/pull/259
+    # Patch the source to use the pinned commit rev instead of the defunct branch name.
+    dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+      cp -r ${inputs.dolos} $out
+      chmod -R +w $out
+      sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
+      sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
+    '';
+
     dolos = craneLib.buildPackage (
       {
-        src = inputs.dolos;
+        src = dolosSrc;
         GIT_REVISION = inputs.dolos.rev;
         strictDeps = true;
         nativeBuildInputs =
