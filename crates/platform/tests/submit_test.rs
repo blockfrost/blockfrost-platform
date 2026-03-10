@@ -47,7 +47,6 @@ mod tests {
         assert_eq!(expected, &local_body_str);
     }
 
-    // FIXME: unignore this test after <https://github.com/blockfrost/blockfrost-platform/issues/459>.
     // Test: `/tx/submit` error has same response as blockfrost API
     #[tokio::test]
     #[ntest::timeout(120_000)]

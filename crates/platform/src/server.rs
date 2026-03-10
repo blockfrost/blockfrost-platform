@@ -7,7 +7,7 @@ use crate::{
 };
 use axum::{Extension, Router, middleware::from_fn};
 use bf_common::{
-    config::{Config, Evaluator},
+    config::Config,
     errors::{AppError, BlockfrostError},
 };
 use bf_data_node::client::DataNode;
