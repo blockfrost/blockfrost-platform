@@ -60,10 +60,6 @@
       url = "github:rustsec/advisory-db";
       flake = false;
     };
-    nixpkgs-nsis = {
-      url = "github:input-output-hk/nixpkgs/be445a9074f139d63e704fa82610d25456562c3d";
-      flake = false;
-    };
     nix-bundle-exe = {
       url = "github:3noch/nix-bundle-exe";
       flake = false;

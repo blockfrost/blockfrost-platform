@@ -96,8 +96,6 @@ in rec {
       hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
 
-  nsis = import ./windows-nsis.nix {nsisNixpkgs = inputs.nixpkgs-nsis;};
-
   nsis-plugins = {
     EnVar = pkgs.fetchzip {
       url = "https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip";
@@ -108,7 +106,7 @@ in rec {
 
   uninstaller =
     pkgs.runCommandNoCC "uninstaller" {
-      buildInputs = [nsis pkgs.wine];
+      buildInputs = [pkgs.nsis pkgs.wine];
       projectName = blockfrost-platform.pname;
       projectVersion = blockfrost-platform.version;
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
@@ -158,7 +156,7 @@ in rec {
   in
     pkgs.writeShellApplication {
       name = "pack-and-sign";
-      runtimeInputs = with pkgs; [bash coreutils nsis];
+      runtimeInputs = with pkgs; [bash coreutils pkgs.nsis];
       runtimeEnv = {
         inherit outFileName;
       };
