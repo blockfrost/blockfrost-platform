@@ -148,7 +148,7 @@ jobs:
         run: nix develop .# --command cargo test --verbose --test '*_test'
 
   blockfrost_integration_tests:
-    name: Blockfrost ${{ matrix.mode == 'blacklist-check' && 'Blacklist Check' || 'Tests' }} (${{ matrix.network }})
+    name: ${{ matrix.mode == 'blacklist-check' && 'Blacklist' || 'Tests' }} (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: [build_and_test, check_flake_lock]
     strategy:
