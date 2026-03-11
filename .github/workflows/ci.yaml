@@ -42,14 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Block Fixup Commit Merge
         if: github.event_name == 'pull_request'
         uses: 13rac1/block-fixup-merge-action@v2.0.0
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -76,9 +76,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -139,7 +139,7 @@ jobs:
     needs: [build_and_test, check_flake_lock]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Integration Tests
         timeout-minutes: 10
@@ -174,7 +174,7 @@ jobs:
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: ${{ matrix.mode == 'blacklist-check' && 'Check blacklisted tests still fail' || 'Run Blockfrost Tests' }}
         timeout-minutes: 15
@@ -192,7 +192,7 @@ jobs:
     needs: check_flake_lock
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Hydra Tests
         timeout-minutes: 15
@@ -209,7 +209,7 @@ jobs:
     needs: [build_and_test]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -238,7 +238,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
 
