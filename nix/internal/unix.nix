@@ -575,11 +575,13 @@ in
           platform_pid=""
           tmpdir="$(mktemp -d)"
           cleanup() {
+            local ec=$?
             cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
             if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
               kill -TERM "$platform_pid"
-              wait "$platform_pid"
+              wait "$platform_pid" || true
             fi
+            exit "$ec"
           }
           trap cleanup EXIT HUP INT TERM
 
