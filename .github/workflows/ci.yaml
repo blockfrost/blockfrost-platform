@@ -178,7 +178,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Blockfrost Tests
-        continue-on-error: true
         timeout-minutes: ${{ matrix.timeout }}
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
