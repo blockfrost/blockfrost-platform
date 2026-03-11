@@ -110,16 +110,11 @@
       "id": "addresses-address-transactions-generic-dormant-shelley-address-desc_69813c44bb4f"
     },
     {
-      "id": "addresses-address-transactions-generic-dormant-shelley-address_70982dbb329f"
-    },
-    {
       "id": "addresses-address-transactions-generic-payment-cred-1_429384000a9a"
     },
     {
       "id": "addresses-address-transactions-generic-payment-cred-2_31a20c87084c"
     },
-    { "id": "blocks-hash-or-number-first-blocks-1-4_8cfce818362a" },
-    { "id": "genesis_769e8bcdde9a" },
     { "id": "pools-extended-queryparams_33c8fc92f5c2" },
     { "id": "txs-tx-generic-shelley-tx-with-huge-size_fba04e6277c8" },
     { "id": "txs-tx-generic-shelley-with-assets_bbe597b9135f" },
