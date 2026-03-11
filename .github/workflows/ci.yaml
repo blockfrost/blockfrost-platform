@@ -184,7 +184,8 @@ jobs:
           DOLOS_ENDPOINT: ${{ matrix.dolos_endpoint }}
           CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
         run: |
-          nix run -L .#internal.x86_64-linux.${{ matrix.mode == 'blacklist-check' && 'blockfrost-blacklist-check' || 'blockfrost-tests' }}-"${{ matrix.network }}"
+          target=${{ matrix.mode == 'blacklist-check' && 'blockfrost-blacklist-check' || 'blockfrost-tests' }}
+          nix run -L .#internal.x86_64-linux."${target}-${{ matrix.network }}"
 
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option
