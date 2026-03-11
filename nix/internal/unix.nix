@@ -609,9 +609,6 @@ in
           fi
 
           export NETWORK=${lib.escapeShellArg network}
-        '' + lib.optionalString ignorelistOnly ''
-          export IGNORELIST_ONLY=true
-        '' + ''
 
           platform_port=$(python3 -m portpicker)
 
@@ -636,13 +633,13 @@ in
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
           cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
-          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-ignorelist.json
+          cp ${../../crates/platform/tests/data/ignored_tests.json} endpoints-ignorelist.json
 
-          ignored_count=$(jq length endpoints-ignorelist.json)
+          ignored_count=$(jq --arg net "$NETWORK" '.[$net] | length' endpoints-ignorelist.json)
         '' + (if ignorelistOnly then ''
           echo "Running blacklist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
         '' else ''
-          echo "WARNING: Ignoring $ignored_count test IDs (see blacklisted_endpoints.json)"
+          echo "WARNING: Ignoring $ignored_count test IDs (see ignored_tests.json)"
         '') + ''
 
           set -x
@@ -653,13 +650,13 @@ in
         '' + (if ignorelistOnly then ''
           set +x
 
-          yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
+          IGNORELIST_ONLY=true yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
 
           # Fail if any ignored test now passes
           if grep -E 'Tests.*passed' tests.log; then
             echo ""
             echo "ERROR: Some ignored tests are now passing!"
-            echo "Please remove them from crates/platform/tests/data/blacklisted_endpoints.json"
+            echo "Please remove them from crates/platform/tests/data/ignored_tests.json"
             exit 1
           fi
 
