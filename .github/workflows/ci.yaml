@@ -148,44 +148,43 @@ jobs:
         run: nix develop .# --command cargo test --verbose --test '*_test'
 
   blockfrost_integration_tests:
-    name: Blockfrost Integration Tests (${{ matrix.network }})
+    name: Blockfrost ${{ matrix.mode == 'blacklist-check' && 'Blacklist Check' || 'Tests' }} (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: [build_and_test, check_flake_lock]
     strategy:
       fail-fast: false
       matrix:
+        network: [preview, preprod, mainnet]
+        mode: [tests, blacklist-check]
         include:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
             cardano_node_socket_path: /run/cardano-node/node_preview.socket
             project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
-            timeout: 5
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
             cardano_node_socket_path: /run/cardano-node/node_preprod.socket
             project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
-            timeout: 5
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
             cardano_node_socket_path: /run/cardano-node/node_mainnet.socket
             project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
-            timeout: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Blockfrost Tests
-        timeout-minutes: ${{ matrix.timeout }}
+      - name: ${{ matrix.mode == 'blacklist-check' && 'Check blacklisted tests still fail' || 'Run Blockfrost Tests' }}
+        timeout-minutes: 15
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
           SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
           DOLOS_ENDPOINT: ${{ matrix.dolos_endpoint }}
           CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
         run: |
-          nix run -L .#internal.x86_64-linux.blockfrost-tests-"${{ matrix.network }}"
+          nix run -L .#internal.x86_64-linux.${{ matrix.mode == 'blacklist-check' && 'blockfrost-blacklist-check' || 'blockfrost-tests' }}-"${{ matrix.network }}"
 
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option

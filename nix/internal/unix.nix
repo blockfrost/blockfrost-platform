@@ -540,16 +540,23 @@ in
 
     inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
 
-    blockfrost-tests-preview = make-blockfrost-tests "preview";
-    blockfrost-tests-preprod = make-blockfrost-tests "preprod";
-    blockfrost-tests-mainnet = make-blockfrost-tests "mainnet";
+    blockfrost-tests-preview = make-blockfrost-tests { network = "preview"; };
+    blockfrost-tests-preprod = make-blockfrost-tests { network = "preprod"; };
+    blockfrost-tests-mainnet = make-blockfrost-tests { network = "mainnet"; };
 
-    make-blockfrost-tests = network: let
+    blockfrost-blacklist-check-preview = make-blockfrost-tests { network = "preview"; ignorelistOnly = true; };
+    blockfrost-blacklist-check-preprod = make-blockfrost-tests { network = "preprod"; ignorelistOnly = true; };
+    blockfrost-blacklist-check-mainnet = make-blockfrost-tests { network = "mainnet"; ignorelistOnly = true; };
+
+    make-blockfrost-tests = { network, ignorelistOnly ? false }: let
       inherit (pkgs) nodePackages;
     in
       pkgs.writeShellApplication {
-        name = "blockfrost-tests";
-        meta.description = "Runs `blockfrost-tests` on `${network}` against this repository";
+        name = if ignorelistOnly then "blockfrost-blacklist-check" else "blockfrost-tests";
+        meta.description =
+          if ignorelistOnly
+          then "Checks that ignored tests on `${network}` still fail (and should remain on the ignorelist)"
+          else "Runs `blockfrost-tests` on `${network}` against this repository";
         runtimeInputs = with pkgs; [
           bash
           coreutils
@@ -602,6 +609,9 @@ in
           fi
 
           export NETWORK=${lib.escapeShellArg network}
+        '' + lib.optionalString ignorelistOnly ''
+          export IGNORELIST_ONLY=true
+        '' + ''
 
           platform_port=$(python3 -m portpicker)
 
@@ -626,15 +636,37 @@ in
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
           cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
-          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-blacklist.json
+          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-ignorelist.json
+
+          ignored_count=$(jq length endpoints-ignorelist.json)
+        '' + (if ignorelistOnly then ''
+          echo "Running blacklist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
+        '' else ''
+          echo "WARNING: Ignoring $ignored_count test IDs (see blacklisted_endpoints.json)"
+        '') + ''
 
           set -x
           node --version
           yarn --version
 
           yarn install
+        '' + (if ignorelistOnly then ''
+          set +x
+
+          yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
+
+          # Fail if any ignored test now passes
+          if grep -E 'Tests.*passed' tests.log; then
+            echo ""
+            echo "ERROR: Some ignored tests are now passing!"
+            echo "Please remove them from crates/platform/tests/data/blacklisted_endpoints.json"
+            exit 1
+          fi
+
+          echo "All ignored tests still fail. Ignorelist is up to date."
+        '' else ''
           yarn test:${lib.escapeShellArg network}
-        '';
+        '');
       };
 
     # One degree of indirection for the devshell – we don’t want to compile
