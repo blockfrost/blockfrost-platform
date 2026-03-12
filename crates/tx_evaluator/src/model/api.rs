@@ -473,15 +473,6 @@ pub enum ScriptNative {
     Signature(String),
 }
 
-// JSON response
-#[derive(Serialize)]
-pub struct TxEvaluationResponse {
-    #[serde(rename = "spend:1")]
-    pub spend: ExecCost,
-    #[serde(rename = "mint:0")]
-    pub mint: ExecCost,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct ExecCost {
     pub memory: u64,
