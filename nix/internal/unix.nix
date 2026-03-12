@@ -106,7 +106,12 @@ in
         cargoExtraArgs = "--package blockfrost-gateway";
       });
 
-    cargoChecks = {
+    cargoChecks = let
+      # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
+      nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
+      nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
+      nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
+    in {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
@@ -137,20 +142,14 @@ in
           cargoNextestExtraArgs = "--workspace --lib";
         });
 
-      cargo-udeps = let
-        # Unfortunately, `cargo-udeps` requires the Nightly toolchain:
-        nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
-        nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
-        nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
-      in
-        nightlyCraneLib.mkCargoDerivation (commonArgs
-          // {
-            cargoArtifacts = nightlyCargoArtifacts;
-            inherit GIT_REVISION;
-            pnameSuffix = "-udeps";
-            nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
-            buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
-          });
+      cargo-udeps = nightlyCraneLib.mkCargoDerivation (commonArgs
+        // {
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
+          pnameSuffix = "-udeps";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
+          buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
+        });
 
       cargo-machete = let
         # Use the PR branch that adds `[dev-dependency]` checking:
@@ -176,12 +175,13 @@ in
           cargo-machete --include-dev-deps
         '';
 
-      cargo-shear = craneLib.mkCargoDerivation (commonArgs
+      cargo-shear = nightlyCraneLib.mkCargoDerivation (commonArgs
         // {
-          inherit cargoArtifacts GIT_REVISION;
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
           pnameSuffix = "-shear";
           nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
-          buildPhaseCargoCommand = "cargo-shear";
+          buildPhaseCargoCommand = "cargo-shear --expand";
         });
 
       workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
