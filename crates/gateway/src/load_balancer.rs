@@ -752,7 +752,7 @@ pub mod event_loop {
     {
         match serde_json::to_string(msg) {
             Ok(msg) => {
-                match socket_tx.send(Message::Text(msg)).await {
+                match socket_tx.send(Message::Text(msg.into())).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         error!(

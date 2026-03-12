@@ -136,6 +136,16 @@ in
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
         });
+
+      workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
+        touch $out
+        found=$(find ${src}/crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
+        if [ -n "$found" ]; then
+          printf '%s\n' "$found"
+          echo "All dependency versions must be defined in the root [workspace.dependencies]."
+          exit 1
+        fi
+      '';
     };
 
     nixChecks = {
