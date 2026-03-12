@@ -16,9 +16,19 @@ in rec {
 
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
 
-  src = craneLib.cleanCargoSource ../../.;
+  src = lib.cleanSourceWith {
+    src = lib.cleanSource ../../.;
+    filter = path: type:
+      craneLib.filterCargoSources path type
+      || lib.hasSuffix ".sql" path
+      || lib.hasSuffix "/LICENSE" path;
+    name = "source";
+  };
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
+
+  # Cross-compile libpq for Windows (pkgsCross.postgresql is broken in Nixpkgs):
+  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross;};
 
   packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
 
@@ -36,6 +46,9 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
+    PQ_LIB_DIR = "${libpq-windows}/lib";
+    PQ_LIB_STATIC = "1";
+
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pkgsCross.windows.pthreads
@@ -47,10 +60,25 @@ in rec {
 
   GIT_REVISION = inputs.self.rev or "dirty";
 
-  package = craneLib.buildPackage (commonArgs
+  blockfrost-platform = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
       doCheck = false; # we run Windows tests on real Windows on GHA
+      postPatch = ''
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
+      '';
+    });
+
+  gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  blockfrost-gateway = craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts GIT_REVISION;
+      pname = gatewayCargoToml.package.name;
+      doCheck = false; # we run Windows tests on real Windows on GHA
+      cargoExtraArgs = "--package blockfrost-gateway";
       postPatch = ''
         find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
           sed -r '/^build = .*/d' -i "$cargo_toml"
@@ -68,8 +96,6 @@ in rec {
       hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
 
-  nsis = import ./windows-nsis.nix {nsisNixpkgs = inputs.nixpkgs-nsis;};
-
   nsis-plugins = {
     EnVar = pkgs.fetchzip {
       url = "https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip";
@@ -80,9 +106,9 @@ in rec {
 
   uninstaller =
     pkgs.runCommandNoCC "uninstaller" {
-      buildInputs = [nsis pkgs.wine];
-      projectName = package.pname;
-      projectVersion = package.version;
+      buildInputs = [pkgs.nsis pkgs.wine];
+      projectName = blockfrost-platform.pname;
+      projectVersion = blockfrost-platform.version;
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
     } ''
       mkdir home
@@ -116,12 +142,12 @@ in rec {
   };
 
   make-installer = {doSign ? false}: let
-    outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
+    outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
     installer-nsi =
       pkgs.runCommandNoCC "installer.nsi" {
         inherit outFileName;
-        projectName = package.pname;
-        projectVersion = package.version;
+        projectName = blockfrost-platform.pname;
+        projectVersion = blockfrost-platform.version;
         installerIconPath = "icon.ico";
         lockfileName = "lockfile";
       } ''
@@ -130,7 +156,7 @@ in rec {
   in
     pkgs.writeShellApplication {
       name = "pack-and-sign";
-      runtimeInputs = with pkgs; [bash coreutils nsis];
+      runtimeInputs = with pkgs; [bash coreutils pkgs.nsis];
       runtimeEnv = {
         inherit outFileName;
       };
@@ -188,7 +214,7 @@ in rec {
   archive =
     pkgs.runCommandNoCC "archive" {
       buildInputs = with pkgs; [zip];
-      outFileName = "${package.pname}-${package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
+      outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
       cp -r ${bundle} ${packageName.pname}
       mkdir -p $out
@@ -222,8 +248,18 @@ in rec {
     stripRoot = false;
   };
 
+  # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
+  # https://github.com/fjall-rs/fjall/pull/259
+  # Patch the source to use the pinned commit rev instead of the defunct branch name.
+  dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+    cp -r ${inputs.dolos} $out
+    chmod -R +w $out
+    sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
+    sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
+  '';
+
   dolos = craneLib.buildPackage {
-    src = inputs.dolos;
+    src = dolosSrc;
     GIT_REVISION = inputs.dolos.rev;
     strictDeps = true;
 
@@ -245,7 +281,7 @@ in rec {
   };
 
   packageWithIcon =
-    pkgs.runCommand package.name {
+    pkgs.runCommand blockfrost-platform.name {
       buildInputs = with pkgs; [
         wine
         winetricks
@@ -262,7 +298,7 @@ in rec {
         set +e
         wine ${resource-hacker}/ResourceHacker.exe \
           -log res-hack.log \
-          -open "$(winepath -w ${package}/bin/*.exe)" \
+          -open "$(winepath -w ${blockfrost-platform}/bin/*.exe)" \
           -save with-icon.exe \
           -action addoverwrite \
           -res "$(winepath -w ${icon})" \

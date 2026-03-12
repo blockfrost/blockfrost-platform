@@ -10,13 +10,13 @@ in
   unix
   // rec {
     archive = let
-      outFileName = "${unix.package.pname}-${unix.package.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+      outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.package.pname}-archive" {} ''
-        cp -r ${bundle} ${unix.package.pname}
+      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {} ''
+        cp -r ${bundle} ${unix.blockfrost-platform.pname}
 
         mkdir -p $out
-        tar -cjvf $out/${outFileName} ${unix.package.pname}/
+        tar -cjvf $out/${outFileName} ${unix.blockfrost-platform.pname}/
 
         # Make it downloadable from Hydra:
         mkdir -p $out/nix-support
@@ -32,7 +32,7 @@ in
         bin_dir = "bin";
         exe_dir = "exe";
         lib_dir = "lib";
-      } "${unix.package}/libexec/${unix.packageName.pname}")
+      } "${unix.blockfrost-platform}/libexec/${unix.packageName.pname}")
       .overrideAttrs (drv: {
         name = unix.packageName.pname;
         buildCommand =

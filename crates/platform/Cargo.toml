@@ -19,24 +19,48 @@ tokio.workspace = true
 tokio-util = "0.7"
 futures.workspace = true
 futures-util.workspace = true
-tungstenite = { version = "0.28.0", features = ["native-tls"] }
-tokio-tungstenite = { version = "0.28.0", features = ["native-tls"] }
+tungstenite = { workspace = true, features = ["native-tls"] }
+tokio-tungstenite = { workspace = true, features = ["native-tls"] }
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+tracing-subscriber.workspace = true
 serde.workspace = true
-hyper = "1.8.1"
-tower-http = { version = "0.6.8", features = ["normalize-path"] }
-tower = { version = "0.5.3", features = ["limit"] }
+hyper.workspace = true
+tower-http.workspace = true
+tower.workspace = true
 serde_json.workspace = true
 clap.workspace = true
 toml.workspace = true
 thiserror.workspace = true
-sentry = "0.46.2"
-base64 = "0.22.1"
+sentry.workspace = true
+base64.workspace = true
 blake3 = "1"
 bytes = "1"
 getrandom = "0.3"
 machine-uid = "0.5"
+reqwest.workspace = true
+hex.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+metrics-process.workspace = true
+chrono.workspace = true
+serde_with.workspace = true
+dotenvy.workspace = true
+uuid.workspace = true
+twelf.workspace = true
+dirs.workspace = true
+inquire.workspace = true
+anyhow.workspace = true
+ntest.workspace = true
+
+[dev-dependencies]
+bf-api-provider.workspace = true
+tracing-test.workspace = true
+rstest.workspace = true
+pretty_assertions.workspace = true
+proptest.workspace = true
+cardano-serialization-lib.workspace = true
+bip39.workspace = true
+blockfrost.workspace = true
 pallas.workspace = true
 pallas-network.workspace = true
 pallas-crypto.workspace = true
@@ -45,38 +69,12 @@ pallas-codec.workspace = true
 pallas-addresses.workspace = true
 pallas-primitives.workspace = true
 pallas-hardano.workspace = true
-reqwest.workspace = true
-hex.workspace = true
-metrics.workspace = true
-metrics-exporter-prometheus = { version = "0.18.1", default-features = false }
-metrics-process = "2.4.3"
-chrono.workspace = true
-serde_with = "3.16.1"
-dotenvy = "0.15.7"
-uuid = { version = "1.20.0", features = ["v4"] }
-twelf.workspace = true
-dirs.workspace = true
-inquire.workspace = true
-anyhow.workspace = true
-bech32.workspace = true
-cardano-serialization-lib.workspace = true
-ntest = "0.9.5"
-
-[dev-dependencies]
-bf-api-provider.workspace = true
-tracing-test = "0.2.5"
-rstest = "0.26.1"
-pretty_assertions = "1.4.1"
-proptest = "1.9.0"
-cardano-serialization-lib.workspace = true
-bip39 = "2.2.2"
-blockfrost = "1.2.1"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.30", default-features = false, features = ["signal"] }
 
 [target.'cfg(target_env = "musl")'.dependencies]
-jemalloc = "0.3"
+jemalloc.workspace = true
 
 [build-dependencies]
 bf-build-utils.workspace = true

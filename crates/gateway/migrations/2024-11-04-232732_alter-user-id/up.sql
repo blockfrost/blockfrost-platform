@@ -1,0 +1,1 @@
+ALTER TABLE users ALTER COLUMN user_id TYPE INT4 USING user_id::INT;

@@ -1,6 +1,8 @@
 use crate::BlockfrostError;
 use bf_data_node::api::root::DataNodeRootResponse;
 use bf_data_node::client::DataNode;
+use bf_data_node::node_monitor::DataNodeMonitor;
+use bf_node::monitoring::{chain_staleness_monitor, node_monitor};
 use bf_node::pool::NodePool;
 use bf_node::sync_progress::NodeInfo;
 use std::sync::Arc;
@@ -69,7 +71,7 @@ impl HealthMonitor {
     pub async fn spawn(node: NodePool, data_node: Option<DataNode>) -> Self {
         let node_mon = node_monitor::NodeMonitor::new();
         let mut chain_mon = chain_staleness_monitor::ChainStalenessMonitor::new();
-        let data_node_mon = data_node_monitor::DataNodeMonitor::new();
+        let data_node_mon = DataNodeMonitor::new();
 
         let self_ = Self {
             sources: Arc::new(Mutex::new(vec![])),
@@ -118,184 +120,5 @@ impl HealthMonitor {
 
         notify_state_update.notified().await;
         self_
-    }
-}
-
-mod node_monitor {
-    use bf_common::errors::BlockfrostError;
-    use bf_node::{pool::NodePool, sync_progress::NodeInfo};
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-
-    pub struct NodeMonitor {
-        errors: Arc<Mutex<Vec<BlockfrostError>>>,
-        node_info: Arc<Mutex<Option<NodeInfo>>>,
-    }
-
-    impl NodeMonitor {
-        pub fn new() -> Self {
-            Self {
-                errors: Arc::new(Mutex::new(vec![])),
-                node_info: Arc::new(Mutex::new(None)),
-            }
-        }
-
-        pub async fn update(&self, node: &NodePool) {
-            let node_info: Result<NodeInfo, BlockfrostError> = async {
-                let mut node = node.get().await?;
-                node.sync_progress().await
-            }
-            .await;
-
-            let (node_info, errors) = match node_info {
-                Ok(a) => (Some(a), vec![]),
-                Err(err) => (None, vec![err]),
-            };
-
-            *(self.errors.lock().await) = errors;
-            *(self.node_info.lock().await) = node_info;
-        }
-
-        pub fn errors(&self) -> Arc<Mutex<Vec<BlockfrostError>>> {
-            self.errors.clone()
-        }
-
-        pub fn node_info(&self) -> Arc<Mutex<Option<NodeInfo>>> {
-            self.node_info.clone()
-        }
-    }
-}
-
-mod chain_staleness_monitor {
-    use bf_common::errors::BlockfrostError;
-    use bf_node::sync_progress::NodeInfo;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-
-    const CHAIN_STALE_IF_OLDER_THAN: std::time::Duration = std::time::Duration::from_secs(5 * 60);
-
-    pub struct ChainStalenessMonitor {
-        last_chain_advancement: std::time::Instant,
-        last_chain_block: String,
-        errors: Arc<Mutex<Vec<BlockfrostError>>>,
-    }
-
-    impl ChainStalenessMonitor {
-        pub fn new() -> Self {
-            Self {
-                last_chain_advancement: std::time::Instant::now(),
-                last_chain_block:
-                    "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-                errors: Arc::new(Mutex::new(vec![])),
-            }
-        }
-
-        pub async fn update(&mut self, node_info: &Option<NodeInfo>) {
-            if let Some(node_info) = node_info {
-                if self.last_chain_block != node_info.block {
-                    self.last_chain_block = node_info.block.clone();
-                    self.last_chain_advancement = std::time::Instant::now();
-                }
-            }
-
-            let elapsed = self.last_chain_advancement.elapsed();
-
-            *(self.errors.lock().await) = if elapsed > CHAIN_STALE_IF_OLDER_THAN {
-                let err = format!(
-                    "Chain stuck at {}, has not seen updates in {:?}.",
-                    self.last_chain_block, elapsed
-                );
-                tracing::error!("{}", err);
-                vec![BlockfrostError::internal_server_error(err)]
-            } else {
-                vec![]
-            };
-        }
-
-        pub fn errors(&self) -> Arc<Mutex<Vec<BlockfrostError>>> {
-            self.errors.clone()
-        }
-    }
-}
-
-mod data_node_monitor {
-    use bf_common::errors::BlockfrostError;
-    use bf_data_node::api::root::DataNodeRootResponse;
-    use bf_data_node::client::DataNode;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-
-    pub struct DataNodeMonitor {
-        errors: Arc<Mutex<Vec<BlockfrostError>>>,
-        data_node_info: Arc<Mutex<Option<DataNodeRootResponse>>>,
-    }
-
-    impl DataNodeMonitor {
-        pub fn new() -> Self {
-            Self {
-                errors: Arc::new(Mutex::new(vec![])),
-                data_node_info: Arc::new(Mutex::new(None)),
-            }
-        }
-
-        pub async fn update(&self, data_node: &Option<DataNode>) {
-            let Some(data_node) = data_node else {
-                // not configured, nothing to monitor
-                *(self.errors.lock().await) = vec![];
-                *(self.data_node_info.lock().await) = None;
-                return;
-            };
-
-            // fetch root info
-            let root_result = data_node.root().await;
-            let (data_node_info, root_errors) = match root_result {
-                Ok(info) => (Some(info.0), vec![]),
-                Err(err) => {
-                    tracing::error!("Data node root check failed: {err}");
-                    (
-                        None,
-                        vec![BlockfrostError::internal_server_error(format!(
-                            "Data node unreachable: {err}"
-                        ))],
-                    )
-                },
-            };
-            *(self.data_node_info.lock().await) = data_node_info;
-
-            if !root_errors.is_empty() {
-                *(self.errors.lock().await) = root_errors;
-                return;
-            }
-
-            // Fetch health
-            let health_result = data_node.health().get().await;
-            let errors = match health_result {
-                Ok(health) => {
-                    if health.is_healthy {
-                        vec![]
-                    } else {
-                        vec![BlockfrostError::internal_server_error(
-                            "Data node reports unhealthy status".to_string(),
-                        )]
-                    }
-                },
-                Err(err) => {
-                    tracing::error!("Data node health check failed: {err}");
-                    vec![BlockfrostError::internal_server_error(format!(
-                        "Data node unreachable: {err}"
-                    ))]
-                },
-            };
-
-            *(self.errors.lock().await) = errors;
-        }
-
-        pub fn errors(&self) -> Arc<Mutex<Vec<BlockfrostError>>> {
-            self.errors.clone()
-        }
-
-        pub fn data_node_info(&self) -> Arc<Mutex<Option<DataNodeRootResponse>>> {
-            self.data_node_info.clone()
-        }
     }
 }

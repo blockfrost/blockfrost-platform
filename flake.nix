@@ -20,7 +20,7 @@
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.0.0-rc.5";
+      url = "github:txpipe/dolos/v1.0.0-rc.12";
       flake = false;
     };
     acropolis = {
@@ -60,10 +60,6 @@
       url = "github:rustsec/advisory-db";
       flake = false;
     };
-    nixpkgs-nsis = {
-      url = "github:input-output-hk/nixpkgs/be445a9074f139d63e704fa82610d25456562c3d";
-      flake = false;
-    };
     nix-bundle-exe = {
       url = "github:3noch/nix-bundle-exe";
       flake = false;
@@ -90,12 +86,13 @@
       in {
         packages =
           {
-            default = internal.package;
-            blockfrost-platform = internal.package;
+            default = internal.blockfrost-platform;
+            inherit (internal) blockfrost-platform blockfrost-gateway;
             inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
-            blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.package;
+            blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-platform;
+            blockfrost-gateway-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-gateway;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -113,6 +110,7 @@
             shfmt.enable = true;
             taplo.enable = true; # TOML
             yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            yamllint.enable = true;
           };
           settings.global.excludes = [
             "**/.eslintignore"
@@ -160,7 +158,7 @@
             targetSystem: import ./nix/internal/windows.nix {inherit inputs targetSystem;}
           );
 
-        nixosModule = {
+        nixosModule.default = {
           pkgs,
           lib,
           ...
@@ -173,7 +171,10 @@
           crossSystems = ["x86_64-windows"];
           allJobs = {
             blockfrost-platform = lib.genAttrs (config.systems ++ crossSystems) (
-              targetSystem: inputs.self.internal.${targetSystem}.package
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-platform
+            );
+            blockfrost-gateway = lib.genAttrs (config.systems ++ crossSystems) (
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-gateway
             );
             devshell = lib.genAttrs config.systems (
               targetSystem: inputs.self.devShells.${targetSystem}.default

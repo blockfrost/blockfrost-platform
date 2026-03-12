@@ -21,7 +21,14 @@ in
 
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
-    src = craneLib.cleanCargoSource ../../.;
+    src = lib.cleanSourceWith {
+      src = lib.cleanSource ../../.;
+      filter = path: type:
+        craneLib.filterCargoSources path type
+        || lib.hasSuffix ".sql" path
+        || lib.hasSuffix "/LICENSE" path;
+      name = "source";
+    };
 
     packageName = craneLib.crateNameFromCargoToml {cargoToml = builtins.path {path = src + "/crates/platform/Cargo.toml";};};
 
@@ -35,7 +42,8 @@ in
         ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
         buildInputs =
-          lib.optionals pkgs.stdenv.isLinux [
+          [pkgs.postgresql]
+          ++ lib.optionals pkgs.stdenv.isLinux [
             pkgs.openssl
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
@@ -59,10 +67,11 @@ in
 
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
+    gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
-    package = craneLib.buildPackage (commonArgs
+    blockfrost-platform = craneLib.buildPackage (commonArgs
       // {
         inherit cargoArtifacts GIT_REVISION;
         doCheck = false; # we run tests with `cargo-nextest` below
@@ -80,6 +89,21 @@ in
             else throw "unknown license in Cargo.toml: ${workspaceCargoToml.workspace.package.license}";
           inherit (platformCargoToml.package) description homepage;
         };
+      });
+
+    blockfrost-gateway = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = gatewayCargoToml.package.name;
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = gatewayCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
+        cargoExtraArgs = "--package blockfrost-gateway";
       });
 
     cargoChecks = {
@@ -112,6 +136,16 @@ in
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
         });
+
+      workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
+        touch $out
+        found=$(find ${src}/crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
+        if [ -n "$found" ]; then
+          printf '%s\n' "$found"
+          echo "All dependency versions must be defined in the root [workspace.dependencies]."
+          exit 1
+        fi
+      '';
     };
 
     nixChecks = {
@@ -323,14 +357,14 @@ in
       meta.description = "Builds a valid CBOR transaction for testing ‘/tx/submit’";
     };
 
-    releaseBaseUrl = "https://github.com/blockfrost/blockfrost-platform/releases/download/${package.version}";
+    releaseBaseUrl = "https://github.com/blockfrost/blockfrost-platform/releases/download/${blockfrost-platform.version}";
 
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
       pkgs.runCommandNoCC "curl-bash-install" {
         nativeBuildInputs = with pkgs; [shellcheck];
         projectName = packageName.pname;
-        projectVersion = package.version;
+        projectVersion = blockfrost-platform.version;
         shortRev = inputs.self.shortRev or "dirty";
         baseUrl = releaseBaseUrl;
       } ''
@@ -370,9 +404,19 @@ in
       mainnet = "https://aggregator.release-mainnet.api.mithril.network/aggregator";
     };
 
+    # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
+    # https://github.com/fjall-rs/fjall/pull/259
+    # Patch the source to use the pinned commit rev instead of the defunct branch name.
+    dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+      cp -r ${inputs.dolos} $out
+      chmod -R +w $out
+      sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
+      sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
+    '';
+
     dolos = craneLib.buildPackage (
       {
-        src = inputs.dolos;
+        src = dolosSrc;
         GIT_REVISION = inputs.dolos.rev;
         strictDeps = true;
         nativeBuildInputs =
@@ -406,72 +450,84 @@ in
       }
     );
 
+    # XXX: If unsure during updates, check that the configs evaluate to this command run in the ops repo:
+    # `nix </dev/null build --impure -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
     dolos-configs = let
       networks = ["mainnet" "preprod" "preview"];
+
+      tokenRegistryUrl = {
+        mainnet = "https://tokens.cardano.org";
+        preprod = "https://metadata.world.dev.cardano.org";
+        preview = "https://metadata.world.dev.cardano.org";
+      };
+
       mkConfig = network: let
         topology = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/topology.json");
         byronGenesis = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/byron-genesis.json");
         peerAddr = let first = lib.head topology.bootstrapPeers; in "${first.address}:${toString first.port}";
         magic = toString byronGenesis.protocolConsts.protocolMagic;
       in
-        pkgs.writeText "dolos.toml" ''
-          [upstream]
-          peer_address = "${peerAddr}"
-          network_magic = ${magic}
-          is_testnet = ${
-            if network == "mainnet"
-            then "false"
-            else "true"
-          }
+        pkgs.writeText "dolos.toml" (''
+            [genesis]
+            alonzo_path = "alonzo.json"
+            byron_path = "byron.json"
+            conway_path = "conway.json"
+          ''
+          + lib.optionalString (network == "preview") ''
+            force_protocol = 6
+          ''
+          + ''
+            shelley_path = "shelley.json"
 
-          [storage]
-          version = "v1"
-          path = "dolos"
-          max_wal_history = 25920
+            [logging]
+            include_grpc = false
+            include_pallas = false
+            include_tokio = false
+            include_trp = false
+            max_level = "INFO"
 
-          [genesis]
-          byron_path = "${cardano-node-configs}/${network}/byron-genesis.json"
-          shelley_path = "${cardano-node-configs}/${network}/shelley-genesis.json"
-          alonzo_path = "${cardano-node-configs}/${network}/alonzo-genesis.json"
-          conway_path = "${cardano-node-configs}/${network}/conway-genesis.json"
-          force_protocol = 6
+            [mithril]
+            aggregator = "${mithrilAggregator.${network}}"
+            ancillary_key = "${mithrilAncillaryVerificationKeys.${network}}"
+            genesis_key = "${mithrilGenesisVerificationKeys.${network}}"
 
-          [sync]
-          pull_batch_size = 100
+            [serve.minibf]
+            listen_address = "[::]:3010"
+            token_registry_url = "${tokenRegistryUrl.${network}}"
 
-          [submit]
+            [storage]
+            max_wal_history = 25920
+            path = "dolos"
+            version = "v3"
 
-          [serve.grpc]
-          listen_address = "[::]:50051"
-          permissive_cors = true
+            [submit]
 
-          [serve.ouroboros]
-          listen_path = "dolos.socket"
-          magic = ${magic}
+            [sync]
+            pull_batch_size = 100
 
-          [serve.minibf]
-          listen_address = "[::]:3010"
-
-          [relay]
-          listen_address = "[::]:30031"
-          magic = ${magic}
-
-          [mithril]
-          aggregator = "${mithrilAggregator.${network}}"
-          genesis_key = "${mithrilGenesisVerificationKeys.${network}}"
-
-          [logging]
-          max_level = "INFO"
-          include_tokio = false
-          include_pallas = false
-          include_grpc = false
-        '';
+            [upstream]
+          ''
+          + lib.optionalString (network != "mainnet") ''
+            is_testnet = true
+          ''
+          + ''
+            network_magic = ${magic}
+            peer_address = "${peerAddr}"
+          '');
     in
       pkgs.runCommandNoCC "dolos-configs" {} ''
         mkdir -p $out
         ${lib.concatMapStringsSep "\n" (network: ''
             mkdir -p $out/${network}
-            cp ${mkConfig network} $out/${network}/dolos.toml
+            cp ${cardano-node-configs}/${network}/alonzo-genesis.json $out/${network}/alonzo.json
+            cp ${cardano-node-configs}/${network}/byron-genesis.json $out/${network}/byron.json
+            cp ${cardano-node-configs}/${network}/conway-genesis.json $out/${network}/conway.json
+            cp ${cardano-node-configs}/${network}/shelley-genesis.json $out/${network}/shelley.json
+            sed 's|= "alonzo.json"|= "'"$out/${network}/alonzo.json"'"|
+                 s|= "byron.json"|= "'"$out/${network}/byron.json"'"|
+                 s|= "conway.json"|= "'"$out/${network}/conway.json"'"|
+                 s|= "shelley.json"|= "'"$out/${network}/shelley.json"'"|' \
+              ${mkConfig network} >$out/${network}/dolos.toml
           '')
           networks}
       '';
@@ -557,7 +613,7 @@ in
 
           platform_port=$(python3 -m portpicker)
 
-          ${lib.getExe package} \
+          ${lib.getExe blockfrost-platform} \
             --server-address 127.0.0.1 \
             --server-port "$platform_port" \
             --log-level info \
@@ -578,6 +634,7 @@ in
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
           cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-blacklist.json
 
           set -x
           node --version
