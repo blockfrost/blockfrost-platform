@@ -112,7 +112,7 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+          cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
         }
         // (builtins.listToAttrs hydraScriptsEnvVars));
 

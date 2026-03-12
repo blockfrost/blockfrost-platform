@@ -76,8 +76,7 @@ mod hydra_scripts_id {
         let (rev, href) = read_hydra_rev_and_ref(&flake_lock_json);
 
         let url = format!(
-            "https://raw.githubusercontent.com/cardano-scaling/hydra/{}/hydra-node/networks.json",
-            rev
+            "https://raw.githubusercontent.com/cardano-scaling/hydra/{rev}/hydra-node/networks.json"
         );
 
         let networks_json = fetch_cached(&url, &rev);
