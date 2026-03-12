@@ -18,7 +18,6 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
 in
   extendForTarget rec {
     rustPackages = inputs.fenix.packages.${pkgs.system}.stable;
-
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
     src = lib.cleanSourceWith {
@@ -140,7 +139,8 @@ in
 
     nixChecks = {
       nix-statix =
-        pkgs.runCommandNoCC "nix-statix" {
+        pkgs.runCommandNoCC "nix-statix"
+        {
           buildInputs = [pkgs.statix];
         } ''
           touch $out
@@ -149,7 +149,8 @@ in
         '';
 
       nix-deadnix =
-        pkgs.runCommandNoCC "nix-deadnix" {
+        pkgs.runCommandNoCC "nix-deadnix"
+        {
           buildInputs = [pkgs.deadnix];
         } ''
           touch $out
@@ -158,7 +159,8 @@ in
         '';
 
       nix-nil =
-        pkgs.runCommandNoCC "nix-nil" {
+        pkgs.runCommandNoCC "nix-nil"
+        {
           buildInputs = [pkgs.nil];
         } ''
           ec=0
@@ -172,7 +174,8 @@ in
 
       # From `nixd`:
       nix-nixf =
-        pkgs.runCommandNoCC "nix-nil" {
+        pkgs.runCommandNoCC "nix-nil"
+        {
           buildInputs = [pkgs.nixf pkgs.jq];
         } ''
           ec=0
@@ -209,15 +212,13 @@ in
             '');
             inherit (unpatched) rev shortRev lastModified lastModifiedDate;
           };
-      })
-      .defaultNix;
+      }).defaultNix;
 
     cardano-node-packages =
       {
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
         inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
-      }
-      .${
+      }.${
         targetSystem
       };
 
@@ -229,7 +230,8 @@ in
     };
 
     cardano-node-configs =
-      pkgs.runCommandNoCC "cardano-node-configs" {
+      pkgs.runCommandNoCC "cardano-node-configs"
+      {
         buildInputs = with pkgs; [jq];
       } ''
         cp -r ${cardano-node-configs-verbose} $out
@@ -280,7 +282,8 @@ in
     cardano-address =
       if targetSystem == "aarch64-linux"
       then
-        pkgs.writeShellApplication {
+        pkgs.writeShellApplication
+        {
           name = "cardano-address";
           text = ''
             echo >&2 "TODO: unimplemented: compile \`cardano-address\` for \`${targetSystem}\`!"
@@ -297,8 +300,7 @@ in
               "x86_64-linux" = "${baseUrl}-${release}-linux64.tar.gz";
               "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
               "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
-            }
-            .${
+            }.${
               targetSystem
             };
           hash =
@@ -306,13 +308,13 @@ in
               "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
               "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
               "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
-            }
-            .${
+            }.${
               targetSystem
             };
         };
       in
-        pkgs.runCommandNoCC "cardano-address" {
+        pkgs.runCommandNoCC "cardano-address"
+        {
           meta.description = "Command-line for address and key manipulation in Cardano";
         } ''
           mkdir -p $out/bin $out/libexec
@@ -351,7 +353,8 @@ in
 
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
-      pkgs.runCommandNoCC "curl-bash-install" {
+      pkgs.runCommandNoCC "curl-bash-install"
+      {
         nativeBuildInputs = with pkgs; [shellcheck];
         projectName = packageName.pname;
         projectVersion = blockfrost-platform.version;
@@ -768,7 +771,8 @@ in
       fixVendoring'ledger = ps: drv:
         if lib.any (p: lib.hasPrefix "git+https://github.com/midnightntwrk/midnight-ledger" p.source) ps
         then
-          drv.overrideAttrs (_old: {
+          drv.overrideAttrs
+          (_old: {
             postPatch = ''
               mkdir -p ledger/static
               mv static/dust ledger/static/
@@ -791,7 +795,8 @@ in
       fixDarwin'wasm-opt-sys = p: drv:
         if p.name == "wasm-opt-sys" # && p.version == "0.116.0"
         then
-          drv.overrideAttrs (_old: {
+          drv.overrideAttrs
+          (_old: {
             patches = [
               ./midnight--wasm-opt-sys--darwin.patch
             ];
