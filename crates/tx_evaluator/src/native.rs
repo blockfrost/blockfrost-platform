@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
+use bf_common::chain_config::SlotConfig as BfSlotConfig;
 use bf_common::errors::BlockfrostError;
 use bf_common::helpers::convert_bigint;
 use bf_node::pool::NodePool;
@@ -78,10 +79,7 @@ pub async fn evaluate_tx(
 
     match node.genesis_config_and_pp().await {
         Ok((genesis_config, protocol_params)) => {
-            let bf_slot = bf_common::chain_config::SlotConfig::by_network_magic(
-                &genesis_config.network_magic,
-            )
-            .map_err(BlockfrostError::internal_server_error)?;
+            let bf_slot = BfSlotConfig::by_network_magic(&genesis_config);
             let slot_config = SlotConfig {
                 slot_length: bf_slot.slot_length,
                 zero_slot: bf_slot.zero_slot,
@@ -438,12 +436,12 @@ fn convert_system_start(
     sys_start: SystemStart,
 ) -> Result<chrono::DateTime<chrono::FixedOffset>, BlockfrostError> {
     let naive_date = NaiveDate::from_yo_opt(
-        convert_bigint(sys_start.year)? as i32,
+        convert_bigint(&sys_start.year)? as i32,
         sys_start.day_of_year as u32,
     )
     .expect("Invalid system start date");
 
-    let picoseconds_of_day = convert_bigint(sys_start.picoseconds_of_day)?;
+    let picoseconds_of_day = convert_bigint(&sys_start.picoseconds_of_day)?;
     let secs = (picoseconds_of_day / 1_000_000_000_000) as u32;
     let nano = ((picoseconds_of_day % 1_000_000_000_000) / 1000) as u32;
 

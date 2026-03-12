@@ -219,14 +219,6 @@ impl BlockfrostError {
         )
     }
 
-    pub fn not_implemented(message: impl Into<String>) -> Self {
-        Self {
-            error: "Not Implemented".to_string(),
-            message: message.into(),
-            status_code: 501,
-        }
-    }
-
     /// malformed range parameter error
     pub fn malformed_range_param() -> Self {
         Self {

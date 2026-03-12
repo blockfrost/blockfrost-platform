@@ -442,13 +442,6 @@ impl TryFrom<ScriptNative> for pallas_primitives::conway::NativeScript {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum Datum {
-    String(String),
-    Map(HashMap<String, String>),
-}
-
-#[derive(Deserialize, Debug)]
 pub struct Value {
     pub coins: u64,
     pub assets: Option<HashMap<String, u64>>, // asset name and number. Asset number can be negative when burning assets but this behaviour changed in Conway. Now it can be only PositiveCoin
@@ -456,7 +449,6 @@ pub struct Value {
 
 // This is originally missing PlutusV3 since blockfrost uses Ogmios v5.6 which has slightly different data structure
 #[derive(Deserialize, Debug, Clone)]
-//#[serde(untagged)]
 pub enum Script {
     #[serde(rename = "plutus:v1")]
     PlutusV1(String),
@@ -642,7 +634,7 @@ impl From<TxEvalResultV6> for TxEvalResultV5 {
     }
 }
 
-pub fn reedemer_tag_to_string(tag: RedeemerTag) -> String {
+pub fn redeemer_tag_to_string(tag: RedeemerTag) -> String {
     match tag {
         pallas_primitives::conway::RedeemerTag::Spend => "spend".to_string(),
         pallas_primitives::conway::RedeemerTag::Mint => "mint".to_string(),
@@ -662,7 +654,7 @@ impl Serialize for TxEvalSuccessV5 {
     {
         let mut map = serializer.serialize_map(Some(1))?;
 
-        let tag = format!("{}:{}", reedemer_tag_to_string(self.tag), self.index);
+        let tag = format!("{}:{}", redeemer_tag_to_string(self.tag), self.index);
         map.serialize_entry(&tag, &self.units)?;
         map.end()
     }
@@ -673,7 +665,7 @@ impl Serialize for TxValidator {
     where
         S: Serializer,
     {
-        let str = format!("{}:{}", reedemer_tag_to_string(self.tag), self.index);
+        let str = format!("{}:{}", redeemer_tag_to_string(self.tag), self.index);
 
         serializer.serialize_str(&str)
     }
