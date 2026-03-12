@@ -161,21 +161,6 @@ impl Testgen {
             }
         }
 
-        let target_dir_from_env = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
-
-        // Runtime CARGO_MANIFEST_DIR can point to the current package (e.g. error_decoder tests).
-        if let Ok(root) = env::var("CARGO_MANIFEST_DIR") {
-            let target_dir = PathBuf::from(root).join(&target_dir_from_env);
-            search_paths.push(target_dir.join("debug").join("testgen-hs").join(exe_name));
-            search_paths.push(target_dir.join("release").join("testgen-hs").join(exe_name));
-            search_paths.push(
-                target_dir
-                    .join("testgen-hs")
-                    .join("extracted")
-                    .join(exe_name),
-            );
-        }
-
         // Docker image fallback.
         search_paths.push(PathBuf::from("/app/testgen-hs"));
 
