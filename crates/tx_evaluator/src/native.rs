@@ -308,29 +308,6 @@ pub fn convert_to_primitive_value(
     })
 }
 
-pub fn convert_to_primitive_value_from_network_value(
-    value: &queries_v16::Value,
-) -> pallas_primitives::conway::Value {
-    match &value {
-        queries_v16::Value::Coin(c) => pallas_primitives::conway::Value::Coin(c.into()),
-        queries_v16::Value::Multiasset(c, multiasset) => {
-            let mut assets = BTreeMap::new();
-            for (asset_id, assets_kv) in multiasset.iter() {
-                let mut asset_detail = BTreeMap::new();
-
-                for (asset_name, asset_coin) in assets_kv.iter() {
-                    let an: AssetName = asset_name.to_owned();
-                    let coin: u64 = asset_coin.into();
-                    let pc: PositiveCoin = coin.try_into().unwrap();
-                    asset_detail.insert(an, pc);
-                }
-                assets.insert(*asset_id, asset_detail);
-            }
-            pallas_primitives::conway::Value::Multiasset(c.into(), assets)
-        },
-    }
-}
-
 pub fn convert_to_network_value(value: &Value) -> Result<queries_v16::Value, BlockfrostError> {
     Ok(match &value {
         Value {
