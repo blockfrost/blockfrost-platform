@@ -139,7 +139,7 @@ pub async fn evaluate_tx_with_pp(
 
         let address = create_address(&tx_out.address)?;
 
-        let value: pallas_primitives::conway::Value = convert_to_primitive_value(&tx_out.value);
+        let value: pallas_primitives::conway::Value = convert_to_primitive_value(&tx_out.value)?;
 
         let datum_vec = convert_to_datum_option(&tx_out.datum)?;
         let datum_option = create_raw_datum_option(&datum_vec)?;
@@ -278,8 +278,10 @@ pub fn create_raw_datum_option<'a>(
     }
 }
 
-pub fn convert_to_primitive_value(value: &Value) -> pallas_primitives::conway::Value {
-    match &value {
+pub fn convert_to_primitive_value(
+    value: &Value,
+) -> Result<pallas_primitives::conway::Value, BlockfrostError> {
+    Ok(match &value {
         Value {
             coins,
             assets: None,
@@ -291,10 +293,11 @@ pub fn convert_to_primitive_value(value: &Value) -> pallas_primitives::conway::V
             let mut assets = BTreeMap::new();
             for (id_name, number) in assets_map {
                 let mut asset_detail = BTreeMap::new();
-                let coin: PositiveCoin = number
-                    .to_owned()
-                    .try_into()
-                    .expect("Invalid number for PositiveCoin in additional utxo output set");
+                let coin: PositiveCoin = number.to_owned().try_into().map_err(|n| {
+                    BlockfrostError::custom_400(format!(
+                        "invalid amount {n} for PositiveCoin in additional utxo set"
+                    ))
+                })?;
                 let (asset_id, asset_name) = parse_asset_string(id_name);
 
                 asset_detail.insert(asset_name, coin);
@@ -302,7 +305,7 @@ pub fn convert_to_primitive_value(value: &Value) -> pallas_primitives::conway::V
             }
             pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
         },
-    }
+    })
 }
 
 pub fn convert_to_primitive_value_from_network_value(
