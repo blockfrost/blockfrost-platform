@@ -290,9 +290,8 @@ pub fn convert_to_primitive_value(
             coins,
             assets: Some(assets_map),
         } => {
-            let mut assets = BTreeMap::new();
+            let mut assets: BTreeMap<PolicyId, BTreeMap<AssetName, PositiveCoin>> = BTreeMap::new();
             for (id_name, number) in assets_map {
-                let mut asset_detail = BTreeMap::new();
                 let coin: PositiveCoin = number.to_owned().try_into().map_err(|n| {
                     BlockfrostError::custom_400(format!(
                         "invalid amount {n} for PositiveCoin in additional utxo set"
@@ -300,8 +299,7 @@ pub fn convert_to_primitive_value(
                 })?;
                 let (asset_id, asset_name) = parse_asset_string(id_name)?;
 
-                asset_detail.insert(asset_name, coin);
-                assets.insert(asset_id, asset_detail);
+                assets.entry(asset_id).or_default().insert(asset_name, coin);
             }
             pallas_primitives::conway::Value::Multiasset(coins.to_owned(), assets)
         },
@@ -320,23 +318,28 @@ pub fn convert_to_network_value(value: &Value) -> Result<queries_v16::Value, Blo
             coins,
             assets: Some(assets_map),
         } => {
-            let mut assets = vec![];
+            let mut grouped: BTreeMap<PolicyId, Vec<(AssetName, AnyUInt)>> = BTreeMap::new();
             for (id_name, number) in assets_map {
-                let mut asset_detail = vec![];
                 let coin = AnyUInt::U64(*number);
-
                 let (asset_id, asset_name) = parse_asset_string(id_name)?;
-
-                asset_detail.push((asset_name, coin));
-                assets.push((
-                    asset_id,
-                    NonEmptyKeyValuePairs::from_vec(asset_detail).ok_or_else(|| {
-                        BlockfrostError::custom_400(
-                            "empty asset detail in additional utxo set".to_string(),
-                        )
-                    })?,
-                ));
+                grouped
+                    .entry(asset_id)
+                    .or_default()
+                    .push((asset_name, coin));
             }
+            let assets = grouped
+                .into_iter()
+                .map(|(policy_id, details)| {
+                    Ok((
+                        policy_id,
+                        NonEmptyKeyValuePairs::from_vec(details).ok_or_else(|| {
+                            BlockfrostError::custom_400(
+                                "empty asset detail in additional utxo set".to_string(),
+                            )
+                        })?,
+                    ))
+                })
+                .collect::<Result<Vec<_>, BlockfrostError>>()?;
             queries_v16::Value::Multiasset(
                 AnyUInt::U64(*coins),
                 NonEmptyKeyValuePairs::from_vec(assets).ok_or_else(|| {
