@@ -20,22 +20,39 @@ default-members = ["crates/platform"]
 anyhow = "1.0.101"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
+base64 = "0.22.1"
 bech32 = "0.11.1"
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
+bip39 = "2.2.2"
+blockfrost = "1.2.1"
 blockfrost-openapi = "0.1.85"
+bzip2 = "0.6.1"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
 clap = { version = "4.5.59", features = ["derive"] }
+colored = "2.1.0"
+crossbeam = "0.8"
+deadpool = "0.13.0"
+deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
+diesel = { version = "2.2.3", features = ["chrono", "postgres"] }
+diesel_migrations = "2"
 dirs = "6.0.0"
+dotenvy = "0.15.7"
 futures = "0.3"
 futures-util = "0.3"
 hex = "0.4.3"
+hyper = "1.8.1"
 inquire = "0.9"
+jemalloc = "0.3"
 metrics = { version = "0.24.3", default-features = false }
+metrics-exporter-prometheus = { version = "0.18.1", default-features = false }
+metrics-process = "2.4.3"
+ntest = "0.9.5"
+num_cpus = "1"
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
@@ -45,6 +62,8 @@ pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "bloc
 pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pretty_assertions = "1.4.1"
+proptest = "1.10.0"
+rand = "0.8.5"
 reqwest = { version = "0.13.2", default-features = false, features = [
   "blocking",
   "http2",
@@ -52,15 +71,26 @@ reqwest = { version = "0.13.2", default-features = false, features = [
   "native-tls",
 ] }
 rstest = "0.26.1"
+sentry = "0.46.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+serde_with = "3.16.1"
+sysinfo = "~0.37"
+tar = "0.4.44"
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
+tokio-tungstenite = "0.28.0"
 toml = "1.0.2"
+tower = { version = "0.5.3", features = ["limit"] }
+tower-http = { version = "0.6.8", features = ["normalize-path"] }
 tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+tracing-test = "0.2.6"
+tungstenite = "0.28.0"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
 uuid = { version = "1.10", features = ["serde", "v4"] }
+zip = "8.1.0"
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"
