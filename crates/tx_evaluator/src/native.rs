@@ -179,7 +179,9 @@ pub async fn evaluate_tx_with_pp(
 
     let utxos_from_node = node.get_utxos_for_txins(txins).await?;
 
-    // merge utxo from node with user
+    // Merge node UTxOs with user-supplied UTxOs.
+    // User-supplied UTxOs take priority (per Ogmios spec) as they may represent
+    // off-chain UTxOs or intentional overrides.
     for (utxo, txout) in utxos_from_node.iter() {
         let alonzo_tx_in: conway::TransactionInput = conway::TransactionInput {
             transaction_id: utxo.transaction_id,
@@ -206,7 +208,10 @@ pub async fn evaluate_tx_with_pp(
 
         let multi_era_out = MultiEraOutput::<'_>::Conway(Box::new(Cow::Owned(tx_out)));
 
-        utxos.insert(TxoRef::from(&multi_era_in), EraCbor::from(multi_era_out));
+        // only adding node UTxOs for inputs not already provided by the user.
+        utxos
+            .entry(TxoRef::from(&multi_era_in))
+            .or_insert(EraCbor::from(multi_era_out));
     }
 
     match pallas_validate::phase2::evaluate_tx(&multi_era_tx, &protocol_params, &utxos, slot_config)
