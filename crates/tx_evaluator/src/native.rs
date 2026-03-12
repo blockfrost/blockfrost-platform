@@ -298,7 +298,7 @@ pub fn convert_to_primitive_value(
                         "invalid amount {n} for PositiveCoin in additional utxo set"
                     ))
                 })?;
-                let (asset_id, asset_name) = parse_asset_string(id_name);
+                let (asset_id, asset_name) = parse_asset_string(id_name)?;
 
                 asset_detail.insert(asset_name, coin);
                 assets.insert(asset_id, asset_detail);
@@ -331,8 +331,8 @@ pub fn convert_to_primitive_value_from_network_value(
     }
 }
 
-pub fn convert_to_network_value(value: &Value) -> queries_v16::Value {
-    match &value {
+pub fn convert_to_network_value(value: &Value) -> Result<queries_v16::Value, BlockfrostError> {
+    Ok(match &value {
         Value {
             coins,
             assets: None,
@@ -348,24 +348,30 @@ pub fn convert_to_network_value(value: &Value) -> queries_v16::Value {
                 let mut asset_detail = vec![];
                 let coin = AnyUInt::U64(*number);
 
-                let (asset_id, asset_name) = parse_asset_string(id_name);
+                let (asset_id, asset_name) = parse_asset_string(id_name)?;
 
                 asset_detail.push((asset_name, coin));
                 assets.push((
                     asset_id,
-                    NonEmptyKeyValuePairs::from_vec(asset_detail).unwrap(),
+                    NonEmptyKeyValuePairs::from_vec(asset_detail).ok_or_else(|| {
+                        BlockfrostError::custom_400(
+                            "empty asset detail in additional utxo set".to_string(),
+                        )
+                    })?,
                 ));
             }
             queries_v16::Value::Multiasset(
                 AnyUInt::U64(*coins),
-                NonEmptyKeyValuePairs::from_vec(assets).unwrap(),
+                NonEmptyKeyValuePairs::from_vec(assets).ok_or_else(|| {
+                    BlockfrostError::custom_400("empty assets in additional utxo set".to_string())
+                })?,
             )
         },
-    }
+    })
 }
 
-pub fn convert_to_network_value_v6(value: &ValueV6) -> queries_v16::Value {
-    match &value {
+pub fn convert_to_network_value_v6(value: &ValueV6) -> Result<queries_v16::Value, BlockfrostError> {
+    Ok(match &value {
         ValueV6 { ada, assets } if assets.is_empty() => {
             queries_v16::Value::Coin(AnyUInt::U64(ada.lovelace))
         },
@@ -373,48 +379,74 @@ pub fn convert_to_network_value_v6(value: &ValueV6) -> queries_v16::Value {
             let mut assets_mut = vec![];
             for (id, name_amount) in assets {
                 let policy_id_bytes: [u8; 28] = hex::decode(id)
-                    .expect("Invalid policy id in asset string")
+                    .map_err(|e| {
+                        BlockfrostError::custom_400(format!("invalid policy id hex '{id}': {e}"))
+                    })?
                     .try_into()
-                    .expect("Policy id is not valid in additional utxo output set");
+                    .map_err(|_| {
+                        BlockfrostError::custom_400(format!("invalid policy id length for '{id}'"))
+                    })?;
 
                 let policy_id = PolicyId::from(policy_id_bytes);
 
                 let details = name_amount
                     .iter()
                     .map(|(name, amount)| {
-                        let asset_name_bytes =
-                            hex::decode(name).expect("Invalid asset name in asset string");
-                        (
+                        let asset_name_bytes = hex::decode(name).map_err(|e| {
+                            BlockfrostError::custom_400(format!(
+                                "invalid asset name hex '{name}': {e}"
+                            ))
+                        })?;
+                        Ok((
                             pallas_primitives::AssetName::from(asset_name_bytes),
                             AnyUInt::U64(*amount),
-                        )
+                        ))
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, BlockfrostError>>()?;
 
-                assets_mut.push((policy_id, NonEmptyKeyValuePairs::from_vec(details).unwrap()));
+                assets_mut.push((
+                    policy_id,
+                    NonEmptyKeyValuePairs::from_vec(details).ok_or_else(|| {
+                        BlockfrostError::custom_400(
+                            "empty asset details in additional utxo set".to_string(),
+                        )
+                    })?,
+                ));
             }
             queries_v16::Value::Multiasset(
                 AnyUInt::U64(ada.lovelace),
-                NonEmptyKeyValuePairs::from_vec(assets_mut).unwrap(),
+                NonEmptyKeyValuePairs::from_vec(assets_mut).ok_or_else(|| {
+                    BlockfrostError::custom_400("empty assets in additional utxo set".to_string())
+                })?,
             )
         },
-    }
+    })
 }
 
-fn parse_asset_string(str: &str) -> (PolicyId, AssetName) {
+fn parse_asset_string(str: &str) -> Result<(PolicyId, AssetName), BlockfrostError> {
     let mut parts = str.split('.');
-    let policy_id = parts.next().expect("Invalid asset string in utxo output");
+    let policy_id = parts.next().ok_or_else(|| {
+        BlockfrostError::custom_400(format!("invalid asset string '{str}' in utxo output"))
+    })?;
     let asset_name_bytes = hex::decode(parts.next().map(|s| s.to_string()).unwrap_or_default())
-        .expect("Invalid asset name in asset string"); // can be empty
+        .map_err(|e| {
+            BlockfrostError::custom_400(format!(
+                "invalid asset name hex in asset string '{str}': {e}"
+            ))
+        })?;
     let policy_id_bytes: [u8; 28] = hex::decode(policy_id)
-        .expect("Invalid policy id in asset string")
+        .map_err(|e| {
+            BlockfrostError::custom_400(format!("invalid policy id hex '{policy_id}': {e}"))
+        })?
         .try_into()
-        .expect("Policy id is not valid in additional utxo output set");
+        .map_err(|_| {
+            BlockfrostError::custom_400(format!("invalid policy id length for '{policy_id}'"))
+        })?;
 
-    (
+    Ok((
         PolicyId::from(policy_id_bytes),
         pallas_primitives::AssetName::from(asset_name_bytes),
-    )
+    ))
 }
 
 fn convert_system_start(
