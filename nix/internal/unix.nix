@@ -540,19 +540,34 @@ in
 
     inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
 
-    blockfrost-tests-preview = make-blockfrost-tests { network = "preview"; };
-    blockfrost-tests-preprod = make-blockfrost-tests { network = "preprod"; };
-    blockfrost-tests-mainnet = make-blockfrost-tests { network = "mainnet"; };
+    blockfrost-tests-preview = make-blockfrost-tests {network = "preview";};
+    blockfrost-tests-preprod = make-blockfrost-tests {network = "preprod";};
+    blockfrost-tests-mainnet = make-blockfrost-tests {network = "mainnet";};
 
-    blockfrost-blacklist-check-preview = make-blockfrost-tests { network = "preview"; ignorelistOnly = true; };
-    blockfrost-blacklist-check-preprod = make-blockfrost-tests { network = "preprod"; ignorelistOnly = true; };
-    blockfrost-blacklist-check-mainnet = make-blockfrost-tests { network = "mainnet"; ignorelistOnly = true; };
+    blockfrost-blacklist-check-preview = make-blockfrost-tests {
+      network = "preview";
+      ignorelistOnly = true;
+    };
+    blockfrost-blacklist-check-preprod = make-blockfrost-tests {
+      network = "preprod";
+      ignorelistOnly = true;
+    };
+    blockfrost-blacklist-check-mainnet = make-blockfrost-tests {
+      network = "mainnet";
+      ignorelistOnly = true;
+    };
 
-    make-blockfrost-tests = { network, ignorelistOnly ? false }: let
+    make-blockfrost-tests = {
+      network,
+      ignorelistOnly ? false,
+    }: let
       inherit (pkgs) nodePackages;
     in
       pkgs.writeShellApplication {
-        name = if ignorelistOnly then "blockfrost-blacklist-check" else "blockfrost-tests";
+        name =
+          if ignorelistOnly
+          then "blockfrost-blacklist-check"
+          else "blockfrost-tests";
         meta.description =
           if ignorelistOnly
           then "Checks that ignored tests on `${network}` still fail (and should remain on the ignorelist)"
@@ -567,103 +582,115 @@ in
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
         ];
-        text = ''
-          set -euo pipefail
+        text =
+          ''
+            set -euo pipefail
 
-          if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
-            export DOLOS_ENDPOINT="http://127.0.0.1:3010"
-            echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
-          fi
-
-          curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
-
-          err() { printf "error: %s\n" "$1" >&2; }
-
-          platform_pid=""
-          tmpdir="$(mktemp -d)"
-          cleanup() {
-            local ec=$?
-            cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
-            if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
-              kill -TERM "$platform_pid"
-              wait "$platform_pid" || true
+            if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
+              export DOLOS_ENDPOINT="http://127.0.0.1:3010"
+              echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
             fi
-            exit "$ec"
-          }
-          trap cleanup EXIT HUP INT TERM
 
-          require_env() {
-            local name="$1"
-            local val="''${!name-}"
-            if [[ -z "$val" ]]; then
-              err "$name is not set."
-              missing=1
+            curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
+
+            err() { printf "error: %s\n" "$1" >&2; }
+
+            platform_pid=""
+            tmpdir="$(mktemp -d)"
+            cleanup() {
+              local ec=$?
+              cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
+              if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
+                kill -TERM "$platform_pid"
+                wait "$platform_pid" || true
+              fi
+              exit "$ec"
+            }
+            trap cleanup EXIT HUP INT TERM
+
+            require_env() {
+              local name="$1"
+              local val="''${!name-}"
+              if [[ -z "$val" ]]; then
+                err "$name is not set."
+                missing=1
+              fi
+            }
+            missing=0
+            for v in PROJECT_ID SUBMIT_MNEMONIC CARDANO_NODE_SOCKET_PATH ; do
+              require_env "$v"
+            done
+            if (( missing )); then
+              exit 1
             fi
-          }
-          missing=0
-          for v in PROJECT_ID SUBMIT_MNEMONIC CARDANO_NODE_SOCKET_PATH ; do
-            require_env "$v"
-          done
-          if (( missing )); then
-            exit 1
-          fi
 
-          export NETWORK=${lib.escapeShellArg network}
+            export NETWORK=${lib.escapeShellArg network}
 
-          platform_port=$(python3 -m portpicker)
+            platform_port=$(python3 -m portpicker)
 
-          ${lib.getExe blockfrost-platform} \
-            --server-address 127.0.0.1 \
-            --server-port "$platform_port" \
-            --log-level info \
-            --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
-            --mode compact \
-            --solitary \
-            --data-node "''${DOLOS_ENDPOINT}" \
-            --data-node-timeout-sec 30 \
-            &
-          platform_pid=$!
+            ${lib.getExe blockfrost-platform} \
+              --server-address 127.0.0.1 \
+              --server-port "$platform_port" \
+              --log-level info \
+              --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
+              --mode compact \
+              --solitary \
+              --data-node "''${DOLOS_ENDPOINT}" \
+              --data-node-timeout-sec 30 \
+              &
+            platform_pid=$!
 
-          export SERVER_URL="http://127.0.0.1:$platform_port"
+            export SERVER_URL="http://127.0.0.1:$platform_port"
 
-          sleep 1
-          wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
+            sleep 1
+            wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
 
-          cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
-          chmod -R u+w,g+w "$tmpdir"
-          cd "$tmpdir"
-          cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
-          cp ${../../crates/platform/tests/data/ignored_tests.json} endpoints-ignorelist.json
+            cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
+            chmod -R u+w,g+w "$tmpdir"
+            cd "$tmpdir"
+            cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+            cp ${../../crates/platform/tests/data/ignored_tests.json} endpoints-ignorelist.json
 
-          ignored_count=$(jq --arg net "$NETWORK" '.[$net] | length' endpoints-ignorelist.json)
-        '' + (if ignorelistOnly then ''
-          echo "Running blacklist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
-        '' else ''
-          echo "WARNING: Ignoring $ignored_count test IDs (see ignored_tests.json)"
-        '') + ''
+            ignored_count=$(jq --arg net "$NETWORK" '.[$net] | length' endpoints-ignorelist.json)
+          ''
+          + (
+            if ignorelistOnly
+            then ''
+              echo "Running blacklist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
+            ''
+            else ''
+              echo "WARNING: Ignoring $ignored_count test IDs (see ignored_tests.json)"
+            ''
+          )
+          + ''
 
-          set -x
-          node --version
-          yarn --version
+            set -x
+            node --version
+            yarn --version
 
-          yarn install
-        '' + (if ignorelistOnly then ''
-          set +x
+            yarn install
+          ''
+          + (
+            if ignorelistOnly
+            then ''
+              set +x
 
-          IGNORELIST_ONLY=true yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
+              IGNORELIST_ONLY=true yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
 
-          # Fail if any ignored test now passes
-          if grep -E 'Tests.*passed' tests.log; then
-            echo ""
-            echo "ERROR: Some ignored tests are now passing!"
-            echo "Please remove them from crates/platform/tests/data/ignored_tests.json"
-            exit 1
-          fi
+              # Fail if any ignored test now passes
+              if grep -E 'Tests.*passed' tests.log; then
+                echo ""
+                echo "ERROR: Some ignored tests are now passing!"
+                echo "Please remove them from crates/platform/tests/data/ignored_tests.json"
+                exit 1
+              fi
 
-          echo "All ignored tests still fail. Ignorelist is up to date."
-        '' else ''
-          yarn test:${lib.escapeShellArg network}
-        '');
+              echo "All ignored tests still fail. Ignorelist is up to date."
+            ''
+            else ''
+              yarn test:${lib.escapeShellArg network}
+            ''
+          );
       };
 
     # One degree of indirection for the devshell – we don’t want to compile
