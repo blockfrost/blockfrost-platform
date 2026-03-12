@@ -5,7 +5,7 @@ pub mod state;
 use crate::{
     health_monitor, icebreakers::api::IcebreakersAPI, middlewares::errors::error_middleware,
 };
-use axum::{Extension, Router, middleware::from_fn};
+use axum::{Extension, Router, extract::DefaultBodyLimit, middleware::from_fn};
 use bf_common::{
     config::Config,
     errors::{AppError, BlockfrostError},
@@ -104,7 +104,8 @@ pub async fn build(
     let inner = NormalizePathLayer::trim_trailing_slash().layer(inner);
     let app = Router::new()
         .fallback_service(inner)
-        .layer(ConcurrencyLimitLayer::new(config.server_concurrency_limit));
+        .layer(ConcurrencyLimitLayer::new(config.server_concurrency_limit))
+        .layer(DefaultBodyLimit::max(10 * 1024 * 1024)); // 10 MB
 
     Ok((
         app,
