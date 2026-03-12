@@ -11,7 +11,7 @@ use hyper::HeaderMap;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,
-    Extension(fallback_evaluator): Extension<Option<ExternalEvaluator>>,
+    Extension(evaluator): Extension<ExternalEvaluator>,
     headers: HeaderMap,
     Query(query): Query<EvaluateQuery>,
     extract::Json(tx_request): extract::Json<TxEvaluationRequest>,
@@ -20,10 +20,6 @@ pub async fn route(
     validate_content_type(&headers, &["application/json"])?;
 
     let version = query.version;
-
-    let evaluator = fallback_evaluator.ok_or_else(|| {
-        BlockfrostError::internal_server_error("External evaluator is not available".to_string())
-    })?;
 
     // safeguarding version and input data conflicts
     match tx_request {

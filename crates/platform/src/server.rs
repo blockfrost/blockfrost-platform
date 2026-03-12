@@ -66,7 +66,7 @@ pub async fn build(
     let chain_config_cache = init_caches(node_conn_pool.clone()).await?;
 
     // Initialize the Haskell-based tx evaluator
-    let tx_evaluator = Some(ExternalEvaluator::spawn(chain_config_cache).await?);
+    let tx_evaluator = ExternalEvaluator::spawn(chain_config_cache).await?;
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);

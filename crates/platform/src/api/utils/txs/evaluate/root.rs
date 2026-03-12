@@ -7,7 +7,7 @@ use hyper::HeaderMap;
 
 pub async fn route(
     Extension(node): Extension<NodePool>,
-    Extension(fallback_evaluator): Extension<Option<ExternalEvaluator>>,
+    Extension(evaluator): Extension<ExternalEvaluator>,
     Query(query): Query<EvaluateQuery>,
     headers: HeaderMap,
     body: axum::body::Bytes,
@@ -17,10 +17,6 @@ pub async fn route(
 
     // Allow both hex-encoded and raw binary bodies
     let tx_cbor_binary = binary_or_hex_heuristic(body.as_ref());
-
-    let evaluator = fallback_evaluator.ok_or_else(|| {
-        BlockfrostError::internal_server_error("External evaluator is not available".to_string())
-    })?;
 
     match query.version {
         5 => Ok(Json(
