@@ -211,7 +211,7 @@ impl ExternalEvaluator {
                             .map(|s| ScriptRef::try_from(s.clone()).map(CborWrap))
                             .transpose()?,
                         convert_to_network_value(&tout.value)?,
-                        convert_to_datum_option_network(&tout.datum)?,
+                        convert_to_datum_option_network(&tout.datum, &tout.datum_hash)?,
                     ))
                 },
             )
@@ -254,7 +254,7 @@ impl ExternalEvaluator {
                             .map(|s| ScriptRef::try_from(s).map(CborWrap))
                             .transpose()?,
                         convert_to_network_value_v6(&utxo.value)?,
-                        convert_to_datum_option_network(&utxo.datum)?,
+                        convert_to_datum_option_network(&utxo.datum, &utxo.datum_hash)?,
                     ))
                 },
             )

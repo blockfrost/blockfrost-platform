@@ -139,7 +139,7 @@ pub async fn evaluate_tx_with_pp(
 
         let value: pallas_primitives::conway::Value = convert_to_primitive_value(&tx_out.value)?;
 
-        let datum_vec = convert_to_datum_option(&tx_out.datum)?;
+        let datum_vec = convert_to_datum_option(&tx_out.datum, &tx_out.datum_hash)?;
         let datum_option = create_raw_datum_option(&datum_vec)?;
 
         let script_ref: Option<CborWrap<ScriptRef>> = tx_out
@@ -228,9 +228,13 @@ pub fn create_address(addr: &str) -> Result<Bytes, BlockfrostError> {
         .map_err(|e| BlockfrostError::custom_400(format!("invalid address '{addr}': {e}")))
 }
 
-pub fn convert_to_datum_option(datum: &Option<String>) -> Result<Vec<u8>, BlockfrostError> {
-    match datum {
-        Some(d) => {
+pub fn convert_to_datum_option(
+    datum: &Option<String>,
+    datum_hash: &Option<String>,
+) -> Result<Vec<u8>, BlockfrostError> {
+    // Inline datum takes priority over datum_hash (matches Ogmios behavior)
+    match (datum, datum_hash) {
+        (Some(d), _) => {
             let datum_bytes = hex::decode(d)
                 .map_err(|e| BlockfrostError::custom_400(format!("invalid datum hex: {e}")))?;
             let datum_option = DatumOption::Data(CborWrap(
@@ -241,18 +245,32 @@ pub fn convert_to_datum_option(datum: &Option<String>) -> Result<Vec<u8>, Blockf
                 BlockfrostError::internal_server_error(format!("datum serialization failed: {e}"))
             })
         },
-        None => Ok(Vec::new()),
+        (None, Some(h)) => {
+            let hash_bytes: [u8; 32] = hex::decode(h)
+                .map_err(|e| BlockfrostError::custom_400(format!("invalid datum_hash hex: {e}")))?
+                .try_into()
+                .map_err(|_| {
+                    BlockfrostError::custom_400("datum_hash must be 32 bytes".to_string())
+                })?;
+            let datum_option = DatumOption::Hash(pallas_primitives::Hash::from(hash_bytes));
+            pallas_codec::minicbor::to_vec(datum_option).map_err(|e| {
+                BlockfrostError::internal_server_error(format!("datum serialization failed: {e}"))
+            })
+        },
+        (None, None) => Ok(Vec::new()),
     }
 }
 
 pub fn convert_to_datum_option_network(
     datum: &Option<String>,
+    datum_hash: &Option<String>,
 ) -> Result<
     Option<pallas_network::miniprotocols::localstate::queries_v16::DatumOption>,
     BlockfrostError,
 > {
-    match datum {
-        Some(d) => {
+    // Inline datum takes priority over datum_hash (matches Ogmios behavior)
+    match (datum, datum_hash) {
+        (Some(d), _) => {
             let datum_bytes = hex::decode(d)
                 .map_err(|e| BlockfrostError::custom_400(format!("invalid datum hex: {e}")))?;
             let datum_option =
@@ -263,7 +281,20 @@ pub fn convert_to_datum_option_network(
                 );
             Ok(Some(datum_option))
         },
-        None => Ok(None),
+        (None, Some(h)) => {
+            let hash_bytes: [u8; 32] = hex::decode(h)
+                .map_err(|e| BlockfrostError::custom_400(format!("invalid datum_hash hex: {e}")))?
+                .try_into()
+                .map_err(|_| {
+                    BlockfrostError::custom_400("datum_hash must be 32 bytes".to_string())
+                })?;
+            let datum_option =
+                pallas_network::miniprotocols::localstate::queries_v16::DatumOption::Hash(
+                    pallas_primitives::Hash::from(hash_bytes),
+                );
+            Ok(Some(datum_option))
+        },
+        (None, None) => Ok(None),
     }
 }
 
