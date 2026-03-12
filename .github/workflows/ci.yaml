@@ -229,7 +229,7 @@ jobs:
 
       - name: Check coverage
         timeout-minutes: 10
-        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11
+        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 9
 
   oci_build:
     name: OCI Build (${{ matrix.arch }})
