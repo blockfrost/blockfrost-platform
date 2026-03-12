@@ -137,6 +137,53 @@ in
           cargoNextestExtraArgs = "--workspace --lib";
         });
 
+      cargo-udeps = let
+        # Unfortunately, `cargo-udeps` requires the Nightly toolchain:
+        nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
+        nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
+        nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
+      in
+        nightlyCraneLib.mkCargoDerivation (commonArgs
+          // {
+            cargoArtifacts = nightlyCargoArtifacts;
+            inherit GIT_REVISION;
+            pnameSuffix = "-udeps";
+            nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
+            buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
+          });
+
+      cargo-machete = let
+        # Use the PR branch that adds `[dev-dependency]` checking:
+        # <https://github.com/bnjbvr/cargo-machete/pull/169>
+        cargo-machete-pr169 = pkgs.rustPlatform.buildRustPackage {
+          pname = "cargo-machete";
+          version = "0.8.0+pr.169";
+          src = pkgs.fetchFromGitHub {
+            owner = "bnjbvr";
+            repo = "cargo-machete";
+            rev = "2a7beb292e46a5473427dc069b9dd66485508ae0"; # pull/169/head
+            hash = "sha256-qac1tZofqJLy0gsgYVQjJZo8keZt9DQVm7pxByp0cVM=";
+          };
+          cargoHash = "sha256-Oht5V9+DS4vDfd9jcxiMG/gySY5IzhbTY+Ozod4kjko=";
+          doCheck = false;
+        };
+      in
+        pkgs.runCommandNoCC "cargo-machete" {
+          buildInputs = [cargo-machete-pr169];
+        } ''
+          touch $out
+          cd ${src}
+          cargo-machete --include-dev-deps
+        '';
+
+      cargo-shear = craneLib.mkCargoDerivation (commonArgs
+        // {
+          inherit cargoArtifacts GIT_REVISION;
+          pnameSuffix = "-shear";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
+          buildPhaseCargoCommand = "cargo-shear";
+        });
+
       workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
         touch $out
         found=$(find ${src}/crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
