@@ -22,6 +22,8 @@ async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
 base64 = "0.22.1"
 bech32 = "0.11.1"
+blake3 = "1"
+bytes = "1"
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
@@ -44,13 +46,16 @@ dirs = "6.0.0"
 dotenvy = "0.15.7"
 futures = "0.3"
 futures-util = "0.3"
+getrandom = "0.3"
 hex = "0.4.3"
 hyper = "1.8.1"
 inquire = "0.9"
 jemalloc = "0.3"
+machine-uid = "0.5"
 metrics = { version = "0.24.3", default-features = false }
 metrics-exporter-prometheus = { version = "0.18.1", default-features = false }
 metrics-process = "2.4.3"
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
 pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
@@ -85,6 +90,7 @@ tokio = { version = "1.49.0", features = [
   "process",
 ] }
 tokio-tungstenite = "0.28.0"
+tokio-util = "0.7"
 toml = "1.0.2"
 tower = { version = "0.5.3", features = ["limit"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }
