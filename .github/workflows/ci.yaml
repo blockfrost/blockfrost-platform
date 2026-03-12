@@ -132,7 +132,7 @@ jobs:
         env:
           CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           CARGO_PROFILE_DEV_DEBUG: "0"
-        run: nix develop .# --command cargo test --verbose --test '*_test'
+        run: nix develop .# --command cargo test --verbose --test '*'
 
   blockfrost_integration_tests:
     name: Blockfrost Integration Tests (${{ matrix.network }})
