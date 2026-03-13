@@ -1,7 +1,10 @@
 pub mod cbor;
+pub mod chain_config;
 pub mod connection;
+pub mod ledger;
 pub mod monitoring;
 pub mod pool;
 pub mod pool_manager;
 pub mod sync_progress;
 pub mod transactions;
+pub mod utxo;

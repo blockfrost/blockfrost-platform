@@ -51,16 +51,16 @@
     "cardano-node": {
       "flake": false,
       "locked": {
-        "lastModified": 1763736877,
-        "narHash": "sha256-c1a6DzDlm+wzwa85TWeOFrPEldsfjiZw7+DcMMW9nc4=",
+        "lastModified": 1770822424,
+        "narHash": "sha256-zyrBw3yn69y3n0c6U0MDvezYC3GHbjJ3yJmhM4vMtUk=",
         "owner": "IntersectMBO",
         "repo": "cardano-node",
-        "rev": "6c034ec038d8d276a3595e10e2d38643f09bd1f2",
+        "rev": "0d697f14ee10a775f08c60e3839becc9131dca75",
         "type": "github"
       },
       "original": {
         "owner": "IntersectMBO",
-        "ref": "10.5.3",
+        "ref": "10.6.2",
         "repo": "cardano-node",
         "type": "github"
       }
@@ -322,7 +322,7 @@
       },
       "original": {
         "owner": "nixos",
-        "ref": "nixpkgs-unstable",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -416,16 +416,16 @@
     "testgen-hs": {
       "flake": false,
       "locked": {
-        "lastModified": 1751542906,
-        "narHash": "sha256-FYz1P11du5tSakpl2ec9CGdwEB5h+0FcdGPU3zXte60=",
-        "owner": "input-output-hk",
+        "lastModified": 1771934095,
+        "narHash": "sha256-xhr86Djy92/vGTZvzob6Ej/DZ6LzV7yeBzWZqxIaB1M=",
+        "owner": "blockfrost",
         "repo": "testgen-hs",
-        "rev": "7d58736ed578a9ccf8337376b302bb188b74303f",
+        "rev": "5f269d46a7bf03a34c1da299ef52a902a2e9e9c3",
         "type": "github"
       },
       "original": {
-        "owner": "input-output-hk",
-        "ref": "10.4.1.1",
+        "owner": "blockfrost",
+        "ref": "10.6.2.0",
         "repo": "testgen-hs",
         "type": "github"
       }
