@@ -45,7 +45,6 @@ ntest.workspace = true
 bf-api-provider.workspace = true
 rstest.workspace = true
 pretty_assertions.workspace = true
-proptest.workspace = true
 cardano-serialization-lib.workspace = true
 bip39.workspace = true
 blockfrost.workspace = true

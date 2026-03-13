@@ -618,7 +618,6 @@ dependencies = [
  "metrics-process",
  "ntest",
  "pretty_assertions",
- "proptest",
  "reqwest 0.13.2",
  "rstest",
  "sentry",
@@ -718,7 +717,6 @@ dependencies = [
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "chrono",
- "crossbeam",
  "deadpool 0.13.0",
  "hex",
  "metrics",
@@ -731,7 +729,6 @@ dependencies = [
  "pallas-traverse",
  "serde",
  "serde_json",
- "sysinfo",
  "tokio",
  "tracing",
 ]
@@ -741,7 +738,6 @@ name = "blockfrost-platform-testgen"
 version = "0.0.3-rc.3"
 dependencies = [
  "blockfrost-platform-common",
- "chrono",
  "crossbeam",
  "hex",
  "num_cpus",
