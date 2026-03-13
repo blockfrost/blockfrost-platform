@@ -72,7 +72,7 @@ fn decode_error(bytes: &[u8]) -> TxValidationError {
     decoder.decode().unwrap()
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "tarpaulin")))]
 macro_rules! assert_json_eq {
     ($left:expr, $right:expr) => {
         if $left != $right {
@@ -90,7 +90,7 @@ macro_rules! assert_json_eq {
     };
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "tarpaulin")))]
 pub(crate) use assert_json_eq; // export it
 
 #[tokio::test]
