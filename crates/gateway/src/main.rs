@@ -32,8 +32,14 @@ async fn main() -> Result<()> {
 
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
-    let hydras_manager = if let Some(hydra) = &config.hydra {
-        Some(hydra_server_platform::HydrasManager::new(hydra, &config.server.network).await?)
+    let hydras_manager = if let Some(hydra_platform_config) = &config.hydra_platform {
+        Some(
+            hydra_server_platform::HydrasManager::new(
+                hydra_platform_config,
+                &config.server.network,
+            )
+            .await?,
+        )
     } else {
         None
     };
