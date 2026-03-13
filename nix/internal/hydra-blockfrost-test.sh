@@ -179,29 +179,48 @@ log info "Funding L1 participants and nodes: alice, bob"
 txdir=tx-01-fund-participants
 mkdir -p $txdir
 
-cardano-cli query utxo \
-  --address "$(cat credentials/submit-mnemonic/payment.addr)" \
-  --out-file $txdir/input-utxo.json
+# XXX: A concurrent CI run may have already submitted a conflicting tx from the
+# same shared wallet. Shuffling the UTxO inputs and retrying N times with fresh
+# queries mitigates this race condition most of the time:
 
-# XXX: we’re only taking the first 200 UTxOs below, because the test address on
-# CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
+max_funding_attempts=5
+funding_retry_delay=25
+for funding_attempt in $(seq 1 $max_funding_attempts); do
+  log info "Funding attempt $funding_attempt/$max_funding_attempts"
 
-# shellcheck disable=SC2046
-cardano-cli latest transaction build \
-  $(jq <$txdir/input-utxo.json -j 'to_entries[:200][].key | "--tx-in ", ., " "') \
-  --change-address "$(cat credentials/submit-mnemonic/payment.addr)" \
-  --tx-out "$(cat credentials/alice-funds/payment.addr)"+"${lovelace_fund["alice-funds"]}" \
-  --tx-out "$(cat credentials/alice-node/payment.addr)"+"${lovelace_fund["alice-node"]}" \
-  --tx-out "$(cat credentials/bob-funds/payment.addr)"+"${lovelace_fund["bob-funds"]}" \
-  --tx-out "$(cat credentials/bob-node/payment.addr)"+"${lovelace_fund["bob-node"]}" \
-  --out-file $txdir/tx.json
+  cardano-cli query utxo \
+    --address "$(cat credentials/submit-mnemonic/payment.addr)" \
+    --out-file $txdir/input-utxo.json
 
-cardano-cli latest transaction sign \
-  --tx-file $txdir/tx.json \
-  --signing-key-file credentials/submit-mnemonic/payment.sk \
-  --out-file $txdir/tx-signed.json
+  # XXX: we’re only taking 200 randomly-shuffled UTxOs below, because the test
+  # address on CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
 
-cardano-cli latest transaction submit --tx-file $txdir/tx-signed.json
+  # shellcheck disable=SC2046
+  if cardano-cli latest transaction build \
+    $(jq -r 'keys[]' <$txdir/input-utxo.json | shuf | head -n 200 | sed 's/^/--tx-in /') \
+    --change-address "$(cat credentials/submit-mnemonic/payment.addr)" \
+    --tx-out "$(cat credentials/alice-funds/payment.addr)"+"${lovelace_fund["alice-funds"]}" \
+    --tx-out "$(cat credentials/alice-node/payment.addr)"+"${lovelace_fund["alice-node"]}" \
+    --tx-out "$(cat credentials/bob-funds/payment.addr)"+"${lovelace_fund["bob-funds"]}" \
+    --tx-out "$(cat credentials/bob-node/payment.addr)"+"${lovelace_fund["bob-node"]}" \
+    --out-file $txdir/tx.json &&
+    cardano-cli latest transaction sign \
+      --tx-file $txdir/tx.json \
+      --signing-key-file credentials/submit-mnemonic/payment.sk \
+      --out-file $txdir/tx-signed.json &&
+    cardano-cli latest transaction submit --tx-file $txdir/tx-signed.json; then
+    log info "Funding transaction submitted successfully."
+    break
+  fi
+
+  if ((funding_attempt == max_funding_attempts)); then
+    log fatal "All $max_funding_attempts funding attempts failed."
+    exit 1
+  fi
+
+  log warn "Funding attempt $funding_attempt failed, retrying in ${funding_retry_delay}s (waiting for a new block)…"
+  sleep "$funding_retry_delay"
+done
 
 # ---------------------------------------------------------------------------- #
 
