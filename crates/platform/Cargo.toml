@@ -38,11 +38,11 @@ metrics-process.workspace = true
 chrono.workspace = true
 dotenvy.workspace = true
 uuid.workspace = true
-anyhow.workspace = true
-ntest.workspace = true
 
 [dev-dependencies]
+anyhow.workspace = true
 bf-api-provider.workspace = true
+ntest.workspace = true
 rstest.workspace = true
 pretty_assertions.workspace = true
 cardano-serialization-lib.workspace = true
