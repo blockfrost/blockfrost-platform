@@ -1,5 +1,19 @@
 {
   "mainnet": [],
   "preprod": [],
-  "preview": [{ "id": "pools-extended-queryparams_33c8fc92f5c2" }]
+  "preview": [
+    { "id": "txs-tx-shelley-most-delegations_79837018026b" },
+    { "id": "txs-tx-shelley-most-pool-retirements_573ad4b9a88f" },
+    { "id": "txs-tx-shelley-most-withdrawals_f8c7b2913a61" },
+    {
+      "id": "txs-tx-shelley-tx-of-token-mint-with-ridiculous-hereafter-out-of-range-fri-26-jan-2970-01-43-53-am-cet-value_3582617d514f"
+    },
+    {
+      "id": "txs-tx-shelley-tx-of-token-mint-with-ridiculous-hereafter-out-of-range-sat-20-nov-2286-06-46-40-pm-cet-value_6a7407520301"
+    },
+    { "id": "txs-tx-shelley-tx-with-a-lot-of-token-mints-burns_4067204fc6c2" },
+    {
+      "id": "txs-tx-treasury_donation-a857cf39607fbf29199336410ac411a65d57443798a24465a435053d53f6b139"
+    }
+  ]
 }
