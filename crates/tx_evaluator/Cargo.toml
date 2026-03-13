@@ -11,7 +11,6 @@ bf-node.workspace = true
 serde.workspace = true
 hex.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
 pallas-network.workspace = true
 pallas-crypto.workspace = true
 pallas-traverse.workspace = true

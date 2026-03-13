@@ -720,7 +720,6 @@ dependencies = [
  "deadpool 0.13.0",
  "hex",
  "metrics",
- "num_cpus",
  "pallas-codec",
  "pallas-crypto",
  "pallas-hardano",
@@ -728,7 +727,6 @@ dependencies = [
  "pallas-primitives",
  "pallas-traverse",
  "serde",
- "serde_json",
  "tokio",
  "tracing",
 ]
@@ -765,7 +763,6 @@ dependencies = [
  "pallas-validate",
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
