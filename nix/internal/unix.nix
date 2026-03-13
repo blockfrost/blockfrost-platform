@@ -107,19 +107,26 @@ in
       }
       // (builtins.listToAttrs hydraScriptsEnvVars));
 
-    cargoChecks = {
+    cargoChecks = let
+      # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
+      nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
+      nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
+      nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
+    in {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
-        });
+          cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-audit = craneLib.cargoAudit {
         inherit (packageName) pname;
@@ -138,6 +145,61 @@ in
           cargoNextestExtraArgs = "--workspace --lib";
         }
         // (builtins.listToAttrs hydraScriptsEnvVars));
+
+      cargo-udeps = nightlyCraneLib.mkCargoDerivation (commonArgs
+        // {
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
+          pnameSuffix = "-udeps";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
+          buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
+
+      cargo-machete = let
+        # Use the PR branch that adds `[dev-dependency]` checking:
+        # <https://github.com/bnjbvr/cargo-machete/pull/169>
+        cargo-machete-pr169 = pkgs.rustPlatform.buildRustPackage {
+          pname = "cargo-machete";
+          version = "0.8.0+pr.169";
+          src = pkgs.fetchFromGitHub {
+            owner = "bnjbvr";
+            repo = "cargo-machete";
+            rev = "2a7beb292e46a5473427dc069b9dd66485508ae0"; # pull/169/head
+            hash = "sha256-qac1tZofqJLy0gsgYVQjJZo8keZt9DQVm7pxByp0cVM=";
+          };
+          cargoHash = "sha256-Oht5V9+DS4vDfd9jcxiMG/gySY5IzhbTY+Ozod4kjko=";
+          doCheck = false;
+        };
+      in
+        pkgs.runCommandNoCC "cargo-machete" {
+          buildInputs = [cargo-machete-pr169];
+        } ''
+          touch $out
+          cd ${src}
+          cargo-machete --include-dev-deps
+        '';
+
+      cargo-shear = nightlyCraneLib.mkCargoDerivation (commonArgs
+        // {
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
+          pnameSuffix = "-shear";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
+          buildPhaseCargoCommand = "cargo-shear --expand";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
+
+      workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
+        touch $out
+        cd ${src}
+        found=$(find ./crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
+        if [ -n "$found" ]; then
+          printf '%s\n\n' "$found"
+          echo "All dependency versions must be defined in the root [workspace.dependencies]."
+          exit 1
+        fi
+      '';
     };
 
     nixChecks = {
@@ -396,9 +458,19 @@ in
       mainnet = "https://aggregator.release-mainnet.api.mithril.network/aggregator";
     };
 
+    # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
+    # https://github.com/fjall-rs/fjall/pull/259
+    # Patch the source to use the pinned commit rev instead of the defunct branch name.
+    dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+      cp -r ${inputs.dolos} $out
+      chmod -R +w $out
+      sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
+      sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
+    '';
+
     dolos = craneLib.buildPackage (
       {
-        src = inputs.dolos;
+        src = dolosSrc;
         GIT_REVISION = inputs.dolos.rev;
         strictDeps = true;
         nativeBuildInputs =
@@ -432,72 +504,84 @@ in
       }
     );
 
+    # XXX: If unsure during updates, check that the configs evaluate to this command run in the ops repo:
+    # `nix </dev/null build --impure -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
     dolos-configs = let
       networks = ["mainnet" "preprod" "preview"];
+
+      tokenRegistryUrl = {
+        mainnet = "https://tokens.cardano.org";
+        preprod = "https://metadata.world.dev.cardano.org";
+        preview = "https://metadata.world.dev.cardano.org";
+      };
+
       mkConfig = network: let
         topology = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/topology.json");
         byronGenesis = builtins.fromJSON (builtins.readFile "${cardano-node-configs}/${network}/byron-genesis.json");
         peerAddr = let first = lib.head topology.bootstrapPeers; in "${first.address}:${toString first.port}";
         magic = toString byronGenesis.protocolConsts.protocolMagic;
       in
-        pkgs.writeText "dolos.toml" ''
-          [upstream]
-          peer_address = "${peerAddr}"
-          network_magic = ${magic}
-          is_testnet = ${
-            if network == "mainnet"
-            then "false"
-            else "true"
-          }
+        pkgs.writeText "dolos.toml" (''
+            [genesis]
+            alonzo_path = "alonzo.json"
+            byron_path = "byron.json"
+            conway_path = "conway.json"
+          ''
+          + lib.optionalString (network == "preview") ''
+            force_protocol = 6
+          ''
+          + ''
+            shelley_path = "shelley.json"
 
-          [storage]
-          version = "v1"
-          path = "dolos"
-          max_wal_history = 25920
+            [logging]
+            include_grpc = false
+            include_pallas = false
+            include_tokio = false
+            include_trp = false
+            max_level = "INFO"
 
-          [genesis]
-          byron_path = "${cardano-node-configs}/${network}/byron-genesis.json"
-          shelley_path = "${cardano-node-configs}/${network}/shelley-genesis.json"
-          alonzo_path = "${cardano-node-configs}/${network}/alonzo-genesis.json"
-          conway_path = "${cardano-node-configs}/${network}/conway-genesis.json"
-          force_protocol = 6
+            [mithril]
+            aggregator = "${mithrilAggregator.${network}}"
+            ancillary_key = "${mithrilAncillaryVerificationKeys.${network}}"
+            genesis_key = "${mithrilGenesisVerificationKeys.${network}}"
 
-          [sync]
-          pull_batch_size = 100
+            [serve.minibf]
+            listen_address = "[::]:3010"
+            token_registry_url = "${tokenRegistryUrl.${network}}"
 
-          [submit]
+            [storage]
+            max_wal_history = 25920
+            path = "dolos"
+            version = "v3"
 
-          [serve.grpc]
-          listen_address = "[::]:50051"
-          permissive_cors = true
+            [submit]
 
-          [serve.ouroboros]
-          listen_path = "dolos.socket"
-          magic = ${magic}
+            [sync]
+            pull_batch_size = 100
 
-          [serve.minibf]
-          listen_address = "[::]:3010"
-
-          [relay]
-          listen_address = "[::]:30031"
-          magic = ${magic}
-
-          [mithril]
-          aggregator = "${mithrilAggregator.${network}}"
-          genesis_key = "${mithrilGenesisVerificationKeys.${network}}"
-
-          [logging]
-          max_level = "INFO"
-          include_tokio = false
-          include_pallas = false
-          include_grpc = false
-        '';
+            [upstream]
+          ''
+          + lib.optionalString (network != "mainnet") ''
+            is_testnet = true
+          ''
+          + ''
+            network_magic = ${magic}
+            peer_address = "${peerAddr}"
+          '');
     in
       pkgs.runCommandNoCC "dolos-configs" {} ''
         mkdir -p $out
         ${lib.concatMapStringsSep "\n" (network: ''
             mkdir -p $out/${network}
-            cp ${mkConfig network} $out/${network}/dolos.toml
+            cp ${cardano-node-configs}/${network}/alonzo-genesis.json $out/${network}/alonzo.json
+            cp ${cardano-node-configs}/${network}/byron-genesis.json $out/${network}/byron.json
+            cp ${cardano-node-configs}/${network}/conway-genesis.json $out/${network}/conway.json
+            cp ${cardano-node-configs}/${network}/shelley-genesis.json $out/${network}/shelley.json
+            sed 's|= "alonzo.json"|= "'"$out/${network}/alonzo.json"'"|
+                 s|= "byron.json"|= "'"$out/${network}/byron.json"'"|
+                 s|= "conway.json"|= "'"$out/${network}/conway.json"'"|
+                 s|= "shelley.json"|= "'"$out/${network}/shelley.json"'"|' \
+              ${mkConfig network} >$out/${network}/dolos.toml
           '')
           networks}
       '';
@@ -604,6 +688,7 @@ in
           chmod -R u+w,g+w "$tmpdir"
           cd "$tmpdir"
           cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-blacklist.json
 
           set -x
           node --version

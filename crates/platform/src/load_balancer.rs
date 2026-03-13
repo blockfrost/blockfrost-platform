@@ -140,7 +140,7 @@ impl JsonRequestMethod {
 enum LoadBalancerMessage {
     Request(JsonRequest),
     HydraKExResponse(hydra_client::KeyExchangeResponse),
-    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -150,7 +150,7 @@ enum LoadBalancerMessage {
 enum RelayMessage {
     Response(JsonResponse),
     HydraKExRequest(hydra_client::KeyExchangeRequest),
-    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -230,7 +230,7 @@ mod event_loop {
         schedule_ping_tick();
 
         let tunnel_cancellation = CancellationToken::new();
-        let mut tunnel_controller: Option<hydra_client::tunnel2::Tunnel> = None;
+        let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -256,14 +256,15 @@ mod event_loop {
                         // Only start the TCP-over-WebSocket tunnels if we’re running
                         // on different machines:
                         if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
-                            let (tunnel_ctl, mut tunnel_rx) = hydra_client::tunnel2::Tunnel::new(
-                                hydra_client::tunnel2::TunnelConfig {
-                                    expose_port: resp.proposed_platform_h2h_port,
-                                    id_prefix_bit: true,
-                                    ..(hydra_client::tunnel2::TunnelConfig::default())
-                                },
-                                tunnel_cancellation.clone(),
-                            );
+                            let (tunnel_ctl, mut tunnel_rx) =
+                                bf_common::tcp_mux_tunnel::Tunnel::new(
+                                    bf_common::tcp_mux_tunnel::TunnelConfig {
+                                        expose_port: resp.proposed_platform_h2h_port,
+                                        id_prefix_bit: true,
+                                        ..(bf_common::tcp_mux_tunnel::TunnelConfig::default())
+                                    },
+                                    tunnel_cancellation.clone(),
+                                );
 
                             tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
 

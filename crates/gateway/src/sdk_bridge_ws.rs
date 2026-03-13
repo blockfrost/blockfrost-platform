@@ -64,7 +64,7 @@ pub enum JsonRequestMethod {
 pub enum GatewayMessage {
     Response(JsonResponse),
     HydraKExResponse(hydra_server_bridge::KeyExchangeResponse),
-    HydraTunnel(hydra_server_bridge::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
     Error { code: u64, msg: String },
@@ -75,7 +75,7 @@ pub enum GatewayMessage {
 pub enum BridgeMessage {
     Request(JsonRequest),
     HydraKExRequest(hydra_server_bridge::KeyExchangeRequest),
-    HydraTunnel(hydra_server_bridge::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -135,7 +135,7 @@ pub mod event_loop {
         let mut hydra_controller: Option<hydra_server_bridge::HydraController> = None;
 
         let tunnel_cancellation = CancellationToken::new();
-        let mut tunnel_controller: Option<hydra_server_bridge::tunnel2::Tunnel> = None;
+        let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -186,11 +186,11 @@ pub mod event_loop {
                                     // on different machines:
                                     if bridge_machine_id != resp.machine_id {
                                         let (tunnel_ctl, mut tunnel_rx) =
-                                            hydra_server_bridge::tunnel2::Tunnel::new(
-                                                hydra_server_bridge::tunnel2::TunnelConfig {
+                                            bf_common::tcp_mux_tunnel::Tunnel::new(
+                                                bf_common::tcp_mux_tunnel::TunnelConfig {
                                                     expose_port: resp.gateway_h2h_port,
                                                     id_prefix_bit: true,
-                                                    ..(hydra_server_bridge::tunnel2::TunnelConfig::default())
+                                                    ..(bf_common::tcp_mux_tunnel::TunnelConfig::default())
                                                 },
                                                 tunnel_cancellation.clone(),
                                             );
@@ -436,7 +436,7 @@ pub mod event_loop {
         J: ?Sized + serde::ser::Serialize,
     {
         match serde_json::to_string(msg) {
-            Ok(msg) => match socket_tx.send(Message::Text(msg)).await {
+            Ok(msg) => match socket_tx.send(Message::Text(msg.into())).await {
                 Ok(_) => Ok(()),
                 Err(err) => {
                     error!("sdk-bridge-ws: error when sending a message: {:?}", err);

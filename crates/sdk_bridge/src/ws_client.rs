@@ -88,7 +88,7 @@ struct BridgeRequest {
 enum GatewayMessage {
     Response(JsonResponse),
     HydraKExResponse(hydra_client::KeyExchangeResponse),
-    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
     Error { code: u64, msg: String },
@@ -99,7 +99,7 @@ enum GatewayMessage {
 enum BridgeMessage {
     Request(JsonRequest),
     HydraKExRequest(hydra_client::KeyExchangeRequest),
-    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -170,7 +170,7 @@ async fn run_ws_loop(
     schedule_ping_tick();
 
     let tunnel_cancellation = CancellationToken::new();
-    let mut tunnel_controller: Option<hydra_client::tunnel2::Tunnel> = None;
+    let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
     'event_loop: while let Some(msg) = event_rx.recv().await {
         match msg {
@@ -192,11 +192,11 @@ async fn run_ws_loop(
 
             BridgeEvent::NewGatewayMessage(GatewayMessage::HydraKExResponse(resp)) => {
                 if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
-                    let (tunnel_ctl, mut tunnel_rx) = hydra_client::tunnel2::Tunnel::new(
-                        hydra_client::tunnel2::TunnelConfig {
+                    let (tunnel_ctl, mut tunnel_rx) = bf_common::tcp_mux_tunnel::Tunnel::new(
+                        bf_common::tcp_mux_tunnel::TunnelConfig {
                             expose_port: resp.proposed_platform_h2h_port,
                             id_prefix_bit: true,
-                            ..(hydra_client::tunnel2::TunnelConfig::default())
+                            ..(bf_common::tcp_mux_tunnel::TunnelConfig::default())
                         },
                         tunnel_cancellation.clone(),
                     );

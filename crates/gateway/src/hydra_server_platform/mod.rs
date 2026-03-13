@@ -8,7 +8,6 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-pub mod tunnel2;
 pub mod verifications;
 
 // FIXME: this should most probably be back to the default of 600 seconds:
@@ -49,7 +48,7 @@ impl HydrasManager {
             config.lovelace_per_request * config.requests_per_microtransaction;
         if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
             Err(anyhow!(
-                "hydras-manager: Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
+                "hydras-manager: Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}.",
             ))?
         }
 

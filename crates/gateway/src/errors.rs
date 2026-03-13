@@ -27,15 +27,12 @@ pub enum APIError {
     #[error("Unauthorized registration access")]
     Unauthorized(),
 
-    #[cfg(not(target_os = "windows"))]
     #[error("Database connection error: {0}")]
     DatabaseConnection(#[from] deadpool_diesel::PoolError),
 
-    #[cfg(not(target_os = "windows"))]
     #[error("Database interaction error: {0}")]
     DatabaseInteraction(#[from] deadpool_diesel::InteractError),
 
-    #[cfg(not(target_os = "windows"))]
     #[error("Database query error: {0}")]
     DatabaseQuery(#[from] diesel::result::Error),
 }
@@ -81,7 +78,6 @@ impl IntoResponse for APIError {
                     details: "You are not authorized to access the registration.".to_string(),
                 },
             ),
-            #[cfg(not(target_os = "windows"))]
             APIError::DatabaseConnection(_)
             | APIError::DatabaseQuery(_)
             | APIError::DatabaseInteraction(_) => (

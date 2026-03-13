@@ -695,7 +695,9 @@ pub async fn send_one_websocket_msg(
     let (ws_stream, _resp) = connect_async(url).await?;
     let (mut write, mut read) = ws_stream.split();
 
-    write.send(Message::Text(payload.to_string())).await?;
+    write
+        .send(Message::Text(payload.to_string().into()))
+        .await?;
 
     tokio::time::sleep(wait_before_close).await;
 
@@ -766,7 +768,7 @@ pub fn sigterm(_pid: u32) -> Result<()> {
 
 /// We use it for `localhost` tests, to detect if the Gateway and Platform are
 /// running on the same host. Then we cannot set up a
-/// `[crate::hydra_server_platform::tunnel2::Tunnel]`, because the ports are already taken.
+/// `[bf_common::tcp_mux_tunnel::Tunnel]`, because the ports are already taken.
 pub fn hashed_machine_id() -> String {
     const MACHINE_ID_NAMESPACE: &str = "blockfrost.machine-id.v1";
 

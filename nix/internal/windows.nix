@@ -6,6 +6,7 @@ assert builtins.elem targetSystem ["x86_64-windows"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
+  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars;
 in rec {
   toolchain = with inputs.fenix.packages.${buildSystem};
     combine [
@@ -27,6 +28,9 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
+  # Cross-compile libpq for Windows (pkgsCross.postgresql is broken in Nixpkgs):
+  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross;};
+
   packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
 
   commonArgs = {
@@ -43,8 +47,9 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
-    # Unfortunately, `pkgsCross.postgresql` is broken on Windows, so making the
-    # `blockfrost-gateway` work there will be much more tinkering.
+    PQ_LIB_DIR = "${libpq-windows}/lib";
+    PQ_LIB_STATIC = "1";
+
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pkgsCross.windows.pthreads
@@ -82,7 +87,7 @@ in rec {
         find -name 'build.rs' -delete
       '';
     }
-    // (builtins.listToAttrs inputs.self.internal.x86_64-linux.hydraScriptsEnvVars));
+    // (builtins.listToAttrs hydraScriptsEnvVars));
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;
@@ -92,8 +97,6 @@ in rec {
       url = "https://github.com/input-output-hk/testgen-hs/releases/download/${version}/testgen-hs-${version}-${targetSystem}.zip";
       hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
-
-  nsis = import ./windows-nsis.nix {nsisNixpkgs = inputs.nixpkgs-nsis;};
 
   nsis-plugins = {
     EnVar = pkgs.fetchzip {
@@ -105,7 +108,7 @@ in rec {
 
   uninstaller =
     pkgs.runCommandNoCC "uninstaller" {
-      buildInputs = [nsis pkgs.wine];
+      buildInputs = [pkgs.nsis pkgs.wine];
       projectName = blockfrost-platform.pname;
       projectVersion = blockfrost-platform.version;
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
@@ -155,7 +158,7 @@ in rec {
   in
     pkgs.writeShellApplication {
       name = "pack-and-sign";
-      runtimeInputs = with pkgs; [bash coreutils nsis];
+      runtimeInputs = with pkgs; [bash coreutils pkgs.nsis];
       runtimeEnv = {
         inherit outFileName;
       };
@@ -247,8 +250,18 @@ in rec {
     stripRoot = false;
   };
 
+  # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
+  # https://github.com/fjall-rs/fjall/pull/259
+  # Patch the source to use the pinned commit rev instead of the defunct branch name.
+  dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+    cp -r ${inputs.dolos} $out
+    chmod -R +w $out
+    sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
+    sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
+  '';
+
   dolos = craneLib.buildPackage {
-    src = inputs.dolos;
+    src = dolosSrc;
     GIT_REVISION = inputs.dolos.rev;
     strictDeps = true;
 

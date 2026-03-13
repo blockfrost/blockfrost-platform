@@ -79,14 +79,16 @@ async fn test_websocket_request_response_flow() {
                         let relay_msg = RelayMessage::Response(response);
 
                         relay_tx
-                            .send(Message::Text(serde_json::to_string(&relay_msg).unwrap()))
+                            .send(Message::Text(
+                                serde_json::to_string(&relay_msg).unwrap().into(),
+                            ))
                             .await
                             .unwrap();
                     },
                     LoadBalancerMessage::Ping(id) => {
                         let pong = RelayMessage::Pong(id);
                         relay_tx
-                            .send(Message::Text(serde_json::to_string(&pong).unwrap()))
+                            .send(Message::Text(serde_json::to_string(&pong).unwrap().into()))
                             .await
                             .unwrap();
                     },
