@@ -42,14 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Block Fixup Commit Merge
         if: github.event_name == 'pull_request'
         uses: 13rac1/block-fixup-merge-action@v2.0.0
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -84,9 +84,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -136,7 +136,7 @@ jobs:
 
       - name: Upload artifacts
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ runner.os }}-binary
           path: artifacts/
@@ -147,7 +147,7 @@ jobs:
     needs: [build_and_test, check_flake_lock]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Integration Tests
         timeout-minutes: 10
@@ -156,45 +156,44 @@ jobs:
         run: nix develop .# --command cargo test --verbose --test '*_test'
 
   blockfrost_integration_tests:
-    name: Blockfrost Integration Tests (${{ matrix.network }})
+    name: ${{ matrix.mode == 'ignore-check' && 'Ignored' || 'Tests' }} (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: [build_and_test, check_flake_lock]
     strategy:
       fail-fast: false
       matrix:
+        network: [preview, preprod, mainnet]
+        mode: [tests, ignore-check]
         include:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
             cardano_node_socket_path: /run/cardano-node/node_preview.socket
             project_id_secret: BLOCKFROST_PREVIEW_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREVIEW_SUBMIT_MNEMONIC
-            timeout: 5
           - network: preprod
             dolos_endpoint: http://127.0.0.1:3009
             cardano_node_socket_path: /run/cardano-node/node_preprod.socket
             project_id_secret: BLOCKFROST_PREPROD_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_PREPROD_SUBMIT_MNEMONIC
-            timeout: 5
           - network: mainnet
             dolos_endpoint: http://127.0.0.1:3008
             cardano_node_socket_path: /run/cardano-node/node_mainnet.socket
             project_id_secret: BLOCKFROST_MAINNET_PROJECT_ID
             submit_mnemonic_secret: BLOCKFROST_MAINNET_SUBMIT_MNEMONIC
-            timeout: 15
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Run Blockfrost Tests
-        continue-on-error: true
-        timeout-minutes: ${{ matrix.timeout }}
+      - name: ${{ matrix.mode == 'ignore-check' && 'Check ignored tests still fail' || 'Run Blockfrost Tests' }}
+        timeout-minutes: 15
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
           SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
           DOLOS_ENDPOINT: ${{ matrix.dolos_endpoint }}
           CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
         run: |
-          nix run -L .#internal.x86_64-linux.blockfrost-tests-"${{ matrix.network }}"
+          target=${{ matrix.mode == 'ignore-check' && 'blockfrost-ignore-check' || 'blockfrost-tests' }}
+          nix run -L .#internal.x86_64-linux."${target}-${{ matrix.network }}"
 
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option
@@ -202,7 +201,7 @@ jobs:
     needs: check_flake_lock
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Hydra Tests
         timeout-minutes: 15
@@ -219,7 +218,7 @@ jobs:
     needs: [build_and_test]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -248,22 +247,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build (+ push if needed)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -295,14 +294,14 @@ jobs:
 
     steps:
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Create manifests (single publish)
         shell: bash
