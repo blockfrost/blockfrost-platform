@@ -697,7 +697,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-error-decoder"
-version = "0.1.0"
+version = "0.0.3-rc.3"
 dependencies = [
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
