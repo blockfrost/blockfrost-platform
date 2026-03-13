@@ -54,13 +54,13 @@ impl ExternalDecoder {
     }
 
     /// A single global [`ExternalDecoder`] that you can cheaply use in tests.
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "tarpaulin")))]
     pub fn instance() -> Self {
         GLOBAL_INSTANCE.clone()
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "tarpaulin")))]
 static GLOBAL_INSTANCE: std::sync::LazyLock<ExternalDecoder> =
     std::sync::LazyLock::new(|| ExternalDecoder::spawn().expect("Failed to spawn ExternalDecoder"));
 
