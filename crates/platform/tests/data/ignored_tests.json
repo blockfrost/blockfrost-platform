@@ -54,6 +54,12 @@
     },
     {
       "id": "accounts-stake-address-queryparams-generic-stake-address-delegations_e05138aa4298"
+    },
+    {
+      "id": "accounts-stake-address-generic-stake-address-with-zero-addresses_4261465085d4"
+    },
+    {
+      "id": "accounts-stake-address-queryparams-generic-stake-address-registrations_40bbd32ffbe9"
     }
   ],
   "preview": [
