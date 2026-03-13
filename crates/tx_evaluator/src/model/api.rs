@@ -578,7 +578,7 @@ impl From<TxEvalResult> for TxEvalSuccessV5 {
 impl From<TxEvalResult> for TxEvalFailureV5 {
     fn from(value: TxEvalResult) -> Self {
         TxEvalFailureV5 {
-            error: serde_json::Value::String(value.logs.into_iter().next().unwrap_or_default()),
+            error: serde_json::Value::String(value.logs.join(",")),
             validator: TxValidator {
                 tag: value.tag,
                 index: value.index,
