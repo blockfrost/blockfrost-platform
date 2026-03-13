@@ -4,7 +4,7 @@ use axum::{
     Extension, Router,
     routing::{get, post},
 };
-use blockfrost_gateway::{api, blockfrost, config, db, hydra, load_balancer};
+use blockfrost_gateway::{api, blockfrost, config, db, hydra_server_platform, load_balancer};
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
     let hydras_manager = if let Some(hydra) = &config.hydra {
-        Some(hydra::HydrasManager::new(hydra, &config.server.network).await?)
+        Some(hydra_server_platform::HydrasManager::new(hydra, &config.server.network).await?)
     } else {
         None
     };

@@ -4,7 +4,7 @@ pub mod config;
 pub mod db;
 pub mod errors;
 pub mod find_libexec;
-pub mod hydra;
+pub mod hydra_server_platform;
 pub mod load_balancer;
 pub mod models;
 pub mod payload;

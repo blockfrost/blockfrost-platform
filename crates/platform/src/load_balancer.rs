@@ -1,4 +1,4 @@
-use crate::hydra;
+use crate::hydra_client;
 use crate::server::state::ApiPrefix;
 use bf_common::errors::{AppError, BlockfrostError};
 use serde::{Deserialize, Serialize};
@@ -36,9 +36,9 @@ pub async fn run_all(
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     api_prefix: ApiPrefix,
     hydra_kex: Option<(
-        watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
-        mpsc::Sender<hydra::KeyExchangeResponse>,
-        mpsc::Sender<hydra::TerminateRequest>,
+        watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
+        mpsc::Sender<hydra_client::KeyExchangeResponse>,
+        mpsc::Sender<hydra_client::TerminateRequest>,
     )>,
 ) {
     assert!(
@@ -139,8 +139,8 @@ impl JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 enum LoadBalancerMessage {
     Request(JsonRequest),
-    HydraKExResponse(hydra::KeyExchangeResponse),
-    HydraTunnel(hydra::tunnel2::TunnelMsg),
+    HydraKExResponse(hydra_client::KeyExchangeResponse),
+    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -149,8 +149,8 @@ enum LoadBalancerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 enum RelayMessage {
     Response(JsonResponse),
-    HydraKExRequest(hydra::KeyExchangeRequest),
-    HydraTunnel(hydra::tunnel2::TunnelMsg),
+    HydraKExRequest(hydra_client::KeyExchangeRequest),
+    HydraTunnel(hydra_client::tunnel2::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -166,7 +166,7 @@ mod event_loop {
     enum LBEvent {
         NewLoadBalancerMessage(LoadBalancerMessage),
         NewResponse(JsonResponse),
-        HydraKExRequest(hydra::KeyExchangeRequest),
+        HydraKExRequest(hydra_client::KeyExchangeRequest),
         PingTick,
         SocketError(String),
     }
@@ -180,9 +180,9 @@ mod event_loop {
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         api_prefix: ApiPrefix,
         hydra_kex: Option<(
-            watch::Sender<Option<mpsc::Sender<hydra::KeyExchangeRequest>>>,
-            mpsc::Sender<hydra::KeyExchangeResponse>,
-            mpsc::Sender<hydra::TerminateRequest>,
+            watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
+            mpsc::Sender<hydra_client::KeyExchangeResponse>,
+            mpsc::Sender<hydra_client::TerminateRequest>,
         )>,
     ) -> Result<(), String> {
         let socket = connect(config.clone()).await?;
@@ -230,7 +230,7 @@ mod event_loop {
         schedule_ping_tick();
 
         let tunnel_cancellation = CancellationToken::new();
-        let mut tunnel_controller: Option<hydra::tunnel2::Tunnel> = None;
+        let mut tunnel_controller: Option<hydra_client::tunnel2::Tunnel> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -255,12 +255,12 @@ mod event_loop {
                     if let Some(hydra_kex) = &hydra_kex {
                         // Only start the TCP-over-WebSocket tunnels if we’re running
                         // on different machines:
-                        if resp.machine_id != hydra::verifications::hashed_machine_id() {
-                            let (tunnel_ctl, mut tunnel_rx) = hydra::tunnel2::Tunnel::new(
-                                hydra::tunnel2::TunnelConfig {
+                        if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
+                            let (tunnel_ctl, mut tunnel_rx) = hydra_client::tunnel2::Tunnel::new(
+                                hydra_client::tunnel2::TunnelConfig {
                                     expose_port: resp.proposed_platform_h2h_port,
                                     id_prefix_bit: true,
-                                    ..(hydra::tunnel2::TunnelConfig::default())
+                                    ..(hydra_client::tunnel2::TunnelConfig::default())
                                 },
                                 tunnel_cancellation.clone(),
                             );
@@ -362,7 +362,7 @@ mod event_loop {
         }
 
         if let Some(hydra_kex) = hydra_kex {
-            let _ = hydra_kex.2.send(hydra::TerminateRequest).await;
+            let _ = hydra_kex.2.send(hydra_client::TerminateRequest).await;
         }
 
         tunnel_cancellation.cancel();
