@@ -218,8 +218,6 @@ in rec {
       outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
       cp -r ${bundle} ${packageName.pname}
-
-
       mkdir -p $out
       zip -q -r $out/$outFileName ${packageName.pname}/
 
