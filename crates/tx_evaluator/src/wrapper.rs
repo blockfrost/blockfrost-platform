@@ -81,7 +81,7 @@ pub fn wrap_response_v6(resp: TestgenResponse, id: serde_json::Value) -> serde_j
                 json!({
                     "jsonrpc": "2.0",
                     "method": "evaluateTransaction",
-                    "error": serde_json::to_value(&failures).unwrap_or_default(),
+                    "error": failures,
                     "id": id,
                 })
             }
@@ -128,7 +128,7 @@ pub fn wrap_success_response_v6(
     json!({
         "jsonrpc": "2.0",
         "method": "evaluateTransaction",
-        "result": serde_json::to_value(value).expect("TxEvalResultV6: serialization failed"),
+        "result": value,
         "id": id,
     }
     )
