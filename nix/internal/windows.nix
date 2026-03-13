@@ -74,6 +74,7 @@ in rec {
     });
 
   gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
   blockfrost-gateway = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
@@ -88,6 +89,20 @@ in rec {
       '';
     }
     // (builtins.listToAttrs hydraScriptsEnvVars));
+
+  blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts GIT_REVISION;
+      pname = sdkBridgeCargoToml.package.name;
+      doCheck = false; # we run Windows tests on real Windows on GHA
+      cargoExtraArgs = "--package blockfrost-sdk-bridge";
+      postPatch = ''
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
+      '';
+    });
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;

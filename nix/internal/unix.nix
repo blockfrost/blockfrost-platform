@@ -68,6 +68,7 @@ in
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
     gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+    sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -106,6 +107,20 @@ in
         cargoExtraArgs = "--package blockfrost-gateway";
       }
       // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = sdkBridgeCargoToml.package.name;
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = sdkBridgeCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+        '';
+        cargoExtraArgs = "--package blockfrost-sdk-bridge";
+      });
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
