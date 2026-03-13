@@ -56,7 +56,7 @@ pub enum JsonRequestMethod {
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
     HydraKExResponse(hydra_server_platform::KeyExchangeResponse),
-    HydraTunnel(hydra_server_platform::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
     Error { code: u64, msg: String },
@@ -67,7 +67,7 @@ pub enum LoadBalancerMessage {
 pub enum RelayMessage {
     Response(JsonResponse),
     HydraKExRequest(hydra_server_platform::KeyExchangeRequest),
-    HydraTunnel(hydra_server_platform::tunnel2::TunnelMsg),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -470,7 +470,7 @@ pub mod event_loop {
         let mut hydra_controller: Option<hydra_server_platform::HydraController> = None;
 
         let tunnel_cancellation = CancellationToken::new();
-        let mut tunnel_controller: Option<hydra_server_platform::tunnel2::Tunnel> = None;
+        let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
@@ -533,11 +533,12 @@ pub mod event_loop {
                                     // on different machines:
                                     if platform_machine_id != resp.machine_id {
                                         let (tunnel_ctl, mut tunnel_rx) =
-                                            hydra_server_platform::tunnel2::Tunnel::new(
-                                                hydra_server_platform::tunnel2::TunnelConfig {
+                                            bf_common::tcp_mux_tunnel::Tunnel::new(
+                                                bf_common::tcp_mux_tunnel::TunnelConfig {
                                                     expose_port: resp.gateway_h2h_port,
                                                     id_prefix_bit: true,
-                                                    ..(hydra_server_platform::tunnel2::TunnelConfig::default())
+                                                    ..(bf_common::tcp_mux_tunnel::TunnelConfig::default(
+                                                    ))
                                                 },
                                                 tunnel_cancellation.clone(),
                                             );

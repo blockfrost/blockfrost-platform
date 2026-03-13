@@ -26,6 +26,10 @@ inquire.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 pallas-addresses.workspace = true
+base64.workspace = true
+bytes.workspace = true
+tokio = { workspace = true, features = ["net", "io-util", "sync"] }
+tokio-util.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
@@ -34,6 +38,13 @@ tokio.workspace = true
 
 [build-dependencies]
 bf-build-utils.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = [
+  "base64",
+  "bytes",
+  "tokio-util",
+] # used in tunnel.rs; machete's grep heuristic misses them
 
 [lints]
 workspace = true

@@ -13,11 +13,11 @@ dev_mock_db = []
 [dependencies]
 anyhow.workspace = true
 axum.workspace = true
+bf-common.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-bytes.workspace = true
 tokio-tungstenite.workspace = true
 tungstenite.workspace = true
 tracing.workspace = true
