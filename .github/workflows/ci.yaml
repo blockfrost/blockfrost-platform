@@ -64,6 +64,14 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Lint with Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Ensure crate deps use workspace versions
+        run: |
+          found=$(find crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
+          if [ -n "$found" ]; then
+            printf '%s\n' "$found"
+            echo "::error::All dependency versions must be defined in the root [workspace.dependencies]"
+            exit 1
+          fi
 
   build_and_test:
     name: Build and Test

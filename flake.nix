@@ -81,7 +81,11 @@
         "aarch64-darwin"
         "x86_64-darwin"
       ];
-      perSystem = {system, ...}: let
+      perSystem = {
+        system,
+        pkgs,
+        ...
+      }: let
         internal = inputs.self.internal.${system};
       in {
         packages =
@@ -97,7 +101,17 @@
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
 
-        checks = internal.cargoChecks // internal.nixChecks;
+        checks = let
+          checks' = internal.cargoChecks // internal.nixChecks;
+        in
+          checks'
+          // {
+            # Since `nix flake check` also tries to run all `hydraJobs`:
+            all = pkgs.runCommand "all-checks" {} ''
+              ${lib.concatStringsSep "\n" (map (drv: "echo ${drv}") (builtins.attrValues checks'))}
+              touch $out
+            '';
+          };
 
         treefmt = {pkgs, ...}: {
           projectRootFile = "flake.nix";

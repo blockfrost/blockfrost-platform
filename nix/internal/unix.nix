@@ -109,7 +109,12 @@ in
         cargoExtraArgs = "--package blockfrost-gateway";
       });
 
-    cargoChecks = {
+    cargoChecks = let
+      # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
+      nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
+      nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
+      nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
+    in {
       cargo-clippy = craneLib.cargoClippy (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
@@ -139,6 +144,59 @@ in
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
         });
+
+      cargo-udeps = nightlyCraneLib.mkCargoDerivation (commonArgs
+        // {
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
+          pnameSuffix = "-udeps";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
+          buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
+        });
+
+      cargo-machete = let
+        # Use the PR branch that adds `[dev-dependency]` checking:
+        # <https://github.com/bnjbvr/cargo-machete/pull/169>
+        cargo-machete-pr169 = pkgs.rustPlatform.buildRustPackage {
+          pname = "cargo-machete";
+          version = "0.8.0+pr.169";
+          src = pkgs.fetchFromGitHub {
+            owner = "bnjbvr";
+            repo = "cargo-machete";
+            rev = "2a7beb292e46a5473427dc069b9dd66485508ae0"; # pull/169/head
+            hash = "sha256-qac1tZofqJLy0gsgYVQjJZo8keZt9DQVm7pxByp0cVM=";
+          };
+          cargoHash = "sha256-Oht5V9+DS4vDfd9jcxiMG/gySY5IzhbTY+Ozod4kjko=";
+          doCheck = false;
+        };
+      in
+        pkgs.runCommandNoCC "cargo-machete" {
+          buildInputs = [cargo-machete-pr169];
+        } ''
+          touch $out
+          cd ${src}
+          cargo-machete --include-dev-deps
+        '';
+
+      cargo-shear = nightlyCraneLib.mkCargoDerivation (commonArgs
+        // {
+          cargoArtifacts = nightlyCargoArtifacts;
+          inherit GIT_REVISION;
+          pnameSuffix = "-shear";
+          nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
+          buildPhaseCargoCommand = "cargo-shear --expand";
+        });
+
+      workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
+        touch $out
+        cd ${src}
+        found=$(find ./crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
+        if [ -n "$found" ]; then
+          printf '%s\n\n' "$found"
+          echo "All dependency versions must be defined in the root [workspace.dependencies]."
+          exit 1
+        fi
+      '';
     };
 
     nixChecks = {
