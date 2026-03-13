@@ -18,7 +18,6 @@ default-members = ["crates/platform"]
 
 [workspace.dependencies]
 anyhow = "1.0.101"
-async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["ws"] }
 base64 = "0.22.1"
 bech32 = "0.11.1"
@@ -58,7 +57,6 @@ metrics-process = "2.4.3"
 nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
-pallas = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
 pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
@@ -79,7 +77,6 @@ rstest = "0.26.1"
 sentry = "0.46.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-serde_with = "3.16.1"
 sysinfo = "~0.37"
 tar = "0.4.44"
 thiserror = "2.0.18"
@@ -96,12 +93,14 @@ tower = { version = "0.5.3", features = ["limit"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
-tracing-test = "0.2.6"
 tungstenite = "0.28.0"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = "2"
 uuid = { version = "1.10", features = ["serde", "v4"] }
 zip = "8.1.0"
+
+[workspace.metadata.cargo-shear]
+ignored = ["jemalloc"] # musl-only conditional dependency
 
 [workspace.lints.clippy]
 uninlined_format_args = "deny"

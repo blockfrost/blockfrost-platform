@@ -5,7 +5,6 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-toml.workspace = true
 bzip2.workspace = true
 tar.workspace = true
 zip.workspace = true
