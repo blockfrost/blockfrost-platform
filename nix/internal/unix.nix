@@ -547,15 +547,15 @@ in
     blockfrost-tests-preprod = make-blockfrost-tests {network = "preprod";};
     blockfrost-tests-mainnet = make-blockfrost-tests {network = "mainnet";};
 
-    blockfrost-blacklist-check-preview = make-blockfrost-tests {
+    blockfrost-ignore-check-preview = make-blockfrost-tests {
       network = "preview";
       ignorelistOnly = true;
     };
-    blockfrost-blacklist-check-preprod = make-blockfrost-tests {
+    blockfrost-ignore-check-preprod = make-blockfrost-tests {
       network = "preprod";
       ignorelistOnly = true;
     };
-    blockfrost-blacklist-check-mainnet = make-blockfrost-tests {
+    blockfrost-ignore-check-mainnet = make-blockfrost-tests {
       network = "mainnet";
       ignorelistOnly = true;
     };
@@ -569,7 +569,7 @@ in
       pkgs.writeShellApplication {
         name =
           if ignorelistOnly
-          then "blockfrost-blacklist-check"
+          then "blockfrost-ignore-check"
           else "blockfrost-tests";
         meta.description =
           if ignorelistOnly
@@ -659,7 +659,7 @@ in
           + (
             if ignorelistOnly
             then ''
-              echo "Running blacklist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
+              echo "Running ignorelist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
             ''
             else ''
               echo "WARNING: Ignoring $ignored_count test IDs (see ignored_tests.json)"

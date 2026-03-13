@@ -148,14 +148,14 @@ jobs:
         run: nix develop .# --command cargo test --verbose --test '*_test'
 
   blockfrost_integration_tests:
-    name: ${{ matrix.mode == 'blacklist-check' && 'Blacklist' || 'Tests' }} (${{ matrix.network }})
+    name: ${{ matrix.mode == 'ignore-check' && 'Ignored' || 'Tests' }} (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
     needs: [build_and_test, check_flake_lock]
     strategy:
       fail-fast: false
       matrix:
         network: [preview, preprod, mainnet]
-        mode: [tests, blacklist-check]
+        mode: [tests, ignore-check]
         include:
           - network: preview
             dolos_endpoint: http://127.0.0.1:3010
@@ -176,7 +176,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: ${{ matrix.mode == 'blacklist-check' && 'Check blacklisted tests still fail' || 'Run Blockfrost Tests' }}
+      - name: ${{ matrix.mode == 'ignore-check' && 'Check ignored tests still fail' || 'Run Blockfrost Tests' }}
         timeout-minutes: 15
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
@@ -184,7 +184,7 @@ jobs:
           DOLOS_ENDPOINT: ${{ matrix.dolos_endpoint }}
           CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
         run: |
-          target=${{ matrix.mode == 'blacklist-check' && 'blockfrost-blacklist-check' || 'blockfrost-tests' }}
+          target=${{ matrix.mode == 'ignore-check' && 'blockfrost-ignore-check' || 'blockfrost-tests' }}
           nix run -L .#internal.x86_64-linux."${target}-${{ matrix.network }}"
 
   hydra_against_blockfrost_tests:
