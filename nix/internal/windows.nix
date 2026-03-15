@@ -6,6 +6,7 @@ assert builtins.elem targetSystem ["x86_64-windows"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
+  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars;
 in rec {
   toolchain = with inputs.fenix.packages.${buildSystem};
     combine [
@@ -85,7 +86,8 @@ in rec {
         done
         find -name 'build.rs' -delete
       '';
-    });
+    }
+    // (builtins.listToAttrs hydraScriptsEnvVars));
 
   testgen-hs = let
     inherit (inputs.self.internal.x86_64-linux.testgen-hs) version;
@@ -205,6 +207,8 @@ in rec {
       '';
     };
 
+  # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
+  # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.

@@ -103,7 +103,8 @@ in
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway";
-      });
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
@@ -115,14 +116,16 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
-        });
+          cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-audit = craneLib.cargoAudit {
         inherit (packageName) pname;
@@ -139,7 +142,8 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-udeps = nightlyCraneLib.mkCargoDerivation (commonArgs
         // {
@@ -148,7 +152,8 @@ in
           pnameSuffix = "-udeps";
           nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
           buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-machete = let
         # Use the PR branch that adds `[dev-dependency]` checking:
@@ -181,7 +186,8 @@ in
           pnameSuffix = "-shear";
           nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
           buildPhaseCargoCommand = "cargo-shear --expand";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
         touch $out
@@ -772,6 +778,11 @@ in
     hydraNetworksJson = builtins.path {
       path = hydra-flake + "/hydra-node/networks.json";
     };
+
+    hydraScriptsEnvVars = map (network: {
+      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
+      value = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${network}.${hydraVersion};
+    }) ["mainnet" "preprod" "preview"];
 
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";

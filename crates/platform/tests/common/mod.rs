@@ -55,6 +55,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         no_metrics: false,
         custom_genesis_config: None,
         data_node: None,
+        hydra: None,
     };
 
     Arc::new(config)
@@ -120,6 +121,7 @@ pub fn test_config_with_data_node(
             endpoint: data_node_endpoint,
             request_timeout: Duration::from_secs(30),
         }),
+        hydra: None,
     };
 
     Arc::new(config)

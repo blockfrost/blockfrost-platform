@@ -1,19 +1,11 @@
 use crate::errors::APIError;
+use crate::types::AssetName;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI as bf_sdk};
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct BlockfrostAPI {
     api: bf_sdk,
     policy_id_size: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AssetName(pub String);
-impl AssetName {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
 }
 
 pub struct Asset {
@@ -49,6 +41,12 @@ impl BlockfrostAPI {
 
     // Check if NFT exists at the address
     pub async fn nft_exists(&self, address: &str, asset: &str) -> Result<Asset, APIError> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(Asset {
+                asset_name: AssetName("IcebreakerX".to_string()),
+            });
+        }
+
         let bf_result = self
             .api
             .addresses(address)
