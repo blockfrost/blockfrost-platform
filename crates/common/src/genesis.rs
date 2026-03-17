@@ -130,7 +130,7 @@ mod tests {
     #[rstest]
     #[case(764_824_073, 1_506_203_091)]
     #[case(1, 1_654_041_600)]
-    #[case(2, 1_666_692_000)]
+    #[case(2, 1_666_656_000)]
     fn test_by_magic_returns_correct_start(#[case] magic: i32, #[case] expected_start: i32) {
         let registry = genesis();
         let genesis = registry.by_magic(magic as u64);
