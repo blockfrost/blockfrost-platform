@@ -1,0 +1,31 @@
+name: Update flake.lock
+
+on:
+  schedule:
+    - cron: "0 6 * * 0" # Every Sunday at 06:00 UTC
+
+# GITHUB_TOKEN pushes do NOT trigger other workflows (GitHub's recursive
+# prevention). FLAKE_LOCK_UPDATE_TOKEN (PAT or GitHub App token) is used
+# instead so that CI runs automatically on the resulting PR.
+# If the secret is not set, falls back to GITHUB_TOKEN, the PR is still
+# created but CI must be triggered manually (close/reopen the PR).
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-flake-lock:
+    runs-on: [self-hosted, Linux, X64, nixos]
+    steps:
+      - uses: actions/checkout@v4
+
+      # No-op on self-hosted runner (Nix already installed). Kept for
+      # portability.
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/update-flake-lock@main
+        with:
+          pr-title: "chore(nix): update flake.lock"
+          pr-labels: dependencies,automated
+          token: ${{ secrets.FLAKE_LOCK_UPDATE_TOKEN }}
