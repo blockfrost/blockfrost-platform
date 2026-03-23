@@ -597,10 +597,6 @@ in
       ''
       // {meta.description = "Runs Dolos on ${network}";};
 
-    acropolis-flake = (import inputs.flake-compat {src = inputs.acropolis;}).defaultNix;
-
-    inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
-
     blockfrost-tests-preview = make-blockfrost-tests {network = "preview";};
     blockfrost-tests-preprod = make-blockfrost-tests {network = "preprod";};
     blockfrost-tests-mainnet = make-blockfrost-tests {network = "mainnet";};
