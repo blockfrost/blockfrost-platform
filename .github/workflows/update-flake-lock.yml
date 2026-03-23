@@ -5,10 +5,11 @@ on:
     - cron: "0 6 * * 0" # Every Sunday at 06:00 UTC
 
 # GITHUB_TOKEN pushes do NOT trigger other workflows (GitHub's recursive
-# prevention). FLAKE_LOCK_UPDATE_TOKEN (PAT or GitHub App token) is used
+# prevention). FLAKE_UPDATE_GITHUB_TOKEN (PAT or GitHub App token) is used
 # instead so that CI runs automatically on the resulting PR.
 # If the secret is not set, falls back to GITHUB_TOKEN, the PR is still
 # created but CI must be triggered manually (close/reopen the PR).
+# Ref: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
 
 permissions:
   contents: write
@@ -28,4 +29,4 @@ jobs:
         with:
           pr-title: "chore(nix): update flake.lock"
           pr-labels: dependencies,automated
-          token: ${{ secrets.FLAKE_LOCK_UPDATE_TOKEN }}
+          token: ${{ secrets.FLAKE_UPDATE_GITHUB_TOKEN }}
