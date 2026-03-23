@@ -17,7 +17,7 @@ mod tests {
     async fn test_route_root() {
         initialize_logging();
 
-        let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
+        let (app, _, _, _, _, _) = build_app().await.expect("Failed to build the application");
 
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())

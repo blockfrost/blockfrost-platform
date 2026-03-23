@@ -48,6 +48,11 @@ use crate::model::api::AdditionalUtxoSet;
 use crate::model::api::Value;
 use crate::model::api::ValueV6;
 
+// TODO: This evaluator fetches genesis_config_and_pp() from the node on every
+// request. It should use ChainConfigWatch to read cached chain config instead.
+// Deferred because this native evaluator is currently unused (pallas-validate
+// results differ from the Haskell ledger / Ogmios).
+
 //* This implementation uses pallas validate.
 //  Since pallas validate behaves differently from the ogmios validation (which uses ledger)
 //  this implementation is not used at the moment  */

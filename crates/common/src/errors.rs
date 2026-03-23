@@ -228,6 +228,16 @@ impl BlockfrostError {
         }
     }
 
+    /// error for 503 Service Unavailable
+    /// returned when a feature is not ready or available
+    pub fn service_unavailable(message: String) -> Self {
+        Self {
+            error: "Service Unavailable".to_string(),
+            message,
+            status_code: 503,
+        }
+    }
+
     /// This error is converted in middleware to internal_server_error_user
     pub fn internal_server_error(error: String) -> Self {
         Self {
@@ -269,6 +279,7 @@ impl IntoResponse for BlockfrostError {
             404 => StatusCode::NOT_FOUND,
             405 => StatusCode::METHOD_NOT_ALLOWED,
             500 => StatusCode::INTERNAL_SERVER_ERROR,
+            503 => StatusCode::SERVICE_UNAVAILABLE,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

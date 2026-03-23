@@ -1,5 +1,6 @@
 pub mod cbor;
 pub mod chain_config;
+pub mod chain_config_watch;
 pub mod connection;
 pub mod ledger;
 pub mod monitoring;

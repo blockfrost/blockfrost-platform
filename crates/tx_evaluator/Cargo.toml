@@ -19,6 +19,8 @@ pallas-primitives.workspace = true
 pallas-addresses.workspace = true
 pallas-validate.workspace = true
 chrono.workspace = true
+tokio.workspace = true
+tracing.workspace = true
 
 [features]
 tarpaulin = []

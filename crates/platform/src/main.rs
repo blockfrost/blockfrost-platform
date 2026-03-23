@@ -26,7 +26,7 @@ async fn main() -> Result<(), AppError> {
         env!("GIT_REVISION")
     );
 
-    let (app, _, health_monitor, icebreakers_api, api_prefix) =
+    let (app, _, health_monitor, icebreakers_api, api_prefix, _) =
         build(config.clone().into()).await?;
 
     let address = std::net::SocketAddr::new(config.server_address, config.server_port);

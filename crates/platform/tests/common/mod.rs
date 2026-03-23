@@ -10,6 +10,7 @@ use bf_common::{
     config::{Config, DataNodeConfig, IcebreakersConfig, Mode},
     types::{LogLevel, Network},
 };
+use bf_node::chain_config_watch::ChainConfigWatch;
 use bf_node::pool::NodePool;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
@@ -31,9 +32,13 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
+/// Build the app and wait for chain config to be ready (node synced).
+/// Use this for tests that need the evaluator or chain config.
 pub async fn initialize_app() -> Router {
     initialize_logging();
-    let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
+    let (app, _, _, _, _, mut config_watch) =
+        build_app().await.expect("Failed to build the application");
+    config_watch.wait_ready().await;
     app
 }
 
@@ -75,6 +80,7 @@ pub async fn build_app() -> Result<
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {
@@ -90,6 +96,7 @@ pub async fn build_app_non_solitary() -> Result<
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {
@@ -143,6 +150,7 @@ pub async fn build_app_with_data_node(
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {

@@ -2,15 +2,31 @@ use crate::helpers::system_start_to_epoch_millis;
 use pallas_network::miniprotocols::localstate::queries_v16::{CurrentProtocolParam, GenesisConfig};
 use serde::Serialize;
 
-/// This structure is used to share server-wide cachables
+/// Cached chain configuration queried from the Cardano node at startup and
+/// refreshed at epoch boundaries by [`ChainConfigWatch`].
 pub struct ChainConfigCache {
+    /// Shelley genesis configuration (network magic, system start, epoch length, etc.).
     pub genesis_config: GenesisConfig,
+    /// Current protocol parameters (fees, execution unit prices, cost models, etc.).
+    /// May change at epoch boundaries via governance actions.
     pub protocol_params: CurrentProtocolParam,
+    /// Slot timing derived from genesis.
     pub slot_config: SlotConfig,
+    /// Current Cardano era index (see [`Self::CONWAY_ERA`]).
     pub era: u16,
 }
 
 impl ChainConfigCache {
+    /// Conway era index in the Cardano era sequence used by Ouroboros:
+    /// Byron=0, Shelley=1, Allegra=2, Mary=3, Alonzo=4, Babbage=5, Conway=6.
+    ///
+    /// This is an application policy constant, not a runtime-discoverable value.
+    /// The actual era is queried from the node via `get_current_era()` — this
+    /// constant defines the minimum era we require. A future era bump will
+    /// require code changes well beyond this constant (CBOR codecs, protocol
+    /// params, pallas, testgen-hs), so hardcoding is intentional.
+    pub const CONWAY_ERA: u16 = 6;
+
     pub fn new(
         genesis_config: GenesisConfig,
         protocol_params: CurrentProtocolParam,
@@ -21,10 +37,7 @@ impl ChainConfigCache {
             genesis_config,
             protocol_params,
             slot_config,
-            // The era number in the Cardano era sequence used by Ogmios/testgen-hs:
-            // Byron=0, Shelley=1, Allegra=2, Mary=3, Alonzo=4, Babbage=5, Conway=6.
-            // Hardcoded to Conway (6) since that is the only era we currently support.
-            era: 6,
+            era: Self::CONWAY_ERA,
         })
     }
 }
@@ -32,9 +45,13 @@ impl ChainConfigCache {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SlotConfig {
+    /// Duration of a single slot in milliseconds (e.g. 1000 for all known networks).
     pub slot_length: u64,
+    /// Absolute slot number at the start of the Shelley era (Byron/Shelley transition point).
     pub zero_slot: u64,
+    /// Unix timestamp in milliseconds corresponding to `zero_slot`.
     pub zero_time: u64,
+    /// Number of slots per epoch.
     pub epoch_length: u64,
 }
 

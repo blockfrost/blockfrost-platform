@@ -763,6 +763,8 @@ dependencies = [
  "pallas-validate",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

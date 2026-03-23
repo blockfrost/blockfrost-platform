@@ -1,11 +1,17 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
+use bf_common::{
+    chain_config::{ChainConfigCache, SlotConfig},
+    errors::{AppError, BlockfrostError},
+};
+use bf_node::chain_config_watch::ChainConfigWatch;
 use bf_node::pool::NodePool;
+use bf_testgen::testgen::{Testgen, TestgenResponse};
 use pallas_codec::{
     minicbor::to_vec,
     utils::{AnyUInt, CborWrap},
 };
-
 use pallas_network::miniprotocols::{
     localstate::queries_v16::{
         DatumOption, PostAlonsoTransactionOutput, TransactionOutput, UTxO, Value as NetworkValue,
@@ -16,12 +22,7 @@ use pallas_primitives::Bytes;
 use pallas_primitives::KeyValuePairs;
 use pallas_traverse::MultiEraTx;
 use serde::Serialize;
-
-use bf_common::{
-    chain_config::{ChainConfigCache, SlotConfig},
-    errors::{AppError, BlockfrostError},
-};
-use bf_testgen::testgen::{Testgen, TestgenResponse};
+use tokio::sync::Mutex;
 
 use crate::{
     model::api::{AdditionalUtxoSet, AdditionalUtxoV6},
@@ -32,81 +33,105 @@ use crate::{
     wrapper::{wrap_response_v5, wrap_response_v6},
 };
 
+/// Evaluates transactions using the external testgen-hs Haskell binary.
+///
+/// The evaluator is pull-based: on each request it reads the current
+/// [`ChainConfigCache`] from [`ChainConfigWatch`]. If the config is not yet
+/// available (node still syncing), it returns 503. If the config has changed
+/// since the last init (e.g. protocol parameter update at an epoch boundary),
+/// it re-spawns testgen-hs with the new parameters.
+///
+/// testgen-hs does not support reinit, so a process restart is required on
+/// config change.
 #[derive(Clone)]
 pub struct ExternalEvaluator {
-    testgen: Testgen,
+    /// Source of chain configuration (lazy, refreshed at epoch boundaries).
+    config_watch: ChainConfigWatch,
+    /// Shared mutable state holding the current testgen-hs process.
+    state: Arc<Mutex<EvaluatorState>>,
 }
 
+struct EvaluatorState {
+    /// Running testgen-hs process, if initialized.
+    testgen: Option<Testgen>,
+    /// The config that was used to init the current testgen process.
+    /// `Arc::ptr_eq` is used to detect config changes from `ChainConfigWatch`.
+    last_config: Option<Arc<ChainConfigCache>>,
+}
+
+/// JSON payload sent to testgen-hs on first line to initialize the evaluator.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InitPayload {
+    /// CBOR-encoded Shelley genesis `system_start`, hex string.
     system_start: String,
+    /// CBOR-encoded current protocol parameters, hex string.
     protocol_params: String,
+    /// Slot timing configuration for epoch/slot calculations.
     slot_config: SlotConfig,
+    /// Cardano era index (see [`ChainConfigCache::CONWAY_ERA`]).
     era: u16,
 }
 
+/// JSON payload sent to testgen-hs for each evaluation request.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EvalPayload {
+    /// CBOR-encoded transaction, hex string.
     tx: String,
+    /// CBOR-encoded UTxO set (node UTxOs merged with user-provided additional UTxOs), hex string.
     utxos: String,
 }
 
-/// Evaluates the given tx with utxos using the external testgen exe, which is a Haskell binary.
 impl ExternalEvaluator {
-    /// Spawn testgen with specific command 'evaluate-stream'
-    pub async fn spawn(config: ChainConfigCache) -> Result<Self, AppError> {
-        let testgen = Testgen::spawn("evaluate-stream")
-            .map_err(|err| AppError::Server(format!("Failed to spawn ExternalEvaluator: {err}")))?;
-
-        let evaluator = Self { testgen };
-        evaluator.init(config).await?;
-
-        Ok(evaluator)
+    pub fn new(config_watch: ChainConfigWatch) -> Self {
+        Self {
+            config_watch,
+            state: Arc::new(Mutex::new(EvaluatorState {
+                testgen: None,
+                last_config: None,
+            })),
+        }
     }
 
-    /// Sends repetitive data as the first communication so we don't need to send every time.
-    /// Also makes sure the child process behaves as expected.
-    async fn init(&self, config: ChainConfigCache) -> Result<serde_json::Value, AppError> {
-        use pallas_codec::minicbor::to_vec;
+    /// Get or init testgen, re-spawning if config changed. Returns 503 if
+    /// chain config is not yet available.
+    async fn ensure_testgen(&self) -> Result<Testgen, BlockfrostError> {
+        let current_config = self.config_watch.get()?;
 
-        let system_start = to_vec(config.genesis_config.system_start).map_err(|err| {
-            AppError::Server(format!(
-                "ExternalEvaluator: failed to serialize genesis config: {err}"
-            ))
-        })?;
-
-        let protocol_params = to_vec(config.protocol_params).map_err(|err| {
-            AppError::Server(format!(
-                "ExternalEvaluator: failed to serialize protocol params: {err}"
-            ))
-        })?;
-
-        let init_payload = InitPayload {
-            system_start: hex::encode(system_start),
-            protocol_params: hex::encode(protocol_params),
-            slot_config: config.slot_config,
-            era: config.era,
-        };
-
-        let payload = serde_json::to_string(&init_payload).map_err(|err| {
-            AppError::Server(format!(
-                "ExternalEvaluator: failed to serialize initial payload: {err}"
-            ))
-        })?;
-
-        match self.testgen.send(payload).await {
-            Ok(response) => match response {
-                TestgenResponse::Ok(value) => Ok(value),
-                TestgenResponse::Err(err) => Err(AppError::Server(format!(
-                    "ExternalEvaluator: Failed to initialize: {err}"
-                ))),
-            },
-            Err(err) => Err(AppError::Server(format!(
-                "ExternalEvaluator: Failed to initialize: {err}"
-            ))),
+        // Fast path: config unchanged, testgen already running.
+        {
+            let state = self.state.lock().await;
+            if let (Some(ref last), Some(ref testgen)) = (&state.last_config, &state.testgen) {
+                if Arc::ptr_eq(last, &current_config) {
+                    return Ok(testgen.clone());
+                }
+            }
         }
+        // Lock released — spawn outside the lock to avoid head-of-line blocking.
+        tracing::info!("ExternalEvaluator: spawning testgen-hs");
+
+        let testgen = spawn_and_init_testgen(&current_config).await.map_err(|e| {
+            tracing::error!("ExternalEvaluator: failed to initialize testgen-hs: {e}");
+            BlockfrostError::internal_server_error(format!(
+                "Failed to initialize ExternalEvaluator: {e}"
+            ))
+        })?;
+
+        let mut state = self.state.lock().await;
+        // Another request may have already initialized while we were spawning.
+        if let (Some(ref last), Some(ref existing)) = (&state.last_config, &state.testgen) {
+            if Arc::ptr_eq(last, &current_config) {
+                tracing::debug!(
+                    "ExternalEvaluator: testgen-hs already initialized by another request, reusing"
+                );
+                return Ok(existing.clone());
+            }
+        }
+        state.testgen = Some(testgen.clone());
+        state.last_config = Some(current_config);
+        tracing::info!("ExternalEvaluator: testgen-hs initialized successfully");
+        Ok(testgen)
     }
 
     pub async fn evaluate_binary_tx(
@@ -115,6 +140,7 @@ impl ExternalEvaluator {
         tx_cbor_binary: &[u8],
         additional_utxos: Vec<(UTxO, TransactionOutput)>,
     ) -> Result<TestgenResponse, BlockfrostError> {
+        let testgen = self.ensure_testgen().await?;
         let node = node_pool.get();
 
         /*
@@ -125,9 +151,9 @@ impl ExternalEvaluator {
             Err(err) =>
             // handle pallas decoding error as if it's coming from external binary.
             {
-                return Ok(TestgenResponse::Err(
-                    serde_json::to_value(err.to_string()).unwrap(),
-                ));
+                return Ok(TestgenResponse::Err(serde_json::Value::String(
+                    err.to_string(),
+                )));
             },
         };
 
@@ -159,7 +185,7 @@ impl ExternalEvaluator {
             ))
         })?;
 
-        let response = self.testgen.send(json).await.map_err(|err| {
+        let response = testgen.send(json).await.map_err(|err| {
             BlockfrostError::internal_server_error(format!(
                 "ExternalEvaluator: Failed to send payload: {err}"
             ))
@@ -264,5 +290,48 @@ impl ExternalEvaluator {
             .evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
             .await?;
         Ok(wrap_response_v6(response, serde_json::Value::Null))
+    }
+}
+
+/// Spawn a fresh testgen-hs process and send the init payload.
+async fn spawn_and_init_testgen(config: &ChainConfigCache) -> Result<Testgen, AppError> {
+    let testgen = Testgen::spawn("evaluate-stream")
+        .map_err(|err| AppError::Server(format!("Failed to spawn ExternalEvaluator: {err}")))?;
+
+    let system_start = to_vec(&config.genesis_config.system_start).map_err(|err| {
+        AppError::Server(format!(
+            "ExternalEvaluator: failed to serialize genesis config: {err}"
+        ))
+    })?;
+
+    let protocol_params = to_vec(&config.protocol_params).map_err(|err| {
+        AppError::Server(format!(
+            "ExternalEvaluator: failed to serialize protocol params: {err}"
+        ))
+    })?;
+
+    let init_payload = InitPayload {
+        system_start: hex::encode(system_start),
+        protocol_params: hex::encode(protocol_params),
+        slot_config: config.slot_config.clone(),
+        era: config.era,
+    };
+
+    let payload = serde_json::to_string(&init_payload).map_err(|err| {
+        AppError::Server(format!(
+            "ExternalEvaluator: failed to serialize initial payload: {err}"
+        ))
+    })?;
+
+    match testgen.send(payload).await {
+        Ok(response) => match response {
+            TestgenResponse::Ok(_) => Ok(testgen),
+            TestgenResponse::Err(err) => Err(AppError::Server(format!(
+                "ExternalEvaluator: Failed to initialize: {err}"
+            ))),
+        },
+        Err(err) => Err(AppError::Server(format!(
+            "ExternalEvaluator: Failed to initialize: {err}"
+        ))),
     }
 }

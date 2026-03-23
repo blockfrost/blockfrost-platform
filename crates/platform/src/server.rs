@@ -11,7 +11,7 @@ use bf_common::{
     errors::{AppError, BlockfrostError},
 };
 use bf_data_node::client::DataNode;
-use bf_node::{chain_config::init_caches, pool::NodePool};
+use bf_node::{chain_config_watch::ChainConfigWatch, pool::NodePool};
 use bf_tx_evaluator::external::ExternalEvaluator;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
 use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
@@ -32,6 +32,7 @@ pub async fn build(
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {
@@ -62,11 +63,11 @@ pub async fn build(
     // Set up optional Icebreakers API (solitary option in CLI)
     let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
 
-    // Initialize chain configurations
-    let chain_config_cache = init_caches(node_conn_pool.clone()).await?;
+    // Initialize chain config watcher (lazy — waits for node to sync)
+    let chain_config_watch = ChainConfigWatch::spawn(node_conn_pool.clone());
 
-    // Initialize the Haskell-based tx evaluator
-    let tx_evaluator = ExternalEvaluator::spawn(chain_config_cache).await?;
+    // Initialize the Haskell-based tx evaluator (pull-based — reads config on demand from the cache)
+    let tx_evaluator = ExternalEvaluator::new(chain_config_watch.clone());
 
     // API routes that are always under / (and also under the UUID prefix, if we use it)
     let regular_api_routes = get_regular_api_routes(!config.no_metrics);
@@ -90,7 +91,7 @@ pub async fn build(
             .with_state(app_state.clone())
             .layer(Extension(health_monitor.clone()))
             .layer(Extension(node_conn_pool.clone()))
-            .layer(Extension(tx_evaluator))
+            .layer(Extension(tx_evaluator.clone()))
             .layer(from_fn(error_middleware))
             .fallback(BlockfrostError::not_found());
 
@@ -113,5 +114,6 @@ pub async fn build(
         health_monitor,
         icebreakers_api,
         api_prefix,
+        chain_config_watch,
     ))
 }
