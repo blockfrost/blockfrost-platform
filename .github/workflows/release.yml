@@ -24,7 +24,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           extra-conf: |
             substituters = https://cache.nixos.org https://cache.iog.io
@@ -51,7 +51,7 @@ jobs:
           find -L result-*
 
       - name: Upload release artifacts
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
