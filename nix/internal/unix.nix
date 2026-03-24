@@ -726,6 +726,9 @@ in
             yarn --version
 
             yarn install
+
+            # Some fixtures lack 'id' fields; generate them so the ignorelist can match:
+            yarn update-fixtures-ids
           ''
           + (
             if ignorelistOnly
