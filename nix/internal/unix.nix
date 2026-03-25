@@ -705,8 +705,8 @@ in
             cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
             chmod -R u+w,g+w "$tmpdir"
             cd "$tmpdir"
-            cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
-            cp ${../../crates/platform/tests/data/ignored_tests.json} endpoints-ignorelist.json
+            cat ${../../crates/integration_tests/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+            cp ${../../crates/integration_tests/tests/data/ignored_tests.json} endpoints-ignorelist.json
 
             ignored_count=$(jq --arg net "$NETWORK" '.[$net] | length' endpoints-ignorelist.json)
           ''
@@ -738,7 +738,7 @@ in
               if grep -E 'Tests.*passed' tests.log; then
                 echo ""
                 echo "ERROR: Some ignored tests are now passing!"
-                echo "Please remove them from crates/platform/tests/data/ignored_tests.json"
+                echo "Please remove them from crates/integration_tests/tests/data/ignored_tests.json"
                 exit 1
               fi
 

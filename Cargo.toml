@@ -13,6 +13,7 @@ members = [
   "crates/node",
   "crates/data_node",
   "crates/gateway",
+  "crates/integration_tests",
 ]
 default-members = ["crates/platform"]
 

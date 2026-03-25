@@ -657,6 +657,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockfrost-platform-integration-tests"
+version = "0.0.3-rc.3"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bip39",
+ "blockfrost",
+ "blockfrost-platform",
+ "blockfrost-platform-api-provider",
+ "blockfrost-platform-common",
+ "blockfrost-platform-data-node",
+ "blockfrost-platform-node",
+ "cardano-serialization-lib",
+ "dotenvy",
+ "hex",
+ "ntest",
+ "pretty_assertions",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "blockfrost-platform-node"
 version = "0.0.3-rc.3"
 dependencies = [
