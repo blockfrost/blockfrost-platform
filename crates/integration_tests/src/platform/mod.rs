@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub mod asserts;
 pub mod mock_data_node;
 pub mod tx_builder;
@@ -10,31 +8,12 @@ use bf_common::{
     types::{LogLevel, Network},
 };
 use bf_node::pool::NodePool;
-use blockfrost::{BlockFrostSettings, BlockfrostAPI};
 use blockfrost_platform::{
     AppError, health_monitor,
     icebreakers::api::IcebreakersAPI,
     server::{build, state::ApiPrefix},
 };
-use std::{
-    env,
-    sync::{Arc, LazyLock},
-    time::Duration,
-};
-
-static INIT_LOGGING: LazyLock<()> = LazyLock::new(|| {
-    tracing_subscriber::fmt::init();
-});
-
-pub fn initialize_logging() {
-    let _ = INIT_LOGGING;
-}
-
-pub fn get_blockfrost_client() -> BlockfrostAPI {
-    let settings = BlockFrostSettings::default();
-
-    BlockfrostAPI::new("previewy2pbyga8FifUwJSverBCwhESegV6I7gT", settings)
-}
+use std::{env, sync::Arc, time::Duration};
 
 pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config> {
     dotenvy::dotenv().ok();

@@ -1,15 +1,13 @@
-mod common;
-
 mod tests {
     use blockfrost_platform::BlockfrostError;
     use std::net::{IpAddr, SocketAddr};
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
-    use crate::common::{build_app_non_solitary, initialize_logging};
     use axum::ServiceExt as AxumServiceExt;
     use axum::extract::Request as AxumExtractRequest;
     use blockfrost_platform::icebreakers::manager::IcebreakersManager;
+    use integration_tests::{initialize_logging, platform::build_app_non_solitary};
     use tokio::sync::oneshot;
     use tracing::info;
 

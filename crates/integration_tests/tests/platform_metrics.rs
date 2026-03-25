@@ -1,11 +1,9 @@
-mod common;
-
 mod tests {
-    use crate::common::{build_app, initialize_logging};
     use axum::{
         body::{Body, to_bytes},
         http::Request,
     };
+    use integration_tests::{initialize_logging, platform::build_app};
     use reqwest::StatusCode;
     use tower::ServiceExt;
 

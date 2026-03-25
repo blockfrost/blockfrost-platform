@@ -1,14 +1,11 @@
-mod common;
-
-use common::asserts;
-
 mod tests {
-    use crate::asserts;
-    use crate::common::tx_builder::build_tx;
-    use crate::common::{build_app, get_blockfrost_client, initialize_logging};
     use axum::{
         body::{Body, to_bytes},
         http::Request,
+    };
+    use integration_tests::{
+        get_blockfrost_client, initialize_logging,
+        platform::{asserts, build_app, tx_builder::build_tx},
     };
     use pretty_assertions::assert_eq;
     use reqwest::{Method, StatusCode};

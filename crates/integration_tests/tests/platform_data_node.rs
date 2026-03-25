@@ -1,15 +1,14 @@
-mod common;
-
 mod tests {
-    use crate::common::{
-        build_app_with_data_node, initialize_logging, mock_data_node::MockDataNode,
-    };
     use axum::{
         Router,
         body::{Body, to_bytes},
         http::Request,
     };
     use blockfrost_platform::api::root::RootResponse;
+    use integration_tests::{
+        initialize_logging,
+        platform::{build_app_with_data_node, mock_data_node::MockDataNode},
+    };
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
     use tower::ServiceExt;
