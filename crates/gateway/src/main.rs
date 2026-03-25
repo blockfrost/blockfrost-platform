@@ -48,15 +48,15 @@ async fn main() {
         .route("/ws", get(load_balancer::api::websocket_route))
         .route("/stats", get(load_balancer::api::stats_route))
         .route(
-            "/:uuid",
+            "/{uuid}",
             axum::routing::any(load_balancer::api::prefix_route_root),
         )
         .route(
-            "/:uuid/",
+            "/{uuid}/",
             axum::routing::any(load_balancer::api::prefix_route_root),
         )
         .route(
-            "/:uuid/*rest",
+            "/{uuid}/{*rest}",
             axum::routing::any(load_balancer::api::prefix_route),
         )
         .layer(Extension(load_balancer))

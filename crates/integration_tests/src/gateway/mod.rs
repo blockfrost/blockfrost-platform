@@ -10,8 +10,9 @@ use tokio::task::JoinHandle;
 pub async fn build_router(lb: LoadBalancerState) -> Router {
     Router::new()
         .route("/ws", get(api::websocket_route))
-        .route("/:uuid", any(api::prefix_route_root))
-        .route("/:uuid/*rest", any(api::prefix_route))
+        .route("/{uuid}", any(api::prefix_route_root))
+        .route("/{uuid}/", any(api::prefix_route_root))
+        .route("/{uuid}/{*rest}", any(api::prefix_route))
         .layer(Extension(lb))
 }
 
