@@ -557,17 +557,13 @@ dependencies = [
 name = "blockfrost-platform"
 version = "0.0.3-rc.3"
 dependencies = [
- "anyhow",
  "axum",
  "base64",
- "bip39",
- "blockfrost",
  "blockfrost-platform-api-provider",
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "blockfrost-platform-data-node",
  "blockfrost-platform-node",
- "cardano-serialization-lib",
  "chrono",
  "dotenvy",
  "futures",
@@ -578,8 +574,6 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "ntest",
- "pretty_assertions",
  "proptest",
  "reqwest 0.13.2",
  "rstest",

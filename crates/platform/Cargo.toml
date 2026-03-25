@@ -37,17 +37,11 @@ metrics-process.workspace = true
 chrono.workspace = true
 dotenvy.workspace = true
 uuid.workspace = true
-anyhow.workspace = true
-ntest.workspace = true
 
 [dev-dependencies]
 bf-api-provider.workspace = true
 rstest.workspace = true
-pretty_assertions.workspace = true
 proptest.workspace = true
-cardano-serialization-lib.workspace = true
-bip39.workspace = true
-blockfrost.workspace = true
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc.workspace = true
