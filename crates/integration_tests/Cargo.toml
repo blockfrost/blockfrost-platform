@@ -10,8 +10,8 @@ name = "integration_tests"
 path = "src/lib.rs"
 
 [dependencies]
-blockfrost-gateway = { path = "../gateway" }
-blockfrost-platform = { path = "../platform" }
+blockfrost-gateway.workspace = true
+blockfrost-platform.workspace = true
 bf-api-provider.workspace = true
 bf-common.workspace = true
 bf-data-node.workspace = true
