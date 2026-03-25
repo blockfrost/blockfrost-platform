@@ -10,6 +10,7 @@ name = "integration_tests"
 path = "src/lib.rs"
 
 [dependencies]
+blockfrost-gateway = { path = "../gateway" }
 blockfrost-platform = { path = "../platform" }
 bf-api-provider.workspace = true
 bf-common.workspace = true
@@ -35,11 +36,17 @@ tokio = { workspace = true, features = [
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
+base64.workspace = true
+futures.workspace = true
+hyper.workspace = true
 ntest.workspace = true
 pretty_assertions.workspace = true
 reqwest.workspace = true
+tokio-tungstenite.workspace = true
 tower.workspace = true
 tracing.workspace = true
+tungstenite.workspace = true
+uuid.workspace = true
 
 [lints]
 workspace = true

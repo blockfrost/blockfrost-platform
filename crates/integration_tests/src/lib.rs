@@ -1,3 +1,4 @@
+pub mod gateway;
 pub mod platform;
 
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};

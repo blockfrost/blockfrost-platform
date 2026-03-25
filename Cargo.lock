@@ -656,8 +656,10 @@ version = "0.0.3-rc.3"
 dependencies = [
  "anyhow",
  "axum",
+ "base64",
  "bip39",
  "blockfrost",
+ "blockfrost-gateway",
  "blockfrost-platform",
  "blockfrost-platform-api-provider",
  "blockfrost-platform-common",
@@ -665,16 +667,21 @@ dependencies = [
  "blockfrost-platform-node",
  "cardano-serialization-lib",
  "dotenvy",
+ "futures",
  "hex",
+ "hyper",
  "ntest",
  "pretty_assertions",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-tungstenite",
  "tower",
  "tracing",
  "tracing-subscriber",
+ "tungstenite",
+ "uuid",
 ]
 
 [[package]]

@@ -1,5 +1,4 @@
-mod common;
-use common::*;
+use integration_tests::gateway::*;
 
 use base64::Engine;
 use blockfrost_gateway::{
