@@ -89,14 +89,6 @@
       "id": "addresses-address-transactions-generic-payment-cred-3-page-with-self-tx_7649bcb6fa85"
     },
     {
-      "_comment": "epochs/latest/parameters",
-      "id": "epochs-latest-parameters_a73a0c95ff80"
-    },
-    {
-      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
-      "id": "pools-extended-queryparams_33c8fc92f5c2"
-    },
-    {
       "_comment": "txs/28172ea876c3d1e691284e5179fae2feb3e69d7d41e43f8023dc380115741026",
       "id": "txs-tx-generic-shelley-tx-with-huge-size_368319daec24"
     },
@@ -167,6 +159,10 @@
     {
       "_comment": "txs/28bd5e8c342ab89d6642e446cb299058ea36256af1718e4af9326898ce4192d7/pool_updates",
       "id": "txs-tx-pool-updates-generic-shelley-with-pool-certs_498bd3a6909a"
+    },
+    {
+      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
+      "id": "pools-extended-queryparams_33c8fc92f5c2"
     }
   ],
   "preprod": [
