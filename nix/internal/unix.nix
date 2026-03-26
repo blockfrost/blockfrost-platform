@@ -638,6 +638,7 @@ in
           jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
+          perl
         ];
         text =
           ''
