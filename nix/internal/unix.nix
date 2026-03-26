@@ -638,6 +638,7 @@ in
           jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
+          perl
         ];
         text =
           ''
@@ -726,6 +727,14 @@ in
             yarn --version
 
             yarn install
+
+            # XXX: Some fixtures have multi-line `testName:\n  'value'` which
+            # `add-fixtures-ids` cannot parse, so their 'id' fields stay missing.
+            # Let’s join them into single-line format so the script can add the IDs
+            # and the ignorelist can match. Remove once blockfrost-tests is fixed.
+            find src/fixtures -name '*.ts' -exec \
+              perl -i -0pe "s/testName:\n\s+'/testName: '/g" {} +
+            yarn update-fixtures-ids
           ''
           + (
             if ignorelistOnly
