@@ -1,0 +1,52 @@
+[package]
+name = "blockfrost-platform-integration-tests"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "integration_tests"
+path = "src/lib.rs"
+
+[dependencies]
+blockfrost-gateway.workspace = true
+blockfrost-platform.workspace = true
+bf-api-provider.workspace = true
+bf-common.workspace = true
+bf-data-node.workspace = true
+bf-node.workspace = true
+
+anyhow.workspace = true
+axum.workspace = true
+bip39.workspace = true
+blockfrost.workspace = true
+cardano-serialization-lib.workspace = true
+dotenvy.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = [
+  "macros",
+  "rt-multi-thread",
+  "time",
+  "net",
+  "sync",
+] }
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+futures.workspace = true
+hyper.workspace = true
+ntest.workspace = true
+pretty_assertions.workspace = true
+reqwest.workspace = true
+tokio-tungstenite.workspace = true
+tower.workspace = true
+tracing.workspace = true
+tungstenite.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

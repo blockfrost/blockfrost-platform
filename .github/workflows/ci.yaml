@@ -164,7 +164,7 @@ jobs:
         timeout-minutes: 10
         env:
           CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
-        run: nix develop .# --command cargo test --verbose --test '*_test'
+        run: nix develop .# --command cargo test --verbose -p blockfrost-platform-integration-tests --no-fail-fast
 
   blockfrost_integration_tests:
     name: ${{ matrix.mode == 'ignore-check' && 'Ignored' || 'Tests' }} (${{ matrix.network }})

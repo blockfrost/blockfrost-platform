@@ -525,13 +525,11 @@ dependencies = [
  "hex",
  "hyper",
  "rand 0.8.5",
- "reqwest 0.13.2",
  "rstest",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite",
  "toml 1.0.2+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
@@ -557,17 +555,13 @@ dependencies = [
 name = "blockfrost-platform"
 version = "0.0.3-rc.3"
 dependencies = [
- "anyhow",
  "axum",
  "base64",
- "bip39",
- "blockfrost",
  "blockfrost-platform-api-provider",
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "blockfrost-platform-data-node",
  "blockfrost-platform-node",
- "cardano-serialization-lib",
  "chrono",
  "dotenvy",
  "futures",
@@ -578,8 +572,6 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "ntest",
- "pretty_assertions",
  "proptest",
  "reqwest 0.13.2",
  "rstest",
@@ -654,6 +646,40 @@ dependencies = [
  "serde",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "blockfrost-platform-integration-tests"
+version = "0.0.3-rc.3"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "bip39",
+ "blockfrost",
+ "blockfrost-gateway",
+ "blockfrost-platform",
+ "blockfrost-platform-api-provider",
+ "blockfrost-platform-common",
+ "blockfrost-platform-data-node",
+ "blockfrost-platform-node",
+ "cardano-serialization-lib",
+ "dotenvy",
+ "futures",
+ "hex",
+ "hyper",
+ "ntest",
+ "pretty_assertions",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "tungstenite",
+ "uuid",
 ]
 
 [[package]]
