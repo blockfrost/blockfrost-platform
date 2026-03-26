@@ -90,8 +90,8 @@ impl TestGateway {
 
     /// Shut down the gateway.
     pub async fn stop(mut self) {
-        // FIXME: Temporarily, actively disconnect all WebSocket relays via
-        // `do_finish` channels.:
+        // Actively disconnect all WebSocket relays via their `do_finish` channels.
+        // FIXME: we should better simulate Gateway getting killed.
         {
             let relays = self.lb.active_relays.lock().await;
             for (_, relay) in relays.iter() {
