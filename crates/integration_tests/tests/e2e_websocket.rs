@@ -2,69 +2,20 @@ use std::{sync::Arc, time::Duration};
 
 use futures::future::join_all;
 use integration_tests::{
-    gateway::TestGateway,
+    gateway::{self, TestGateway},
     initialize_logging,
-    platform::{build_app_non_solitary, test_config},
+    platform::test_config,
 };
 
 use bf_common::config::IcebreakersConfig;
-use blockfrost_platform::{
-    icebreakers::manager::IcebreakersManager,
-    server::{build, state::ApiPrefix},
-};
-use reqwest::{Client, Response, StatusCode};
-use tokio::{sync::Mutex, time::Instant};
-
-/// Poll until the gateway is serving requests through the WebSocket relay.
-///
-/// The gateway returns 502 when no relay is connected for the UUID prefix.
-async fn wait_for_ready(client: &Client, url: &str, timeout: Duration) -> Response {
-    let deadline = Instant::now() + timeout;
-    loop {
-        if let Ok(resp) = client.get(url).send().await {
-            let status = resp.status();
-            // 502 = no WebSocket relay connected; 404 = UUID not registered yet
-            if status != StatusCode::BAD_GATEWAY && status != StatusCode::NOT_FOUND {
-                return resp;
-            }
-        }
-        assert!(Instant::now() < deadline, "Timed out waiting for relay");
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-}
-
-/// Common setup: start a `TestGateway` + Platform, wire through `IcebreakersManager`.
-///
-/// Returns `(gateway, client, base_url_with_prefix)` for making requests.
-async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
-    initialize_logging();
-
-    let gw = TestGateway::start().await;
-    let gateway_url = format!("http://{}", gw.addr);
-
-    let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary(Some(gateway_url))
-        .await
-        .expect("Failed to build the application");
-
-    let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
-    let health_errors = Arc::new(Mutex::new(vec![]));
-
-    let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix.clone());
-    manager.run().await;
-
-    let client = Client::new();
-    let base = format!("http://{}{}", gw.addr, api_prefix);
-
-    // Wait for that relay to be ready:
-    wait_for_ready(&client, &format!("{base}/health"), Duration::from_secs(30)).await;
-
-    (gw, client, base, api_prefix)
-}
+use blockfrost_platform::{icebreakers::manager::IcebreakersManager, server::build};
+use reqwest::StatusCode;
+use tokio::sync::Mutex;
 
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_connection_and_basic_request() {
-    let (_gw, client, base, _prefix) = setup().await;
+    let (_gw, client, base, _prefix) = gateway::setup().await;
 
     let resp = client
         .get(format!("{base}/health"))
@@ -83,7 +34,7 @@ async fn test_ws_connection_and_basic_request() {
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_multiple_sequential_requests() {
-    let (_gw, client, base, _prefix) = setup().await;
+    let (_gw, client, base, _prefix) = gateway::setup().await;
 
     for i in 0..5 {
         let url = if i % 2 == 0 {
@@ -106,7 +57,7 @@ async fn test_ws_multiple_sequential_requests() {
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_concurrent_requests() {
-    let (_gw, client, base, _prefix) = setup().await;
+    let (_gw, client, base, _prefix) = gateway::setup().await;
 
     let futs: Vec<_> = (0..10)
         .map(|i| {
@@ -132,7 +83,7 @@ async fn test_ws_concurrent_requests() {
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_post_request_with_body() {
-    let (_gw, client, base, _prefix) = setup().await;
+    let (_gw, client, base, _prefix) = gateway::setup().await;
 
     // Send invalid CBOR to `tx/submit`. The Platform should receive it and
     // return a structured error, proving the `base64` body round-trip works:
@@ -193,7 +144,7 @@ async fn test_ws_invalid_credentials_rejected() {
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_reconnection_after_gateway_restart() {
-    let (gw, client, base, _prefix) = setup().await;
+    let (gw, client, base, _prefix) = gateway::setup().await;
     let addr = gw.addr;
 
     // Verify initial request works:
@@ -212,7 +163,8 @@ async fn test_ws_reconnection_after_gateway_restart() {
 
     // Wait for the manager to re-register and reconnect (may take up to ~12 s
     // in the worst case: 1 s disconnect delay + 10 s failed-register retry):
-    let resp = wait_for_ready(&client, &format!("{base}/health"), Duration::from_secs(30)).await;
+    let resp =
+        gateway::wait_for_ready(&client, &format!("{base}/health"), Duration::from_secs(30)).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
     let body: serde_json::Value = resp.json().await.unwrap();
@@ -225,7 +177,7 @@ async fn test_ws_reconnection_after_gateway_restart() {
 #[tokio::test]
 #[ntest::timeout(120_000)]
 async fn test_ws_cardano_api_endpoints() {
-    let (_gw, client, base, _prefix) = setup().await;
+    let (_gw, client, base, _prefix) = gateway::setup().await;
 
     // Test root endpoint (returns Platform metadata from `HealthMonitor`):
     let resp = client

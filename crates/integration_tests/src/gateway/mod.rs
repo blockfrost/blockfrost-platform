@@ -8,10 +8,17 @@ use blockfrost_gateway::{
     blockfrost::AssetName,
     load_balancer::{LoadBalancerState, api},
 };
+use blockfrost_platform::{icebreakers::manager::IcebreakersManager, server::state::ApiPrefix};
+use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::json;
-use std::net::SocketAddr;
-use tokio::{net::TcpListener, sync::oneshot, task::JoinHandle};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
+use tokio::{
+    net::TcpListener,
+    sync::{Mutex, oneshot},
+    task::JoinHandle,
+    time::Instant,
+};
 
 pub async fn build_router(lb: LoadBalancerState) -> Router {
     Router::new()
@@ -162,4 +169,51 @@ async fn mock_register_handler(
             "access_token": token.0
         }]
     })))
+}
+
+/// Poll until the gateway is serving requests through the WebSocket relay.
+///
+/// The gateway returns 502 when no relay is connected for the UUID prefix.
+pub async fn wait_for_ready(client: &Client, url: &str, timeout: Duration) -> Response {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Ok(resp) = client.get(url).send().await {
+            let status = resp.status();
+            // 502 = no WebSocket relay connected; 404 = UUID not registered yet
+            if status != StatusCode::BAD_GATEWAY && status != StatusCode::NOT_FOUND {
+                return resp;
+            }
+        }
+        assert!(Instant::now() < deadline, "Timed out waiting for relay");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+}
+
+/// Common setup: start a `TestGateway` + Platform, wire through `IcebreakersManager`.
+///
+/// Returns `(gateway, client, base_url_with_prefix)` for making requests.
+pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
+    crate::initialize_logging();
+
+    let gw = TestGateway::start().await;
+    let gateway_url = format!("http://{}", gw.addr);
+
+    let (app, _, _, icebreakers_api, api_prefix) =
+        crate::platform::build_app_non_solitary(Some(gateway_url))
+            .await
+            .expect("Failed to build the application");
+
+    let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
+    let health_errors = Arc::new(Mutex::new(vec![]));
+
+    let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix.clone());
+    manager.run().await;
+
+    let client = Client::new();
+    let base = format!("http://{}{}", gw.addr, api_prefix);
+
+    // Wait for that relay to be ready:
+    wait_for_ready(&client, &format!("{base}/health"), Duration::from_secs(30)).await;
+
+    (gw, client, base, api_prefix)
 }
