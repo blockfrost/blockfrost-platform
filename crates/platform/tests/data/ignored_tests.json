@@ -161,8 +161,8 @@
       "id": "txs-tx-pool-updates-generic-shelley-with-pool-certs_498bd3a6909a"
     },
     {
-      "_comment": "txs/f1aee024a482d5d21ed552d15eefbb664e98095cdabde75a9ff9c78c0812e6fb/pool_updates",
-      "id": "txs-tx-generic-shelley-with-multiple-delegation-stake-certs-and-pool-updates_474556906a6a"
+      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
+      "id": "pools-extended-queryparams_33c8fc92f5c2"
     }
   ],
   "preprod": [
