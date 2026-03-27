@@ -738,6 +738,7 @@ in
               &
             gateway_pid=$!
 
+            sleep 1
             wait4x http "$gateway_url/stats" --expect-status-code 200 --timeout 60s --interval 1s
 
             ${lib.getExe blockfrost-platform} \
@@ -754,6 +755,7 @@ in
               &
             platform_pid=$!
 
+            sleep 1
             wait4x http "http://127.0.0.1:$platform_port/" --expect-status-code 200 --timeout 60s --interval 1s
 
             api_prefix=""
