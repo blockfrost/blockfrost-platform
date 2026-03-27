@@ -105,6 +105,24 @@ in
         cargoExtraArgs = "--package blockfrost-gateway";
       });
 
+    blockfrost-gateway--dev-mock-db = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = gatewayCargoToml.package.name + "-dev-mock-db";
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta = {
+          mainProgram = gatewayCargoToml.package.name;
+          description = "Blockfrost Gateway (dev mock DB build)";
+        };
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
+        cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
+      });
+
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
       nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
@@ -632,6 +650,7 @@ in
         runtimeInputs = with pkgs; [
           bash
           coreutils
+          gnugrep
           nodePackages.nodejs
           nodePackages.yarn
           curl
@@ -653,14 +672,19 @@ in
 
             err() { printf "error: %s\n" "$1" >&2; }
 
+            gateway_pid=""
             platform_pid=""
             tmpdir="$(mktemp -d)"
             cleanup() {
               local ec=$?
               cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
               if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
-                kill -TERM "$platform_pid"
+                kill -TERM "$platform_pid" || true
                 wait "$platform_pid" || true
+              fi
+              if [[ -n "$gateway_pid" ]] && kill -0 "$gateway_pid"; then
+                kill -TERM "$gateway_pid" || true
+                wait "$gateway_pid" || true
               fi
               exit "$ec"
             }
@@ -683,8 +707,38 @@ in
             fi
 
             export NETWORK=${lib.escapeShellArg network}
-
+            reward_address=${lib.escapeShellArg
+              rec {
+                preview = "addr_test1vqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqd9tg5t";
+                preprod = preview;
+                mainnet = "addr1vyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkdl5mw";
+              }.${
+                network
+              }}
+            gateway_port=$(python3 -m portpicker)
             platform_port=$(python3 -m portpicker)
+            gateway_url="http://127.0.0.1:$gateway_port"
+
+            cat >"$tmpdir/gateway.toml" <<EOF
+            [server]
+            address = '127.0.0.1:$gateway_port'
+            log_level = 'info'
+            url = 'http://127.0.0.1:$gateway_port'
+
+            [database]
+            connection_string = 'postgresql://unused:unused@127.0.0.1:5432/unused'
+
+            [blockfrost]
+            project_id = 'unused'
+            nft_asset = 'unused'
+            EOF
+
+            ${lib.getExe blockfrost-gateway--dev-mock-db} \
+              --config "$tmpdir/gateway.toml" \
+              &
+            gateway_pid=$!
+
+            wait4x http "$gateway_url/stats" --expect-status-code 200 --timeout 60s --interval 1s
 
             ${lib.getExe blockfrost-platform} \
               --server-address 127.0.0.1 \
@@ -692,13 +746,30 @@ in
               --log-level info \
               --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
               --mode compact \
-              --solitary \
+              --secret 'unused-unused' \
+              --reward-address "$reward_address" \
+              --gateway-url "$gateway_url" \
               --data-node "''${DOLOS_ENDPOINT}" \
               --data-node-timeout-sec 30 \
               &
             platform_pid=$!
 
-            export SERVER_URL="http://127.0.0.1:$platform_port"
+            wait4x http "http://127.0.0.1:$platform_port/" --expect-status-code 200 --timeout 60s --interval 1s
+
+            api_prefix=""
+            for _ in $(seq 1 60); do
+              api_prefix=$(curl -fsSL "$gateway_url/stats" | jq -r 'to_entries | .[0].value.api_prefix // empty') || true
+              if [[ -n "$api_prefix" ]]; then
+                break
+              fi
+              sleep 1
+            done
+            if [[ -z "$api_prefix" ]]; then
+              err "Gateway did not expose a registered API prefix."
+              exit 1
+            fi
+
+            export SERVER_URL="$gateway_url/$api_prefix"
 
             sleep 1
             wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
