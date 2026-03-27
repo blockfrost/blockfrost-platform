@@ -49,6 +49,12 @@ impl BlockfrostAPI {
 
     // Check if NFT exists at the address
     pub async fn nft_exists(&self, address: &str, asset: &str) -> Result<Asset, APIError> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(Asset {
+                asset_name: AssetName("IcebreakerX".to_string()),
+            });
+        }
+
         let bf_result = self
             .api
             .addresses(address)
