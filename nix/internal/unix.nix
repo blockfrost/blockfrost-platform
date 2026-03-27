@@ -729,7 +729,7 @@ in
             connection_string = 'postgresql://unused:unused@127.0.0.1:5432/unused'
 
             [blockfrost]
-            project_id = 'unused'
+            project_id = '${network}00000000000000000000000000000000'
             nft_asset = 'unused'
             EOF
 
