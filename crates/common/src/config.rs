@@ -40,6 +40,7 @@ pub struct DataNodeConfig {
 pub struct IcebreakersConfig {
     pub reward_address: String,
     pub secret: String,
+    pub gateway_url: Option<String>,
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,6 +82,7 @@ impl Config {
             Some(IcebreakersConfig {
                 reward_address,
                 secret,
+                gateway_url: args.gateway_url.clone(),
             })
         } else {
             if args.reward_address.is_some() || args.secret.is_some() {

@@ -84,6 +84,11 @@ pub struct Args {
 
     #[clap(long = "data-node-timeout-sec", default_value = "30")]
     pub data_node_timeout: Option<u64>,
+
+    /// Override the Gateway API URL (default: derived from network). Useful for
+    /// self-hosted gateways or testing.
+    #[arg(long)]
+    pub gateway_url: Option<String>,
 }
 
 fn get_config_path() -> PathBuf {
@@ -273,6 +278,7 @@ impl Args {
             data_node: data_node.endpoint,
             data_node_timeout: Some(data_node.request_timeout),
             server_concurrency_limit: 8192,
+            gateway_url: None,
         };
 
         if !is_solitary {

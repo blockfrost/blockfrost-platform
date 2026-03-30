@@ -16,7 +16,7 @@ use tracing::info;
 async fn test_icebreakers_registrations() -> Result<(), BlockfrostError> {
     initialize_logging();
 
-    let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary()
+    let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary(None)
         .await
         .expect("Failed to build the application");
 

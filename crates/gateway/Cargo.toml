@@ -6,6 +6,10 @@ edition.workspace = true
 publish = false
 build = "build.rs"
 
+[features]
+default = []
+dev_mock_db = []
+
 [dependencies]
 axum.workspace = true
 tokio = { workspace = true, features = ["full"] }
