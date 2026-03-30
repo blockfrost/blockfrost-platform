@@ -107,7 +107,8 @@ in rec {
   };
 
   uninstaller =
-    pkgs.runCommandNoCC "uninstaller" {
+    pkgs.runCommandNoCC "uninstaller"
+    {
       buildInputs = [pkgs.nsis pkgs.wine];
       projectName = blockfrost-platform.pname;
       projectVersion = blockfrost-platform.version;
@@ -146,7 +147,8 @@ in rec {
   make-installer = {doSign ? false}: let
     outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
     installer-nsi =
-      pkgs.runCommandNoCC "installer.nsi" {
+      pkgs.runCommandNoCC "installer.nsi"
+      {
         inherit outFileName;
         projectName = blockfrost-platform.pname;
         projectVersion = blockfrost-platform.version;
@@ -214,7 +216,8 @@ in rec {
   '';
 
   archive =
-    pkgs.runCommandNoCC "archive" {
+    pkgs.runCommandNoCC "archive"
+    {
       buildInputs = with pkgs; [zip];
       outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
     } ''
@@ -231,7 +234,8 @@ in rec {
     sizes = [16 24 32 48 64 128 256 512];
     d2s = d: "${toString d}x${toString d}";
   in
-    pkgs.runCommand "${baseNameOf source}.ico" {
+    pkgs.runCommand "${baseNameOf source}.ico"
+    {
       buildInputs = with pkgs; [imagemagick];
     } ''
       ${lib.concatMapStringsSep "\n" (dim: ''
@@ -283,7 +287,8 @@ in rec {
   };
 
   packageWithIcon =
-    pkgs.runCommand blockfrost-platform.name {
+    pkgs.runCommand blockfrost-platform.name
+    {
       buildInputs = with pkgs; [
         wine
         winetricks

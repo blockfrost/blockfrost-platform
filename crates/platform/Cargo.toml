@@ -43,16 +43,11 @@ dotenvy.workspace = true
 uuid.workspace = true
 dirs.workspace = true
 anyhow.workspace = true
-ntest.workspace = true
 
 [dev-dependencies]
 bf-api-provider.workspace = true
 rstest.workspace = true
-pretty_assertions.workspace = true
 proptest.workspace = true
-cardano-serialization-lib.workspace = true
-bip39.workspace = true
-blockfrost.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

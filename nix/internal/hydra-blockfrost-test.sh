@@ -7,12 +7,14 @@ set -euo pipefail
 work_dir=""
 child_pids=()
 cleanup() {
+  local ec=$?
   kill "${child_pids[@]}" 2>/dev/null || true
-  wait
+  wait || true
   if [ -n "$work_dir" ]; then
     cd /
     rm -rf -- "$work_dir"
   fi
+  exit "$ec"
 }
 trap cleanup INT TERM EXIT
 

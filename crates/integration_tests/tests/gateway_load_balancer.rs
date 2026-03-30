@@ -1,5 +1,4 @@
-mod common;
-use common::*;
+use integration_tests::gateway::*;
 
 use base64::Engine;
 use blockfrost_gateway::{
@@ -16,7 +15,7 @@ async fn test_websocket_connection_invalid_token() {
     let lb = LoadBalancerState::new(None).await;
 
     let router = build_router(lb.clone()).await;
-    let (addr, server_handle) = start_server(router).await;
+    let (addr, _shutdown_tx, server_handle) = start_server(router, None).await;
 
     let url = format!("ws://{addr}");
     let request = hyper::Request::builder()
@@ -41,7 +40,7 @@ async fn test_websocket_request_response_flow() {
     let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
 
     let router = build_router(lb.clone()).await;
-    let (addr, server_handle) = start_server(router).await;
+    let (addr, _shutdown_tx, server_handle) = start_server(router, None).await;
 
     let ws_url = format!("ws://{addr}/ws");
     let http_url = format!("http://{addr}");

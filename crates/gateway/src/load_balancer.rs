@@ -26,6 +26,7 @@ pub struct JsonRequest {
     pub id: RequestId,
     method: JsonRequestMethod,
     path: String,
+    query: Option<String>,
     pub header: Vec<JsonHeader>,
     body_base64: String,
 }
@@ -331,7 +332,8 @@ pub mod api {
                     })
                     .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))?;
 
-            let json_req = request_to_json(req, rest.clone(), &relay_name).await?;
+            let query = req.uri().query().map(ToString::to_string);
+            let json_req = request_to_json(req, rest.clone(), query, &relay_name).await?;
 
             let (response_tx, response_rx) = oneshot::channel::<JsonResponse>();
 
@@ -1054,6 +1056,7 @@ pub mod event_loop {
 async fn request_to_json(
     request: hyper::Request<axum::body::Body>,
     path_override: String,
+    query_override: Option<String>,
     relay_name: &AssetName,
 ) -> Result<JsonRequest, (hyper::StatusCode, String)> {
     use axum::http::{Method, StatusCode};
@@ -1099,6 +1102,7 @@ async fn request_to_json(
     Ok(JsonRequest {
         id: RequestId(Uuid::new_v4()),
         path: path_override.clone(),
+        query: query_override,
         method,
         body_base64,
         header,
@@ -1265,5 +1269,26 @@ mod tests {
 
         assert!(tokens.contains_key(&token_valid));
         assert!(!tokens.contains_key(&token_expired));
+    }
+
+    #[tokio::test]
+    async fn test_request_to_json_keeps_query_separate() {
+        let request = hyper::Request::builder()
+            .method(hyper::Method::GET)
+            .uri("http://127.0.0.1/accounts/rewards?count=3&page=2&order=asc")
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let json = request_to_json(
+            request,
+            "/accounts/rewards".to_string(),
+            Some("count=3&page=2&order=asc".to_string()),
+            &AssetName("x-asset-x".to_string()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(json.path, "/accounts/rewards");
+        assert_eq!(json.query, Some("count=3&page=2&order=asc".to_string()));
     }
 }
