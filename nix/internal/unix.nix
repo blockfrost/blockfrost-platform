@@ -122,7 +122,8 @@ in
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
-      });
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
