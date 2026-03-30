@@ -102,6 +102,7 @@ struct State {
     event_tx: mpsc::Sender<Event>,
     last_hydra_head_state: String,
     hydra_pid: Option<u32>,
+    hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl State {
@@ -160,6 +161,7 @@ impl State {
             event_tx: event_tx.clone(),
             last_hydra_head_state: String::new(),
             hydra_pid: None,
+            hydra_watchdog: None,
         };
 
         let platform_cardano_vkey = self_
@@ -268,6 +270,11 @@ impl State {
             },
 
             Event::Terminate => {
+                // Abort the watchdog first so it doesn't send a Restart
+                // event when `hydra-node` exits.
+                if let Some(watchdog) = self.hydra_watchdog.take() {
+                    watchdog.abort();
+                }
                 if let Some(pid) = self.hydra_pid {
                     verifications::sigterm(pid)?
                 }
@@ -394,8 +401,8 @@ impl State {
             &kex_response.gateway_cardano_vkey,
         )?;
 
-        let mut child = tokio::process::Command::new(&self.hydra_node_exe)
-            .arg("--node-id")
+        let mut cmd = tokio::process::Command::new(&self.hydra_node_exe);
+        cmd.arg("--node-id")
             .arg("platform-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
@@ -424,7 +431,10 @@ impl State {
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")
-            .arg(format!("127.0.0.1:{}", kex_response.proposed_platform_h2h_port))
+            .arg(format!(
+                "127.0.0.1:{}",
+                kex_response.proposed_platform_h2h_port
+            ))
             .arg("--peer")
             .arg(format!("127.0.0.1:{}", kex_response.gateway_h2h_port))
             .arg("--monitoring-port")
@@ -435,8 +445,19 @@ impl State {
             .arg(gateway_cardano_vkey_path)
             .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exitst on our `kill -9`
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+
+        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
+        // killed by a test harness). This only applies to this single `cmd`.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            cmd.pre_exec(|| {
+                nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()?;
 
         self.hydra_pid = child.id();
 
@@ -460,7 +481,7 @@ impl State {
         });
 
         let event_tx = self.event_tx.clone();
-        tokio::spawn(async move {
+        self.hydra_watchdog = Some(tokio::spawn(async move {
             match child.wait().await {
                 Ok(status) => {
                     warn!("hydra-node: exited: {}", status);
@@ -474,7 +495,7 @@ impl State {
                     error!("hydra-node: failed to wait: {e}");
                 },
             }
-        });
+        }));
 
         Ok(())
     }

@@ -355,6 +355,7 @@ struct State {
     commit_wallet_addr: String,
     is_closing: bool,
     hydra_pid: Option<u32>,
+    hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl State {
@@ -389,6 +390,7 @@ impl State {
             commit_wallet_addr: String::new(),
             is_closing: false,
             hydra_pid: None,
+            hydra_watchdog: None,
         };
 
         self_.send(Event::Restart).await;
@@ -433,12 +435,21 @@ impl State {
         match event {
             Event::Restart => {
                 info!("hydra-controller: {}: starting…", self.originator.as_str());
+                self.hydra_head_open = false;
+                self.is_closing = false;
+                self.sent_microtransactions = 0;
+                self.accounted_requests = 0;
                 self.start_hydra_node().await?;
                 self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                     .await
             },
 
             Event::Terminate => {
+                // Abort the watchdog first so it doesn't send a Restart event
+                // when `hydra-node` exits:
+                if let Some(watchdog) = self.hydra_watchdog.take() {
+                    watchdog.abort();
+                }
                 if let Some(pid) = self.hydra_pid {
                     verifications::sigterm(pid)?
                 }
@@ -505,14 +516,39 @@ impl State {
                         .await?;
 
                     if status == "Initial" {
-                        self.config
-                            .fund_address(
-                                &self.config.gateway_cardano_addr,
-                                &self.commit_wallet_addr,
-                                (self.config.toml.commit_ada * 1_000_000.0).round() as u64,
-                                &self.config.toml.cardano_signing_key,
-                            )
+                        let target_lovelace =
+                            (self.config.toml.commit_ada * 1_000_000.0).round() as u64;
+                        let current_lovelace = self
+                            .config
+                            .lovelace_on_addr(&self.commit_wallet_addr)
                             .await?;
+
+                        if current_lovelace < target_lovelace {
+                            let top_up = (target_lovelace - current_lovelace)
+                                .max(MIN_LOVELACE_PER_TRANSACTION);
+                            info!(
+                                "hydra-controller: {}: topping up commit address by {} lovelace (current={}, target={})",
+                                self.originator.as_str(),
+                                top_up,
+                                current_lovelace,
+                                target_lovelace
+                            );
+                            self.config
+                                .fund_address(
+                                    &self.config.gateway_cardano_addr,
+                                    &self.commit_wallet_addr,
+                                    top_up,
+                                    &self.config.toml.cardano_signing_key,
+                                )
+                                .await?;
+                        } else {
+                            info!(
+                                "hydra-controller: {}: commit address already funded (current={}, target={})",
+                                self.originator.as_str(),
+                                current_lovelace,
+                                target_lovelace
+                            );
+                        }
 
                         self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                             .await
@@ -728,6 +764,16 @@ impl State {
                         self.originator.as_str(),
                     );
 
+                    // Reset all per-session state so the next L2 session starts
+                    // clean. The fresh head has only the initial commit amount
+                    // in its UTxO, so carrying over `accounted_requests` would
+                    // make the first microtransaction exceed the available
+                    // lovelace:
+                    self.hydra_head_open = false;
+                    self.is_closing = false;
+                    self.sent_microtransactions = 0;
+                    self.accounted_requests = 0;
+
                     self.send_delayed(Event::TryToInitHead, Duration::from_secs(3))
                         .await;
                 } else {
@@ -769,8 +815,8 @@ impl State {
             &self.kex_req.platform_cardano_vkey,
         )?;
 
-        let mut child = tokio::process::Command::new(&self.config.hydra_node_exe)
-            .arg("--node-id")
+        let mut cmd = tokio::process::Command::new(&self.config.hydra_node_exe);
+        cmd.arg("--node-id")
             .arg("platform-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
@@ -801,7 +847,10 @@ impl State {
             .arg("--listen")
             .arg(format!("127.0.0.1:{}", self.kex_resp.gateway_h2h_port))
             .arg("--peer")
-            .arg(format!("127.0.0.1:{}", self.kex_resp.proposed_platform_h2h_port))
+            .arg(format!(
+                "127.0.0.1:{}",
+                self.kex_resp.proposed_platform_h2h_port
+            ))
             .arg("--monitoring-port")
             .arg(format!("{}", self.metrics_port))
             .arg("--hydra-verification-key")
@@ -810,8 +859,19 @@ impl State {
             .arg(platform_cardano_vkey_path)
             .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exitst on our `kill -9`
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+
+        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
+        // killed by a test harness). This only applies to this single `cmd`.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            cmd.pre_exec(|| {
+                nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()?;
 
         self.hydra_pid = child.id();
 
@@ -835,7 +895,7 @@ impl State {
         });
 
         let event_tx = self.event_tx.clone();
-        tokio::spawn(async move {
+        self.hydra_watchdog = Some(tokio::spawn(async move {
             match child.wait().await {
                 Ok(status) => {
                     warn!("hydra-node: exited: {}", status);
@@ -849,7 +909,7 @@ impl State {
                     error!("hydra-node: failed to wait: {e}");
                 },
             }
-        });
+        }));
 
         Ok(())
     }
