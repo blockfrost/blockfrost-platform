@@ -112,7 +112,7 @@ pub fn load_config(path: PathBuf) -> Config {
             .expect("project_id must be provided"),
     };
 
-    let is_testnet = project_id.contains("preview");
+    let is_testnet = project_id.starts_with("preview") || project_id.starts_with("preprod");
 
     let config = Config {
         server: Server {
@@ -139,7 +139,7 @@ fn override_with_env(config: Config) -> Config {
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
     let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
-    let is_testnet = project_id.contains("preview");
+    let is_testnet = project_id.starts_with("preview") || project_id.starts_with("preprod");
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
