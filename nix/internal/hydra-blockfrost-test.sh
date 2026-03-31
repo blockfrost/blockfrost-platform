@@ -502,28 +502,46 @@ done
 
 # ---------------------------------------------------------------------------- #
 
-invalidity_period=$(((2 + 1) * CONTESTATION_PERIOD_SECONDS))
+log info "Waiting for ‘readyToFanoutSent’ on ‘Closed’ head"
 
-log info "Waiting ${invalidity_period}s for validity period before fan-out"
+# XXX: otherwise, when simply sleeping for `(n+1)*CONTESTATION_PERIOD_SECONDS`
+# we sometimes hit `OutsideValidityIntervalUTxO`:
 
-sleep "$invalidity_period"
+while true; do
+  sleep 3
+  head_json=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head)
+  status=$(echo "$head_json" | jq -r .tag)
+  ready=$(echo "$head_json" | jq -r '.contents.readyToFanoutSent // false')
+  log info "Waiting for ‘readyToFanoutSent’ on ‘Closed’ head; head status: $status; ‘readyToFanoutSent’: $ready"
+  if [ "$status" == "Closed" ] && [ "$ready" == "true" ]; then
+    break
+  fi
+done
 
 # ---------------------------------------------------------------------------- #
 
 log info "Requesting fan-out"
 
-{
-  echo '{"tag":"Fanout"}'
-  sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
-} | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+# XXX: even though the head is in `FanoutPossible`, the `Fanout` transaction has
+# an `invalidBefore` slot constraint equal to the on-chain contestation
+# deadline. Due to slot-lag (chain tip can be a few slots behind wall-clock
+# time), the Cardano node may reject the tx with `OutsideValidityIntervalUTxO`,
+# so let’s retry:
 
 while true; do
-  sleep 3
-  status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
-  log info "Waiting for ‘Idle’; head status: $status"
-  if [ "$status" == "Idle" ]; then
-    break
-  fi
+  {
+    echo '{"tag":"Fanout"}'
+    sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
+  } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+
+  for _ in {1..10}; do
+    sleep 3
+    status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
+    log info "Waiting for 'Idle'; head status: $status"
+    if [ "$status" == "Idle" ]; then
+      break 2
+    fi
+  done
 done
 
 # ---------------------------------------------------------------------------- #
