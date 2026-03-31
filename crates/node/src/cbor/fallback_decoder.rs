@@ -75,12 +75,9 @@ impl FallbackDecoder {
             .await
             .map_err(|err| format!("failed to send request: {err:?}"))?;
 
-        response_rx.await.unwrap_or_else(|err| {
-            unreachable!(
-                "worker thread dropped (can’t happen): {:?}",
-                err
-            )
-        })
+        response_rx
+            .await
+            .unwrap_or_else(|err| unreachable!("worker thread dropped (can’t happen): {:?}", err))
     }
 
     /// Searches for `testgen-hs` in multiple directories.
@@ -167,9 +164,7 @@ impl FallbackDecoder {
         if result == Ok(expected) {
             Ok(())
         } else {
-            Err(format!(
-                "startup_sanity_test failed: {result:?}"
-            ))
+            Err(format!("startup_sanity_test failed: {result:?}"))
         }
     }
 

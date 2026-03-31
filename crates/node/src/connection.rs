@@ -37,8 +37,7 @@ impl NodeClient {
         client.acquire(None).await.inspect_err(|e| {
             error!(
                 connection_id = self.connection_id,
-                "failed to acquire a statequery client: {:?}",
-                e
+                "failed to acquire a statequery client: {:?}", e
             )
         })?;
 
@@ -47,8 +46,7 @@ impl NodeClient {
             let msg = format!("Timeout after {} seconds", duration.as_secs());
             error!(
                 connection_id = self.connection_id,
-                "{} in with_statequery_timeout",
-                msg
+                "{} in with_statequery_timeout", msg
             );
             BlockfrostError::timeout(msg)
         })?;
@@ -57,8 +55,7 @@ impl NodeClient {
         client.send_release().await.inspect_err(|e| {
             error!(
                 connection_id = self.connection_id,
-                "failed to release a statequery client: {:?}",
-                e
+                "failed to release a statequery client: {:?}", e
             )
         })?;
 
@@ -93,8 +90,7 @@ impl NodeClient {
     pub fn invalidate_connection(&mut self, why: &str) {
         error!(
             connection_id = self.connection_id,
-            "connection marked as invalid: {}",
-            why
+            "connection marked as invalid: {}", why
         );
         self.unrecoverable_error_happened = true;
     }

@@ -142,8 +142,7 @@ impl IcebreakersAPI {
                             if lb.uri.starts_with("//") {
                                 info!(
                                     "falling back to {} for a schemeless load balancer URI: {}",
-                                    fallback_proto,
-                                    lb.uri
+                                    fallback_proto, lb.uri
                                 );
                                 LoadBalancerConfig {
                                     uri: format!("{}{}", fallback_proto, lb.uri),

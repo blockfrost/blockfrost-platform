@@ -27,8 +27,7 @@ impl Manager for NodePoolManager {
             Ok(connection) => {
                 info!(
                     connection_id,
-                    "connection successfully established with a node socket: {}",
-                    self.socket_path
+                    "connection successfully established with a node socket: {}", self.socket_path
                 );
                 gauge!("cardano_node_connections").increment(1);
 
@@ -75,8 +74,7 @@ impl Manager for NodePoolManager {
             Err(err) => {
                 error!(
                     connection_id = node.connection_id,
-                    "connection no longer viable: {}, {}, {:?}",
-                    self.socket_path, err, metrics
+                    "connection no longer viable: {}, {}, {:?}", self.socket_path, err, metrics
                 );
 
                 // Take ownership of the `NodeClient` from Pallas

@@ -70,10 +70,7 @@ pub async fn run_all(
         configs[first_idx].uri, maybe_error
     );
 
-    warn!(
-        "aborting the remaining {} connection(s)",
-        remaining.len()
-    );
+    warn!("aborting the remaining {} connection(s)", remaining.len());
     for r in remaining.iter() {
         r.abort();
     }
@@ -310,10 +307,7 @@ mod event_loop {
                 match socket_tx.send(Message::Text(msg.into())).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
-                        error!(
-                            "{}: error when sending a Pong: {:?}",
-                            config.uri, err
-                        );
+                        error!("{}: error when sending a Pong: {:?}", config.uri, err);
                         // Something wrong with the socket, let’s break the 'event_loop:
                         Err("broken connection with the load balancer".to_string())
                     },

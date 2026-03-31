@@ -46,8 +46,8 @@ jobs:
       - name: Assert flake.lock is up to date
         run: nix flake lock --no-update-lock-file
 
-  lint:
-    name: Lint
+  static_checks:
+    name: Static checks
     needs: [check_action_pins]
     runs-on: ubuntu-latest
     steps:
@@ -85,7 +85,7 @@ jobs:
 
   build_and_test:
     name: Build and Test
-    needs: [check_action_pins, lint]
+    needs: [check_action_pins, static_checks]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -209,7 +209,7 @@ jobs:
   hydra_against_blockfrost_tests:
     name: Hydra tests of their `--blockfrost` option
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: [check_flake_lock, lint]
+    needs: [check_flake_lock, static_checks]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -243,7 +243,7 @@ jobs:
 
   oci_build:
     name: OCI Build (${{ matrix.arch }})
-    needs: [check_action_pins, lint]
+    needs: [check_action_pins, static_checks]
     strategy:
       fail-fast: false
       matrix:

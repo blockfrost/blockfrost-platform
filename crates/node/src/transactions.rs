@@ -39,8 +39,7 @@ impl NodeClient {
 
                 info!(
                     connection_id = self.connection_id,
-                    "Transaction accepted by the node: {}",
-                    txid
+                    "Transaction accepted by the node: {}", txid
                 );
                 Ok(txid)
             },
