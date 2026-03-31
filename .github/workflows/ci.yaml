@@ -238,7 +238,7 @@ jobs:
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
         run: |
-          nix run -L .#internal.x86_64-linux.hydra-micropayments-test
+          nix run -L .#internal.x86_64-linux.hydra-platform-gateway-test
 
   coverage:
     name: Coverage

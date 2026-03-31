@@ -893,9 +893,9 @@ in
       text = builtins.readFile ./hydra-blockfrost-test.sh;
     };
 
-    hydra-micropayments-test = pkgs.writeShellApplication {
-      name = "test-hydra-micropayments";
-      meta.description = "Tests Hydra micropayments between blockfrost-platform and blockfrost-gateway";
+    hydra-platform-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-platform-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-platform and blockfrost-gateway";
       runtimeInputs = with pkgs; [
         bash
         bc
@@ -925,7 +925,7 @@ in
             NETWORK
           };
       };
-      text = builtins.readFile ./hydra-micropayments-test.sh;
+      text = builtins.readFile ./hydra-platform-gateway-test.sh;
     };
 
     midnight = let
