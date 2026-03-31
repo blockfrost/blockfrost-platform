@@ -46,8 +46,8 @@ jobs:
       - name: Assert flake.lock is up to date
         run: nix flake lock --no-update-lock-file
 
-  lint_docker:
-    name: Lint Dockerfile
+  lint:
+    name: Lint
     needs: [check_action_pins]
     runs-on: ubuntu-latest
     steps:
@@ -85,7 +85,7 @@ jobs:
 
   build_and_test:
     name: Build and Test
-    needs: [check_action_pins]
+    needs: [check_action_pins, lint]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
