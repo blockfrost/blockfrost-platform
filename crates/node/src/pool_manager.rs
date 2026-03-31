@@ -42,9 +42,7 @@ impl Manager for NodePoolManager {
                 counter!("cardano_node_connections_failed").increment(1);
                 error!(
                     connection_id,
-                    "failed to connect to a node socket: {}: {}",
-                    self.socket_path,
-                    err
+                    "failed to connect to a node socket: {}: {}", self.socket_path, err
                 );
                 Err(AppError::Node(err.to_string()))
             },
