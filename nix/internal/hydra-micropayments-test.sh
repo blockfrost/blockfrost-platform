@@ -88,8 +88,24 @@ if ((missing)); then
 fi
 
 lovelace_to_ada() {
-  printf '%d.%06d' $(($1 / 1000000)) $(($1 % 1000000))
+  printf '%d.%06d' $(($1 / (1000 * 1000))) $(($1 % (1000 * 1000)))
 }
+
+# ---------------------------------------------------------------------------- #
+
+# How much the Gateway commits to the Hydra Head:
+commit_ada=5.0
+commit_lovelace=$(printf '%.0f' "$(echo "$commit_ada * 1000 * 1000" | bc)")
+# How much each request is worth:
+lovelace_per_request=$((1 * 1000 * 1000))
+# How many requests to bundle for a microtransaction:
+requests_per_microtransaction=2
+# How many microtransactions until a fanout:
+microtransactions_per_fanout=2
+# How many fanout cycles to test (each is ~7 minutes):
+num_fanout_cycles=3
+
+requests_per_fanout=$((requests_per_microtransaction * microtransactions_per_fanout))
 
 # ---------------------------------------------------------------------------- #
 
@@ -99,7 +115,7 @@ cd "$work_dir"
 export HOME="$work_dir"
 unset XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
 
-log info "Working directory (\$HOME): $work_dir"
+log info "Working directory (and HOME): $work_dir"
 log info "Network tip: $(cardano-cli query tip | jq --compact-output .)"
 
 mkdir -p credentials
@@ -165,9 +181,13 @@ log info "Deriving keys from the ‘SUBMIT_MNEMONIC’"
 
 log info "Verifying that ‘SUBMIT_MNEMONIC’ has enough funds…"
 
+# MIN_FUEL_LOVELACE in Rust is 15 ADA; we double it below for a safety margin:
+min_fuel_lovelace=$((15 * 1000 * 1000))
+micropayments_total=$((num_fanout_cycles * requests_per_fanout * lovelace_per_request))
+
 declare -A lovelace_fund
-lovelace_fund["gateway-hydra"]=150000000 # 150 tADA – generous for 3 fanout cycles
-lovelace_fund["platform-hydra"]=90000000 # 90 tADA – generous for L1 fees
+lovelace_fund["gateway-hydra"]=$((commit_lovelace + micropayments_total + 2 * min_fuel_lovelace))
+lovelace_fund["platform-hydra"]=$((2 * min_fuel_lovelace))
 
 submit_mnemonic_funds=$(cardano-cli query utxo \
   --address "$(cat credentials/submit-mnemonic/payment.addr)" \
@@ -175,7 +195,7 @@ submit_mnemonic_funds=$(cardano-cli query utxo \
   jq '[.[] | .value.lovelace] | add // 0')
 
 # 1 ADA extra for tx fees:
-required_funds=1000000
+required_funds=$((1 * 1000 * 1000))
 for k in "${!lovelace_fund[@]}"; do
   ((required_funds += lovelace_fund[$k]))
 done
@@ -272,18 +292,6 @@ platform_secret="test-secret-at-least-8-chars"
 platform_reward_address=$(cat credentials/platform-reward/payment.addr)
 log info "Platform reward address (ephemeral): $platform_reward_address"
 
-# How much the Gateway commits to the Hydra Head (in ADA):
-commit_ada=5.0
-# How much each request is worth:
-lovelace_per_request=1000000
-# How many requests to bundle for a microtransaction:
-requests_per_microtransaction=2
-# How many microtransactions until a fanout:
-microtransactions_per_fanout=2
-# Therefore: requests_per_fanout = requests_per_microtransaction * microtransactions_per_fanout = 4
-
-requests_per_fanout=$((requests_per_microtransaction * microtransactions_per_fanout))
-
 # ---------------------------------------------------------------------------- #
 
 log info "Writing Gateway config…"
@@ -319,8 +327,6 @@ gateway_log="$work_dir/gateway.log"
 platform_log="$work_dir/platform.log"
 
 log info "Starting the Gateway (blockfrost-gateway--dev-mock-db)…"
-
-export SKIP_PORT_CHECK_SECRET="test-skip-port-check"
 
 blockfrost-gateway --config gateway-config.toml \
   > >(tee "$gateway_log" | sed -u 's/^/gateway:  /' >&2) 2>&1 &
@@ -441,7 +447,7 @@ reinits_seen=0
 
 perform_fanout_cycle() {
   local fanout_num="$1"
-  local is_last="$2" # "yes" for the last cycle, "no" otherwise
+  local is_last="$2" # 1 for the last cycle, empty otherwise
 
   log info "=== Fanout cycle $fanout_num: sending $requests_per_fanout requests ==="
 
@@ -486,7 +492,7 @@ perform_fanout_cycle() {
 
   # For non-last cycles, also wait for the head to reopen, so we can send the
   # next batch of requests:
-  if [ "$is_last" = "no" ]; then
+  if [[ -z $is_last ]]; then
     head_opens_seen=$((head_opens_seen + 1))
     log info "Fanout $fanout_num: waiting for the head to reopen (Open #$head_opens_seen)…"
     wait_for_gw_log_count 'waiting for the Open head status: status="Open"' "$head_opens_seen" "$fanout_wait_timeout" \
@@ -497,18 +503,19 @@ perform_fanout_cycle() {
 
 # ---------------------------------------------------------------------------- #
 
-log info "=== Starting fanout cycle 1 ==="
-perform_fanout_cycle 1 no
-
-log info "=== Starting fanout cycle 2 ==="
-perform_fanout_cycle 2 no
-
-log info "=== Starting fanout cycle 3 ==="
-perform_fanout_cycle 3 yes
+for cycle in $(seq 1 "$num_fanout_cycles"); do
+  if ((cycle == num_fanout_cycles)); then
+    is_last=1
+  else
+    is_last=
+  fi
+  log info "=== Starting fanout cycle $cycle/$num_fanout_cycles ==="
+  perform_fanout_cycle "$cycle" "$is_last"
+done
 
 # ---------------------------------------------------------------------------- #
 
-log info "All 3 fanout cycles completed successfully!"
+log info "All $num_fanout_cycles fanout cycles completed successfully!"
 
 log info "Stopping Gateway (pid $gateway_pid) and Platform (pid $platform_pid)…"
 kill "$gateway_pid" "$platform_pid" 2>/dev/null || true
@@ -524,7 +531,6 @@ log info "Verifying that funds were transferred on L1 to the Platform reward add
 
 # The minimum expected amount is `num_fanout_cycles * requests_per_fanout *
 # lovelace_per_request`:
-num_fanout_cycles=3
 expected_lovelace=$((num_fanout_cycles * requests_per_fanout * lovelace_per_request))
 
 # The third fanout settles on L1 asynchronously; let’s wait longer for the UTxOs to appear:

@@ -898,6 +898,7 @@ in
       meta.description = "Tests Hydra micropayments between blockfrost-platform and blockfrost-gateway";
       runtimeInputs = with pkgs; [
         bash
+        bc
         coreutils
         gnused
         gnugrep
