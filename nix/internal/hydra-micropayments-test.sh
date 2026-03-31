@@ -181,13 +181,15 @@ log info "Deriving keys from the ‘SUBMIT_MNEMONIC’"
 
 log info "Verifying that ‘SUBMIT_MNEMONIC’ has enough funds…"
 
-# MIN_FUEL_LOVELACE in Rust is 15 ADA; we double it below for a safety margin:
+# MIN_FUEL_LOVELACE in Rust is 15 ADA. Each fanout cycle burns roughly one
+# MIN_FUEL_LOVELACE in L1 fees for the Gateway and a bit less for the Platform,
+# so fuel must scale with the number of cycles (plus one extra for headroom):
 min_fuel_lovelace=$((15 * 1000 * 1000))
 micropayments_total=$((num_fanout_cycles * requests_per_fanout * lovelace_per_request))
 
 declare -A lovelace_fund
-lovelace_fund["gateway-hydra"]=$((commit_lovelace + micropayments_total + 2 * min_fuel_lovelace))
-lovelace_fund["platform-hydra"]=$((2 * min_fuel_lovelace))
+lovelace_fund["gateway-hydra"]=$((commit_lovelace + micropayments_total + (num_fanout_cycles + 1) * min_fuel_lovelace))
+lovelace_fund["platform-hydra"]=$(((num_fanout_cycles + 1) * min_fuel_lovelace))
 
 submit_mnemonic_funds=$(cardano-cli query utxo \
   --address "$(cat credentials/submit-mnemonic/payment.addr)" \
