@@ -51,7 +51,7 @@ impl FallbackDecoder {
                 );
                 let restart_delay = std::time::Duration::from_secs(1);
                 error!(
-                    "FallbackDecoder: will restart in {:?} because of a subprocess error: {:?}",
+                    "will restart in {:?} because of a subprocess error: {:?}",
                     restart_delay, single_run
                 );
                 std::thread::sleep(restart_delay);
@@ -73,11 +73,11 @@ impl FallbackDecoder {
                 response_tx,
             })
             .await
-            .map_err(|err| format!("FallbackDecoder: failed to send request: {err:?}"))?;
+            .map_err(|err| format!("failed to send request: {err:?}"))?;
 
         response_rx.await.unwrap_or_else(|err| {
             unreachable!(
-                "FallbackDecoder: worker thread dropped (can’t happen): {:?}",
+                "worker thread dropped (can’t happen): {:?}",
                 err
             )
         })
@@ -168,7 +168,7 @@ impl FallbackDecoder {
             Ok(())
         } else {
             Err(format!(
-                "FallbackDecoder: startup_sanity_test failed: {result:?}"
+                "startup_sanity_test failed: {result:?}"
             ))
         }
     }

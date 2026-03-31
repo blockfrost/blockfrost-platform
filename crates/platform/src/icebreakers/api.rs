@@ -141,7 +141,7 @@ impl IcebreakersAPI {
                         .map(|lb| {
                             if lb.uri.starts_with("//") {
                                 info!(
-                                    "load balancer: falling back to {} for a schemeless load balancer URI: {}",
+                                    "falling back to {} for a schemeless load balancer URI: {}",
                                     fallback_proto,
                                     lb.uri
                                 );

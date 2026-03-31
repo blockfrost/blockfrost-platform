@@ -36,8 +36,9 @@ impl NodeClient {
 
         client.acquire(None).await.inspect_err(|e| {
             error!(
-                "N2C[{}]: failed to acquire a statequery client: {:?}",
-                self.connection_id, e
+                connection_id = self.connection_id,
+                "failed to acquire a statequery client: {:?}",
+                e
             )
         })?;
 
@@ -45,8 +46,9 @@ impl NodeClient {
         let result = timeout(duration, action(client)).await.map_err(|_| {
             let msg = format!("Timeout after {} seconds", duration.as_secs());
             error!(
-                "N2C[{}]: {} in with_statequery_timeout",
-                self.connection_id, msg
+                connection_id = self.connection_id,
+                "{} in with_statequery_timeout",
+                msg
             );
             BlockfrostError::timeout(msg)
         })?;
@@ -54,8 +56,9 @@ impl NodeClient {
         // Always release the client, even if action fails
         client.send_release().await.inspect_err(|e| {
             error!(
-                "N2C[{}]: failed to release a statequery client: {:?}",
-                self.connection_id, e
+                connection_id = self.connection_id,
+                "failed to release a statequery client: {:?}",
+                e
             )
         })?;
 
@@ -89,8 +92,9 @@ impl NodeClient {
     /// The need to do this arises rarely in normal operation, but it happens.
     pub fn invalidate_connection(&mut self, why: &str) {
         error!(
-            "N2C[{}]: connection marked as invalid: {}",
-            self.connection_id, why
+            connection_id = self.connection_id,
+            "connection marked as invalid: {}",
+            why
         );
         self.unrecoverable_error_happened = true;
     }
