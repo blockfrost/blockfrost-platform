@@ -601,7 +601,6 @@ dependencies = [
  "blockfrost-platform-common",
  "blockfrost-platform-data-node",
  "blockfrost-platform-node",
- "cardano-serialization-lib",
  "chrono",
  "dirs",
  "dotenvy",
