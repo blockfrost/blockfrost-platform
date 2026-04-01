@@ -110,16 +110,11 @@ impl Config {
             }
         });
 
-        let hydra = if args.hydra_cardano_signing_key.is_some() {
-            let cardano_signing_key = args.hydra_cardano_signing_key.ok_or(AppError::Server(
-                "Cannot set --reward-address or --secret in solitary mode (--solitary)".into(),
-            ))?;
-            Some(HydraConfig {
+        let hydra = args
+            .hydra_cardano_signing_key
+            .map(|cardano_signing_key| HydraConfig {
                 cardano_signing_key,
-            })
-        } else {
-            None
-        };
+            });
 
         Ok(Config {
             server_address: args.server_address,
