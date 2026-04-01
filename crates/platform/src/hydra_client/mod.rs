@@ -427,7 +427,7 @@ impl State {
             .arg(gateway_hydra_vkey_path)
             .arg("--cardano-verification-key")
             .arg(gateway_cardano_vkey_path)
-            .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exitst on our `kill -9`
+            .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exits on our `kill -9`
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
