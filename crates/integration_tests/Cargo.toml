@@ -39,12 +39,14 @@ uuid.workspace = true
 
 [dev-dependencies]
 base64.workspace = true
+bytes.workspace = true
 futures.workspace = true
 hyper.workspace = true
 ntest.workspace = true
 pretty_assertions.workspace = true
 reqwest.workspace = true
 tokio-tungstenite.workspace = true
+tokio-util.workspace = true
 tower.workspace = true
 tracing.workspace = true
 tungstenite.workspace = true
