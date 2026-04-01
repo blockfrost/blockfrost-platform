@@ -130,7 +130,7 @@ pub fn load_config(path: PathBuf) -> Config {
             .expect("project_id must be provided"),
     };
 
-    let network = network_from_project_id(&project_id).unwrap();
+    let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
     let config = Config {
         server: Server {
@@ -158,7 +158,7 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
     } else if project_id.starts_with("preview") {
         Ok(Network::Preview)
     } else {
-        bail!("cannot infer Cardano network from the Blockfrost project id")
+        bail!("Blockfrost project_id must start with 'mainnet', 'preprod', or 'preview'")
     }
 }
 
@@ -170,7 +170,7 @@ fn override_with_env(config: Config) -> Config {
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
     let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
-    let network = network_from_project_id(&project_id).unwrap();
+    let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
         "debug" => Level::DEBUG,
