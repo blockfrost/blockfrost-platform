@@ -714,7 +714,6 @@ dependencies = [
  "blockfrost-platform-common",
  "blockfrost-platform-data-node",
  "blockfrost-platform-node",
- "bytes",
  "cardano-serialization-lib",
  "dotenvy",
  "futures",

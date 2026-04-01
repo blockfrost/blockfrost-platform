@@ -39,7 +39,6 @@ uuid.workspace = true
 
 [dev-dependencies]
 base64.workspace = true
-bytes.workspace = true
 futures.workspace = true
 hyper.workspace = true
 ntest.workspace = true
