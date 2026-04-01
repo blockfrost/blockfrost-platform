@@ -759,7 +759,7 @@ pub fn sigterm(pid: u32) -> Result<()> {
 
 #[cfg(windows)]
 pub fn sigterm(_pid: u32) -> Result<()> {
-    unreachable!()
+    unimplemented!("SIGTERM is not available on Windows, but there's no `hydra-node` to run there")
 }
 
 /// We use it for `localhost` tests, to detect if the Gateway and Platform are
