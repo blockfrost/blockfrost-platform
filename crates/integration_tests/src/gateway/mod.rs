@@ -182,7 +182,10 @@ pub async fn wait_for_ready(client: &Client, url: &str, timeout: Duration) -> Re
         if let Ok(resp) = client.get(url).send().await {
             let status = resp.status();
             // 502 = no WebSocket relay connected; 404 = UUID not registered yet
-            if status != StatusCode::BAD_GATEWAY && status != StatusCode::NOT_FOUND {
+            if status != StatusCode::BAD_GATEWAY
+                && status != StatusCode::NOT_FOUND
+                && status != StatusCode::SERVICE_UNAVAILABLE
+            {
                 return resp;
             }
         }
@@ -222,8 +225,8 @@ pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
     let client = Client::new();
     let base = format!("http://{}{}", gw.addr, api_prefix);
 
-    // Wait for that relay to be ready:
-    wait_for_ready(&client, &format!("{base}/health"), Duration::from_secs(30)).await;
+    // Wait for the relay to be ready and for the Platform root to return 200.
+    wait_for_ready(&client, &format!("{base}/"), Duration::from_secs(30)).await;
 
     (gw, client, base, api_prefix)
 }
