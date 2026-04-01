@@ -870,6 +870,7 @@ in
         gawk
         jq
         curl
+        xxd
         hydra-node
         cardano-cli
         cardano-address
