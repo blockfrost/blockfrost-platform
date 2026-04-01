@@ -328,8 +328,9 @@ enum Event {
     WaitForUtxoCount,
     TryToClose,
     WaitForClosed { retries_before_reclose: u64 },
+    WaitForFanoutReady,
     DoFanout,
-    WaitForIdleAfterClose,
+    WaitForIdleAfterClose { retries_before_refanout: u64 },
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -796,13 +797,8 @@ impl State {
                     status
                 );
                 if status == "Closed" {
-                    let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
-                    info!(
-                        "hydra-controller: {}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
-                        self.originator.as_str(),
-                        invalidity_period,
-                    );
-                    self.send_delayed(Event::DoFanout, invalidity_period).await
+                    self.send_delayed(Event::WaitForFanoutReady, Duration::from_secs(3))
+                        .await
                 } else {
                     self.send_delayed(
                         if retries_before_reclose <= 1 {
@@ -818,6 +814,22 @@ impl State {
                 }
             },
 
+            Event::WaitForFanoutReady => {
+                let ready = verifications::fetch_head_ready_to_fanout(self.api_port).await?;
+                info!(
+                    "hydra-controller: {}: waiting for readyToFanoutSent on Closed head: ready={:?}",
+                    self.originator.as_str(),
+                    ready,
+                );
+                if ready {
+                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
+                        .await
+                } else {
+                    self.send_delayed(Event::WaitForFanoutReady, Duration::from_secs(3))
+                        .await
+                }
+            },
+
             Event::DoFanout => {
                 info!(
                     "hydra-controller: {}: requesting `Fanout`",
@@ -829,16 +841,28 @@ impl State {
                     Duration::from_secs(2),
                 )
                 .await?;
-                self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
-                    .await;
+                // Allow up to 10 polls (30s) for the Fanout to land before
+                // retrying. Otherwise, the Cardano node may reject the tx with
+                // `OutsideValidityIntervalUTxO` due to slot-lag even though
+                // `readyToFanoutSent` was true.
+                self.send_delayed(
+                    Event::WaitForIdleAfterClose {
+                        retries_before_refanout: 10,
+                    },
+                    Duration::from_secs(3),
+                )
+                .await;
             },
 
-            Event::WaitForIdleAfterClose => {
+            Event::WaitForIdleAfterClose {
+                retries_before_refanout,
+            } => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {}: waiting for the Idle head status (after Fanout): status={:?}",
+                    "hydra-controller: {}: waiting for the Idle head status (after Fanout): status={:?} (retries_before_refanout={})",
                     self.originator.as_str(),
-                    status
+                    status,
+                    retries_before_refanout,
                 );
                 if status == "Idle" {
                     info!(
@@ -861,9 +885,24 @@ impl State {
                     // and Commit.
                     self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
                         .await;
-                } else {
-                    self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
+                } else if retries_before_refanout <= 1 {
+                    // Fanout tx was likely rejected (e.g.
+                    // OutsideValidityIntervalUTxO due to slot-lag), let’s retry.
+                    warn!(
+                        "hydra-controller: {}: head still {:?} after Fanout — retrying Fanout",
+                        self.originator.as_str(),
+                        status,
+                    );
+                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
                         .await;
+                } else {
+                    self.send_delayed(
+                        Event::WaitForIdleAfterClose {
+                            retries_before_refanout: retries_before_refanout - 1,
+                        },
+                        Duration::from_secs(3),
+                    )
+                    .await;
                 }
             },
         }

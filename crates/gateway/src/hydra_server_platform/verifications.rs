@@ -732,6 +732,24 @@ pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
         .map(|a| a.to_string())
 }
 
+/// Returns `true` when the Hydra head is `Closed` **and** `readyToFanoutSent`
+/// is `true`, meaning the contestation deadline has passed on-chain and a
+/// Fanout transaction can be theoretically submitted… and still sometimes fail…
+/// (we retry then).
+pub async fn fetch_head_ready_to_fanout(hydra_api_port: u16) -> Result<bool> {
+    let url = format!("http://127.0.0.1:{hydra_api_port}/head");
+
+    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+
+    let tag = v.get("tag").and_then(|t| t.as_str()).unwrap_or_default();
+    let ready = v
+        .pointer("/contents/readyToFanoutSent")
+        .and_then(|r| r.as_bool())
+        .unwrap_or(false);
+
+    Ok(tag == "Closed" && ready)
+}
+
 #[cfg(unix)]
 pub fn sigterm(pid: u32) -> Result<()> {
     use nix::sys::signal::{Signal, kill};
