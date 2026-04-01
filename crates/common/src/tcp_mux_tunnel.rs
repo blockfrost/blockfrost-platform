@@ -29,7 +29,13 @@ pub enum TunnelMsg {
     /// Bytes for connection `id` encoded as base64 string.
     Data { id: u64, b64: String },
 
-    /// Close stream `id`. `code` is small+stable, `msg` is optional.
+    /// Close stream `id`.
+    ///
+    /// `code` is a raw `u8` (not a typed enum) so that unknown codes from a
+    /// newer peer are still deserializable, and because a plain integer
+    /// serializes compactly to JSON and other formats (enums typically become
+    /// strings). See [`close_code`] for known values. `msg` is an optional
+    /// human-readable reason.
     Close {
         id: u64,
         code: u8,
@@ -37,6 +43,7 @@ pub enum TunnelMsg {
     },
 }
 
+/// Known close-reason codes (open "enum").
 pub mod close_code {
     pub const CLEAN: u8 = 0;
     pub const IO: u8 = 1;
