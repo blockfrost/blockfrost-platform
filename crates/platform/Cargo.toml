@@ -34,7 +34,6 @@ blake3.workspace = true
 getrandom.workspace = true
 machine-uid.workspace = true
 reqwest.workspace = true
-cardano-serialization-lib.workspace = true
 pallas-network.workspace = true
 pallas-addresses.workspace = true
 pallas-codec.workspace = true
