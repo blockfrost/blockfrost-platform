@@ -669,16 +669,29 @@ impl State {
                         "hydra-controller: {}: submitting a Commit transaction to join the Hydra Head",
                         self.originator.as_str()
                     );
-                    self.config
+                    match self
+                        .config
                         .commit_all_utxo_to_hydra(
                             &self.commit_wallet_addr,
                             self.api_port,
                             &self.commit_wallet_skey,
                         )
-                        .await?;
-
-                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                         .await
+                    {
+                        Ok(()) => {
+                            self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                                .await
+                        },
+                        Err(err) => {
+                            warn!(
+                                "hydra-controller: {}: commit failed (will retry): {}",
+                                self.originator.as_str(),
+                                err,
+                            );
+                            self.send_delayed(Event::TryToCommit, Duration::from_secs(5))
+                                .await
+                        },
+                    }
                 } else {
                     self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                         .await
