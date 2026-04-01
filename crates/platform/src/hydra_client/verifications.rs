@@ -1,11 +1,13 @@
-use anyhow::{Result, anyhow};
-use serde_json::Value;
+use anyhow::{Context, Result, anyhow};
+use bf_common::cardano_keys;
+use pallas_network::facades::NodeClient;
+use pallas_network::miniprotocols::{
+    localstate::queries_v16,
+    localtxsubmission::{EraTx, Response},
+};
 use std::path::Path;
 use tracing::info;
 
-/// FIXME: don’t use `cardano-cli`.
-///
-/// FIXME: proper errors, not `anyhow!`
 impl super::State {
     /// Generates Hydra keys if they don’t exist.
     pub(super) async fn gen_hydra_keys(&self) -> Result<()> {
@@ -33,206 +35,75 @@ impl super::State {
         Ok(())
     }
 
-    fn cardano_cli_env(&self) -> Vec<(&str, String)> {
-        vec![
-            ("CARDANO_NODE_SOCKET_PATH", self.node_socket_path.clone()),
-            (
-                "CARDANO_NODE_NETWORK_ID",
-                match &self.network {
-                    bf_common::types::Network::Mainnet => self.network.as_str().to_string(),
-                    _ => self.genesis.network_magic.to_string(),
-                },
-            ),
-        ]
-    }
-
     /// Check how much lovelace is on an enterprise address associated with a
-    /// given `payment.skey`.
+    /// given `payment.skey`, by querying the local `cardano-node` via the
+    /// Ouroboros local-state-query mini-protocol (Pallas).
     pub(super) async fn lovelace_on_payment_skey(&self, skey_path: &Path) -> Result<u64> {
-        let address = self.derive_enterprise_address_from_skey(skey_path).await?;
-        let utxo_json = self.query_utxo_json(&address).await?;
-        Self::sum_lovelace_from_utxo_json(&utxo_json)
-    }
+        let bech32_addr =
+            cardano_keys::derive_enterprise_address(skey_path, self.network.as_str())?;
 
-    pub(super) async fn derive_vkey_from_skey(
-        &self,
-        skey_path: &Path,
-    ) -> Result<serde_json::Value> {
-        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["key", "verification-key", "--signing-key-file"])
-            .arg(skey_path)
-            .args(["--verification-key-file", "/dev/stdout"])
-            .output()
-            .await?;
-        Ok(serde_json::from_slice(&vkey_output.stdout)?)
-    }
+        let address = pallas_addresses::Address::from_bech32(&bech32_addr)
+            .map_err(|e| anyhow!("invalid bech32 address: {e}"))?;
+        let addr_bytes: pallas_codec::utils::Bytes = address.to_vec().into();
+        let addrs: Vec<pallas_codec::utils::Bytes> = vec![addr_bytes];
 
-    async fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
-        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["key", "verification-key", "--signing-key-file"])
-            .arg(skey_path)
-            .args(["--verification-key-file", "/dev/stdout"])
-            .output()
-            .await?;
+        let magic = self.genesis.network_magic as u64;
+        let mut client = NodeClient::connect(&self.node_socket_path, magic)
+            .await
+            .map_err(|e| anyhow!("failed to connect to cardano-node: {e}"))?;
 
-        if !vkey_output.status.success() {
-            return Err(anyhow!(
-                "cardano-cli key verification-key failed: {}",
-                String::from_utf8_lossy(&vkey_output.stderr)
-            ));
-        }
+        let statequery = client.statequery();
+        statequery
+            .acquire(None)
+            .await
+            .map_err(|e| anyhow!("failed to acquire statequery: {e}"))?;
 
-        let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args([
-                "address",
-                "build",
-                "--payment-verification-key-file",
-                "/dev/stdin",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()?;
+        let era = queries_v16::get_current_era(statequery)
+            .await
+            .map_err(|e| anyhow!("get_current_era failed: {e}"))?;
 
-        {
-            let stdin = child.stdin.as_mut().ok_or(anyhow!(
-                "failed to open stdin for cardano-cli address build"
-            ))?;
-            use tokio::io::AsyncWriteExt;
-            stdin.write_all(&vkey_output.stdout).await?;
-        }
+        let utxos = queries_v16::get_utxo_by_address(statequery, era, addrs)
+            .await
+            .map_err(|e| anyhow!("get_utxo_by_address failed: {e}"))?;
 
-        let addr_output = child.wait_with_output().await?;
-        if !addr_output.status.success() {
-            Err(anyhow!(
-                "cardano-cli address build failed: {}",
-                String::from_utf8_lossy(&addr_output.stderr)
-            ))?;
-        }
+        statequery
+            .send_release()
+            .await
+            .map_err(|e| anyhow!("statequery release failed: {e}"))?;
 
-        let address = String::from_utf8(addr_output.stdout)?.trim().to_string();
-        if address.is_empty() {
-            return Err(anyhow!("derived address is empty"));
-        }
-
-        Ok(address)
-    }
-
-    async fn query_utxo_json(&self, address: &str) -> Result<String> {
-        let output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["query", "utxo", "--address"])
-            .arg(address)
-            .args(["--output-json"])
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            return Err(anyhow!(
-                "cardano-cli query utxo failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    fn sum_lovelace_from_utxo_json(json: &str) -> Result<u64> {
-        let v: Value = serde_json::from_str(json)?;
-        let obj = v
-            .as_object()
-            .ok_or(anyhow!("UTxO JSON root is not an object"))?;
-
-        let mut total: u64 = 0;
-
-        for (_txin, utxo) in obj {
-            if let Some(value_obj) = utxo.get("value").and_then(|v| v.as_object()) {
-                if let Some(lovelace_val) = value_obj.get("lovelace") {
-                    total = total
-                        .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or(anyhow!("cannot add"))?;
-                    continue;
+        let total: u64 = utxos
+            .iter()
+            .map(|(_, output)| {
+                let value = match output {
+                    queries_v16::TransactionOutput::Current(o) => &o.amount,
+                    queries_v16::TransactionOutput::Legacy(o) => &o.amount,
+                };
+                match value {
+                    queries_v16::Value::Coin(coin) => u64::from(coin),
+                    queries_v16::Value::Multiasset(coin, _) => u64::from(coin),
                 }
-            }
-
-            if let Some(amount_arr) = utxo.get("amount").and_then(|v| v.as_array()) {
-                if let Some(lovelace_val) = amount_arr.first() {
-                    total = total
-                        .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or(anyhow!("cannot add"))?;
-                }
-            }
-        }
+            })
+            .sum();
 
         Ok(total)
     }
 
-    /// Convert a JSON value into u64, allowing either number or string.
-    fn as_u64(v: &Value) -> Result<u64> {
-        if let Some(n) = v.as_u64() {
-            return Ok(n);
-        }
-        if let Some(s) = v.as_str() {
-            return Ok(s.parse()?);
-        }
-        Err(anyhow!("lovelace value is neither u64 nor string"))
+    /// Derive a verification-key JSON envelope from a signing-key file.
+    pub(super) fn derive_vkey_from_skey(skey_path: &Path) -> Result<serde_json::Value> {
+        cardano_keys::derive_vkey_from_skey(skey_path)
     }
 
-    async fn cardano_cli_capture(
-        &self,
-        args: &[&str],
-        stdin_bytes: Option<&[u8]>,
-    ) -> Result<(serde_json::Value, Vec<u8>)> {
-        use tokio::io::AsyncWriteExt;
-
-        let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
-        cmd.envs(self.cardano_cli_env());
-        cmd.args(args)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
-
-        if stdin_bytes.is_some() {
-            cmd.stdin(std::process::Stdio::piped());
-        } else {
-            cmd.stdin(std::process::Stdio::null());
-        }
-
-        let mut child = cmd.spawn()?;
-
-        if let Some(bytes) = stdin_bytes {
-            let mut stdin = child
-                .stdin
-                .take()
-                .ok_or_else(|| anyhow!("failed to open stdin pipe"))?;
-            stdin.write_all(bytes).await?;
-            stdin.shutdown().await?;
-        }
-
-        let out = child.wait_with_output().await?;
-
-        if !out.status.success() {
-            return Err(anyhow!(
-                "cardano-cli failed (exit={}):\nstdout: {}\nstderr: {}",
-                out.status,
-                String::from_utf8_lossy(&out.stdout).trim(),
-                String::from_utf8_lossy(&out.stderr).trim(),
-            ));
-        }
-
-        let (json, rest) = parse_first_json_and_rest(&out.stdout)?;
-        Ok((json, rest))
-    }
-
+    /// POST an empty commit to the Hydra head, sign the resulting transaction
+    /// with CSL, and submit it to the local `cardano-node` via the Ouroboros
+    /// local-tx-submission mini-protocol (Pallas).
     pub(super) async fn empty_commit_to_hydra(
         &self,
         hydra_api_port: u16,
         signing_skey: &Path,
     ) -> Result<()> {
-        use anyhow::Context;
         use reqwest::header;
 
+        // POST an empty commit to get an unsigned transaction envelope
         let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
         let client = reqwest::Client::new();
         let resp = client
@@ -253,42 +124,56 @@ impl super::State {
             ));
         }
 
-        let commit_tx_bytes = resp
-            .bytes()
+        let commit_tx_envelope: serde_json::Value = resp
+            .json()
             .await
-            .context("failed to read hydra /commit response body")?
-            .to_vec();
-
-        let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
             .context("hydra /commit response was not valid JSON")?;
 
-        let signed_tx = self
-            .cardano_cli_capture(
-                &[
-                    "latest",
-                    "transaction",
-                    "sign",
-                    "--tx-file",
-                    "/dev/stdin",
-                    "--signing-key-file",
-                    signing_skey
-                        .to_str()
-                        .ok_or_else(|| anyhow!("commit_funds_skey is not valid UTF-8"))?,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                Some(&commit_tx_bytes),
-            )
-            .await?
-            .0;
+        // Sign the transaction using CSL
+        let signed_envelope = cardano_keys::sign_tx_envelope(&commit_tx_envelope, signing_skey)?;
+        let signed_cbor_hex = signed_envelope
+            .get("cborHex")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("signed tx envelope missing cborHex"))?;
+        let signed_cbor = hex::decode(signed_cbor_hex)?;
 
-        let _ = self
-            .cardano_cli_capture(
-                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&serde_json::to_vec(&signed_tx)?),
-            )
-            .await?;
-        Ok(())
+        // Submit via Pallas local-tx-submission to the local cardano-node
+        let magic = self.genesis.network_magic as u64;
+        let mut node = NodeClient::connect(&self.node_socket_path, magic)
+            .await
+            .map_err(|e| anyhow!("failed to connect to cardano-node for tx submit: {e}"))?;
+
+        // Query current era (needed for EraTx wrapper)
+        let statequery = node.statequery();
+        statequery
+            .acquire(None)
+            .await
+            .map_err(|e| anyhow!("statequery acquire failed: {e}"))?;
+
+        let era = queries_v16::get_current_era(statequery)
+            .await
+            .map_err(|e| anyhow!("get_current_era failed: {e}"))?;
+
+        statequery
+            .send_release()
+            .await
+            .map_err(|e| anyhow!("statequery release failed: {e}"))?;
+
+        // Submit the signed transaction
+        let submission = node.submission();
+        let era_tx = EraTx(era, signed_cbor);
+        match submission.submit_tx(era_tx).await {
+            Ok(Response::Accepted) => {
+                info!("hydra-controller: commit transaction accepted by cardano-node");
+                Ok(())
+            },
+            Ok(Response::Rejected(reason)) => Err(anyhow!(
+                "commit transaction rejected by cardano-node: {reason:?}"
+            )),
+            Err(e) => Err(anyhow!(
+                "error submitting commit transaction to cardano-node: {e}"
+            )),
+        }
     }
 }
 
@@ -358,32 +243,6 @@ pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
         .ok_or(anyhow!("missing tag"))
         .and_then(|a| a.as_str().ok_or(anyhow!("tag is not a string")))
         .map(|a| a.to_string())
-}
-
-/// Parse the first JSON value from e.g. stdout, and return the remainder.
-fn parse_first_json_and_rest(stdout: &[u8]) -> Result<(serde_json::Value, Vec<u8>)> {
-    let mut start = stdout
-        .iter()
-        .position(|b| !b.is_ascii_whitespace())
-        .unwrap_or(0);
-
-    if !matches!(stdout.get(start), Some(b'{') | Some(b'[')) {
-        if let Some(i) = stdout.iter().position(|&b| b == b'{' || b == b'[') {
-            start = i;
-        }
-    }
-
-    let mut it = serde_json::Deserializer::from_slice(&stdout[start..]).into_iter::<Value>();
-
-    let first = it
-        .next()
-        .ok_or_else(|| anyhow!("no JSON value found in stdout"))?
-        .map_err(|e| anyhow!("failed to parse first JSON value from stdout: {e}"))?;
-
-    let consumed = it.byte_offset(); // <-- works here
-    let rest = stdout[start + consumed..].to_vec();
-
-    Ok((first, rest))
 }
 
 #[cfg(unix)]

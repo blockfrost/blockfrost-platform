@@ -32,6 +32,7 @@ thiserror.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 reqwest.workspace = true
 blockfrost.workspace = true
+cardano-serialization-lib.workspace = true
 dotenvy.workspace = true
 hex.workspace = true
 rand.workspace = true

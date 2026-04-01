@@ -1,7 +1,6 @@
 use crate::config::HydraConfig as HydraTomlConfig;
 use crate::types::{AssetName, Network};
 use anyhow::{Result, anyhow};
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,7 +28,11 @@ pub struct HydrasManager {
 }
 
 impl HydrasManager {
-    pub async fn new(config: &HydraTomlConfig, network: &Network) -> Result<Self> {
+    pub async fn new(
+        config: &HydraTomlConfig,
+        network: &Network,
+        blockfrost_project_id: &str,
+    ) -> Result<Self> {
         // Let’s add some ε of 1% just to be sure about rounding etc.
         let minimal_commit: f64 = 1.01
             * (config.lovelace_per_request
@@ -53,7 +56,7 @@ impl HydrasManager {
         }
 
         Ok(Self {
-            config: HydraConfig::load(config.clone(), network).await?,
+            config: HydraConfig::load(config.clone(), network, blockfrost_project_id).await?,
             controller_counter: Arc::new(Arc::new(())),
         })
     }
@@ -114,6 +117,7 @@ impl HydrasManager {
             hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
             protocol_parameters: self.config.protocol_parameters.clone(),
             contestation_period: CONTESTATION_PERIOD_SECONDS,
+            blockfrost_project_id: self.config.blockfrost_project_id.clone(),
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
             kex_done: false,
@@ -186,47 +190,48 @@ impl HydrasManager {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 struct HydraConfig {
     pub toml: HydraTomlConfig,
     pub network: Network,
     pub hydra_node_exe: String,
-    pub cardano_cli_exe: String,
+    pub blockfrost_api: blockfrost::BlockfrostAPI,
+    pub blockfrost_project_id: String,
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_cardano_addr: String,
     pub protocol_parameters: serde_json::Value,
 }
 
 impl HydraConfig {
-    pub async fn load(toml: HydraTomlConfig, network: &Network) -> Result<Self> {
+    pub async fn load(
+        toml: HydraTomlConfig,
+        network: &Network,
+        blockfrost_project_id: &str,
+    ) -> Result<Self> {
         let hydra_node_exe =
             crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
-        let cardano_cli_exe =
-            crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
-                .map_err(|e| anyhow!(e))?;
-        let self_ = Self {
+        let blockfrost_api = blockfrost::BlockfrostAPI::new(
+            blockfrost_project_id,
+            blockfrost::BlockFrostSettings::default(),
+        );
+        let mut self_ = Self {
             toml,
             network: network.clone(),
             hydra_node_exe,
-            cardano_cli_exe,
+            blockfrost_api,
+            blockfrost_project_id: blockfrost_project_id.to_string(),
             gateway_cardano_vkey: serde_json::Value::Null,
             gateway_cardano_addr: String::new(),
             protocol_parameters: serde_json::Value::Null,
         };
-        let gateway_cardano_addr = self_
-            .derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)
-            .await?;
-        let gateway_cardano_vkey = self_
-            .derive_vkey_from_skey(&self_.toml.cardano_signing_key)
-            .await?;
+        let gateway_cardano_addr =
+            self_.derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)?;
+        let gateway_cardano_vkey = Self::derive_vkey_from_skey(&self_.toml.cardano_signing_key)?;
         let protocol_parameters = self_.gen_protocol_parameters().await?;
-        let self_ = Self {
-            gateway_cardano_vkey,
-            gateway_cardano_addr,
-            protocol_parameters,
-            ..self_
-        };
+        self_.gateway_cardano_vkey = gateway_cardano_vkey;
+        self_.gateway_cardano_addr = gateway_cardano_addr;
+        self_.protocol_parameters = protocol_parameters;
         Ok(self_)
     }
 }
@@ -259,6 +264,7 @@ pub struct KeyExchangeResponse {
     pub hydra_scripts_tx_id: String,
     pub protocol_parameters: serde_json::Value,
     pub contestation_period: Duration,
+    pub blockfrost_project_id: String,
     /// Unfortunately the ports have to be the same on both sides, so
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
@@ -313,8 +319,9 @@ impl HydraController {
 enum Event {
     Restart,
     Terminate,
-    TryToInitHead,
     FundCommitAddr,
+    TryToInitHead,
+    WaitForInitial { retries_before_reinit: u64 },
     TryToCommit,
     WaitForOpen,
     AccountOneRequest,
@@ -353,6 +360,7 @@ struct State {
     sent_microtransactions: u64,
     commit_wallet_skey: PathBuf,
     commit_wallet_addr: String,
+    commit_fund_tx_sent: bool,
     is_closing: bool,
     hydra_pid: Option<u32>,
     hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
@@ -388,6 +396,7 @@ impl State {
             sent_microtransactions: 0,
             commit_wallet_skey: PathBuf::new(),
             commit_wallet_addr: String::new(),
+            commit_fund_tx_sent: false,
             is_closing: false,
             hydra_pid: None,
             hydra_watchdog: None,
@@ -439,8 +448,10 @@ impl State {
                 self.is_closing = false;
                 self.sent_microtransactions = 0;
                 self.accounted_requests = 0;
+                // Start the hydra-node early so it can discover peers while the
+                // commit wallet is being funded.
                 self.start_hydra_node().await?;
-                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
                     .await
             },
 
@@ -452,6 +463,101 @@ impl State {
                 }
                 if let Some(pid) = self.hydra_pid {
                     verifications::sigterm(pid)?
+                }
+            },
+
+            Event::FundCommitAddr => {
+                // The hydra-node in --blockfrost mode needs its signing key
+                // address to be indexed by Blockfrost before it can build the
+                // Init tx. Poll until visible (mirrors what
+                // `hydra-blockfrost-test.sh` does).
+                let fuel_lovelace = self
+                    .config
+                    .lovelace_on_addr(&self.config.gateway_cardano_addr)
+                    .await?;
+                if fuel_lovelace == 0 {
+                    info!(
+                        "hydra-controller: {}: waiting for Blockfrost to index \
+                         the signing key address ({})",
+                        self.originator.as_str(),
+                        &self.config.gateway_cardano_addr,
+                    );
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
+                        .await;
+                    return Ok(());
+                }
+
+                let commit_wallet = self.config_dir.join("commit-funds");
+                self.commit_wallet_skey = commit_wallet.with_extension("sk");
+
+                if !std::fs::exists(&self.commit_wallet_skey)? {
+                    HydraConfig::new_cardano_keypair(&commit_wallet)?;
+                }
+
+                self.commit_wallet_addr = self
+                    .config
+                    .derive_enterprise_address_from_skey(&self.commit_wallet_skey)?;
+
+                let target_lovelace = (self.config.toml.commit_ada * 1_000_000.0).round() as u64;
+                let current_lovelace = self
+                    .config
+                    .lovelace_on_addr(&self.commit_wallet_addr)
+                    .await?;
+
+                if current_lovelace < target_lovelace {
+                    if self.commit_fund_tx_sent {
+                        // Already submitted a top-up tx; just wait for
+                        // Blockfrost to index it.
+                        info!(
+                            "hydra-controller: {}: waiting for commit \
+                             top-up to appear on Blockfrost \
+                             (current={}, target={})",
+                            self.originator.as_str(),
+                            current_lovelace,
+                            target_lovelace
+                        );
+                        self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
+                            .await;
+                        return Ok(());
+                    }
+
+                    let top_up =
+                        (target_lovelace - current_lovelace).max(MIN_LOVELACE_PER_TRANSACTION);
+                    info!(
+                        "hydra-controller: {}: topping up commit address by \
+                         {} lovelace (current={}, target={})",
+                        self.originator.as_str(),
+                        top_up,
+                        current_lovelace,
+                        target_lovelace
+                    );
+                    self.config
+                        .fund_address(
+                            &self.config.gateway_cardano_addr,
+                            &self.commit_wallet_addr,
+                            top_up,
+                            &self.config.toml.cardano_signing_key,
+                        )
+                        .await?;
+
+                    self.commit_fund_tx_sent = true;
+
+                    // Wait for the top-up to be visible on Blockfrost
+                    // before proceeding to Init.
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
+                        .await
+                } else {
+                    self.commit_fund_tx_sent = false;
+                    info!(
+                        "hydra-controller: {}: commit address funded \
+                         (current={}, target={})",
+                        self.originator.as_str(),
+                        current_lovelace,
+                        target_lovelace
+                    );
+
+                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                        .await
                 }
             },
 
@@ -479,90 +585,66 @@ impl State {
                     )
                     .await?;
 
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
-                        .await
+                    // Allow up to 10 retries (30s) for the hydra-node's
+                    // Blockfrost chain follower to observe the Init tx on L1
+                    // before re-sending Init.
+                    self.send_delayed(
+                        Event::WaitForInitial {
+                            retries_before_reinit: 10,
+                        },
+                        Duration::from_secs(3),
+                    )
+                    .await
                 } else {
                     self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                         .await
                 }
             },
 
-            Event::FundCommitAddr => {
+            Event::WaitForInitial {
+                retries_before_reinit,
+            } => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
 
                 info!(
-                    "hydra-controller: {}: waiting for the Initial head status: status={:?}",
+                    "hydra-controller: {}: waiting for the Initial head \
+                     status: status={:?} (retries_before_reinit={})",
                     self.originator.as_str(),
-                    status
+                    status,
+                    retries_before_reinit
                 );
 
-                if status == "Initial" || status == "Open" {
-                    let commit_wallet = self.config_dir.join("commit-funds");
-                    self.commit_wallet_skey = commit_wallet.with_extension("sk");
-
-                    if !std::fs::exists(&self.commit_wallet_skey)? {
-                        if status == "Open" {
-                            Err(anyhow!(
-                                "Head status is Open, but there’s no commit wallet anymore; this shouldn’t really happen, we don’t yet know how to handle it"
-                            ))?
-                        }
-
-                        self.config.new_cardano_keypair(&commit_wallet).await?;
-                    }
-
-                    self.commit_wallet_addr = self
-                        .config
-                        .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
-                        .await?;
-
-                    if status == "Initial" {
-                        let target_lovelace =
-                            (self.config.toml.commit_ada * 1_000_000.0).round() as u64;
-                        let current_lovelace = self
-                            .config
-                            .lovelace_on_addr(&self.commit_wallet_addr)
-                            .await?;
-
-                        if current_lovelace < target_lovelace {
-                            let top_up = (target_lovelace - current_lovelace)
-                                .max(MIN_LOVELACE_PER_TRANSACTION);
-                            info!(
-                                "hydra-controller: {}: topping up commit address by {} lovelace (current={}, target={})",
-                                self.originator.as_str(),
-                                top_up,
-                                current_lovelace,
-                                target_lovelace
-                            );
-                            self.config
-                                .fund_address(
-                                    &self.config.gateway_cardano_addr,
-                                    &self.commit_wallet_addr,
-                                    top_up,
-                                    &self.config.toml.cardano_signing_key,
-                                )
-                                .await?;
-                        } else {
-                            info!(
-                                "hydra-controller: {}: commit address already funded (current={}, target={})",
-                                self.originator.as_str(),
-                                current_lovelace,
-                                target_lovelace
-                            );
-                        }
-
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                            .await
-                    } else if status == "Open" {
-                        warn!(
-                            "hydra-controller: {}: turns out the Head is already Open, skipping Commit",
-                            self.originator.as_str(),
-                        );
-                        self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
-                            .await
-                    }
-                } else {
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
+                if status == "Initial" {
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
                         .await
+                } else if status == "Open" {
+                    warn!(
+                        "hydra-controller: {}: head is already Open, \
+                         skipping Commit",
+                        self.originator.as_str(),
+                    );
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
+                        .await
+                } else if retries_before_reinit <= 1 {
+                    // The Init tx likely failed (e.g. stale UTxO in the
+                    // hydra-node's Blockfrost wallet cache). Re-send Init so
+                    // the node can build a fresh InitTx with up-to-date UTxOs.
+                    warn!(
+                        "hydra-controller: {}: head stuck on {:?} after \
+                         Init — re-sending Init command",
+                        self.originator.as_str(),
+                        status
+                    );
+                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                        .await
+                } else {
+                    self.send_delayed(
+                        Event::WaitForInitial {
+                            retries_before_reinit: retries_before_reinit - 1,
+                        },
+                        Duration::from_secs(3),
+                    )
+                    .await
                 }
             },
 
@@ -774,7 +856,10 @@ impl State {
                     self.sent_microtransactions = 0;
                     self.accounted_requests = 0;
 
-                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(3))
+                    // Fund the commit wallet before the next Init, so
+                    // the signing key UTxOs stay untouched between Init
+                    // and Commit.
+                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
                         .await;
                 } else {
                     self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
@@ -815,6 +900,13 @@ impl State {
             &self.kex_req.platform_cardano_vkey,
         )?;
 
+        // Write the Blockfrost project ID to a file for hydra-node's --blockfrost option
+        let blockfrost_project_id_path = self.config_dir.join("blockfrost-project-id");
+        std::fs::write(
+            &blockfrost_project_id_path,
+            &self.config.blockfrost_project_id,
+        )?;
+
         let mut cmd = tokio::process::Command::new(&self.config.hydra_node_exe);
         cmd.arg("--node-id")
             .arg("platform-node")
@@ -830,16 +922,8 @@ impl State {
             .arg(&protocol_parameters_path) // FIXME: copy it somewhere else in case the source file changes
             .arg("--contestation-period")
             .arg(format!("{}s", self.kex_resp.contestation_period.as_secs()))
-            .args(if self.config.network == Network::Mainnet {
-                vec!["-mainnet".to_string()]
-            } else {
-                vec![
-                    "--testnet-magic".to_string(),
-                    format!("{}", self.config.network.network_magic()),
-                ]
-            })
-            .arg("--node-socket")
-            .arg(&self.config.toml.node_socket_path)
+            .arg("--blockfrost")
+            .arg(&blockfrost_project_id_path)
             .arg("--api-port")
             .arg(format!("{}", self.api_port))
             .arg("--api-host")

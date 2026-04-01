@@ -286,6 +286,8 @@ done
 
 # ---------------------------------------------------------------------------- #
 
+log_level=info
+
 gateway_port=$(python3 -m portpicker)
 platform_port=$(python3 -m portpicker)
 
@@ -301,7 +303,7 @@ log info "Writing Gateway config…"
 cat >gateway-config.toml <<EOF
 [server]
 address = '127.0.0.1:${gateway_port}'
-log_level = 'info'
+log_level = '${log_level}'
 
 [database]
 connection_string = 'postgresql://not-used-with-dev-mock-db@localhost/dummy'
@@ -313,7 +315,6 @@ nft_asset = '4213fc3eac8c781ac85514dd1de9aaabcd5a3a81cc2df4f413b9b295'
 [hydra_platform]
 max_concurrent_hydra_nodes = 2
 cardano_signing_key = '$(realpath credentials/gateway-hydra/payment.sk)'
-node_socket_path = '${CARDANO_NODE_SOCKET_PATH}'
 commit_ada = ${commit_ada}
 lovelace_per_request = ${lovelace_per_request}
 requests_per_microtransaction = ${requests_per_microtransaction}
@@ -345,7 +346,7 @@ log info "Starting the Platform (blockfrost-platform)…"
 blockfrost-platform \
   --server-address 127.0.0.1 \
   --server-port "$platform_port" \
-  --log-level info \
+  --log-level "$log_level" \
   --node-socket-path "${CARDANO_NODE_SOCKET_PATH}" \
   --mode compact \
   --secret "$platform_secret" \
@@ -422,7 +423,10 @@ wait_for_gw_log_count() {
 
 log info "Waiting for the Hydra Head to become Open…"
 
-wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 300 \
+# Apparently we need to wait 10 minutes for the Head to open between a
+# `--blockfrost` Hydra node and a regular one. The future is now…
+
+wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 600 \
   "Hydra Head open (initial)" || exit 1
 
 log info "Hydra Head is Open! Verifying the proxy route works…"

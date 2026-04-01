@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
             hydra_server_platform::HydrasManager::new(
                 hydra_platform_config,
                 &config.server.network,
+                &config.blockfrost.project_id,
             )
             .await?,
         )

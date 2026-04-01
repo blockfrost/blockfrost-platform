@@ -86,7 +86,6 @@ pub struct Blockfrost {
 pub struct HydraConfig {
     pub cardano_signing_key: PathBuf,
     pub max_concurrent_hydra_nodes: u64,
-    pub node_socket_path: PathBuf,
     /// How much to commit from [`Self::cardano_signing_key`] when starting a new L2 session.
     pub commit_ada: f64,
     /// How much is a single request worth?

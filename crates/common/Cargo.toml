@@ -17,6 +17,7 @@ reqwest.workspace = true
 bech32.workspace = true
 cardano-serialization-lib.workspace = true
 hex.workspace = true
+getrandom.workspace = true
 dirs.workspace = true
 url.workspace = true
 toml.workspace = true

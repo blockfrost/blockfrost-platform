@@ -2,6 +2,7 @@ pub mod accounts;
 pub mod addresses;
 pub mod assets;
 pub mod blocks;
+pub mod cardano_keys;
 pub mod cli;
 pub mod config;
 pub mod crates;
