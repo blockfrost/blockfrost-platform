@@ -209,7 +209,7 @@ impl HydraConfig {
         blockfrost_project_id: &str,
     ) -> Result<Self> {
         let hydra_node_exe =
-            crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+            bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
         let blockfrost_api = blockfrost::BlockfrostAPI::new(
             blockfrost_project_id,
