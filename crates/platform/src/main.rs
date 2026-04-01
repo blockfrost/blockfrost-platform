@@ -62,7 +62,7 @@ async fn main() -> Result<(), AppError> {
     //
     // Whenever a single load balancer connection breaks, we drop all of them,
     // and re-register to get a new set of access tokens. It’s complicated by
-    // our want to to specify _multiple_ load balancer endpoints in the future,
+    // our want to specify _multiple_ load balancer endpoints in the future,
     // so it’s best to have future-compatibility in the messaging now.
     let (kex_req_tx, kex_req_rx) = mpsc::channel(32);
     let (kex_resp_tx, kex_resp_rx) = mpsc::channel(32);
