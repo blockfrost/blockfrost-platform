@@ -961,7 +961,7 @@ impl State {
 
         let mut cmd = tokio::process::Command::new(&self.config.hydra_node_exe);
         cmd.arg("--node-id")
-            .arg("platform-node")
+            .arg("gateway-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
             .arg("--cardano-signing-key")
