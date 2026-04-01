@@ -7,7 +7,7 @@
 //! - `transaction sign`
 //! - Reading/writing cardano-cli JSON envelope format
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use cardano_serialization_lib::{
     Address, Credential, EnterpriseAddress, FixedTransaction, NetworkId, PrivateKey, PublicKey,
 };
@@ -262,7 +262,7 @@ pub fn json_as_u64(v: &serde_json::Value) -> Result<u64> {
     if let Some(s) = v.as_str() {
         return Ok(s.parse()?);
     }
-    Err(anyhow!("value is neither u64 nor string"))
+    bail!("value is neither u64 nor string")
 }
 
 #[cfg(test)]

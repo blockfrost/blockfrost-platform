@@ -1,5 +1,5 @@
 use crate::types::Network;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, bail};
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
@@ -158,9 +158,7 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
     } else if project_id.starts_with("preview") {
         Ok(Network::Preview)
     } else {
-        Err(anyhow!(
-            "cannot infer Cardano network from the Blockfrost project id"
-        ))
+        bail!("cannot infer Cardano network from the Blockfrost project id")
     }
 }
 

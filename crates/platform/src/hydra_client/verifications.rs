@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use bf_common::cardano_keys;
 use pallas_network::facades::NodeClient;
 use pallas_network::miniprotocols::{
@@ -26,7 +26,7 @@ impl super::State {
                 .await?;
 
             if !status.success() {
-                Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
+                bail!("gen-hydra-key failed with status: {status}");
             }
         } else {
             info!("hydra-controller: hydra keys already exist");
@@ -117,11 +117,11 @@ impl super::State {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.bytes().await.unwrap_or_default();
-            return Err(anyhow!(
+            bail!(
                 "hydra /commit failed with {}: {}",
                 status,
                 String::from_utf8_lossy(&body)
-            ));
+            );
         }
 
         let commit_tx_envelope: serde_json::Value = resp
@@ -167,12 +167,10 @@ impl super::State {
                 info!("hydra-controller: commit transaction accepted by cardano-node");
                 Ok(())
             },
-            Ok(Response::Rejected(reason)) => Err(anyhow!(
-                "commit transaction rejected by cardano-node: {reason:?}"
-            )),
-            Err(e) => Err(anyhow!(
-                "error submitting commit transaction to cardano-node: {e}"
-            )),
+            Ok(Response::Rejected(reason)) => {
+                bail!("commit transaction rejected by cardano-node: {reason:?}")
+            },
+            Err(e) => bail!("error submitting commit transaction to cardano-node: {e}"),
         }
     }
 }

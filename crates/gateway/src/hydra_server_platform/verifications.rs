@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use blockfrost::Pagination;
 use cardano_serialization_lib::{
     Address, BigNum, FixedTransaction, LinearFee, TransactionBuilder, TransactionBuilderConfig,
@@ -30,7 +30,7 @@ impl super::HydraConfig {
                 .await?;
 
             if !status.success() {
-                Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
+                bail!("gen-hydra-key failed with status: {status}");
             }
         } else {
             info!("hydra-controller: hydra keys already exist");
@@ -80,7 +80,7 @@ impl super::HydraConfig {
                 if msg.contains("404") {
                     Ok(0)
                 } else {
-                    Err(anyhow!("blockfrost addresses_utxos failed: {e}"))
+                    bail!("blockfrost addresses_utxos failed: {e}")
                 }
             },
         }
@@ -121,7 +121,7 @@ impl super::HydraConfig {
             .await?;
 
         if utxos.is_empty() {
-            return Err(anyhow!("no UTxOs found for addr_from"));
+            bail!("no UTxOs found for addr_from");
         }
 
         // Fetch protocol parameters for fee calculation
@@ -214,11 +214,11 @@ impl super::HydraConfig {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.bytes().await.unwrap_or_default();
-            return Err(anyhow!(
+            bail!(
                 "hydra /commit failed with {}: {}",
                 status,
                 String::from_utf8_lossy(&body)
-            ));
+            );
         }
 
         let commit_tx_bytes = resp
@@ -261,7 +261,7 @@ impl super::HydraConfig {
                 if msg.contains("404") {
                     return Ok(serde_json::json!({}));
                 }
-                return Err(anyhow!("blockfrost addresses_utxos failed: {e}"));
+                bail!("blockfrost addresses_utxos failed: {e}");
             },
         };
 
@@ -378,9 +378,9 @@ impl super::HydraConfig {
         }
 
         if amount_lovelace < MIN_OUTPUT_LOVELACE {
-            return Err(anyhow!(
+            bail!(
                 "amount_lovelace {amount_lovelace} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}"
-            ));
+            );
         }
 
         // Collect candidates sorted by lovelace value (ascending).
@@ -391,7 +391,7 @@ impl super::HydraConfig {
         }
 
         if candidates.is_empty() {
-            return Err(anyhow!("no UTxO found for sender address"));
+            bail!("no UTxO found for sender address");
         }
 
         candidates.sort_by_key(|(_, value)| *value);
@@ -432,16 +432,12 @@ impl super::HydraConfig {
         }
 
         if selected_total < amount_lovelace {
-            return Err(anyhow!(
-                "insufficient lovelace in available UTxOs: {selected_total} < {amount_lovelace}"
-            ));
+            bail!("insufficient lovelace in available UTxOs: {selected_total} < {amount_lovelace}");
         }
 
         let change = selected_total - amount_lovelace;
         if change > 0 && change < MIN_OUTPUT_LOVELACE {
-            return Err(anyhow!(
-                "change output {change} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}"
-            ));
+            bail!("change output {change} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}");
         }
 
         // Build the L2 transaction body using CSL (fee = 0).
@@ -457,7 +453,7 @@ impl super::HydraConfig {
         for tx_in_str in &selected {
             let parts: Vec<&str> = tx_in_str.split('#').collect();
             if parts.len() != 2 {
-                return Err(anyhow!("invalid tx_in format: {tx_in_str}"));
+                bail!("invalid tx_in format: {tx_in_str}");
             }
             let hash_bytes = hex::decode(parts[0])?;
             let tx_hash = TransactionHash::from_bytes(hash_bytes)?;
@@ -562,7 +558,7 @@ fn tx_builder_config_from_params(params: &serde_json::Value) -> Result<Transacti
             .and_then(|v| match v {
                 serde_json::Value::String(s) => Ok(s.clone()),
                 serde_json::Value::Number(n) => Ok(n.to_string()),
-                _ => Err(anyhow!("unexpected type for {key}")),
+                _ => bail!("unexpected type for {key}"),
             })
     };
 
@@ -680,7 +676,7 @@ pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64)
     }
 
     if !found_any {
-        return Err(anyhow!("metric {metric} not found in /metrics output"));
+        bail!("metric {metric} not found in /metrics output");
     }
 
     Ok(max_value.unwrap_or(f64::NEG_INFINITY) >= threshold)
