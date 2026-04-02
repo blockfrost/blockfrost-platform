@@ -25,9 +25,9 @@ cleanup() {
   trap '' INT TERM
   trap - EXIT
 
-  local exit_code=$?
-  echo >&2 "Cleaning up… (exit_code=$exit_code)"
-  if [ "$test_passed" = false ] && [ -n "$work_dir" ]; then
+  if [ "$test_passed" = true ]; then
+    echo >&2 "=== Test PASSED ==="
+  else
     echo >&2 "=== Test FAILED ==="
   fi
 
@@ -43,7 +43,7 @@ cleanup() {
     cd /
     rm -rf -- "$work_dir"
   fi
-  exit "$exit_code"
+  if [ "$test_passed" = true ]; then exit 0; else exit 1; fi
 }
 trap cleanup INT TERM EXIT
 
