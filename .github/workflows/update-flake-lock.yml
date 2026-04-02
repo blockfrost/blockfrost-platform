@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   update-flake-lock:
-    runs-on: [self-hosted, Linux, X64, nixos]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -18,8 +18,8 @@ jobs:
 
       - uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
-          pr-title: "chore(nix): update flake.lock"
+          pr-title: "chore(nix): update `flake.lock`"
           pr-labels: dependencies,automated
-          # PAT/App token so the PR triggers CI (GITHUB_TOKEN won't).
+          # A separate PAT, so the PR triggers CI recursively (the original `GITHUB_TOKEN` won’t).
           # Ref: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
           token: ${{ secrets.FLAKE_UPDATE_GITHUB_TOKEN }}
