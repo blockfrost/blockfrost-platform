@@ -373,6 +373,11 @@ log info "Opening a Hydra head"
   sleep 2 # This one works with `--one-message` and without `sleep`, but other calls don’t, so just in case.
 } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
 
+txdir=tx-02-commit-L1-to-L2
+mkdir -p $txdir
+
+# Commit each participant as soon as *their own* node hits Initial – without
+# waiting for the other node. This mimics what the Rust code does.
 for participant in alice bob; do
   while true; do
     sleep 3
@@ -382,16 +387,7 @@ for participant in alice bob; do
       break
     fi
   done
-done
 
-# ---------------------------------------------------------------------------- #
-
-log info "Committing L1 funds to the head…"
-
-txdir=tx-02-commit-L1-to-L2
-mkdir -p $txdir
-
-for participant in alice bob; do
   log info "Committing L1 funds to the head: $participant"
 
   cardano-cli query utxo \
@@ -411,7 +407,18 @@ for participant in alice bob; do
     --signing-key-file credentials/"$participant"-funds/payment.sk \
     --out-file $txdir/commit-tx-signed-"$participant".json
 
-  cardano-cli latest transaction submit --tx-file $txdir/commit-tx-signed-"$participant".json
+  if [ "$participant" == "bob" ]; then
+    # Bob uses the `--blockfrost` mode, so let’s also submit his commit tx via
+    # the Blockfrost API. This mimics what the Rust Gateway code does.
+    cbor_hex=$(jq -r .cborHex $txdir/commit-tx-signed-"$participant".json)
+    echo "$cbor_hex" | xxd -r -p | curl -fsSL -X POST \
+      -H "project_id: $BLOCKFROST_PROJECT_ID" \
+      -H "Content-Type: application/cbor" \
+      --data-binary @- \
+      "https://cardano-preview.blockfrost.io/api/v0/tx/submit"
+  else
+    cardano-cli latest transaction submit --tx-file $txdir/commit-tx-signed-"$participant".json
+  fi
 done
 
 # ---------------------------------------------------------------------------- #
