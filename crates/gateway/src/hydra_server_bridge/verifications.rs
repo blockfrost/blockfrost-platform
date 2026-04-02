@@ -39,7 +39,7 @@ impl super::HydraConfig {
         vec![
             (
                 "CARDANO_NODE_SOCKET_PATH",
-                self.toml.node_socket_path.to_string_lossy().to_string(),
+                std::env::var("CARDANO_NODE_SOCKET_PATH").unwrap(), // FIXME: no Cardano socket allowed here!
             ),
             (
                 "CARDANO_NODE_NETWORK_ID",

@@ -1,5 +1,5 @@
 use crate::types::Network;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, bail};
 use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
@@ -88,7 +88,6 @@ pub struct Blockfrost {
 pub struct HydraConfig {
     pub cardano_signing_key: PathBuf,
     pub max_concurrent_hydra_nodes: u64,
-    pub node_socket_path: PathBuf,
     /// How much to commit from [`Self::cardano_signing_key`] when starting a new L2 session.
     pub commit_ada: f64,
     /// How much is a single request worth?
@@ -133,7 +132,7 @@ pub fn load_config(path: PathBuf) -> Config {
             .expect("project_id must be provided"),
     };
 
-    let network = network_from_project_id(&project_id).unwrap();
+    let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
     let config = Config {
         server: Server {
@@ -162,9 +161,7 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
     } else if project_id.starts_with("preview") {
         Ok(Network::Preview)
     } else {
-        Err(anyhow!(
-            "cannot infer Cardano network from the Blockfrost project id"
-        ))
+        bail!("Blockfrost project_id must start with 'mainnet', 'preprod', or 'preview'")
     }
 }
 
@@ -176,7 +173,7 @@ fn override_with_env(config: Config) -> Config {
     let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
     let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
-    let network = network_from_project_id(&project_id).unwrap();
+    let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
         "debug" => Level::DEBUG,

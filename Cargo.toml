@@ -14,6 +14,7 @@ members = [
   "crates/data_node",
   "crates/gateway",
   "crates/sdk_bridge",
+  "crates/integration_tests",
 ]
 default-members = ["crates/platform"]
 
@@ -24,6 +25,8 @@ base64 = "0.22.1"
 bech32 = "0.11.1"
 blake3 = "1"
 bytes = "1"
+blockfrost-platform = { path = "crates/platform", package = "blockfrost-platform" }
+blockfrost-gateway = { path = "crates/gateway", package = "blockfrost-gateway" }
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
 bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-build-utils" }
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }

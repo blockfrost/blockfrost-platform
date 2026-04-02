@@ -101,6 +101,7 @@ struct JsonRequest {
     id: RequestId,
     method: JsonRequestMethod,
     path: String,
+    query: Option<String>,
     header: Vec<JsonHeader>,
     body_base64: String,
 }
@@ -594,9 +595,12 @@ fn json_to_request(
         }
     };
 
-    let mut rv = Request::builder()
-        .method(json.method.as_str())
-        .uri(format!("{}{}", api_prefix, json.path));
+    let uri = match json.query {
+        Some(query) => format!("{}{}?{}", api_prefix, json.path, query),
+        None => format!("{}{}", api_prefix, json.path),
+    };
+
+    let mut rv = Request::builder().method(json.method.as_str()).uri(uri);
 
     for h in json.header {
         rv = rv.header(h.name, h.value);
@@ -649,4 +653,30 @@ async fn response_to_json(
         header,
         body_base64,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::server::state::ApiPrefix;
+
+    #[test]
+    fn test_json_to_request_reconstructs_query() {
+        let request = JsonRequest {
+            id: RequestId(Uuid::new_v4()),
+            method: JsonRequestMethod::GET,
+            path: "/accounts/rewards".to_string(),
+            query: Some("count=3&page=2&order=asc".to_string()),
+            header: vec![],
+            body_base64: String::new(),
+        };
+
+        let prefix = Uuid::nil();
+        let request = json_to_request(request, ApiPrefix(Some(prefix))).unwrap();
+
+        assert_eq!(
+            request.uri().path_and_query().unwrap().as_str(),
+            "/00000000-0000-0000-0000-000000000000/accounts/rewards?count=3&page=2&order=asc"
+        );
+    }
 }

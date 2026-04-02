@@ -1,21 +1,5 @@
 {
   "nodes": {
-    "acropolis": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1761154810,
-        "narHash": "sha256-dVe6QLB2+EnkzTrubvQA9p7zxaUVUQI29CVZoaABSI8=",
-        "owner": "input-output-hk",
-        "repo": "acropolis",
-        "rev": "371aa46d74af8ea21cf076ed699d921dc827639b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "input-output-hk",
-        "repo": "acropolis",
-        "type": "github"
-      }
-    },
     "advisory-db": {
       "flake": false,
       "locked": {
@@ -35,11 +19,11 @@
     "blockfrost-tests": {
       "flake": false,
       "locked": {
-        "lastModified": 1772550391,
-        "narHash": "sha256-v/l0EJB7HXYPMq1HAGBGpZE+FmaHiVjwgOBW1K9zhHo=",
+        "lastModified": 1774533445,
+        "narHash": "sha256-qo5aUMV5FvU40GGiyaMaI8al55cnX4f5KkEHsQcSJ2w=",
         "owner": "blockfrost",
         "repo": "blockfrost-tests",
-        "rev": "888753c9215df83eb2ffa8b4eaa0cdcb6b6bffab",
+        "rev": "79d2af00846ba4b5863f1dc559779698ff6eb44b",
         "type": "github"
       },
       "original": {
@@ -375,7 +359,6 @@
     },
     "root": {
       "inputs": {
-        "acropolis": "acropolis",
         "advisory-db": "advisory-db",
         "blockfrost-tests": "blockfrost-tests",
         "cardano-node": "cardano-node",

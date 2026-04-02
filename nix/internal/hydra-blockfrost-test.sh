@@ -7,12 +7,14 @@ set -euo pipefail
 work_dir=""
 child_pids=()
 cleanup() {
+  local ec=$?
   kill "${child_pids[@]}" 2>/dev/null || true
-  wait
+  wait || true
   if [ -n "$work_dir" ]; then
     cd /
     rm -rf -- "$work_dir"
   fi
+  exit "$ec"
 }
 trap cleanup INT TERM EXIT
 
@@ -371,6 +373,11 @@ log info "Opening a Hydra head"
   sleep 2 # This one works with `--one-message` and without `sleep`, but other calls don’t, so just in case.
 } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
 
+txdir=tx-02-commit-L1-to-L2
+mkdir -p $txdir
+
+# Commit each participant as soon as *their own* node hits Initial – without
+# waiting for the other node. This mimics what the Rust code does.
 for participant in alice bob; do
   while true; do
     sleep 3
@@ -380,16 +387,7 @@ for participant in alice bob; do
       break
     fi
   done
-done
 
-# ---------------------------------------------------------------------------- #
-
-log info "Committing L1 funds to the head…"
-
-txdir=tx-02-commit-L1-to-L2
-mkdir -p $txdir
-
-for participant in alice bob; do
   log info "Committing L1 funds to the head: $participant"
 
   cardano-cli query utxo \
@@ -409,7 +407,18 @@ for participant in alice bob; do
     --signing-key-file credentials/"$participant"-funds/payment.sk \
     --out-file $txdir/commit-tx-signed-"$participant".json
 
-  cardano-cli latest transaction submit --tx-file $txdir/commit-tx-signed-"$participant".json
+  if [ "$participant" == "bob" ]; then
+    # Bob uses the `--blockfrost` mode, so let’s also submit his commit tx via
+    # the Blockfrost API. This mimics what the Rust Gateway code does.
+    cbor_hex=$(jq -r .cborHex $txdir/commit-tx-signed-"$participant".json)
+    echo "$cbor_hex" | xxd -r -p | curl -fsSL -X POST \
+      -H "project_id: $BLOCKFROST_PROJECT_ID" \
+      -H "Content-Type: application/cbor" \
+      --data-binary @- \
+      "https://cardano-preview.blockfrost.io/api/v0/tx/submit"
+  else
+    cardano-cli latest transaction submit --tx-file $txdir/commit-tx-signed-"$participant".json
+  fi
 done
 
 # ---------------------------------------------------------------------------- #
@@ -500,28 +509,46 @@ done
 
 # ---------------------------------------------------------------------------- #
 
-invalidity_period=$(((2 + 1) * CONTESTATION_PERIOD_SECONDS))
+log info "Waiting for ‘readyToFanoutSent’ on ‘Closed’ head"
 
-log info "Waiting ${invalidity_period}s for validity period before fan-out"
+# XXX: otherwise, when simply sleeping for `(n+1)*CONTESTATION_PERIOD_SECONDS`
+# we sometimes hit `OutsideValidityIntervalUTxO`:
 
-sleep "$invalidity_period"
+while true; do
+  sleep 3
+  head_json=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head)
+  status=$(echo "$head_json" | jq -r .tag)
+  ready=$(echo "$head_json" | jq -r '.contents.readyToFanoutSent // false')
+  log info "Waiting for ‘readyToFanoutSent’ on ‘Closed’ head; head status: $status; ‘readyToFanoutSent’: $ready"
+  if [ "$status" == "Closed" ] && [ "$ready" == "true" ]; then
+    break
+  fi
+done
 
 # ---------------------------------------------------------------------------- #
 
 log info "Requesting fan-out"
 
-{
-  echo '{"tag":"Fanout"}'
-  sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
-} | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+# XXX: even though the head is in `FanoutPossible`, the `Fanout` transaction has
+# an `invalidBefore` slot constraint equal to the on-chain contestation
+# deadline. Due to slot-lag (chain tip can be a few slots behind wall-clock
+# time), the Cardano node may reject the tx with `OutsideValidityIntervalUTxO`,
+# so let’s retry:
 
 while true; do
-  sleep 3
-  status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
-  log info "Waiting for ‘Idle’; head status: $status"
-  if [ "$status" == "Idle" ]; then
-    break
-  fi
+  {
+    echo '{"tag":"Fanout"}'
+    sleep 2 # Otherwise: `Warp: Client closed connection prematurely`.
+  } | websocat ws://127.0.0.1:"${hydra_api_port["alice"]}"/
+
+  for _ in {1..10}; do
+    sleep 3
+    status=$(curl -fsSL http://127.0.0.1:"${hydra_api_port["alice"]}"/head | jq -r .tag)
+    log info "Waiting for 'Idle'; head status: $status"
+    if [ "$status" == "Idle" ]; then
+      break 2
+    fi
+  done
 done
 
 # ---------------------------------------------------------------------------- #

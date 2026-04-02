@@ -202,10 +202,10 @@ struct HydraConfig {
 impl HydraConfig {
     pub async fn load(toml: HydraTomlConfig, network: &Network) -> Result<Self> {
         let hydra_node_exe =
-            crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+            bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
         let cardano_cli_exe =
-            crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
+            bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
                 .map_err(|e| anyhow!(e))?;
         let self_ = Self {
             toml,
@@ -778,7 +778,7 @@ impl State {
                 ]
             })
             .arg("--node-socket")
-            .arg(&self.config.toml.node_socket_path)
+            .arg(std::env::var("CARDANO_NODE_SOCKET_PATH").unwrap()) // FIXME: no Cardano socket allowed here!
             .arg("--api-port")
             .arg(format!("{}", self.api_port))
             .arg("--api-host")

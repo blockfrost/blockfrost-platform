@@ -1,12 +1,16 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
+use blockfrost::Pagination;
+use cardano_serialization_lib::{
+    Address, BigNum, FixedTransaction, LinearFee, TransactionBuilder, TransactionBuilderConfig,
+    TransactionBuilderConfigBuilder, TransactionHash, TransactionInput, TransactionOutput,
+    TransactionUnspentOutput, TransactionUnspentOutputs,
+};
 use serde_json::Value;
 use std::path::Path;
 use tracing::info;
 
-use crate::types::Network;
+use bf_common::cardano_keys;
 
-/// FIXME: don’t use `cardano-cli`.
-///
 /// FIXME: proper errors, not `anyhow!`
 impl super::HydraConfig {
     /// Generates Hydra keys if they don’t exist.
@@ -26,7 +30,7 @@ impl super::HydraConfig {
                 .await?;
 
             if !status.success() {
-                Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
+                bail!("gen-hydra-key failed with status: {status}");
             }
         } else {
             info!("hydra-controller: hydra keys already exist");
@@ -35,52 +39,20 @@ impl super::HydraConfig {
         Ok(())
     }
 
-    fn cardano_cli_env(&self) -> Vec<(&str, String)> {
-        vec![
-            (
-                "CARDANO_NODE_SOCKET_PATH",
-                self.toml.node_socket_path.to_string_lossy().to_string(),
-            ),
-            (
-                "CARDANO_NODE_NETWORK_ID",
-                match &self.network {
-                    Network::Mainnet => self.network.as_str().to_string(),
-                    other => other.network_magic().to_string(),
-                },
-            ),
-        ]
-    }
-
-    /// Generates Hydra `protocol-parameters.json` if they don’t exist. These
-    /// are L1 parameters with zeroed transaction fees.
+    /// Fetch L1 protocol parameters via Blockfrost, convert them from
+    /// the Blockfrost API format (snake_case) to the cardano-cli format
+    /// (camelCase) expected by hydra-node's `--ledger-protocol-parameters`,
+    /// and zero out tx fees for use as Hydra L2 ledger parameters.
     pub(super) async fn gen_protocol_parameters(&self) -> Result<serde_json::Value> {
-        use serde_json::Value;
+        let params = self.blockfrost_api.epochs_latest_parameters().await?;
+        let bf = serde_json::to_value(&params)?;
 
-        let output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["query", "protocol-parameters"])
-            .output()
-            .await?;
+        let mut json = blockfrost_params_to_shelley(&bf)?;
 
-        if !output.status.success() {
-            Err(anyhow!(
-                "cardano-cli failed with status: {} (stdout: {}) (stderr: {})",
-                output.status,
-                String::from_utf8_lossy(&output.stdout).trim(),
-                String::from_utf8_lossy(&output.stderr).trim()
-            ))?;
-        }
-
-        let mut params: Value = serde_json::from_slice(&output.stdout)?;
-
-        // .txFeeFixed := 0
-        // .txFeePerByte := 0
-        if let Some(obj) = params.as_object_mut() {
+        if let Some(obj) = json.as_object_mut() {
             obj.insert("txFeeFixed".to_string(), 0.into());
             obj.insert("txFeePerByte".to_string(), 0.into());
 
-            // .executionUnitPrices.priceMemory := 0
-            // .executionUnitPrices.priceSteps := 0
             if let Some(exec_prices) = obj
                 .get_mut("executionUnitPrices")
                 .and_then(Value::as_object_mut)
@@ -90,207 +62,47 @@ impl super::HydraConfig {
             }
         }
 
-        Ok(params)
+        Ok(json)
     }
 
-    /// Check how much lovelace is available on an address.
+    /// Check how much lovelace is available on an address (via Blockfrost).
     pub(super) async fn lovelace_on_addr(&self, address: &str) -> Result<u64> {
-        let utxo_json = self.query_utxo_json(address).await?;
-        Self::sum_lovelace_from_utxo_json(&utxo_json)
-    }
+        let utxos = self
+            .blockfrost_api
+            .addresses_utxos(address, Pagination::all())
+            .await;
 
-    pub(super) async fn derive_vkey_from_skey(
-        &self,
-        skey_path: &Path,
-    ) -> Result<serde_json::Value> {
-        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["key", "verification-key", "--signing-key-file"])
-            .arg(skey_path)
-            .args(["--verification-key-file", "/dev/stdout"])
-            .output()
-            .await?;
-        Ok(serde_json::from_slice(&vkey_output.stdout)?)
-    }
-
-    pub(super) async fn derive_enterprise_address_from_skey(
-        &self,
-        skey_path: &Path,
-    ) -> Result<String> {
-        let vkey_output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["key", "verification-key", "--signing-key-file"])
-            .arg(skey_path)
-            .args(["--verification-key-file", "/dev/stdout"])
-            .output()
-            .await?;
-
-        if !vkey_output.status.success() {
-            return Err(anyhow!(
-                "cardano-cli key verification-key failed: {}",
-                String::from_utf8_lossy(&vkey_output.stderr)
-            ));
-        }
-
-        let mut child = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args([
-                "address",
-                "build",
-                "--payment-verification-key-file",
-                "/dev/stdin",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()?;
-
-        {
-            let stdin = child.stdin.as_mut().ok_or(anyhow!(
-                "failed to open stdin for cardano-cli address build"
-            ))?;
-            use tokio::io::AsyncWriteExt;
-            stdin.write_all(&vkey_output.stdout).await?;
-        }
-
-        let addr_output = child.wait_with_output().await?;
-        if !addr_output.status.success() {
-            Err(anyhow!(
-                "cardano-cli address build failed: {}",
-                String::from_utf8_lossy(&addr_output.stderr)
-            ))?;
-        }
-
-        let address = String::from_utf8(addr_output.stdout)?.trim().to_string();
-        if address.is_empty() {
-            return Err(anyhow!("derived address is empty"));
-        }
-
-        Ok(address)
-    }
-
-    pub(super) async fn query_utxo_json(&self, address: &str) -> Result<serde_json::Value> {
-        let utxo_json = self
-            .cardano_cli_capture(
-                &[
-                    "query",
-                    "utxo",
-                    "--address",
-                    address,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                None,
-            )
-            .await?
-            .0;
-        Ok(utxo_json)
-    }
-
-    pub async fn new_cardano_keypair(&self, base_path: &Path) -> Result<()> {
-        let output = tokio::process::Command::new(&self.cardano_cli_exe)
-            .envs(self.cardano_cli_env())
-            .args(["address", "key-gen", "--verification-key-file"])
-            .arg(base_path.with_extension("vk"))
-            .arg("--signing-key-file")
-            .arg(base_path.with_extension("sk"))
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            return Err(anyhow!(
-                "cardano-cli address key-gen failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
-
-        Ok(())
-    }
-
-    fn sum_lovelace_from_utxo_json(json: &serde_json::Value) -> Result<u64> {
-        let obj = json
-            .as_object()
-            .ok_or(anyhow!("UTxO JSON root is not an object"))?;
-
-        let mut total: u64 = 0;
-
-        for (_txin, utxo) in obj {
-            if let Some(value_obj) = utxo.get("value").and_then(|v| v.as_object()) {
-                if let Some(lovelace_val) = value_obj.get("lovelace") {
-                    total = total
-                        .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or(anyhow!("cannot add"))?;
-                    continue;
+        match utxos {
+            Ok(utxos) => Ok(cardano_keys::sum_lovelace_from_blockfrost_utxos(&utxos)),
+            Err(e) => {
+                // Blockfrost returns 404 if address has never been seen
+                let msg = e.to_string();
+                if msg.contains("404") {
+                    Ok(0)
+                } else {
+                    bail!("blockfrost addresses_utxos failed: {e}")
                 }
-            }
-
-            if let Some(amount_arr) = utxo.get("amount").and_then(|v| v.as_array()) {
-                if let Some(lovelace_val) = amount_arr.first() {
-                    total = total
-                        .checked_add(Self::as_u64(lovelace_val)?)
-                        .ok_or(anyhow!("cannot add"))?;
-                }
-            }
+            },
         }
-
-        Ok(total)
     }
 
-    /// Convert a JSON value into u64, allowing either number or string.
-    fn as_u64(v: &Value) -> Result<u64> {
-        if let Some(n) = v.as_u64() {
-            return Ok(n);
-        }
-        if let Some(s) = v.as_str() {
-            return Ok(s.parse()?);
-        }
-        Err(anyhow!("lovelace value is neither u64 nor string"))
+    /// Derive a verification-key JSON envelope from a signing-key file.
+    pub(super) fn derive_vkey_from_skey(skey_path: &Path) -> Result<serde_json::Value> {
+        cardano_keys::derive_vkey_from_skey(skey_path)
     }
 
-    async fn cardano_cli_capture(
-        &self,
-        args: &[&str],
-        stdin_bytes: Option<&[u8]>,
-    ) -> Result<(serde_json::Value, Vec<u8>)> {
-        use tokio::io::AsyncWriteExt;
-
-        let mut cmd = tokio::process::Command::new(&self.cardano_cli_exe);
-        cmd.envs(self.cardano_cli_env());
-        cmd.args(args)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
-
-        if stdin_bytes.is_some() {
-            cmd.stdin(std::process::Stdio::piped());
-        } else {
-            cmd.stdin(std::process::Stdio::null());
-        }
-
-        let mut child = cmd.spawn()?;
-
-        if let Some(bytes) = stdin_bytes {
-            let mut stdin = child
-                .stdin
-                .take()
-                .ok_or_else(|| anyhow!("failed to open stdin pipe"))?;
-            stdin.write_all(bytes).await?;
-            stdin.shutdown().await?;
-        }
-
-        let out = child.wait_with_output().await?;
-
-        if !out.status.success() {
-            return Err(anyhow!(
-                "cardano-cli failed (exit={}):\nstdout: {}\nstderr: {}",
-                out.status,
-                String::from_utf8_lossy(&out.stdout).trim(),
-                String::from_utf8_lossy(&out.stderr).trim(),
-            ));
-        }
-
-        let (json, rest) = parse_first_json_and_rest(&out.stdout)?;
-        Ok((json, rest))
+    /// Derive an enterprise (payment-only) bech32 address from a signing-key.
+    pub(super) fn derive_enterprise_address_from_skey(&self, skey_path: &Path) -> Result<String> {
+        cardano_keys::derive_enterprise_address(skey_path, self.network.as_str())
     }
 
+    /// Generate a new Cardano keypair in cardano-cli envelope format.
+    pub fn new_cardano_keypair(base_path: &Path) -> Result<()> {
+        cardano_keys::generate_keypair(base_path)
+    }
+
+    /// Build, sign, and submit an L1 transaction that sends `amount_lovelace`
+    /// from `addr_from` to `addr_to`, using CSL + Blockfrost.
     pub(super) async fn fund_address(
         &self,
         addr_from: &str,
@@ -298,84 +110,82 @@ impl super::HydraConfig {
         amount_lovelace: u64,
         payment_skey_path: &Path,
     ) -> Result<()> {
-        let utxo_json = self
-            .cardano_cli_capture(
-                &[
-                    "query",
-                    "utxo",
-                    "--address",
-                    addr_from,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                None,
-            )
-            .await?
-            .0;
+        use cardano_serialization_lib::CoinSelectionStrategyCIP2;
 
-        // XXX: we’re only taking the first 200 UTxOs below, because the test address on
-        // CI has too many of them, and we’d hit `MaxTxSizeUTxO`.
-        let obj = utxo_json
-            .as_object()
-            .ok_or_else(|| anyhow!("UTxO JSON is not an object"))?;
+        let priv_key = cardano_keys::load_private_key(payment_skey_path)?;
 
-        let tx_in_keys: Vec<&str> = obj.keys().take(200).map(|k| k.as_str()).collect();
-        if tx_in_keys.is_empty() {
-            Err(anyhow!("no UTxOs found for addr_from"))?
+        // Fetch UTxOs via Blockfrost (limit to 200 to avoid MaxTxSizeUTxO)
+        let utxos = self
+            .blockfrost_api
+            .addresses_utxos(addr_from, Pagination::all())
+            .await?;
+
+        if utxos.is_empty() {
+            bail!("no UTxOs found for addr_from");
         }
 
-        let tx_out = format!("{addr_to}+{amount_lovelace}");
-        let mut build_args: Vec<String> =
-            vec!["latest".into(), "transaction".into(), "build".into()];
-        for k in &tx_in_keys {
-            build_args.push("--tx-in".into());
-            build_args.push((*k).into());
+        // Fetch protocol parameters for fee calculation
+        let params = self.blockfrost_api.epochs_latest_parameters().await?;
+        let params_json = serde_json::to_value(&params)?;
+        let builder_config = tx_builder_config_from_params(&params_json)?;
+
+        // Fetch current slot for TTL
+        let latest_block = self.blockfrost_api.blocks_latest().await?;
+        let current_slot = latest_block
+            .slot
+            .ok_or_else(|| anyhow!("latest block missing slot"))? as u64;
+
+        let mut tx_builder = TransactionBuilder::new(&builder_config);
+
+        let output_addr = Address::from_bech32(addr_to)?;
+        let change_addr = Address::from_bech32(addr_from)?;
+
+        let ttl = current_slot + 7200;
+        tx_builder.set_ttl_bignum(&BigNum::from_str(&ttl.to_string())?);
+
+        let output_value =
+            cardano_serialization_lib::Value::new(&BigNum::from_str(&amount_lovelace.to_string())?);
+        tx_builder.add_output(&TransactionOutput::new(&output_addr, &output_value))?;
+
+        // Build unspent outputs (lovelace-only, max 200)
+        let mut unspent_outputs = TransactionUnspentOutputs::new();
+        for utxo in utxos.iter().take(200) {
+            if utxo.amount.iter().all(|a| a.unit == "lovelace") {
+                if let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace") {
+                    let input_value =
+                        cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
+                    let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
+                    let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
+                    let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into()?);
+                    let output = TransactionOutput::new(&change_addr, &input_value);
+                    unspent_outputs.add(&TransactionUnspentOutput::new(&input, &output));
+                }
+            }
         }
-        build_args.extend([
-            "--change-address".into(),
-            addr_from.into(),
-            "--tx-out".into(),
-            tx_out,
-            "--out-file".into(),
-            "/dev/stdout".into(),
-        ]);
 
-        let build_args_ref: Vec<&str> = build_args.iter().map(|s| s.as_str()).collect();
-        let tx_json = self.cardano_cli_capture(&build_args_ref, None).await?.0;
+        tx_builder.add_inputs_from(&unspent_outputs, CoinSelectionStrategyCIP2::LargestFirst)?;
+        tx_builder.add_change_if_needed(&change_addr)?;
 
-        let skey = payment_skey_path
-            .to_str()
-            .ok_or_else(|| anyhow!("payment_skey_path is not valid UTF-8"))?;
+        let tx_body = tx_builder.build()?;
+        let mut fixed_tx = FixedTransaction::new_from_body_bytes(&tx_body.to_bytes())?;
+        fixed_tx.sign_and_add_vkey_signature(&priv_key)?;
 
-        let tx_signed = self
-            .cardano_cli_capture(
-                &[
-                    "latest",
-                    "transaction",
-                    "sign",
-                    "--tx-file",
-                    "/dev/stdin",
-                    "--signing-key-file",
-                    skey,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                Some(&serde_json::to_vec(&tx_json)?),
-            )
-            .await?
-            .0;
-
-        let _ = self
-            .cardano_cli_capture(
-                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&serde_json::to_vec(&tx_signed)?),
-            )
-            .await?
-            .0;
+        // Submit via Blockfrost
+        let tx_cbor = fixed_tx.to_bytes();
+        self.blockfrost_api
+            .transactions_submit(tx_cbor.to_vec())
+            .await?;
 
         Ok(())
     }
 
+    /// Commit all UTxOs from `from_addr` into a Hydra Head via the
+    /// hydra-node `/commit` endpoint. Signs and submits the resulting L1
+    /// transaction.
+    ///
+    /// The commit wallet must be funded *before* Init so that the signing
+    /// key's UTxO set is not disturbed between Init and Commit (the
+    /// hydra-node uses signing key UTxOs for collateral).
     pub(super) async fn commit_all_utxo_to_hydra(
         &self,
         from_addr: &str,
@@ -385,9 +195,12 @@ impl super::HydraConfig {
         use anyhow::Context;
         use reqwest::header;
 
+        // 1. Query UTxOs via Blockfrost, convert to cardano-cli JSON shape
+        //    that hydra-node /commit expects.
         let utxo_json = self.query_utxo_json(from_addr).await?;
         let utxo_body = serde_json::to_vec(&utxo_json).context("failed to serialize utxo JSON")?;
 
+        // 2. POST to hydra-node /commit
         let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
         let client = reqwest::Client::new();
         let resp = client
@@ -401,11 +214,11 @@ impl super::HydraConfig {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.bytes().await.unwrap_or_default();
-            return Err(anyhow!(
+            bail!(
                 "hydra /commit failed with {}: {}",
                 status,
                 String::from_utf8_lossy(&body)
-            ));
+            );
         }
 
         let commit_tx_bytes = resp
@@ -414,39 +227,95 @@ impl super::HydraConfig {
             .context("failed to read hydra /commit response body")?
             .to_vec();
 
-        let _: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
+        // 3. Sign with CSL
+        let tx_envelope: serde_json::Value = serde_json::from_slice(&commit_tx_bytes)
             .context("hydra /commit response was not valid JSON")?;
 
-        let signed_tx = self
-            .cardano_cli_capture(
-                &[
-                    "latest",
-                    "transaction",
-                    "sign",
-                    "--tx-file",
-                    "/dev/stdin",
-                    "--signing-key-file",
-                    commit_funds_skey
-                        .to_str()
-                        .ok_or_else(|| anyhow!("commit_funds_skey is not valid UTF-8"))?,
-                    "--out-file",
-                    "/dev/stdout",
-                ],
-                Some(&commit_tx_bytes),
-            )
-            .await?
-            .0;
+        let signed_tx = cardano_keys::sign_tx_envelope(&tx_envelope, commit_funds_skey)?;
+        let signed_cbor_hex = signed_tx["cborHex"]
+            .as_str()
+            .ok_or_else(|| anyhow!("signed tx missing cborHex"))?;
+        let signed_cbor = hex::decode(signed_cbor_hex)?;
 
-        let _ = self
-            .cardano_cli_capture(
-                &["latest", "transaction", "submit", "--tx-file", "/dev/stdin"],
-                Some(&serde_json::to_vec(&signed_tx)?),
-            )
-            .await?
-            .0;
+        // 4. Submit via Blockfrost.
+        self.blockfrost_api
+            .transactions_submit(signed_cbor.to_vec())
+            .await?;
+
         Ok(())
     }
 
+    /// Query UTxOs for an address via Blockfrost and return them in
+    /// cardano-cli `query utxo --output-json` format, which is what
+    /// hydra-node's `/commit` endpoint expects.
+    pub(super) async fn query_utxo_json(&self, address: &str) -> Result<serde_json::Value> {
+        let utxos = self
+            .blockfrost_api
+            .addresses_utxos(address, Pagination::all())
+            .await;
+
+        let utxos = match utxos {
+            Ok(u) => u,
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("404") {
+                    return Ok(serde_json::json!({}));
+                }
+                bail!("blockfrost addresses_utxos failed: {e}");
+            },
+        };
+
+        // Build a JSON object: { "txhash#idx": { "address": ..., "value": { "lovelace": N } } }
+        let mut obj = serde_json::Map::new();
+        for utxo in &utxos {
+            let key = format!("{}#{}", utxo.tx_hash, utxo.output_index);
+            let lovelace = utxo
+                .amount
+                .iter()
+                .find(|a| a.unit == "lovelace")
+                .map(|a| a.quantity.clone())
+                .unwrap_or_else(|| "0".to_string());
+
+            let mut value_map = serde_json::Map::new();
+            value_map.insert(
+                "lovelace".to_string(),
+                serde_json::Value::Number(lovelace.parse::<u64>().unwrap_or(0).into()),
+            );
+
+            // Include native assets if any
+            for asset in &utxo.amount {
+                if asset.unit != "lovelace" {
+                    let policy_id = &asset.unit[..56];
+                    let asset_name = &asset.unit[56..];
+                    let policy_entry = value_map
+                        .entry(policy_id.to_string())
+                        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+                    if let Some(policy_obj) = policy_entry.as_object_mut() {
+                        policy_obj.insert(
+                            asset_name.to_string(),
+                            serde_json::Value::Number(
+                                asset.quantity.parse::<u64>().unwrap_or(0).into(),
+                            ),
+                        );
+                    }
+                }
+            }
+
+            let entry = serde_json::json!({
+                "address": address,
+                "datum": null,
+                "datumhash": null,
+                "inlineDatum": null,
+                "referenceScript": null,
+                "value": value_map,
+            });
+            obj.insert(key, entry);
+        }
+
+        Ok(serde_json::Value::Object(obj))
+    }
+
+    /// Build, sign, and send an L2 (Hydra) transaction (fee=0) via WebSocket.
     pub(super) async fn send_hydra_transaction(
         &self,
         hydra_api_port: u16,
@@ -456,6 +325,36 @@ impl super::HydraConfig {
         amount_lovelace: u64,
     ) -> Result<()> {
         use anyhow::Context;
+
+        fn utxo_lovelace(entry: &Value) -> Option<u64> {
+            if let Some(v) = entry.pointer("/value/lovelace") {
+                if let Some(n) = v.as_u64() {
+                    return Some(n);
+                }
+                if let Some(s) = v.as_str() {
+                    return s.parse().ok();
+                }
+            }
+
+            if let Some(amounts) = entry.get("amount").and_then(Value::as_array) {
+                for item in amounts {
+                    if item.get("unit").and_then(Value::as_str) == Some("lovelace") {
+                        if let Some(q) = item.get("quantity") {
+                            if let Some(n) = q.as_u64() {
+                                return Some(n);
+                            }
+                            if let Some(s) = q.as_str() {
+                                return s.parse().ok();
+                            }
+                        }
+                    }
+                }
+            }
+
+            None
+        }
+
+        const MIN_OUTPUT_LOVELACE: u64 = super::MIN_LOVELACE_PER_TRANSACTION;
 
         let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
         let utxo: Value = reqwest::Client::new()
@@ -478,65 +377,136 @@ impl super::HydraConfig {
             }
         }
 
-        let (tx_in, chosen_entry) = filtered
+        if amount_lovelace < MIN_OUTPUT_LOVELACE {
+            bail!(
+                "amount_lovelace {amount_lovelace} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}"
+            );
+        }
+
+        // Collect candidates sorted by lovelace value (ascending).
+        let mut candidates: Vec<(String, u64)> = Vec::new();
+        for (k, v) in filtered.iter() {
+            let lovelace_total = utxo_lovelace(v).context("utxo entry: expected lovelace value")?;
+            candidates.push((k.clone(), lovelace_total));
+        }
+
+        if candidates.is_empty() {
+            bail!("no UTxO found for sender address");
+        }
+
+        candidates.sort_by_key(|(_, value)| *value);
+
+        let min_total = amount_lovelace
+            .checked_add(MIN_OUTPUT_LOVELACE)
+            .ok_or_else(|| anyhow!("amount_lovelace overflow"))?;
+
+        // Selection strategy:
+        //  1. Exact match - no change output needed.
+        //  2. Single UTxO large enough for amount + min-change.
+        //  3. Aggregate smallest-first until we have enough.
+        let mut selected: Vec<String> = Vec::new();
+        let mut selected_total: u64 = 0;
+
+        if let Some((tx_in, total)) = candidates
             .iter()
-            .next()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .ok_or_else(|| anyhow!("no UTxO found for sender address"))?;
+            .find(|(_, total)| *total == amount_lovelace)
+        {
+            selected.push(tx_in.clone());
+            selected_total = *total;
+        } else if let Some((tx_in, total)) = candidates
+            .iter()
+            .find(|(_, total)| *total > amount_lovelace && *total >= min_total)
+        {
+            selected.push(tx_in.clone());
+            selected_total = *total;
+        } else {
+            for (tx_in, total) in &candidates {
+                selected_total = selected_total
+                    .checked_add(*total)
+                    .ok_or_else(|| anyhow!("utxo sum overflow"))?;
+                selected.push(tx_in.clone());
+                if selected_total == amount_lovelace || selected_total >= min_total {
+                    break;
+                }
+            }
+        }
 
-        let lovelace_total = chosen_entry
-            .pointer("/value/lovelace")
-            .and_then(Value::as_u64)
-            .context("utxo entry: expected .value.lovelace as integer")?;
+        if selected_total < amount_lovelace {
+            bail!("insufficient lovelace in available UTxOs: {selected_total} < {amount_lovelace}");
+        }
 
-        if lovelace_total < amount_lovelace {
-            return Err(anyhow!(
-                "insufficient lovelace in selected UTxO: {lovelace_total} < {amount_lovelace}"
+        let change = selected_total - amount_lovelace;
+        if change > 0 && change < MIN_OUTPUT_LOVELACE {
+            bail!("change output {change} is below minimum output lovelace {MIN_OUTPUT_LOVELACE}");
+        }
+
+        // Build the L2 transaction body using CSL (fee = 0).
+        let priv_key = cardano_keys::load_private_key(sender_skey_path)?;
+
+        let receiver = Address::from_bech32(receiver_addr)?;
+        let sender = Address::from_bech32(sender_addr)?;
+
+        let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
+
+        // Parse selected UTxOs into CSL inputs
+        for tx_in_str in &selected {
+            let parts: Vec<&str> = tx_in_str.split('#').collect();
+            if parts.len() != 2 {
+                bail!("invalid tx_in format: {tx_in_str}");
+            }
+            let hash_bytes = hex::decode(parts[0])?;
+            let tx_hash = TransactionHash::from_bytes(hash_bytes)?;
+            let index: u32 = parts[1].parse()?;
+            inputs.push(TransactionInput::new(&tx_hash, index));
+        }
+
+        // Receiver output
+        outputs.push(TransactionOutput::new(
+            &receiver,
+            &cardano_serialization_lib::Value::new(&BigNum::from_str(
+                &amount_lovelace.to_string(),
+            )?),
+        ));
+
+        // Change output
+        if change > 0 {
+            outputs.push(TransactionOutput::new(
+                &sender,
+                &cardano_serialization_lib::Value::new(&BigNum::from_str(&change.to_string())?),
             ));
         }
 
-        let change = lovelace_total - amount_lovelace;
+        // Build raw transaction body (fee=0 for L2)
+        let mut tx_body_builder = cardano_serialization_lib::TransactionBody::new_tx_body(
+            &{
+                let mut ins = cardano_serialization_lib::TransactionInputs::new();
+                for i in &inputs {
+                    ins.add(i);
+                }
+                ins
+            },
+            &{
+                let mut outs = cardano_serialization_lib::TransactionOutputs::new();
+                for o in &outputs {
+                    outs.add(o);
+                }
+                outs
+            },
+            &BigNum::zero(), // fee = 0
+        );
+        // TTL is not needed for L2 transactions, but set a high one just in case
+        tx_body_builder.set_ttl(&BigNum::from_str("99999999999")?);
 
-        let tx_body: serde_json::Value = {
-            let args: &[&str] = &[
-                "latest",
-                "transaction",
-                "build-raw",
-                "--tx-in",
-                &tx_in,
-                "--tx-out",
-                &format!("{receiver_addr}+{amount_lovelace}"),
-                "--tx-out",
-                &format!("{sender_addr}+{change}"),
-                "--fee",
-                "0",
-                "--out-file",
-                "/dev/stdout",
-            ];
-            self.cardano_cli_capture(args, None).await?.0
-        };
+        let mut fixed_tx = FixedTransaction::new_from_body_bytes(&tx_body_builder.to_bytes())?;
+        fixed_tx.sign_and_add_vkey_signature(&priv_key)?;
 
-        let tx_signed: serde_json::Value = {
-            let skey_str = sender_skey_path
-                .to_str()
-                .context("sender_skey_path is not valid UTF-8")?;
-
-            let args: &[&str] = &[
-                "latest",
-                "transaction",
-                "sign",
-                "--tx-body-file",
-                "/dev/stdin",
-                "--signing-key-file",
-                skey_str,
-                "--out-file",
-                "/dev/stdout",
-            ];
-
-            self.cardano_cli_capture(args, Some(&serde_json::to_vec(&tx_body)?))
-                .await?
-                .0
-        };
+        // Wrap in cardano-cli envelope format for Hydra
+        let tx_signed = serde_json::json!({
+            "type": "Witnessed Tx ConwayEra",
+            "description": "",
+            "cborHex": hex::encode(fixed_tx.to_bytes()),
+        });
 
         let payload = serde_json::json!({
             "tag": "NewTx",
@@ -576,6 +546,36 @@ impl super::HydraConfig {
     }
 }
 
+// FIXME: The `blockfrost` SDK crate (v1.2.1) does not re-export `EpochParamContent`
+// from its public API, so we work with `serde_json::Value` here. Once the crate
+// properly exports the type, this function should accept `&blockfrost::EpochParamContent`
+// directly instead.
+fn tx_builder_config_from_params(params: &serde_json::Value) -> Result<TransactionBuilderConfig> {
+    let get_str = |key: &str| -> Result<String> {
+        params
+            .get(key)
+            .ok_or_else(|| anyhow!("missing field {key}"))
+            .and_then(|v| match v {
+                serde_json::Value::String(s) => Ok(s.clone()),
+                serde_json::Value::Number(n) => Ok(n.to_string()),
+                _ => bail!("unexpected type for {key}"),
+            })
+    };
+
+    let config = TransactionBuilderConfigBuilder::new()
+        .fee_algo(&LinearFee::new(
+            &BigNum::from_str(&get_str("min_fee_a")?)?,
+            &BigNum::from_str(&get_str("min_fee_b")?)?,
+        ))
+        .pool_deposit(&BigNum::from_str(&get_str("pool_deposit")?)?)
+        .key_deposit(&BigNum::from_str(&get_str("key_deposit")?)?)
+        .coins_per_utxo_byte(&BigNum::from_str(&get_str("coins_per_utxo_size")?)?)
+        .max_value_size(get_str("max_val_size")?.parse::<u32>()?)
+        .max_tx_size(get_str("max_tx_size")?.parse::<u32>()?)
+        .build()?;
+    Ok(config)
+}
+
 /// Reads a JSON file from disk.
 pub fn read_json_file(path: &Path) -> Result<serde_json::Value> {
     let contents = std::fs::read_to_string(path)?;
@@ -612,7 +612,7 @@ pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bo
     Ok(true)
 }
 
-/// Finds a free port by bind to port 0, to let the OS pick a free port.
+/// Finds a free port by binding to port 0, to let the OS pick a free port.
 pub async fn find_free_tcp_port() -> std::io::Result<u16> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
     let port = listener.local_addr()?.port();
@@ -676,7 +676,7 @@ pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64)
     }
 
     if !found_any {
-        return Err(anyhow!("metric {metric} not found in /metrics output"));
+        bail!("metric {metric} not found in /metrics output");
     }
 
     Ok(max_value.unwrap_or(f64::NEG_INFINITY) >= threshold)
@@ -728,30 +728,22 @@ pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
         .map(|a| a.to_string())
 }
 
-/// Parse the first JSON value from e.g. stdout, and return the remainder.
-fn parse_first_json_and_rest(stdout: &[u8]) -> Result<(serde_json::Value, Vec<u8>)> {
-    let mut start = stdout
-        .iter()
-        .position(|b| !b.is_ascii_whitespace())
-        .unwrap_or(0);
+/// Returns `true` when the Hydra head is `Closed` **and** `readyToFanoutSent`
+/// is `true`, meaning the contestation deadline has passed on-chain and a
+/// Fanout transaction can be theoretically submitted… and still sometimes fail…
+/// (we retry then).
+pub async fn fetch_head_ready_to_fanout(hydra_api_port: u16) -> Result<bool> {
+    let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
-    if !matches!(stdout.get(start), Some(b'{') | Some(b'[')) {
-        if let Some(i) = stdout.iter().position(|&b| b == b'{' || b == b'[') {
-            start = i;
-        }
-    }
+    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
 
-    let mut it = serde_json::Deserializer::from_slice(&stdout[start..]).into_iter::<Value>();
+    let tag = v.get("tag").and_then(|t| t.as_str()).unwrap_or_default();
+    let ready = v
+        .pointer("/contents/readyToFanoutSent")
+        .and_then(|r| r.as_bool())
+        .unwrap_or(false);
 
-    let first = it
-        .next()
-        .ok_or_else(|| anyhow!("no JSON value found in stdout"))?
-        .map_err(|e| anyhow!("failed to parse first JSON value from stdout: {e}"))?;
-
-    let consumed = it.byte_offset(); // <-- works here
-    let rest = stdout[start + consumed..].to_vec();
-
-    Ok((first, rest))
+    Ok(tag == "Closed" && ready)
 }
 
 #[cfg(unix)]
@@ -763,7 +755,7 @@ pub fn sigterm(pid: u32) -> Result<()> {
 
 #[cfg(windows)]
 pub fn sigterm(_pid: u32) -> Result<()> {
-    unreachable!()
+    unimplemented!("SIGTERM is not available on Windows, but there's no `hydra-node` to run there")
 }
 
 /// We use it for `localhost` tests, to detect if the Gateway and Platform are
@@ -784,7 +776,7 @@ pub fn hashed_machine_id() -> String {
             tracing::warn!(error = ?e, "machine_uid::get() failed; falling back to random bytes");
             let mut fallback = [0u8; 32];
             getrandom::fill(&mut fallback)
-                .expect("getrandom::fill shouldn’t fail in normal circumstances");
+                .expect("getrandom::fill shouldn't fail in normal circumstances");
             hasher.update(&fallback);
         },
     }
@@ -792,18 +784,113 @@ pub fn hashed_machine_id() -> String {
     hasher.finalize().to_hex().to_string()
 }
 
-#[cfg(test)]
-mod tests {
-    use anyhow::Result;
-    #[test]
-    fn parse_first_json_and_rest() -> Result<()> {
-        let input = r#"
-{"cborHex":"84a300d9010"}
-blah blah
-"#;
-        let (obj, rest) = super::parse_first_json_and_rest(String::from(input).as_bytes())?;
-        assert_eq!(obj, serde_json::json!({"cborHex":"84a300d9010"}));
-        assert_eq!(rest, String::from("\nblah blah\n").as_bytes());
-        Ok(())
+/// Convert Blockfrost epoch-parameters JSON (snake_case field names) to the
+/// cardano-cli protocol-parameters format (camelCase) that hydra-node expects
+/// for `--ledger-protocol-parameters`.
+///
+/// Field mapping follows the reference implementation at
+/// <https://github.com/blockfrost/blockfrost-cardano-cli/blob/master/src/commands/query/protocol-parameters.ts>
+/// and the output of `cardano-cli query protocol-parameters` (Conway era).
+fn blockfrost_params_to_shelley(bf: &serde_json::Value) -> Result<serde_json::Value> {
+    let obj = bf
+        .as_object()
+        .ok_or_else(|| anyhow!("expected JSON object for epoch parameters"))?;
+
+    /// Parse a string-or-number value into a JSON integer.
+    fn as_int(v: Option<&Value>) -> Value {
+        match v {
+            Some(Value::String(s)) => s.parse::<u64>().map_or(Value::Null, Value::from),
+            Some(n @ Value::Number(_)) => n.clone(),
+            _ => Value::Null,
+        }
     }
+
+    fn get(obj: &serde_json::Map<String, Value>, key: &str) -> Value {
+        obj.get(key).cloned().unwrap_or(Value::Null)
+    }
+
+    // Prefer `cost_models_raw` (integer arrays, same as cardano-cli output)
+    // over `cost_models` (named parameter maps with divergent key names).
+    let cost_models = obj
+        .get("cost_models_raw")
+        .filter(|v| !v.is_null())
+        .or_else(|| obj.get("cost_models").filter(|v| !v.is_null()))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+
+    let mut result = serde_json::json!({
+        // --- Shelley-era fields ---
+        "txFeePerByte": get(obj, "min_fee_a"),
+        "txFeeFixed": get(obj, "min_fee_b"),
+        "maxBlockBodySize": get(obj, "max_block_size"),
+        "maxTxSize": get(obj, "max_tx_size"),
+        "maxBlockHeaderSize": get(obj, "max_block_header_size"),
+        "stakeAddressDeposit": as_int(obj.get("key_deposit")),
+        "stakePoolDeposit": as_int(obj.get("pool_deposit")),
+        "poolRetireMaxEpoch": get(obj, "e_max"),
+        "stakePoolTargetNum": get(obj, "n_opt"),
+        "poolPledgeInfluence": get(obj, "a0"),
+        "monetaryExpansion": get(obj, "rho"),
+        "treasuryCut": get(obj, "tau"),
+        "protocolVersion": {
+            "major": get(obj, "protocol_major_ver"),
+            "minor": get(obj, "protocol_minor_ver"),
+        },
+        "minPoolCost": as_int(obj.get("min_pool_cost")),
+        // --- Alonzo-era fields ---
+        "executionUnitPrices": {
+            "priceMemory": get(obj, "price_mem"),
+            "priceSteps": get(obj, "price_step"),
+        },
+        "maxTxExecutionUnits": {
+            "memory": as_int(obj.get("max_tx_ex_mem")),
+            "steps": as_int(obj.get("max_tx_ex_steps")),
+        },
+        "maxBlockExecutionUnits": {
+            "memory": as_int(obj.get("max_block_ex_mem")),
+            "steps": as_int(obj.get("max_block_ex_steps")),
+        },
+        "maxValueSize": as_int(obj.get("max_val_size")),
+        "collateralPercentage": get(obj, "collateral_percent"),
+        "maxCollateralInputs": get(obj, "max_collateral_inputs"),
+        "utxoCostPerByte": as_int(obj.get("coins_per_utxo_size")),
+        "costModels": cost_models,
+        // --- Conway-era governance fields ---
+        "poolVotingThresholds": {
+            "motionNoConfidence": get(obj, "pvt_motion_no_confidence"),
+            "committeeNormal": get(obj, "pvt_committee_normal"),
+            "committeeNoConfidence": get(obj, "pvt_committee_no_confidence"),
+            "hardForkInitiation": get(obj, "pvt_hard_fork_initiation"),
+            "ppSecurityGroup": get(obj, "pvt_p_p_security_group"),
+        },
+        "dRepVotingThresholds": {
+            "motionNoConfidence": get(obj, "dvt_motion_no_confidence"),
+            "committeeNormal": get(obj, "dvt_committee_normal"),
+            "committeeNoConfidence": get(obj, "dvt_committee_no_confidence"),
+            "updateToConstitution": get(obj, "dvt_update_to_constitution"),
+            "hardForkInitiation": get(obj, "dvt_hard_fork_initiation"),
+            "ppNetworkGroup": get(obj, "dvt_p_p_network_group"),
+            "ppEconomicGroup": get(obj, "dvt_p_p_economic_group"),
+            "ppTechnicalGroup": get(obj, "dvt_p_p_technical_group"),
+            "ppGovGroup": get(obj, "dvt_p_p_gov_group"),
+            "treasuryWithdrawal": get(obj, "dvt_treasury_withdrawal"),
+        },
+        "committeeMinSize": as_int(obj.get("committee_min_size")),
+        "committeeMaxTermLength": as_int(obj.get("committee_max_term_length")),
+        "govActionLifetime": as_int(obj.get("gov_action_lifetime")),
+        "govActionDeposit": as_int(obj.get("gov_action_deposit")),
+        "dRepDeposit": as_int(obj.get("drep_deposit")),
+        "dRepActivity": as_int(obj.get("drep_activity")),
+        "minFeeRefScriptCostPerByte": get(obj, "min_fee_ref_script_cost_per_byte"),
+    });
+
+    // Strip top-level null entries — hydra-node is strict about unknown or null
+    // keys depending on the era. Fields that are absent in the Blockfrost
+    // response (e.g. deprecated `minUTxOValue`) should not appear at all rather
+    // than as explicit nulls.
+    if let Some(map) = result.as_object_mut() {
+        map.retain(|_, v| !v.is_null());
+    }
+
+    Ok(result)
 }

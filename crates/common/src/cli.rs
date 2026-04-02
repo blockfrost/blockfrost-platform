@@ -85,6 +85,11 @@ pub struct Args {
     #[clap(long = "data-node-timeout-sec", default_value = "30")]
     pub data_node_timeout: Option<u64>,
 
+    /// Override the Gateway API URL (default: derived from network). Useful for
+    /// self-hosted gateways or testing.
+    #[arg(long)]
+    pub gateway_url: Option<String>,
+
     /// A prefunded L1 key file for paying the Hydra transaction fees on L1, ~13 ADA per L2 cycle.
     #[arg(long)]
     pub hydra_cardano_signing_key: Option<PathBuf>,
@@ -277,6 +282,7 @@ impl Args {
             data_node: data_node.endpoint,
             data_node_timeout: Some(data_node.request_timeout),
             server_concurrency_limit: 8192,
+            gateway_url: None,
             hydra_cardano_signing_key: None,
         };
 

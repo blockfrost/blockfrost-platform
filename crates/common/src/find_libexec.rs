@@ -43,7 +43,7 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
 
     let cargo_target_dir: Option<PathBuf> = env::var("CARGO_MANIFEST_DIR")
         .ok()
-        .map(|root| PathBuf::from(root).join("target/testgen-hs/extracted/testgen-hs"));
+        .map(|root| PathBuf::from(root).join(format!("target/{exe_name}/extracted/{exe_name}")));
 
     let docker_path: Option<PathBuf> = Some(PathBuf::from(format!("/app/{exe_name}")));
 

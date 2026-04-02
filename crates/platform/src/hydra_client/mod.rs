@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use bf_common::errors::{AppError, BlockfrostError};
 use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
@@ -97,11 +97,11 @@ struct State {
     kex_requests: mpsc::Sender<KeyExchangeRequest>,
     api_port: u16,
     hydra_node_exe: String,
-    cardano_cli_exe: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
     last_hydra_head_state: String,
     hydra_pid: Option<u32>,
+    hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl State {
@@ -123,9 +123,6 @@ impl State {
         let hydra_node_exe =
             bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
-        let cardano_cli_exe =
-            bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
-                .map_err(|e| anyhow!(e))?;
 
         // FIXME: config dir prob. needs to be gateway specific? Test it!
         let gateway_prefix = "_default";
@@ -144,30 +141,24 @@ impl State {
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
-        let self_ = Self {
+        let platform_cardano_vkey = Self::derive_vkey_from_skey(&config.cardano_signing_key)?;
+
+        let mut self_ = Self {
             config,
             network,
             genesis,
             node_socket_path,
-            platform_cardano_vkey: serde_json::Value::Null,
+            platform_cardano_vkey,
             _reward_address: reward_address,
             _health_errors: health_errors,
             kex_requests,
             api_port: 0,
             hydra_node_exe,
-            cardano_cli_exe,
             config_dir,
             event_tx: event_tx.clone(),
             last_hydra_head_state: String::new(),
             hydra_pid: None,
-        };
-
-        let platform_cardano_vkey = self_
-            .derive_vkey_from_skey(&self_.config.cardano_signing_key)
-            .await?;
-        let mut self_ = Self {
-            platform_cardano_vkey,
-            ..self_
+            hydra_watchdog: None,
         };
 
         self_.send(Event::Restart).await;
@@ -225,7 +216,10 @@ impl State {
         let event_tx = self.event_tx.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
-            event_tx.send(event).await
+            event_tx
+                .send(event)
+                .await
+                .expect("we never close the event receiver");
         });
     }
 
@@ -233,23 +227,6 @@ impl State {
         match event {
             Event::Restart => {
                 info!("hydra-controller: starting…");
-
-                let potential_fuel = self
-                    .lovelace_on_payment_skey(&self.config.cardano_signing_key)
-                    .await?;
-                if potential_fuel < Self::MIN_FUEL_LOVELACE {
-                    Err(anyhow!(
-                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
-                        potential_fuel as f64 / 1_000_000.0,
-                        self.config.cardano_signing_key,
-                        Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
-                    ))?
-                }
-
-                info!(
-                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
-                    potential_fuel
-                );
 
                 self.gen_hydra_keys().await?;
 
@@ -268,6 +245,11 @@ impl State {
             },
 
             Event::Terminate => {
+                // Abort the watchdog first so it doesn't send a Restart
+                // event when `hydra-node` exits.
+                if let Some(watchdog) = self.hydra_watchdog.take() {
+                    watchdog.abort();
+                }
                 if let Some(pid) = self.hydra_pid {
                     verifications::sigterm(pid)?
                 }
@@ -304,6 +286,24 @@ impl State {
             },
 
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
+                // Check that we have enough fuel lovelace for L1 fees by
+                // querying the local cardano-node via Pallas.
+                let potential_fuel = self
+                    .lovelace_on_payment_skey(&self.config.cardano_signing_key)
+                    .await?;
+                if potential_fuel < Self::MIN_FUEL_LOVELACE {
+                    bail!(
+                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                        potential_fuel as f64 / 1_000_000.0,
+                        self.config.cardano_signing_key,
+                        Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
+                    );
+                }
+                info!(
+                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
+                    potential_fuel
+                );
+
                 self.start_hydra_node(kex_resp).await?;
                 self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                     .await
@@ -394,8 +394,8 @@ impl State {
             &kex_response.gateway_cardano_vkey,
         )?;
 
-        let mut child = tokio::process::Command::new(&self.hydra_node_exe)
-            .arg("--node-id")
+        let mut cmd = tokio::process::Command::new(&self.hydra_node_exe);
+        cmd.arg("--node-id")
             .arg("platform-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
@@ -409,14 +409,8 @@ impl State {
             .arg(&protocol_parameters_path)
             .arg("--contestation-period")
             .arg(format!("{}s", kex_response.contestation_period.as_secs()))
-            .args(if self.network == bf_common::types::Network::Mainnet {
-                vec!["-mainnet".to_string()]
-            } else {
-                vec![
-                    "--testnet-magic".to_string(),
-                    format!("{}", self.genesis.network_magic),
-                ]
-            })
+            .arg("--testnet-magic")
+            .arg(format!("{}", self.genesis.network_magic))
             .arg("--node-socket")
             .arg(&self.node_socket_path)
             .arg("--api-port")
@@ -424,7 +418,10 @@ impl State {
             .arg("--api-host")
             .arg("127.0.0.1")
             .arg("--listen")
-            .arg(format!("127.0.0.1:{}", kex_response.proposed_platform_h2h_port))
+            .arg(format!(
+                "127.0.0.1:{}",
+                kex_response.proposed_platform_h2h_port
+            ))
             .arg("--peer")
             .arg(format!("127.0.0.1:{}", kex_response.gateway_h2h_port))
             .arg("--monitoring-port")
@@ -433,10 +430,21 @@ impl State {
             .arg(gateway_hydra_vkey_path)
             .arg("--cardano-verification-key")
             .arg(gateway_cardano_vkey_path)
-            .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exitst on our `kill -9`
+            .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exits on our `kill -9`
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+
+        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
+        // killed by a test harness). This only applies to this single `cmd`.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            cmd.pre_exec(|| {
+                nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()?;
 
         self.hydra_pid = child.id();
 
@@ -460,7 +468,7 @@ impl State {
         });
 
         let event_tx = self.event_tx.clone();
-        tokio::spawn(async move {
+        self.hydra_watchdog = Some(tokio::spawn(async move {
             match child.wait().await {
                 Ok(status) => {
                     warn!("hydra-node: exited: {}", status);
@@ -474,7 +482,7 @@ impl State {
                     error!("hydra-node: failed to wait: {e}");
                 },
             }
-        });
+        }));
 
         Ok(())
     }

@@ -34,6 +34,9 @@ blake3.workspace = true
 getrandom.workspace = true
 machine-uid.workspace = true
 reqwest.workspace = true
+pallas-network.workspace = true
+pallas-addresses.workspace = true
+pallas-codec.workspace = true
 hex.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
@@ -43,16 +46,11 @@ dotenvy.workspace = true
 uuid.workspace = true
 dirs.workspace = true
 anyhow.workspace = true
-ntest.workspace = true
 
 [dev-dependencies]
 bf-api-provider.workspace = true
 rstest.workspace = true
-pretty_assertions.workspace = true
 proptest.workspace = true
-cardano-serialization-lib.workspace = true
-bip39.workspace = true
-blockfrost.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

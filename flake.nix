@@ -23,10 +23,6 @@
       url = "github:txpipe/dolos/v1.0.0-rc.12";
       flake = false;
     };
-    acropolis = {
-      url = "github:input-output-hk/acropolis";
-      flake = false;
-    };
     blockfrost-tests = {
       url = "github:blockfrost/blockfrost-tests";
       flake = false;

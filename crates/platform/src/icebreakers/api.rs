@@ -46,24 +46,27 @@ impl IcebreakersAPI {
         config: &Config,
         api_prefix: ApiPrefix,
     ) -> Result<Option<Arc<Self>>, AppError> {
-        let api_url = std::env::var("BLOCKFROST_GATEWAY_URL").unwrap_or(
-            match config.network {
-                Network::Preprod | Network::Preview => "https://api-dev.icebreakers.blockfrost.io",
-                Network::Mainnet | Network::Custom => "https://icebreakers-api.blockfrost.io",
-            }
-            .to_string(),
-        );
-
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
+                let api_url = icebreakers_config.gateway_url.clone().unwrap_or_else(|| {
+                    match config.network {
+                        Network::Preprod | Network::Preview => {
+                            "https://api-dev.icebreakers.blockfrost.io"
+                        },
+                        Network::Mainnet | Network::Custom => {
+                            "https://icebreakers-api.blockfrost.io"
+                        },
+                    }
+                    .to_string()
+                });
+
                 let client = Client::builder()
                     .local_address(config.server_address)
                     .build()
                     .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
-                let base_url = api_url.to_string();
                 let icebreakers_api = IcebreakersAPI {
                     client,
-                    base_url,
+                    base_url: api_url,
                     secret: icebreakers_config.secret.clone(),
                     mode: config.mode.to_string(),
                     port: config.server_port,

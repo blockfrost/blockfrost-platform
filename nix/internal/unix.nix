@@ -18,7 +18,6 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
 in
   extendForTarget rec {
     rustPackages = inputs.fenix.packages.${pkgs.system}.stable;
-
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
     src = lib.cleanSourceWith {
@@ -105,6 +104,25 @@ in
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway";
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-gateway--dev-mock-db = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = gatewayCargoToml.package.name + "-dev-mock-db";
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta = {
+          mainProgram = gatewayCargoToml.package.name;
+          description = "Blockfrost Gateway (dev mock DB build)";
+        };
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
+        '';
+        cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
       }
       // (builtins.listToAttrs hydraScriptsEnvVars));
 
@@ -219,7 +237,8 @@ in
 
     nixChecks = {
       nix-statix =
-        pkgs.runCommandNoCC "nix-statix" {
+        pkgs.runCommandNoCC "nix-statix"
+        {
           buildInputs = [pkgs.statix];
         } ''
           touch $out
@@ -228,7 +247,8 @@ in
         '';
 
       nix-deadnix =
-        pkgs.runCommandNoCC "nix-deadnix" {
+        pkgs.runCommandNoCC "nix-deadnix"
+        {
           buildInputs = [pkgs.deadnix];
         } ''
           touch $out
@@ -237,7 +257,8 @@ in
         '';
 
       nix-nil =
-        pkgs.runCommandNoCC "nix-nil" {
+        pkgs.runCommandNoCC "nix-nil"
+        {
           buildInputs = [pkgs.nil];
         } ''
           ec=0
@@ -251,7 +272,8 @@ in
 
       # From `nixd`:
       nix-nixf =
-        pkgs.runCommandNoCC "nix-nil" {
+        pkgs.runCommandNoCC "nix-nil"
+        {
           buildInputs = [pkgs.nixf pkgs.jq];
         } ''
           ec=0
@@ -288,15 +310,13 @@ in
             '');
             inherit (unpatched) rev shortRev lastModified lastModifiedDate;
           };
-      })
-      .defaultNix;
+      }).defaultNix;
 
     cardano-node-packages =
       {
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
         inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
-      }
-      .${
+      }.${
         targetSystem
       };
 
@@ -308,7 +328,8 @@ in
     };
 
     cardano-node-configs =
-      pkgs.runCommandNoCC "cardano-node-configs" {
+      pkgs.runCommandNoCC "cardano-node-configs"
+      {
         buildInputs = with pkgs; [jq];
       } ''
         cp -r ${cardano-node-configs-verbose} $out
@@ -359,7 +380,8 @@ in
     cardano-address =
       if targetSystem == "aarch64-linux"
       then
-        pkgs.writeShellApplication {
+        pkgs.writeShellApplication
+        {
           name = "cardano-address";
           text = ''
             echo >&2 "TODO: unimplemented: compile \`cardano-address\` for \`${targetSystem}\`!"
@@ -376,8 +398,7 @@ in
               "x86_64-linux" = "${baseUrl}-${release}-linux64.tar.gz";
               "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
               "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
-            }
-            .${
+            }.${
               targetSystem
             };
           hash =
@@ -385,13 +406,13 @@ in
               "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
               "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
               "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
-            }
-            .${
+            }.${
               targetSystem
             };
         };
       in
-        pkgs.runCommandNoCC "cardano-address" {
+        pkgs.runCommandNoCC "cardano-address"
+        {
           meta.description = "Command-line for address and key manipulation in Cardano";
         } ''
           mkdir -p $out/bin $out/libexec
@@ -430,7 +451,8 @@ in
 
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
-      pkgs.runCommandNoCC "curl-bash-install" {
+      pkgs.runCommandNoCC "curl-bash-install"
+      {
         nativeBuildInputs = with pkgs; [shellcheck];
         projectName = packageName.pname;
         projectVersion = blockfrost-platform.version;
@@ -615,103 +637,213 @@ in
       ''
       // {meta.description = "Runs Dolos on ${network}";};
 
-    acropolis-flake = (import inputs.flake-compat {src = inputs.acropolis;}).defaultNix;
+    blockfrost-tests-preview = make-blockfrost-tests {network = "preview";};
+    blockfrost-tests-preprod = make-blockfrost-tests {network = "preprod";};
+    blockfrost-tests-mainnet = make-blockfrost-tests {network = "mainnet";};
 
-    inherit (acropolis-flake.packages.${targetSystem}) acropolis-process-omnibus acropolis-process-replayer;
+    blockfrost-ignore-check-preview = make-blockfrost-tests {
+      network = "preview";
+      ignorelistOnly = true;
+    };
+    blockfrost-ignore-check-preprod = make-blockfrost-tests {
+      network = "preprod";
+      ignorelistOnly = true;
+    };
+    blockfrost-ignore-check-mainnet = make-blockfrost-tests {
+      network = "mainnet";
+      ignorelistOnly = true;
+    };
 
-    blockfrost-tests-preview = make-blockfrost-tests "preview";
-    blockfrost-tests-preprod = make-blockfrost-tests "preprod";
-    blockfrost-tests-mainnet = make-blockfrost-tests "mainnet";
-
-    make-blockfrost-tests = network: let
+    make-blockfrost-tests = {
+      network,
+      ignorelistOnly ? false,
+    }: let
       inherit (pkgs) nodePackages;
     in
       pkgs.writeShellApplication {
-        name = "blockfrost-tests";
-        meta.description = "Runs `blockfrost-tests` on `${network}` against this repository";
+        name =
+          if ignorelistOnly
+          then "blockfrost-ignore-check"
+          else "blockfrost-tests";
+        meta.description =
+          if ignorelistOnly
+          then "Checks that ignored tests on `${network}` still fail (and should remain on the ignorelist)"
+          else "Runs `blockfrost-tests` on `${network}` against this repository";
         runtimeInputs = with pkgs; [
           bash
           coreutils
+          gnugrep
           nodePackages.nodejs
           nodePackages.yarn
           curl
           jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
+          perl
         ];
-        text = ''
-          set -euo pipefail
+        text =
+          ''
+            set -euo pipefail
 
-          if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
-            export DOLOS_ENDPOINT="http://127.0.0.1:3010"
-            echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
-          fi
-
-          curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
-
-          err() { printf "error: %s\n" "$1" >&2; }
-
-          platform_pid=""
-          tmpdir="$(mktemp -d)"
-          cleanup() {
-            cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
-            if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
-              kill -TERM "$platform_pid"
-              wait "$platform_pid"
+            if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
+              export DOLOS_ENDPOINT="http://127.0.0.1:3010"
+              echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
             fi
-          }
-          trap cleanup EXIT HUP INT TERM
 
-          require_env() {
-            local name="$1"
-            local val="''${!name-}"
-            if [[ -z "$val" ]]; then
-              err "$name is not set."
-              missing=1
+            curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
+
+            err() { printf "error: %s\n" "$1" >&2; }
+
+            gateway_pid=""
+            platform_pid=""
+            tmpdir="$(mktemp -d)"
+            cleanup() {
+              local ec=$?
+              cd / && [[ -d "$tmpdir" ]] && rm -rf -- "$tmpdir"
+              if [[ -n "$platform_pid" ]] && kill -0 "$platform_pid"; then
+                kill -TERM "$platform_pid" || true
+                wait "$platform_pid" || true
+              fi
+              if [[ -n "$gateway_pid" ]] && kill -0 "$gateway_pid"; then
+                kill -TERM "$gateway_pid" || true
+                wait "$gateway_pid" || true
+              fi
+              exit "$ec"
+            }
+            trap cleanup EXIT HUP INT TERM
+
+            require_env() {
+              local name="$1"
+              local val="''${!name-}"
+              if [[ -z "$val" ]]; then
+                err "$name is not set."
+                missing=1
+              fi
+            }
+            missing=0
+            for v in PROJECT_ID SUBMIT_MNEMONIC CARDANO_NODE_SOCKET_PATH ; do
+              require_env "$v"
+            done
+            if (( missing )); then
+              exit 1
             fi
-          }
-          missing=0
-          for v in PROJECT_ID SUBMIT_MNEMONIC CARDANO_NODE_SOCKET_PATH ; do
-            require_env "$v"
-          done
-          if (( missing )); then
-            exit 1
-          fi
 
-          export NETWORK=${lib.escapeShellArg network}
+            export NETWORK=${lib.escapeShellArg network}
+            reward_address=${lib.escapeShellArg
+              rec {
+                preview = "addr_test1vqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqd9tg5t";
+                preprod = preview;
+                mainnet = "addr1vyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkdl5mw";
+              }.${
+                network
+              }}
+            gateway_port=$(python3 -m portpicker)
+            platform_port=$(python3 -m portpicker)
+            gateway_url="http://127.0.0.1:$gateway_port"
 
-          platform_port=$(python3 -m portpicker)
+            cat >"$tmpdir/gateway.toml" <<EOF
+            [server]
+            address = '127.0.0.1:$gateway_port'
+            log_level = 'info'
+            url = 'http://127.0.0.1:$gateway_port'
 
-          ${lib.getExe blockfrost-platform} \
-            --server-address 127.0.0.1 \
-            --server-port "$platform_port" \
-            --log-level info \
-            --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
-            --mode compact \
-            --solitary \
-            --data-node "''${DOLOS_ENDPOINT}" \
-            --data-node-timeout-sec 30 \
-            &
-          platform_pid=$!
+            [database]
+            connection_string = 'postgresql://unused:unused@127.0.0.1:5432/unused'
 
-          export SERVER_URL="http://127.0.0.1:$platform_port"
+            [blockfrost]
+            project_id = '${network}00000000000000000000000000000000'
+            nft_asset = 'unused'
+            EOF
 
-          sleep 1
-          wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
+            ${lib.getExe blockfrost-gateway--dev-mock-db} \
+              --config "$tmpdir/gateway.toml" \
+              &
+            gateway_pid=$!
 
-          cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
-          chmod -R u+w,g+w "$tmpdir"
-          cd "$tmpdir"
-          cat ${../../crates/platform/tests/data/supported_endpoints.json} >endpoints-allowlist.json
-          cat ${../../crates/platform/tests/data/blacklisted_endpoints.json} >endpoints-blacklist.json
+            sleep 1
+            wait4x http "$gateway_url/stats" --expect-status-code 200 --timeout 60s --interval 1s
 
-          set -x
-          node --version
-          yarn --version
+            ${lib.getExe blockfrost-platform} \
+              --server-address 127.0.0.1 \
+              --server-port "$platform_port" \
+              --log-level info \
+              --node-socket-path "''${CARDANO_NODE_SOCKET_PATH}" \
+              --mode compact \
+              --secret 'unused-unused' \
+              --reward-address "$reward_address" \
+              --gateway-url "$gateway_url" \
+              --data-node "''${DOLOS_ENDPOINT}" \
+              --data-node-timeout-sec 30 \
+              &
+            platform_pid=$!
 
-          yarn install
-          yarn test:${lib.escapeShellArg network}
-        '';
+            sleep 1
+            wait4x http "http://127.0.0.1:$platform_port/" --expect-status-code 200 --timeout 60s --interval 1s
+
+            api_prefix=""
+            for _ in $(seq 1 60); do
+              api_prefix=$(curl -fsSL "$gateway_url/stats" | jq -r 'to_entries | .[0].value.api_prefix // empty') || true
+              if [[ -n "$api_prefix" ]]; then
+                break
+              fi
+              sleep 1
+            done
+            if [[ -z "$api_prefix" ]]; then
+              err "Gateway did not expose a registered API prefix."
+              exit 1
+            fi
+
+            export SERVER_URL="$gateway_url/$api_prefix"
+
+            sleep 1
+            wait4x http "$SERVER_URL" --expect-status-code 200 --timeout 60s --interval 1s
+
+            cp -r ${inputs.blockfrost-tests}/. "$tmpdir"/.
+            chmod -R u+w,g+w "$tmpdir"
+            cd "$tmpdir"
+            cat ${../../crates/integration_tests/tests/data/supported_endpoints.json} >endpoints-allowlist.json
+            cp ${../../crates/integration_tests/tests/data/ignored_tests.json} endpoints-ignorelist.json
+
+            ignored_count=$(jq --arg net "$NETWORK" '.[$net] | length' endpoints-ignorelist.json)
+          ''
+          + (
+            if ignorelistOnly
+            then ''
+              echo "Running ignorelist check: testing $ignored_count ignored test IDs (IGNORELIST_ONLY mode)"
+            ''
+            else ''
+              echo "WARNING: Ignoring $ignored_count test IDs (see ignored_tests.json)"
+            ''
+          )
+          + ''
+
+            set -x
+            node --version
+            yarn --version
+
+            yarn install
+          ''
+          + (
+            if ignorelistOnly
+            then ''
+              set +x
+
+              IGNORELIST_ONLY=true yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
+
+              # Fail if any ignored test now passes
+              if grep -E 'Tests.*passed' tests.log; then
+                echo ""
+                echo "ERROR: Some ignored tests are now passing!"
+                echo "Please remove them from crates/integration_tests/tests/data/ignored_tests.json"
+                exit 1
+              fi
+
+              echo "All ignored tests still fail. Ignorelist is up to date."
+            ''
+            else ''
+              yarn test:${lib.escapeShellArg network}
+            ''
+          );
       };
 
     # One degree of indirection for the devshell – we don’t want to compile
@@ -753,6 +885,7 @@ in
         gawk
         jq
         curl
+        xxd
         hydra-node
         cardano-cli
         cardano-address
@@ -776,6 +909,41 @@ in
       text = builtins.readFile ./hydra-blockfrost-test.sh;
     };
 
+    hydra-platform-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-platform-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-platform and blockfrost-gateway";
+      runtimeInputs = with pkgs; [
+        bash
+        bc
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        procps
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-platform
+        blockfrost-gateway--dev-mock-db
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+      };
+      text = builtins.readFile ./hydra-platform-gateway-test.sh;
+    };
+
     midnight = let
       fenix = inputs.fenix.packages.${pkgs.system};
 
@@ -794,7 +962,8 @@ in
       fixVendoring'ledger = ps: drv:
         if lib.any (p: lib.hasPrefix "git+https://github.com/midnightntwrk/midnight-ledger" p.source) ps
         then
-          drv.overrideAttrs (_old: {
+          drv.overrideAttrs
+          (_old: {
             postPatch = ''
               mkdir -p ledger/static
               mv static/dust ledger/static/
@@ -817,7 +986,8 @@ in
       fixDarwin'wasm-opt-sys = p: drv:
         if p.name == "wasm-opt-sys" # && p.version == "0.116.0"
         then
-          drv.overrideAttrs (_old: {
+          drv.overrideAttrs
+          (_old: {
             patches = [
               ./midnight--wasm-opt-sys--darwin.patch
             ];

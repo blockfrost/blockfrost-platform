@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
             hydra_server_platform::HydrasManager::new(
                 hydra_platform_config,
                 &config.server.network,
+                &config.blockfrost.project_id,
             )
             .await?,
         )
@@ -62,15 +63,15 @@ async fn main() -> Result<()> {
         .route("/ws", get(load_balancer::api::websocket_route))
         .route("/stats", get(load_balancer::api::stats_route))
         .route(
-            "/:uuid",
+            "/{uuid}",
             axum::routing::any(load_balancer::api::prefix_route_root),
         )
         .route(
-            "/:uuid/",
+            "/{uuid}/",
             axum::routing::any(load_balancer::api::prefix_route_root),
         )
         .route(
-            "/:uuid/*rest",
+            "/{uuid}/{*rest}",
             axum::routing::any(load_balancer::api::prefix_route),
         )
         .layer(Extension(load_balancer))
