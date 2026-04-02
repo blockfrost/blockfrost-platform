@@ -36,13 +36,13 @@ pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
 /// See https://github.com/IntersectMBO/cardano-ledger/blob/49623962445143680dd725ebbf812c37e099b65c/eras/mary/impl/src/Cardano/Ledger/Mary/Value.hs#L328
 fn _check_multiasset_zero(tx: Tx) -> bool {
     for output in tx.transaction_body.outputs.iter() {
-        if let GenTransactionOutput::Legacy(o) = output {
-            if let Value::Multiasset(_, kv) = &o.amount {
-                for (_, assets) in kv.iter() {
-                    for (_, amount) in assets.iter() {
-                        if *amount == 0 {
-                            return true;
-                        }
+        if let GenTransactionOutput::Legacy(o) = output
+            && let Value::Multiasset(_, kv) = &o.amount
+        {
+            for (_, assets) in kv.iter() {
+                for (_, amount) in assets.iter() {
+                    if *amount == 0 {
+                        return true;
                     }
                 }
             }
