@@ -26,8 +26,8 @@ impl Manager for NodePoolManager {
         match NodeClientFacade::connect(&self.socket_path, self.network_magic).await {
             Ok(connection) => {
                 info!(
-                    "N2C[{}]: connection successfully established with a node socket: {}",
-                    connection_id, self.socket_path
+                    connection_id,
+                    "connection successfully established with a node socket: {}", self.socket_path
                 );
                 gauge!("cardano_node_connections").increment(1);
 
@@ -41,10 +41,8 @@ impl Manager for NodePoolManager {
             Err(err) => {
                 counter!("cardano_node_connections_failed").increment(1);
                 error!(
-                    "N2C[{}]: failed to connect to a node socket: {}: {:?}",
                     connection_id,
-                    self.socket_path,
-                    err.to_string()
+                    "failed to connect to a node socket: {}: {}", self.socket_path, err
                 );
                 Err(AppError::Node(err.to_string()))
             },
@@ -73,8 +71,8 @@ impl Manager for NodePoolManager {
             Ok(_) => Ok(()),
             Err(err) => {
                 error!(
-                    "N2C[{}]: connection no longer viable: {}, {}, {:?}",
-                    node.connection_id, self.socket_path, err, metrics
+                    connection_id = node.connection_id,
+                    "connection no longer viable: {}, {}, {:?}", self.socket_path, err, metrics
                 );
 
                 // Take ownership of the `NodeClient` from Pallas
