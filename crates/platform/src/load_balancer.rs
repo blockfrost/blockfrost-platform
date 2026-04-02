@@ -268,7 +268,20 @@ mod event_loop {
                                     tunnel_cancellation.clone(),
                                 );
 
-                            tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                            // This really shouldn’t fail, unless we hit the
+                            // TOCTOU race condition (very, very rare):
+                            if let Err(err) = tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await
+                            {
+                                error!(
+                                    "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                    resp.gateway_h2h_port
+                                );
+                                loop_error = Err(format!(
+                                    "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                    resp.gateway_h2h_port
+                                ));
+                                break 'event_loop;
+                            }
 
                             let socket_tx_ = socket_tx.clone();
                             let config_ = config.clone();
