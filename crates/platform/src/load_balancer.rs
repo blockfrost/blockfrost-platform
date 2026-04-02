@@ -78,14 +78,11 @@ pub async fn run_all(
     ];
 
     error!(
-        "load balancer: connection to {} finished{}",
+        "connection to {} finished{}",
         configs[first_idx].uri, maybe_error
     );
 
-    warn!(
-        "load balancer: aborting the remaining {} connection(s)",
-        remaining.len()
-    );
+    warn!("aborting the remaining {} connection(s)", remaining.len());
     for r in remaining.iter() {
         r.abort();
     }
@@ -407,7 +404,7 @@ mod event_loop {
         String,
     > {
         use tungstenite::client::IntoClientRequest;
-        info!("load balancer: connecting to {}", config.uri);
+        info!("connecting to {}", config.uri);
         let mut request = config.uri.clone().into_client_request().unwrap();
         request.headers_mut().insert(
             "Authorization",
@@ -416,7 +413,7 @@ mod event_loop {
         let (ws_stream, _response) = tokio_tungstenite::connect_async(request)
             .await
             .map_err(|err| err.to_string())?;
-        info!("load balancer: connected to {}", config.uri);
+        info!("connected to {}", config.uri);
         Ok(ws_stream)
     }
 
@@ -435,10 +432,7 @@ mod event_loop {
                 match socket_tx.send(Message::Text(msg.into())).await {
                     Ok(_) => Ok(()),
                     Err(err) => {
-                        error!(
-                            "load balancer: {}: error when sending a message: {:?}",
-                            config.uri, err
-                        );
+                        error!("{}: error when sending a Pong: {:?}", config.uri, err);
                         // Something wrong with the socket, let’s break the 'event_loop:
                         Err("broken connection with the load balancer".to_string())
                     },
@@ -450,7 +444,7 @@ mod event_loop {
                 let err = format!(
                     "error when serializing request to JSON (this will never happen): {err:?}"
                 );
-                error!("load balancer: {}: {}", config.uri, err);
+                error!("{}: {}", config.uri, err);
                 Err(err)
             },
         }
@@ -486,7 +480,7 @@ mod event_loop {
                     },
                     Some(Ok(Message::Close(frame))) => {
                         warn!(
-                            "load balancer: {}: relay disconnected (CloseFrame: {:?})",
+                            "{}: relay disconnected (CloseFrame: {:?})",
                             config.uri, frame,
                         );
                         let _ignored_failure: Result<_, _> = event_tx
@@ -497,7 +491,7 @@ mod event_loop {
                     Some(Ok(Message::Frame(_) | Message::Ping(_) | Message::Pong(_))) => {}, // ignore, they’re handled by the library
                     Some(Ok(Message::Binary(bin))) => {
                         warn!(
-                            "load balancer: {}: received unexpected binary message: {:?}",
+                            "{}: received unexpected binary message: {:?}",
                             config.uri,
                             hex::encode(bin),
                         );
@@ -514,7 +508,7 @@ mod event_loop {
                                 }
                             },
                             Err(err) => warn!(
-                                "load balancer: {}: received unparsable text message: {:?}: {:?}",
+                                "{}: received unparsable text message: {:?}: {:?}",
                                 config.uri, text, err,
                             ),
                         };
@@ -578,7 +572,7 @@ mod event_loop {
         match rv {
             Ok(ok) => ok,
             Err((code, err)) => {
-                error!("load balancer: returning {}, because: {}", code, err);
+                error!("returning {}, because: {}", code, err);
                 JsonResponse {
                     id: request_id_,
                     code: code.into(),

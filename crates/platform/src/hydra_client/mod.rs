@@ -194,11 +194,7 @@ impl State {
                 match self_.process_event(event).await {
                     Ok(()) => (),
                     Err(err) => {
-                        error!(
-                            "hydra-controller: error: {}; will restart in {:?}…",
-                            err,
-                            Self::RESTART_DELAY
-                        );
+                        error!("error: {}; will restart in {:?}…", err, Self::RESTART_DELAY);
                         tokio::time::sleep(Self::RESTART_DELAY).await;
                         self_.send(Event::Restart).await;
                     },
@@ -230,7 +226,7 @@ impl State {
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-controller: starting…");
+                info!("starting…");
 
                 self.gen_hydra_keys().await?;
 
@@ -271,9 +267,7 @@ impl State {
                     verifications::is_tcp_port_free(kex_resp.proposed_platform_h2h_port).await,
                     Ok(true)
                 )) {
-                    warn!(
-                        "hydra-controller: the ports proposed by the Gateway are not free locally, will ask again"
-                    );
+                    warn!("the ports proposed by the Gateway are not free locally, will ask again");
                     self.send(Event::Restart).await
                 } else {
                     self.kex_requests
@@ -297,16 +291,13 @@ impl State {
                     .await?;
                 if potential_fuel < Self::MIN_FUEL_LOVELACE {
                     bail!(
-                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                        "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                         potential_fuel as f64 / 1_000_000.0,
                         self.config.cardano_signing_key,
                         Self::MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
                     );
                 }
-                info!(
-                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
-                    potential_fuel
-                );
+                info!("fuel on cardano_signing_key: {:?} lovelace", potential_fuel);
 
                 self.start_hydra_node(kex_resp).await?;
                 self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
@@ -316,10 +307,7 @@ impl State {
             Event::TryToCommit => {
                 let status = verifications::fetch_head_tag(self.api_port).await;
 
-                info!(
-                    "hydra-controller: waiting for the Initial head status: status={:?}",
-                    status
-                );
+                info!("waiting for the Initial head status: status={:?}", status);
 
                 match status.as_deref() {
                     Err(_) => {
@@ -329,9 +317,7 @@ impl State {
                     Ok(status) => {
                         self.last_hydra_head_state = status.to_string();
                         if status == "Initial" {
-                            info!(
-                                "hydra-controller: submitting an empty Commit transaction to join the Hydra Head"
-                            );
+                            info!("submitting an empty Commit transaction to join the Hydra Head");
                             self.empty_commit_to_hydra(
                                 self.api_port,
                                 &self.config.cardano_signing_key,
@@ -352,7 +338,7 @@ impl State {
                     let new = new_status.clone();
                     self.last_hydra_head_state = new_status;
 
-                    info!("hydra-controller: state changed from {old} to {new}");
+                    info!("state changed from {old} to {new}");
 
                     if new == "Initial" {
                         self.send_delayed(Event::TryToCommit, Duration::from_secs(1))

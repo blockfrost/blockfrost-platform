@@ -38,17 +38,16 @@ impl NodeClient {
                 let txid = hex::encode(Hasher::<256>::hash_cbor(&tx));
 
                 info!(
-                    "N2C[{}]: Transaction accepted by the node: {}",
-                    self.connection_id, txid
+                    connection_id = self.connection_id,
+                    "Transaction accepted by the node: {}", txid
                 );
                 Ok(txid)
             },
             Ok(Response::Rejected(reason)) => {
                 let haskell_display = as_node_submit_error(reason);
                 info!(
-                    "N2C[{}]: {}: {}, CBOR: {}",
-                    self.connection_id,
-                    "TxSubmitFail",
+                    connection_id = self.connection_id,
+                    "TxSubmitFail: {}, CBOR: {}",
                     haskell_display,
                     hex::encode(&tx)
                 );
