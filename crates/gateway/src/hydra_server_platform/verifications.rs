@@ -277,9 +277,12 @@ impl super::HydraConfig {
                 .unwrap_or_else(|| "0".to_string());
 
             let mut value_map = serde_json::Map::new();
+            let lovelace_u64: u64 = lovelace
+                .parse()
+                .map_err(|e| anyhow!("bad lovelace quantity {lovelace:?} on {key}: {e}"))?;
             value_map.insert(
                 "lovelace".to_string(),
-                serde_json::Value::Number(lovelace.parse::<u64>().unwrap_or(0).into()),
+                serde_json::Value::Number(lovelace_u64.into()),
             );
 
             // Include native assets if any
@@ -291,11 +294,19 @@ impl super::HydraConfig {
                         .entry(policy_id.to_string())
                         .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
                     if let Some(policy_obj) = policy_entry.as_object_mut() {
+                        let asset_qty: u64 = asset.quantity.parse().map_err(|e| {
+                            anyhow!(
+                                "bad asset quantity {:?} for {}/{} on {}: {}",
+                                asset.quantity,
+                                policy_id,
+                                asset_name,
+                                key,
+                                e,
+                            )
+                        })?;
                         policy_obj.insert(
                             asset_name.to_string(),
-                            serde_json::Value::Number(
-                                asset.quantity.parse::<u64>().unwrap_or(0).into(),
-                            ),
+                            serde_json::Value::Number(asset_qty.into()),
                         );
                     }
                 }
