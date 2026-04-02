@@ -34,7 +34,7 @@ impl IcebreakersManager {
         let configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
 
         if configs.is_empty() {
-            warn!("IceBreakers: no WebSocket load balancers to connect to");
+            warn!("no WebSocket load balancers to connect to");
             return Ok("No load balancers available".to_string());
         }
 
@@ -84,7 +84,7 @@ impl IcebreakersManager {
                         let configs: Vec<_> =
                             response.load_balancers.into_iter().flatten().collect();
                         if configs.is_empty() {
-                            warn!("IceBreakers: no WebSocket load balancers to connect to");
+                            warn!("no WebSocket load balancers to connect to");
                             // If there are no load balancers, only register once, nothing to monitor:
                             break 'load_balancers;
                         }
@@ -99,13 +99,13 @@ impl IcebreakersManager {
                         .await;
 
                         let delay = std::time::Duration::from_secs(1);
-                        info!("IceBreakers: will re-register in {:?}", delay);
+                        info!("will re-register in {:?}", delay);
                         tokio::time::sleep(delay).await;
                     },
                     Err(err) => {
                         let delay = std::time::Duration::from_secs(10);
                         error!(
-                            "IceBreakers registration failed: {}, will re-register in {:?}",
+                            "registration failed: {}, will re-register in {:?}",
                             err, delay
                         );
 

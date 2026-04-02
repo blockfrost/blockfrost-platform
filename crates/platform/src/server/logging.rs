@@ -9,7 +9,7 @@ pub fn setup_tracing(log_level: Level) {
             Format::default()
                 .with_ansi(true)
                 .with_level(true)
-                .with_target(false)
+                .with_target(true)
                 .compact(),
         )
         .init();
