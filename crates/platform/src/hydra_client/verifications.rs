@@ -16,7 +16,7 @@ impl super::State {
         let key_path = self.config_dir.join("hydra.sk");
 
         if !key_path.exists() {
-            info!("hydra-controller: generating hydra keys");
+            info!("generating hydra keys");
 
             let status = tokio::process::Command::new(&self.hydra_node_exe)
                 .arg("gen-hydra-key")
@@ -29,7 +29,7 @@ impl super::State {
                 bail!("gen-hydra-key failed with status: {status}");
             }
         } else {
-            info!("hydra-controller: hydra keys already exist");
+            info!("hydra keys already exist");
         }
 
         Ok(())
@@ -164,7 +164,7 @@ impl super::State {
         let era_tx = EraTx(era, signed_cbor);
         match submission.submit_tx(era_tx).await {
             Ok(Response::Accepted) => {
-                info!("hydra-controller: commit transaction accepted by cardano-node");
+                info!("commit transaction accepted by cardano-node");
                 Ok(())
             },
             Ok(Response::Rejected(reason)) => {
