@@ -128,7 +128,11 @@ impl State {
         let gateway_prefix = "_default";
 
         let config_dir = dirs::config_dir()
-            .expect("Could not determine config directory")
+            .ok_or_else(|| {
+                anyhow!(
+                    "Could not determine config directory (HOME or XDG_CONFIG_HOME may be unset)"
+                )
+            })?
             .join("blockfrost-platform")
             .join("hydra")
             .join(network.as_str())
