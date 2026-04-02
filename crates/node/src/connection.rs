@@ -34,10 +34,11 @@ impl NodeClient {
         // Acquire the client
         let client = self.client.as_mut().unwrap().statequery();
 
-        client.acquire(None).await.inspect_err(|e| {
+        client.acquire(None).await.inspect_err(|err| {
             error!(
                 connection_id = self.connection_id,
-                "failed to acquire a statequery client: {:?}", e
+                err = %err,
+                "failed to acquire a statequery client",
             )
         })?;
 
