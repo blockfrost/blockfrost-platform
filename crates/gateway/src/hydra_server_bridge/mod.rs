@@ -44,7 +44,7 @@ impl HydrasManager {
             / 1_000_000.0;
         if config.commit_ada < minimal_commit {
             Err(anyhow!(
-                "hydras-manager: Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout + {}.",
+                "Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout + {}.",
                 MIN_LOVELACE_PER_TRANSACTION as f64 / 1_000_000.0
             ))?
         }
@@ -53,7 +53,7 @@ impl HydrasManager {
             config.lovelace_per_request * config.requests_per_microtransaction;
         if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
             Err(anyhow!(
-                "hydras-manager: Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
+                "Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
             ))?
         }
 
@@ -90,7 +90,7 @@ impl HydrasManager {
         let required_funds_ada: f64 = MIN_FUEL_LOVELACE as f64 / 1_000_000.0;
         if have_funds < required_funds_ada {
             let err = anyhow!(
-                "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                 have_funds,
                 self.config.toml.cardano_signing_key,
                 required_funds_ada,
@@ -98,10 +98,7 @@ impl HydrasManager {
             error!("{err}");
             Err(err)?
         }
-        info!(
-            "hydra-controller: funds on cardano_signing_key: {:?} ADA",
-            have_funds
-        );
+        info!("funds on cardano_signing_key: {:?} ADA", have_funds);
 
         use verifications::{find_free_tcp_port, read_json_file};
 
@@ -428,7 +425,7 @@ impl State {
                     Ok(()) => (),
                     Err(err) => {
                         error!(
-                            "hydra-controller: {}: error: {}; will restart in {:?}…",
+                            "{}: error: {}; will restart in {:?}…",
                             self_.customer_log_id,
                             err,
                             Self::RESTART_DELAY
@@ -461,7 +458,7 @@ impl State {
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-controller: {}: starting…", self.customer_log_id);
+                info!("{}: starting…", self.customer_log_id);
                 self.hydra_head_open = false;
                 self.credits_available.store(0, Ordering::SeqCst);
                 self.credits_last_balance = 0;
@@ -487,7 +484,7 @@ impl State {
                 .await;
 
                 info!(
-                    "hydra-controller: {}: waiting for hydras to connect: ready={:?}",
+                    "{}: waiting for hydras to connect: ready={:?}",
                     self.customer_log_id, ready
                 );
 
@@ -513,7 +510,7 @@ impl State {
                 let status = verifications::fetch_head_tag(self.api_port).await;
 
                 info!(
-                    "hydra-controller: {}: waiting for the Initial head status: status={:?}",
+                    "{}: waiting for the Initial head status: status={:?}",
                     self.customer_log_id, status
                 );
 
@@ -525,7 +522,7 @@ impl State {
                     Ok(status) => {
                         if status == "Initial" {
                             info!(
-                                "hydra-controller: {}: submitting an empty Commit transaction to join the Hydra Head",
+                                "{}: submitting an empty Commit transaction to join the Hydra Head",
                                 self.customer_log_id
                             );
                             self.config
@@ -550,7 +547,7 @@ impl State {
             Event::WaitForOpen => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {}: waiting for the Open head status: status={:?}",
+                    "{}: waiting for the Open head status: status={:?}",
                     self.customer_log_id, status
                 );
                 if status == "Open" {
@@ -576,7 +573,7 @@ impl State {
                         Ok(current_balance) => {
                             if current_balance < self.credits_last_balance {
                                 warn!(
-                                    "hydra-controller: {}: snapshot balance decreased ({} -> {}), resetting",
+                                    "{}: snapshot balance decreased ({} -> {}), resetting",
                                     self.customer_log_id,
                                     self.credits_last_balance,
                                     current_balance
@@ -590,7 +587,7 @@ impl State {
                                             * self.config.toml.requests_per_microtransaction;
                                     if microtransaction_lovelace == 0 {
                                         warn!(
-                                            "hydra-controller: {}: microtransaction value is zero; ignoring credits",
+                                            "{}: microtransaction value is zero; ignoring credits",
                                             self.customer_log_id
                                         );
                                     } else if delta >= microtransaction_lovelace {
@@ -602,14 +599,14 @@ impl State {
                                             .fetch_add(new_credits, Ordering::SeqCst);
                                         self.received_microtransactions += new_microtransactions;
                                         info!(
-                                            "hydra-controller: {}: received {} microtransaction(s), req. credits +{}",
+                                            "{}: received {} microtransaction(s), req. credits +{}",
                                             self.customer_log_id,
                                             new_microtransactions,
                                             new_credits
                                         );
                                     } else {
                                         warn!(
-                                            "hydra-controller: {}: snapshot delta {} is below expected microtransaction size {}",
+                                            "{}: snapshot delta {} is below expected microtransaction size {}",
                                             self.customer_log_id, delta, microtransaction_lovelace
                                         );
                                     }
@@ -627,7 +624,7 @@ impl State {
                             }
                         },
                         Err(err) => warn!(
-                            "hydra-controller: {}: failed to read snapshot/utxo: {err}",
+                            "{}: failed to read snapshot/utxo: {err}",
                             self.customer_log_id
                         ),
                     }
@@ -658,13 +655,13 @@ impl State {
             } => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {}: waiting for the Closed head status: status={:?}",
+                    "{}: waiting for the Closed head status: status={:?}",
                     self.customer_log_id, status
                 );
                 if status == "Closed" {
                     let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
                     info!(
-                        "hydra-controller: {}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
+                        "{}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
                         self.customer_log_id, invalidity_period,
                     );
                     self.send_delayed(Event::DoFanout, invalidity_period).await
@@ -684,10 +681,7 @@ impl State {
             },
 
             Event::DoFanout => {
-                info!(
-                    "hydra-controller: {}: requesting `Fanout`",
-                    self.customer_log_id,
-                );
+                info!("{}: requesting `Fanout`", self.customer_log_id,);
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Fanout"}),
@@ -701,12 +695,12 @@ impl State {
             Event::WaitForIdleAfterClose => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "hydra-controller: {}: waiting for the Idle head status (after Fanout): status={:?}",
+                    "{}: waiting for the Idle head status (after Fanout): status={:?}",
                     self.customer_log_id, status
                 );
                 if status == "Idle" {
                     info!(
-                        "hydra-controller: {}: re-initializing the Hydra Head for another L2 session",
+                        "{}: re-initializing the Hydra Head for another L2 session",
                         self.customer_log_id,
                     );
 

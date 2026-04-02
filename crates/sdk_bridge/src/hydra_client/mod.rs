@@ -125,9 +125,7 @@ impl HydraController {
         self.event_tx
             .send(Event::AccountOneRequest)
             .await
-            .unwrap_or_else(|_| {
-                error!("hydra-controller: failed to account one request: event channel closed")
-            })
+            .unwrap_or_else(|_| error!("failed to account one request: event channel closed"))
     }
 }
 
@@ -264,11 +262,7 @@ impl State {
                 match self_.process_event(event).await {
                     Ok(()) => (),
                     Err(err) => {
-                        error!(
-                            "hydra-controller: error: {}; will restart in {:?}…",
-                            err,
-                            Self::RESTART_DELAY
-                        );
+                        error!("error: {}; will restart in {:?}…", err, Self::RESTART_DELAY);
                         tokio::time::sleep(Self::RESTART_DELAY).await;
                         self_.send(Event::Restart).await;
                     },
@@ -297,24 +291,21 @@ impl State {
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
-                info!("hydra-controller: starting…");
+                info!("starting…");
 
                 let potential_fuel = self
                     .lovelace_on_payment_skey(&self.config.cardano_signing_key)
                     .await?;
                 if potential_fuel < MIN_FUEL_LOVELACE {
                     Err(anyhow!(
-                        "hydra-controller: {} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
+                        "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                         potential_fuel as f64 / 1_000_000.0,
                         self.config.cardano_signing_key,
                         MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
                     ))?
                 }
 
-                info!(
-                    "hydra-controller: fuel on cardano_signing_key: {:?} lovelace",
-                    potential_fuel
-                );
+                info!("fuel on cardano_signing_key: {:?} lovelace", potential_fuel);
 
                 self.gen_hydra_keys().await?;
 
@@ -357,7 +348,7 @@ impl State {
                     microtransactions_per_fanout: kex_resp.microtransactions_per_fanout,
                 };
                 info!(
-                    "hydra-controller: payment params commit_ada={} lovelace_per_request={} requests_per_microtransaction={} microtransactions_per_fanout={}",
+                    "payment params commit_ada={} lovelace_per_request={} requests_per_microtransaction={} microtransactions_per_fanout={}",
                     params.commit_ada,
                     params.lovelace_per_request,
                     params.requests_per_microtransaction,
@@ -369,7 +360,7 @@ impl State {
                     let addr = self
                         .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)
                         .await?;
-                    info!("hydra-controller: gateway payment address: {}", addr);
+                    info!("gateway payment address: {}", addr);
                     self.gateway_payment_addr = addr;
                 }
 
@@ -380,9 +371,7 @@ impl State {
                     verifications::is_tcp_port_free(kex_resp.proposed_platform_h2h_port).await,
                     Ok(true)
                 )) {
-                    warn!(
-                        "hydra-controller: the ports proposed by the Gateway are not free locally, will ask again"
-                    );
+                    warn!("the ports proposed by the Gateway are not free locally, will ask again");
                     self.send(Event::Restart).await
                 } else {
                     self.kex_requests
@@ -403,7 +392,7 @@ impl State {
                     let addr = self
                         .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)
                         .await?;
-                    info!("hydra-controller: gateway payment address: {}", addr);
+                    info!("gateway payment address: {}", addr);
                     self.gateway_payment_addr = addr;
                 }
 
@@ -431,11 +420,11 @@ impl State {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
 
                 if status == "Initial" {
-                    info!("hydra-controller: head already Initial, proceeding to commit");
+                    info!("head already Initial, proceeding to commit");
                     self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
                         .await
                 } else if status == "Open" {
-                    info!("hydra-controller: head already Open, skipping init + commit");
+                    info!("head already Open, skipping init + commit");
                     self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
                         .await
                 } else {
@@ -446,10 +435,7 @@ impl State {
                     )
                     .await;
 
-                    info!(
-                        "hydra-controller: waiting for hydras to connect: ready={:?}",
-                        ready
-                    );
+                    info!("waiting for hydras to connect: ready={:?}", ready);
 
                     if matches!(ready, Ok(true)) {
                         verifications::send_one_websocket_msg(
@@ -497,7 +483,7 @@ impl State {
                         top_up = MIN_COMMIT_TOPUP_LOVELACE;
                     }
                     info!(
-                        "hydra-controller: topping up commit address by {} lovelace (current={}, target={})",
+                        "topping up commit address by {} lovelace (current={}, target={})",
                         top_up, current_lovelace, target_lovelace
                     );
                     self.fund_address(
@@ -511,7 +497,7 @@ impl State {
                     .await?;
                 } else {
                     info!(
-                        "hydra-controller: commit address already funded (current={}, target={})",
+                        "commit address already funded (current={}, target={})",
                         current_lovelace, target_lovelace
                     );
                 }
@@ -535,15 +521,13 @@ impl State {
                 let lovelace_needed = 0.99 * params.commit_ada * 1_000_000.0;
 
                 info!(
-                    "hydra-controller: waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
+                    "waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
                     lovelace_needed.round(),
                     commit_wallet_lovelace
                 );
 
                 if commit_wallet_lovelace as f64 >= lovelace_needed {
-                    info!(
-                        "hydra-controller: submitting a Commit transaction to join the Hydra Head"
-                    );
+                    info!("submitting a Commit transaction to join the Hydra Head");
                     self.commit_all_utxo_to_hydra(
                         &self.commit_wallet_addr,
                         self.api_port,
@@ -561,10 +545,7 @@ impl State {
 
             Event::WaitForOpen => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
-                info!(
-                    "hydra-controller: waiting for the Open head status: status={:?}",
-                    status
-                );
+                info!("waiting for the Open head status: status={:?}", status);
                 if status == "Open" {
                     self.last_hydra_head_state = status.clone();
                     self.send_delayed(Event::MonitorStates, Duration::from_secs(5))
@@ -584,7 +565,7 @@ impl State {
                     let new = new_status.clone();
                     self.last_hydra_head_state = new_status.clone();
 
-                    info!("hydra-controller: state changed from {old} to {new}");
+                    info!("state changed from {old} to {new}");
 
                     if new == "Initial" {
                         self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
@@ -607,7 +588,7 @@ impl State {
             Event::MonitorCredits => {
                 if self.hydra_head_open {
                     if self.gateway_payment_addr.is_empty() {
-                        warn!("hydra-controller: gateway payment address not set yet");
+                        warn!("gateway payment address not set yet");
                     } else if let Some(params) = &self.payment_params {
                         match verifications::lovelace_in_snapshot_for_address(
                             self.api_port,
@@ -618,7 +599,7 @@ impl State {
                             Ok(current_balance) => {
                                 if current_balance < self.credits_last_balance {
                                     warn!(
-                                        "hydra-controller: snapshot balance decreased ({} -> {}), resetting",
+                                        "snapshot balance decreased ({} -> {}), resetting",
                                         self.credits_last_balance, current_balance
                                     );
                                     self.credits_last_balance = current_balance;
@@ -629,7 +610,7 @@ impl State {
                                             * params.requests_per_microtransaction;
                                         if microtransaction_lovelace == 0 {
                                             warn!(
-                                                "hydra-controller: microtransaction value is zero; ignoring credits"
+                                                "microtransaction value is zero; ignoring credits"
                                             );
                                         } else if delta >= microtransaction_lovelace {
                                             let new_microtransactions =
@@ -639,12 +620,12 @@ impl State {
                                             self.credits_available
                                                 .fetch_add(new_credits, Ordering::SeqCst);
                                             info!(
-                                                "hydra-controller: req. credits +{} ({} microtransaction(s))",
+                                                "req. credits +{} ({} microtransaction(s))",
                                                 new_credits, new_microtransactions
                                             );
                                         } else {
                                             warn!(
-                                                "hydra-controller: snapshot delta {} is below expected microtransaction size {}",
+                                                "snapshot delta {} is below expected microtransaction size {}",
                                                 delta, microtransaction_lovelace
                                             );
                                         }
@@ -653,7 +634,7 @@ impl State {
                                 }
                             },
                             Err(err) => {
-                                warn!("hydra-controller: failed to read snapshot/utxo: {err}")
+                                warn!("failed to read snapshot/utxo: {err}")
                             },
                         }
                     }
@@ -667,27 +648,25 @@ impl State {
                 let params = match &self.payment_params {
                     Some(p) => p.clone(),
                     None => {
-                        warn!("hydra-controller: payment parameters not set yet");
+                        warn!("payment parameters not set yet");
                         return Ok(());
                     },
                 };
 
                 if !self.hydra_head_open {
-                    warn!(
-                        "hydra-controller: would account a request, but the Hydra Head is not Open"
-                    );
+                    warn!("would account a request, but the Hydra Head is not Open");
                     return Ok(());
                 }
 
                 if self.gateway_payment_addr.is_empty() {
-                    warn!("hydra-controller: gateway payment address not set yet");
+                    warn!("gateway payment address not set yet");
                     return Ok(());
                 }
 
                 self.accounted_requests += 1;
 
                 if self.accounted_requests >= params.requests_per_microtransaction {
-                    info!("hydra-controller: sending a microtransaction");
+                    info!("sending a microtransaction");
                     let amount_lovelace: u64 =
                         self.accounted_requests * params.lovelace_per_request;
                     self.send_hydra_transaction(
@@ -718,7 +697,7 @@ impl State {
             .ok_or(anyhow!("payment parameters not set before prepay"))?;
 
         if self.gateway_payment_addr.is_empty() {
-            warn!("hydra-controller: gateway payment address not set yet");
+            warn!("gateway payment address not set yet");
             return Ok(());
         }
 

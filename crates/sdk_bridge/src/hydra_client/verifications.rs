@@ -18,7 +18,7 @@ impl super::State {
         let key_path = self.config_dir.join("hydra.sk");
 
         if !key_path.exists() {
-            info!("hydra-controller: generating hydra keys");
+            info!("generating hydra keys");
 
             let status = tokio::process::Command::new(&self.hydra_node_exe)
                 .arg("gen-hydra-key")
@@ -31,7 +31,7 @@ impl super::State {
                 Err(anyhow!("gen-hydra-key failed with status: {status}"))?;
             }
         } else {
-            info!("hydra-controller: hydra keys already exist");
+            info!("hydra keys already exist");
         }
 
         Ok(())
@@ -590,7 +590,7 @@ impl super::State {
         });
 
         tracing::info!(
-            "hydra-controller: sending WebSocket payload: {}",
+            "sending WebSocket payload: {}",
             serde_json::to_string(&payload)?
         );
 
@@ -761,9 +761,9 @@ pub async fn send_one_websocket_msg(
         match msg? {
             Message::Close(_) => break,
             Message::Text(msg) => {
-                tracing::info!("hydra-controller: got WebSocket message: {}", msg)
+                tracing::info!("got WebSocket message: {}", msg)
             },
-            msg => tracing::info!("hydra-controller: got WebSocket message: {:?}", msg),
+            msg => tracing::info!("got WebSocket message: {:?}", msg),
         }
     }
 
