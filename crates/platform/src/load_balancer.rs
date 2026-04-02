@@ -144,6 +144,7 @@ enum LoadBalancerMessage {
     HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
+    Error { code: u64, msg: String },
 }
 
 /// The WebSocket messages that we send.
@@ -291,6 +292,13 @@ mod event_loop {
 
                         let _ = hydra_kex.1.send(resp).await;
                     }
+                },
+
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Error { code, msg }) => {
+                    error!(
+                        "load balancer: {}: received error from gateway: code={}, msg={}",
+                        config.uri, code, msg,
+                    );
                 },
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Request(request)) => {
