@@ -944,6 +944,41 @@ in
       text = builtins.readFile ./hydra-platform-gateway-test.sh;
     };
 
+    hydra-bridge-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-bridge-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-sdk-bridge and blockfrost-gateway";
+      runtimeInputs = with pkgs; [
+        bash
+        bc
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        procps
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-sdk-bridge
+        blockfrost-gateway--dev-mock-db
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+      };
+      text = builtins.readFile ./hydra-bridge-gateway-test.sh;
+    };
+
     midnight = let
       fenix = inputs.fenix.packages.${pkgs.system};
 

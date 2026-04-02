@@ -417,115 +417,109 @@ impl State {
                 }
 
                 self.start_hydra_node(kex_resp).await?;
-                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                // Fund the commit wallet *before* `Init` so that the fund tx
+                // and hydra-node's `Init` tx don't race for the same
+                // signing-key UTxOs.
+                self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
                     .await
             },
 
             Event::TryToInitHead => {
-                let ready = verifications::prometheus_metric_at_least(
-                    &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
-                    "hydra_head_peers_connected",
-                    1.0,
-                )
-                .await;
+                // During re-initialisation the Gateway sends `Init`; the
+                // Bridge's hydra-node will transition to "Initial" on its own.
+                // In that case we skip straight to commit.
+                let status = verifications::fetch_head_tag(self.api_port).await?;
 
-                info!(
-                    "hydra-controller: waiting for hydras to connect: ready={:?}",
-                    ready
-                );
-
-                if matches!(ready, Ok(true)) {
-                    verifications::send_one_websocket_msg(
-                        &format!("ws://127.0.0.1:{}/", self.api_port),
-                        serde_json::json!({"tag":"Init"}),
-                        Duration::from_secs(2),
-                    )
-                    .await?;
-
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
+                if status == "Initial" {
+                    info!("hydra-controller: head already Initial, proceeding to commit");
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
+                        .await
+                } else if status == "Open" {
+                    info!("hydra-controller: head already Open, skipping init + commit");
+                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
                         .await
                 } else {
-                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
-                        .await
+                    let ready = verifications::prometheus_metric_at_least(
+                        &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
+                        "hydra_head_peers_connected",
+                        1.0,
+                    )
+                    .await;
+
+                    info!(
+                        "hydra-controller: waiting for hydras to connect: ready={:?}",
+                        ready
+                    );
+
+                    if matches!(ready, Ok(true)) {
+                        verifications::send_one_websocket_msg(
+                            &format!("ws://127.0.0.1:{}/", self.api_port),
+                            serde_json::json!({"tag":"Init"}),
+                            Duration::from_secs(2),
+                        )
+                        .await?;
+
+                        // Commit wallet was already funded before we got here,
+                        // so proceed directly to commit.
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    } else {
+                        self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                            .await
+                    }
                 }
             },
 
             Event::FundCommitAddr => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let commit_wallet = self.config_dir.join("commit-funds");
+                self.commit_wallet_skey = commit_wallet.with_extension("sk");
 
-                info!(
-                    "hydra-controller: waiting for the Initial head status: status={:?}",
-                    status
-                );
-
-                if status == "Initial" || status == "Open" {
-                    let commit_wallet = self.config_dir.join("commit-funds");
-                    self.commit_wallet_skey = commit_wallet.with_extension("sk");
-
-                    if !self.commit_wallet_skey.exists() {
-                        if status == "Open" {
-                            Err(anyhow!(
-                                "Head status is Open, but there’s no commit wallet anymore; this shouldn’t really happen"
-                            ))?
-                        }
-
-                        self.new_cardano_keypair(&commit_wallet).await?;
-                    }
-
-                    self.commit_wallet_addr = self
-                        .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
-                        .await?;
-
-                    if status == "Initial" {
-                        let params = self.payment_params.clone().ok_or(anyhow!(
-                            "payment parameters not set before funding commit address"
-                        ))?;
-
-                        let target_lovelace = (params.commit_ada * 1_000_000.0).round() as u64;
-                        let current_lovelace = self
-                            .lovelace_on_payment_skey(&self.commit_wallet_skey)
-                            .await?;
-
-                        if current_lovelace < target_lovelace {
-                            let mut top_up = target_lovelace - current_lovelace;
-                            if top_up < MIN_COMMIT_TOPUP_LOVELACE {
-                                top_up = MIN_COMMIT_TOPUP_LOVELACE;
-                            }
-                            info!(
-                                "hydra-controller: topping up commit address by {} lovelace (current={}, target={})",
-                                top_up, current_lovelace, target_lovelace
-                            );
-                            self.fund_address(
-                                &self
-                                    .derive_enterprise_address_from_skey(
-                                        &self.config.cardano_signing_key,
-                                    )
-                                    .await?,
-                                &self.commit_wallet_addr,
-                                top_up,
-                                &self.config.cardano_signing_key,
-                            )
-                            .await?;
-                        } else {
-                            info!(
-                                "hydra-controller: commit address already funded (current={}, target={})",
-                                current_lovelace, target_lovelace
-                            );
-                        }
-
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                            .await
-                    } else if status == "Open" {
-                        warn!(
-                            "hydra-controller: turns out the Head is already Open, skipping Commit"
-                        );
-                        self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
-                            .await
-                    }
-                } else {
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
-                        .await
+                if !self.commit_wallet_skey.exists() {
+                    self.new_cardano_keypair(&commit_wallet).await?;
                 }
+
+                self.commit_wallet_addr = self
+                    .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
+                    .await?;
+
+                let params = self.payment_params.clone().ok_or(anyhow!(
+                    "payment parameters not set before funding commit address"
+                ))?;
+
+                let target_lovelace = (params.commit_ada * 1_000_000.0).round() as u64;
+                let current_lovelace = self
+                    .lovelace_on_payment_skey(&self.commit_wallet_skey)
+                    .await?;
+
+                if current_lovelace < target_lovelace {
+                    let mut top_up = target_lovelace - current_lovelace;
+                    if top_up < MIN_COMMIT_TOPUP_LOVELACE {
+                        top_up = MIN_COMMIT_TOPUP_LOVELACE;
+                    }
+                    info!(
+                        "hydra-controller: topping up commit address by {} lovelace (current={}, target={})",
+                        top_up, current_lovelace, target_lovelace
+                    );
+                    self.fund_address(
+                        &self
+                            .derive_enterprise_address_from_skey(&self.config.cardano_signing_key)
+                            .await?,
+                        &self.commit_wallet_addr,
+                        top_up,
+                        &self.config.cardano_signing_key,
+                    )
+                    .await?;
+                } else {
+                    info!(
+                        "hydra-controller: commit address already funded (current={}, target={})",
+                        current_lovelace, target_lovelace
+                    );
+                }
+
+                // Proceed to Init (or straight to Commit if the head
+                // is already in "Initial" state, e.g. re-init).
+                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                    .await
             },
 
             Event::TryToCommit => {
