@@ -194,6 +194,9 @@ struct HydraConfig {
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_cardano_addr: String,
     pub protocol_parameters: serde_json::Value,
+    /// Shared HTTP client for all outgoing requests (avoids re-creating the
+    /// TLS backend and connection pool on every call).
+    pub http: reqwest::Client,
 }
 
 impl HydraConfig {
@@ -218,6 +221,7 @@ impl HydraConfig {
             gateway_cardano_vkey: serde_json::Value::Null,
             gateway_cardano_addr: String::new(),
             protocol_parameters: serde_json::Value::Null,
+            http: reqwest::Client::new(),
         };
         let gateway_cardano_addr =
             self_.derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)?;
@@ -561,6 +565,7 @@ impl State {
 
             Event::TryToInitHead => {
                 let ready = verifications::prometheus_metric_at_least(
+                    &self.config.http,
                     &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
                     "hydra_head_peers_connected",
                     1.0,
@@ -602,7 +607,8 @@ impl State {
             Event::WaitForInitial {
                 retries_before_reinit,
             } => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let status =
+                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
 
                 info!(
                     "hydra-controller: {}: waiting for the Initial head \
@@ -696,7 +702,8 @@ impl State {
             },
 
             Event::WaitForOpen => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let status =
+                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
                 info!(
                     "hydra-controller: {}: waiting for the Open head status: status={:?}",
                     self.originator.as_str(),
@@ -800,7 +807,8 @@ impl State {
             Event::WaitForClosed {
                 retries_before_reclose,
             } => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let status =
+                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
                 info!(
                     "hydra-controller: {}: waiting for the Closed head status: status={:?}",
                     self.originator.as_str(),
@@ -825,7 +833,9 @@ impl State {
             },
 
             Event::WaitForFanoutReady => {
-                let ready = verifications::fetch_head_ready_to_fanout(self.api_port).await?;
+                let ready =
+                    verifications::fetch_head_ready_to_fanout(&self.config.http, self.api_port)
+                        .await?;
                 info!(
                     "hydra-controller: {}: waiting for readyToFanoutSent on Closed head: ready={:?}",
                     self.originator.as_str(),
@@ -867,7 +877,8 @@ impl State {
             Event::WaitForIdleAfterClose {
                 retries_before_refanout,
             } => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let status =
+                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
                 info!(
                     "hydra-controller: {}: waiting for the Idle head status (after Fanout): status={:?} (retries_before_refanout={})",
                     self.originator.as_str(),

@@ -512,7 +512,7 @@ pub mod event_loop {
                         already_exists,
                         &load_balancer.hydras,
                         &req.accepted_platform_h2h_port,
-                        initial_hydra_kex.take(),
+                        initial_hydra_kex.is_some(),
                     ) {
                         (true, _, _, _) => LoadBalancerMessage::Error {
                             code: 538,
@@ -522,13 +522,16 @@ pub mod event_loop {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                        (false, Some(hydras), Some(_accepted_port), true) => {
+                            let initial_kex = initial_hydra_kex.clone().unwrap();
                             let platform_machine_id = req.machine_id.clone();
                             match hydras
                                 .spawn_new(asset_name, &reward_addr, initial_kex, req)
                                 .await
                             {
                                 Ok((ctl, resp)) => {
+                                    // Consume the cached KEx only after spawn succeeds:
+                                    initial_hydra_kex = None;
                                     hydra_controller = Some(ctl);
 
                                     // Only start the TCP-over-WebSocket tunnels if we’re running
@@ -545,7 +548,22 @@ pub mod event_loop {
                                                 tunnel_cancellation.clone(),
                                             );
 
-                                        tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                                        // This really shouldn’t fail, unless we hit the
+                                        // TOCTOU race condition (very, very rare):
+                                        if let Err(err) = tunnel_ctl
+                                            .spawn_listener(resp.proposed_platform_h2h_port)
+                                            .await
+                                        {
+                                            error!(
+                                                "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                                resp.proposed_platform_h2h_port
+                                            );
+                                            disconnection_reason = Some(format!(
+                                                "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                                resp.proposed_platform_h2h_port
+                                            ));
+                                            break 'event_loop;
+                                        }
 
                                         let socket_tx_ = socket_tx.clone();
                                         let asset_name_ = asset_name.clone();

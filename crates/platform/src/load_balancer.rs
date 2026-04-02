@@ -144,6 +144,7 @@ enum LoadBalancerMessage {
     HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
+    Error { code: u64, msg: String },
 }
 
 /// The WebSocket messages that we send.
@@ -267,7 +268,20 @@ mod event_loop {
                                     tunnel_cancellation.clone(),
                                 );
 
-                            tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                            // This really shouldn’t fail, unless we hit the
+                            // TOCTOU race condition (very, very rare):
+                            if let Err(err) = tunnel_ctl.spawn_listener(resp.gateway_h2h_port).await
+                            {
+                                error!(
+                                    "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                    resp.gateway_h2h_port
+                                );
+                                loop_error = Err(format!(
+                                    "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                    resp.gateway_h2h_port
+                                ));
+                                break 'event_loop;
+                            }
 
                             let socket_tx_ = socket_tx.clone();
                             let config_ = config.clone();
@@ -291,6 +305,13 @@ mod event_loop {
 
                         let _ = hydra_kex.1.send(resp).await;
                     }
+                },
+
+                LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Error { code, msg }) => {
+                    error!(
+                        "load balancer: {}: received error from gateway: code={}, msg={}",
+                        config.uri, code, msg,
+                    );
                 },
 
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Request(request)) => {
