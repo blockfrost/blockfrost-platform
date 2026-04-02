@@ -202,8 +202,8 @@ impl super::HydraConfig {
 
         // 2. POST to hydra-node /commit
         let url = format!("http://127.0.0.1:{hydra_api_port}/commit");
-        let client = reqwest::Client::new();
-        let resp = client
+        let resp = self
+            .http
             .post(url)
             .header(header::CONTENT_TYPE, "application/json")
             .body(utxo_body)
@@ -357,7 +357,8 @@ impl super::HydraConfig {
         const MIN_OUTPUT_LOVELACE: u64 = super::MIN_LOVELACE_PER_TRANSACTION;
 
         let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
-        let utxo: Value = reqwest::Client::new()
+        let utxo: Value = self
+            .http
             .get(&snapshot_url)
             .send()
             .await?
@@ -529,7 +530,8 @@ impl super::HydraConfig {
 
         let url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
 
-        let v: Value = reqwest::Client::new()
+        let v: Value = self
+            .http
             .get(&url)
             .send()
             .await?
@@ -634,8 +636,12 @@ pub async fn is_tcp_port_free(port: u16) -> std::io::Result<bool> {
 }
 
 /// Checks if a Prometheus `metric` at `url` is greater or equal to `threshold`.
-pub async fn prometheus_metric_at_least(url: &str, metric: &str, threshold: f64) -> Result<bool> {
-    let client = reqwest::Client::new();
+pub async fn prometheus_metric_at_least(
+    client: &reqwest::Client,
+    url: &str,
+    metric: &str,
+    threshold: f64,
+) -> Result<bool> {
     let body = client
         .get(url)
         .send()
@@ -717,10 +723,16 @@ pub async fn send_one_websocket_msg(
     Ok(())
 }
 
-pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
+pub async fn fetch_head_tag(client: &reqwest::Client, hydra_api_port: u16) -> Result<String> {
     let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
-    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+    let v: serde_json::Value = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
 
     v.get("tag")
         .ok_or(anyhow!("missing tag"))
@@ -732,10 +744,19 @@ pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
 /// is `true`, meaning the contestation deadline has passed on-chain and a
 /// Fanout transaction can be theoretically submitted… and still sometimes fail…
 /// (we retry then).
-pub async fn fetch_head_ready_to_fanout(hydra_api_port: u16) -> Result<bool> {
+pub async fn fetch_head_ready_to_fanout(
+    client: &reqwest::Client,
+    hydra_api_port: u16,
+) -> Result<bool> {
     let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
-    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+    let v: serde_json::Value = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
 
     let tag = v.get("tag").and_then(|t| t.as_str()).unwrap_or_default();
     let ready = v
