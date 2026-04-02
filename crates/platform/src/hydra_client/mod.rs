@@ -216,7 +216,10 @@ impl State {
         let event_tx = self.event_tx.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
-            event_tx.send(event).await
+            event_tx
+                .send(event)
+                .await
+                .expect("we never close the event receiver");
         });
     }
 
