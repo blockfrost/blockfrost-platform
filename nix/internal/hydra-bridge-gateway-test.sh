@@ -352,7 +352,7 @@ blockfrost-sdk-bridge \
   --gateway-ws-url "${gateway_url}" \
   --listen-address "127.0.0.1:${bridge_port}" \
   --network "${NETWORK}" \
-  --node-socket-path "${CARDANO_NODE_SOCKET_PATH}" \
+  --blockfrost-project-id "${BLOCKFROST_PROJECT_ID}" \
   --cardano-signing-key "$(realpath credentials/bridge-hydra/payment.sk)" \
   > >(tee "$bridge_log" | sed -u 's/^/bridge:  /' >&2) 2>&1 &
 bridge_pid=$!

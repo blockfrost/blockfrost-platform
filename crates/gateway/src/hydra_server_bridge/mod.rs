@@ -1,7 +1,6 @@
 use crate::config::HydraConfig as HydraTomlConfig;
 use crate::types::Network;
 use anyhow::{Result, anyhow};
-use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::{
     Arc,
@@ -34,7 +33,11 @@ pub struct HydrasManager {
 }
 
 impl HydrasManager {
-    pub async fn new(config: &HydraTomlConfig, network: &Network) -> Result<Self> {
+    pub async fn new(
+        config: &HydraTomlConfig,
+        network: &Network,
+        blockfrost_project_id: &str,
+    ) -> Result<Self> {
         // Let’s add some ε of 1% just to be sure about rounding etc.
         let minimal_commit: f64 = 1.01
             * (config.lovelace_per_request
@@ -58,7 +61,7 @@ impl HydrasManager {
         }
 
         Ok(Self {
-            config: HydraConfig::load(config.clone(), network).await?,
+            config: HydraConfig::load(config.clone(), network, blockfrost_project_id).await?,
             controller_counter: Arc::new(Arc::new(())),
         })
     }
@@ -185,47 +188,52 @@ impl HydrasManager {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 struct HydraConfig {
     pub toml: HydraTomlConfig,
     pub network: Network,
     pub hydra_node_exe: String,
-    pub cardano_cli_exe: String,
+    pub blockfrost_api: blockfrost::BlockfrostAPI,
+    pub blockfrost_project_id: String,
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_cardano_addr: String,
     pub protocol_parameters: serde_json::Value,
+    /// Shared HTTP client for all outgoing requests (avoids re-creating the
+    /// TLS backend and connection pool on every call).
+    pub http: reqwest::Client,
 }
 
 impl HydraConfig {
-    pub async fn load(toml: HydraTomlConfig, network: &Network) -> Result<Self> {
+    pub async fn load(
+        toml: HydraTomlConfig,
+        network: &Network,
+        blockfrost_project_id: &str,
+    ) -> Result<Self> {
         let hydra_node_exe =
             bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
-        let cardano_cli_exe =
-            bf_common::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
-                .map_err(|e| anyhow!(e))?;
-        let self_ = Self {
+        let blockfrost_api = blockfrost::BlockfrostAPI::new(
+            blockfrost_project_id,
+            blockfrost::BlockFrostSettings::default(),
+        );
+        let mut self_ = Self {
             toml,
             network: network.clone(),
             hydra_node_exe,
-            cardano_cli_exe,
+            blockfrost_api,
+            blockfrost_project_id: blockfrost_project_id.to_string(),
             gateway_cardano_vkey: serde_json::Value::Null,
             gateway_cardano_addr: String::new(),
             protocol_parameters: serde_json::Value::Null,
+            http: reqwest::Client::new(),
         };
-        let gateway_cardano_addr = self_
-            .derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)
-            .await?;
-        let gateway_cardano_vkey = self_
-            .derive_vkey_from_skey(&self_.toml.cardano_signing_key)
-            .await?;
+        let gateway_cardano_addr =
+            self_.derive_enterprise_address_from_skey(&self_.toml.cardano_signing_key)?;
+        let gateway_cardano_vkey = Self::derive_vkey_from_skey(&self_.toml.cardano_signing_key)?;
         let protocol_parameters = self_.gen_protocol_parameters().await?;
-        let self_ = Self {
-            gateway_cardano_vkey,
-            gateway_cardano_addr,
-            protocol_parameters,
-            ..self_
-        };
+        self_.gateway_cardano_vkey = gateway_cardano_vkey;
+        self_.gateway_cardano_addr = gateway_cardano_addr;
+        self_.protocol_parameters = protocol_parameters;
         Ok(self_)
     }
 }
@@ -748,8 +756,15 @@ impl State {
             &self.kex_req.platform_cardano_vkey,
         )?;
 
-        let mut child = tokio::process::Command::new(&self.config.hydra_node_exe)
-            .arg("--node-id")
+        // Write the Blockfrost project ID to a file for hydra-node's --blockfrost option
+        let blockfrost_project_id_path = self.config_dir.join("blockfrost-project-id");
+        std::fs::write(
+            &blockfrost_project_id_path,
+            &self.config.blockfrost_project_id,
+        )?;
+
+        let mut cmd = tokio::process::Command::new(&self.config.hydra_node_exe);
+        cmd.arg("--node-id")
             .arg("gateway-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
@@ -763,16 +778,8 @@ impl State {
             .arg(&protocol_parameters_path)
             .arg("--contestation-period")
             .arg(format!("{}s", self.kex_resp.contestation_period.as_secs()))
-            .args(if self.config.network == Network::Mainnet {
-                vec!["-mainnet".to_string()]
-            } else {
-                vec![
-                    "--testnet-magic".to_string(),
-                    format!("{}", self.config.network.network_magic()),
-                ]
-            })
-            .arg("--node-socket")
-            .arg(std::env::var("CARDANO_NODE_SOCKET_PATH").unwrap()) // FIXME: no Cardano socket allowed here!
+            .arg("--blockfrost")
+            .arg(&blockfrost_project_id_path)
             .arg("--api-port")
             .arg(format!("{}", self.api_port))
             .arg("--api-host")
@@ -792,8 +799,19 @@ impl State {
             .arg(platform_cardano_vkey_path)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+
+        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
+        // killed by a test harness). This only applies to this single `cmd`.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            cmd.pre_exec(|| {
+                nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()?;
 
         self.hydra_pid = child.id();
 

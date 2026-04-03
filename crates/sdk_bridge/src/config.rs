@@ -20,8 +20,8 @@ pub struct Args {
     #[arg(long, value_enum)]
     pub network: Network,
 
-    #[arg(long, value_name = "FILE")]
-    pub node_socket_path: PathBuf,
+    #[arg(long, value_name = "PROJECT_ID")]
+    pub blockfrost_project_id: String,
 
     #[arg(long, value_name = "FILE")]
     pub cardano_signing_key: PathBuf,
@@ -32,7 +32,7 @@ pub struct BridgeConfig {
     pub gateway_ws_url: String,
     pub listen_address: SocketAddr,
     pub network: Network,
-    pub node_socket_path: PathBuf,
+    pub blockfrost_project_id: String,
     pub cardano_signing_key: PathBuf,
 }
 
@@ -48,7 +48,7 @@ impl BridgeConfig {
             gateway_ws_url,
             listen_address,
             network: args.network,
-            node_socket_path: args.node_socket_path,
+            blockfrost_project_id: args.blockfrost_project_id,
             cardano_signing_key: args.cardano_signing_key,
         })
     }

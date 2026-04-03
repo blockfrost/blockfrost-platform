@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
 
     let hydra_config = hydra_client::HydraConfig {
         cardano_signing_key: config.cardano_signing_key.clone(),
-        node_socket_path: config.node_socket_path.clone(),
+        blockfrost_project_id: config.blockfrost_project_id.clone(),
         network: config.network.clone(),
     };
 

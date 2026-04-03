@@ -18,7 +18,7 @@ const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 #[derive(Clone, Debug)]
 pub struct HydraConfig {
     pub cardano_signing_key: PathBuf,
-    pub node_socket_path: PathBuf,
+    pub blockfrost_project_id: String,
     pub network: Network,
 }
 
@@ -141,7 +141,6 @@ enum Event {
     Restart,
     Terminate,
     KeyExchangeResponse(KeyExchangeResponse),
-    TryToInitHead,
     FundCommitAddr,
     TryToCommit,
     WaitForOpen,
@@ -154,7 +153,9 @@ enum Event {
 struct State {
     config: HydraConfig,
     hydra_node_exe: String,
-    cardano_cli_exe: String,
+    blockfrost_api: Option<blockfrost::BlockfrostAPI>,
+    /// Shared HTTP client for all outgoing requests.
+    http: reqwest::Client,
     config_dir: PathBuf,
     platform_cardano_vkey: serde_json::Value,
     gateway_payment_addr: String,
@@ -190,9 +191,6 @@ impl State {
         let hydra_node_exe =
             crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
-        let cardano_cli_exe =
-            crate::find_libexec::find_libexec("cardano-cli", "CARDANO_CLI_PATH", &["version"])
-                .map_err(|e| anyhow!(e))?;
 
         let config_dir = dirs::config_dir()
             .expect("Could not determine config directory")
@@ -203,12 +201,21 @@ impl State {
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
+        let platform_cardano_vkey =
+            bf_common::cardano_keys::derive_vkey_from_skey(&config.cardano_signing_key)?;
+
+        let blockfrost_api = blockfrost::BlockfrostAPI::new(
+            &config.blockfrost_project_id,
+            blockfrost::BlockFrostSettings::default(),
+        );
+
         let mut self_ = Self {
             config,
             hydra_node_exe,
-            cardano_cli_exe,
+            blockfrost_api: Some(blockfrost_api),
+            http: reqwest::Client::new(),
             config_dir,
-            platform_cardano_vkey: serde_json::Value::Null,
+            platform_cardano_vkey,
             gateway_payment_addr: String::new(),
             payment_params: None,
             event_tx: event_tx.clone(),
@@ -227,11 +234,6 @@ impl State {
             commit_wallet_addr: String::new(),
             prepay_sent: false,
         };
-
-        let platform_cardano_vkey = self_
-            .derive_vkey_from_skey(&self_.config.cardano_signing_key)
-            .await?;
-        self_.platform_cardano_vkey = platform_cardano_vkey;
 
         self_.send(Event::Restart).await;
 
@@ -286,6 +288,12 @@ impl State {
             tokio::time::sleep(delay).await;
             event_tx.send(event).await
         });
+    }
+
+    fn blockfrost_api(&self) -> Result<&blockfrost::BlockfrostAPI> {
+        self.blockfrost_api
+            .as_ref()
+            .ok_or_else(|| anyhow!("blockfrost API not initialized"))
     }
 
     async fn process_event(&mut self, event: Event) -> Result<()> {
@@ -358,8 +366,7 @@ impl State {
 
                 if self.gateway_payment_addr.is_empty() {
                     let addr = self
-                        .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)
-                        .await?;
+                        .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)?;
                     info!("gateway payment address: {}", addr);
                     self.gateway_payment_addr = addr;
                 }
@@ -390,8 +397,7 @@ impl State {
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
                 if self.gateway_payment_addr.is_empty() {
                     let addr = self
-                        .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)
-                        .await?;
+                        .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)?;
                     info!("gateway payment address: {}", addr);
                     self.gateway_payment_addr = addr;
                 }
@@ -413,60 +419,16 @@ impl State {
                     .await
             },
 
-            Event::TryToInitHead => {
-                // During re-initialisation the Gateway sends `Init`; the
-                // Bridge's hydra-node will transition to "Initial" on its own.
-                // In that case we skip straight to commit.
-                let status = verifications::fetch_head_tag(self.api_port).await?;
-
-                if status == "Initial" {
-                    info!("head already Initial, proceeding to commit");
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
-                        .await
-                } else if status == "Open" {
-                    info!("head already Open, skipping init + commit");
-                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
-                        .await
-                } else {
-                    let ready = verifications::prometheus_metric_at_least(
-                        &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
-                        "hydra_head_peers_connected",
-                        1.0,
-                    )
-                    .await;
-
-                    info!("waiting for hydras to connect: ready={:?}", ready);
-
-                    if matches!(ready, Ok(true)) {
-                        verifications::send_one_websocket_msg(
-                            &format!("ws://127.0.0.1:{}/", self.api_port),
-                            serde_json::json!({"tag":"Init"}),
-                            Duration::from_secs(2),
-                        )
-                        .await?;
-
-                        // Commit wallet was already funded before we got here,
-                        // so proceed directly to commit.
-                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                            .await
-                    } else {
-                        self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
-                            .await
-                    }
-                }
-            },
-
             Event::FundCommitAddr => {
                 let commit_wallet = self.config_dir.join("commit-funds");
                 self.commit_wallet_skey = commit_wallet.with_extension("sk");
 
                 if !self.commit_wallet_skey.exists() {
-                    self.new_cardano_keypair(&commit_wallet).await?;
+                    Self::new_cardano_keypair(&commit_wallet)?;
                 }
 
-                self.commit_wallet_addr = self
-                    .derive_enterprise_address_from_skey(&self.commit_wallet_skey)
-                    .await?;
+                self.commit_wallet_addr =
+                    self.derive_enterprise_address_from_skey(&self.commit_wallet_skey)?;
 
                 let params = self.payment_params.clone().ok_or(anyhow!(
                     "payment parameters not set before funding commit address"
@@ -487,9 +449,9 @@ impl State {
                         top_up, current_lovelace, target_lovelace
                     );
                     self.fund_address(
-                        &self
-                            .derive_enterprise_address_from_skey(&self.config.cardano_signing_key)
-                            .await?,
+                        &self.derive_enterprise_address_from_skey(
+                            &self.config.cardano_signing_key,
+                        )?,
                         &self.commit_wallet_addr,
                         top_up,
                         &self.config.cardano_signing_key,
@@ -502,44 +464,79 @@ impl State {
                     );
                 }
 
-                // Proceed to Init (or straight to Commit if the head
-                // is already in "Initial" state, e.g. re-init).
-                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
+                // The Bridge never sends `Init`, as it waits for the Gateway's
+                // `Init` to land. `TryToCommit` polls the head status and retries
+                // until the head is "Initial".
+                self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                     .await
             },
 
             Event::TryToCommit => {
-                let commit_wallet_lovelace = self
-                    .lovelace_on_payment_skey(&self.commit_wallet_skey)
-                    .await?;
+                // Check head status first – the Gateway sends `Init`,
+                // the Bridge just waits for it to appear on L1.
+                let status = verifications::fetch_head_tag(self.api_port).await;
 
-                let params = self
-                    .payment_params
-                    .clone()
-                    .ok_or(anyhow!("payment parameters not set before commit"))?;
+                info!("waiting for the Initial head status: status={:?}", status);
 
-                let lovelace_needed = 0.99 * params.commit_ada * 1_000_000.0;
+                match status.as_deref() {
+                    Err(_) => {
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    },
+                    Ok("Open") => {
+                        info!("head already Open, skipping commit");
+                        self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
+                            .await
+                    },
+                    Ok("Initial") => {
+                        let commit_wallet_lovelace = self
+                            .lovelace_on_payment_skey(&self.commit_wallet_skey)
+                            .await?;
 
-                info!(
-                    "waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
-                    lovelace_needed.round(),
-                    commit_wallet_lovelace
-                );
+                        let params = self
+                            .payment_params
+                            .clone()
+                            .ok_or(anyhow!("payment parameters not set before commit"))?;
 
-                if commit_wallet_lovelace as f64 >= lovelace_needed {
-                    info!("submitting a Commit transaction to join the Hydra Head");
-                    self.commit_all_utxo_to_hydra(
-                        &self.commit_wallet_addr,
-                        self.api_port,
-                        &self.commit_wallet_skey,
-                    )
-                    .await?;
+                        let lovelace_needed = 0.99 * params.commit_ada * 1_000_000.0;
 
-                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
-                        .await
-                } else {
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                        .await
+                        info!(
+                            "commit address lovelace={}, needed={}",
+                            commit_wallet_lovelace,
+                            lovelace_needed.round()
+                        );
+
+                        if commit_wallet_lovelace as f64 >= lovelace_needed {
+                            info!("submitting a Commit transaction to join the Hydra Head");
+                            match self
+                                .commit_all_utxo_to_hydra(
+                                    &self.commit_wallet_addr,
+                                    self.api_port,
+                                    &self.commit_wallet_skey,
+                                )
+                                .await
+                            {
+                                Ok(()) => {
+                                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                                        .await
+                                },
+                                Err(err) => {
+                                    warn!("commit failed (will retry): {err}");
+                                    self.send_delayed(Event::TryToCommit, Duration::from_secs(5))
+                                        .await
+                                },
+                            }
+                        } else {
+                            self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                                .await
+                        }
+                    },
+                    Ok(_) => {
+                        // Head is in some other state (`Idle`, `Closed`, etc.),
+                        // let’s keep polling until the Gateway's `Init` lands.
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    },
                 }
             },
 
@@ -731,6 +728,16 @@ impl State {
         self.prepay_sent = false;
         self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
             .await;
+
+        // Wait before sending the prepay microtransaction. Both hydra-nodes
+        // must be in "Open" state for the snapshot to be signed. There can be a
+        // delay of tens of seconds between the Bridge and Gateway observing
+        // "Open" (Blockfrost lag). Without this delay the prepay tx may get
+        // `TxValid` but never reach `SnapshotConfirmed` because the Gateway's node
+        // wasn't ready to co-sign.
+        info!("delaying prepay by 15 s to let both nodes settle into Open");
+        tokio::time::sleep(Duration::from_secs(15)).await;
+
         self.send_prepay_microtransaction().await?;
         Ok(())
     }
@@ -760,8 +767,15 @@ impl State {
             &kex_response.gateway_cardano_vkey,
         )?;
 
-        let mut child = tokio::process::Command::new(&self.hydra_node_exe)
-            .arg("--node-id")
+        // Write the Blockfrost project ID to a file for hydra-node's --blockfrost option
+        let blockfrost_project_id_path = self.config_dir.join("blockfrost-project-id");
+        std::fs::write(
+            &blockfrost_project_id_path,
+            &self.config.blockfrost_project_id,
+        )?;
+
+        let mut cmd = tokio::process::Command::new(&self.hydra_node_exe);
+        cmd.arg("--node-id")
             .arg("bridge-node")
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
@@ -775,16 +789,8 @@ impl State {
             .arg(&protocol_parameters_path)
             .arg("--contestation-period")
             .arg(format!("{}s", kex_response.contestation_period.as_secs()))
-            .args(if self.config.network == Network::Mainnet {
-                vec!["-mainnet".to_string()]
-            } else {
-                vec![
-                    "--testnet-magic".to_string(),
-                    format!("{}", self.config.network.network_magic()),
-                ]
-            })
-            .arg("--node-socket")
-            .arg(&self.config.node_socket_path)
+            .arg("--blockfrost")
+            .arg(&blockfrost_project_id_path)
             .arg("--api-port")
             .arg(format!("{}", self.api_port))
             .arg("--api-host")
@@ -804,8 +810,19 @@ impl State {
             .arg(gateway_cardano_vkey_path)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+
+        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
+        // killed by a test harness). This only applies to this single `cmd`.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            cmd.pre_exec(|| {
+                nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn()?;
 
         self.hydra_pid = child.id();
 

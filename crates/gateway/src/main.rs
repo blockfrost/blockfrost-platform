@@ -49,8 +49,12 @@ async fn main() -> Result<()> {
     };
     let hydras_bridge_manager = if let Some(hydra_bridge_config) = &config.hydra_bridge {
         Some(
-            hydra_server_bridge::HydrasManager::new(hydra_bridge_config, &config.server.network)
-                .await?,
+            hydra_server_bridge::HydrasManager::new(
+                hydra_bridge_config,
+                &config.server.network,
+                &config.blockfrost.project_id,
+            )
+            .await?,
         )
     } else {
         None

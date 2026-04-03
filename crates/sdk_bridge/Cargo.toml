@@ -29,6 +29,8 @@ reqwest.workspace = true
 dirs.workspace = true
 url.workspace = true
 hex.workspace = true
+blockfrost.workspace = true
+cardano-serialization-lib.workspace = true
 
 [lints]
 workspace = true
