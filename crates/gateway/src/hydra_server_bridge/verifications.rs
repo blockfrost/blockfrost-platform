@@ -302,16 +302,23 @@ pub async fn send_one_websocket_msg(
 
     write.send(Message::Close(None)).await?;
 
-    // Drain until we observe the close handshake (or the peer drops):
-    while let Some(msg) = read.next().await {
-        match msg? {
-            Message::Close(_) => break,
-            Message::Text(msg) => {
-                tracing::info!("got WebSocket message: {}", msg)
-            },
-            msg => tracing::info!("got WebSocket message: {:?}", msg),
+    // Drain until we observe the close handshake (or the peer drops).
+    // Use a timeout so we never block the caller indefinitely — the hydra-node
+    // may keep the WebSocket open and continue sending events even after the
+    // client sends a Close frame.
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(4), async {
+        while let Some(msg) = read.next().await {
+            match msg {
+                Ok(Message::Close(_)) => break,
+                Ok(Message::Text(msg)) => {
+                    tracing::info!("got WebSocket message: {}", msg)
+                },
+                Ok(msg) => tracing::info!("got WebSocket message: {:?}", msg),
+                Err(_) => break,
+            }
         }
-    }
+    })
+    .await;
 
     Ok(())
 }
