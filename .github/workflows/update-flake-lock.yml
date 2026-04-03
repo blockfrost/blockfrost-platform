@@ -1,6 +1,7 @@
 name: Update flake.lock
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 6 * * 0" # Every Sunday at 06:00 UTC
 
@@ -12,7 +13,13 @@ jobs:
   update-flake-lock:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.LOCKFILE_UPDATE_APP_ID }}
+          private-key: ${{ secrets.LOCKFILE_UPDATE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v5
 
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
 
@@ -20,6 +27,6 @@ jobs:
         with:
           pr-title: "chore(nix): update `flake.lock`"
           pr-labels: dependencies,automated
-          # A separate PAT, so the PR triggers CI recursively (the original `GITHUB_TOKEN` won’t).
+          # A separate token, so the PR triggers CI recursively (the original `GITHUB_TOKEN` won’t).
           # Ref: https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
-          token: ${{ secrets.FLAKE_UPDATE_GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
