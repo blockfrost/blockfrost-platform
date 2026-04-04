@@ -656,7 +656,7 @@ impl State {
                 .await?;
                 self.send_delayed(
                     Event::WaitForClosed {
-                        retries_before_reclose: 15,
+                        retries_before_reclose: 10,
                     },
                     Duration::from_secs(3),
                 )
@@ -718,7 +718,7 @@ impl State {
                 // `readyToFanoutSent` was true.
                 self.send_delayed(
                     Event::WaitForIdleAfterClose {
-                        retries_before_refanout: 80,
+                        retries_before_refanout: 10,
                     },
                     Duration::from_secs(3),
                 )
