@@ -102,7 +102,8 @@ lovelace_per_request=$((1 * 1000 * 1000))
 requests_per_microtransaction=2
 # How many microtransactions until a fanout:
 microtransactions_per_fanout=2
-# How many fanout cycles to test (each is ~7 minutes):
+# How many fanout cycles to test (each can take up to ~20 minutes on a slow
+# Preview testnet day due to L1 confirmation times):
 num_fanout_cycles=3
 
 requests_per_fanout=$((requests_per_microtransaction * microtransactions_per_fanout))
@@ -426,7 +427,7 @@ log info "Waiting for the Hydra Head to become Open…"
 # Apparently we need to wait 10 minutes for the Head to open between a
 # `--blockfrost` Hydra node and a regular one. The future is now…
 
-wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 600 \
+wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 1200 \
   "Hydra Head open (initial)" || exit 1
 
 log info "Hydra Head is Open! Verifying the proxy route works…"
@@ -485,7 +486,7 @@ perform_fanout_cycle() {
 
   # The contestation period is 60s, the invalidity period is (2+1)*60 = 180s.
   # We wait much longer for: Close + Fanout + Idle (180s) + re-Init + re-Commit + re-Open.
-  fanout_wait_timeout=600
+  fanout_wait_timeout=1200
 
   # Wait for the Gateway log to show "re-initializing the Hydra Head" for the
   # Nth time, which means the Nth fanout completed and it's cycling back:
