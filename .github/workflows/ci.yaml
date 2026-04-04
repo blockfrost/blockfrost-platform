@@ -226,7 +226,7 @@ jobs:
   hydra_platform_gateway_tests:
     name: Hydra micropayments tests between Platform↔Gateway
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: check_flake_lock
+    needs: [check_flake_lock, build_and_test]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -243,7 +243,7 @@ jobs:
   hydra_bridge_gateway_tests:
     name: Hydra micropayments tests between Bridge↔Gateway
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: check_flake_lock
+    needs: [check_flake_lock, build_and_test]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
