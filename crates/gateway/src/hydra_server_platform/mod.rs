@@ -690,7 +690,7 @@ impl State {
                                 self.originator.as_str(),
                                 err,
                             );
-                            self.send_delayed(Event::TryToCommit, Duration::from_secs(5))
+                            self.send_delayed(Event::TryToCommit, Duration::from_secs(30))
                                 .await
                         },
                     }

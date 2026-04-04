@@ -528,14 +528,27 @@ impl State {
                                 "{}: submitting an empty Commit transaction to join the Hydra Head",
                                 self.customer_log_id
                             );
-                            self.config
+                            match self
+                                .config
                                 .empty_commit_to_hydra(
                                     self.api_port,
                                     &self.config.toml.cardano_signing_key,
                                 )
-                                .await?;
-                            self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                                 .await
+                            {
+                                Ok(()) => {
+                                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                                        .await
+                                },
+                                Err(err) => {
+                                    warn!(
+                                        "{}: commit failed (will retry): {}",
+                                        self.customer_log_id, err,
+                                    );
+                                    self.send_delayed(Event::TryToCommit, Duration::from_secs(30))
+                                        .await
+                                },
+                            }
                         } else if status == "Open" {
                             self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                                 .await
