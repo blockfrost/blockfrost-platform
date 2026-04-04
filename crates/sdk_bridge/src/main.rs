@@ -1,5 +1,4 @@
 mod config;
-mod find_libexec;
 mod http_proxy;
 mod hydra_client;
 mod protocol;

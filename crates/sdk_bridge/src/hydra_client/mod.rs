@@ -189,7 +189,7 @@ impl State {
         credits_available: Arc<AtomicU64>,
     ) -> Result<mpsc::Sender<Event>> {
         let hydra_node_exe =
-            crate::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+            bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
                 .map_err(|e| anyhow!(e))?;
 
         let config_dir = dirs::config_dir()
