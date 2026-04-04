@@ -477,7 +477,7 @@ impl State {
             Event::TryToCommit => {
                 // Check head status first – the Gateway sends `Init`,
                 // the Bridge just waits for it to appear on L1.
-                let status = verifications::fetch_head_tag(self.api_port).await;
+                let status = verifications::fetch_head_tag(&self.http, self.api_port).await;
 
                 info!("waiting for the Initial head status: status={:?}", status);
 
@@ -544,7 +544,7 @@ impl State {
             },
 
             Event::WaitForOpen => {
-                let status = verifications::fetch_head_tag(self.api_port).await?;
+                let status = verifications::fetch_head_tag(&self.http, self.api_port).await?;
                 info!("waiting for the Open head status: status={:?}", status);
                 if status == "Open" {
                     self.last_hydra_head_state = status.clone();
@@ -558,7 +558,7 @@ impl State {
             },
 
             Event::MonitorStates => {
-                let new_status = verifications::fetch_head_tag(self.api_port).await?;
+                let new_status = verifications::fetch_head_tag(&self.http, self.api_port).await?;
 
                 if new_status != self.last_hydra_head_state {
                     let old = self.last_hydra_head_state.clone();
@@ -598,6 +598,7 @@ impl State {
                         warn!("gateway payment address not set yet");
                     } else if let Some(params) = &self.payment_params {
                         match verifications::lovelace_in_snapshot_for_address(
+                            &self.http,
                             self.api_port,
                             &self.gateway_payment_addr,
                         )

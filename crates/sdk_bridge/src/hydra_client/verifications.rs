@@ -561,11 +561,15 @@ fn tx_builder_config_from_params(params: &serde_json::Value) -> Result<Transacti
     Ok(config)
 }
 
-pub async fn lovelace_in_snapshot_for_address(hydra_api_port: u16, address: &str) -> Result<u64> {
+pub async fn lovelace_in_snapshot_for_address(
+    client: &reqwest::Client,
+    hydra_api_port: u16,
+    address: &str,
+) -> Result<u64> {
     use anyhow::Context;
 
     let snapshot_url = format!("http://127.0.0.1:{hydra_api_port}/snapshot/utxo");
-    let utxo: Value = reqwest::Client::new()
+    let utxo: Value = client
         .get(&snapshot_url)
         .send()
         .await?
@@ -688,10 +692,16 @@ pub async fn send_one_websocket_msg(
     Ok(())
 }
 
-pub async fn fetch_head_tag(hydra_api_port: u16) -> Result<String> {
+pub async fn fetch_head_tag(client: &reqwest::Client, hydra_api_port: u16) -> Result<String> {
     let url = format!("http://127.0.0.1:{hydra_api_port}/head");
 
-    let v: serde_json::Value = reqwest::get(url).await?.error_for_status()?.json().await?;
+    let v: serde_json::Value = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
 
     v.get("tag")
         .ok_or(anyhow!("missing tag"))
