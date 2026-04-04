@@ -592,7 +592,7 @@ impl State {
                     // to observe the Init tx on L1 before re-sending Init.
                     self.send_delayed(
                         Event::WaitForInitial {
-                            retries_before_reinit: 80,
+                            retries_before_reinit: 10,
                         },
                         Duration::from_secs(3),
                     )
@@ -794,7 +794,7 @@ impl State {
                 .await?;
                 self.send_delayed(
                     Event::WaitForClosed {
-                        retries_before_reclose: 15,
+                        retries_before_reclose: 10,
                     },
                     Duration::from_secs(3),
                 )
@@ -861,7 +861,7 @@ impl State {
                 // `readyToFanoutSent` was true.
                 self.send_delayed(
                     Event::WaitForIdleAfterClose {
-                        retries_before_refanout: 80,
+                        retries_before_refanout: 10,
                     },
                     Duration::from_secs(3),
                 )
