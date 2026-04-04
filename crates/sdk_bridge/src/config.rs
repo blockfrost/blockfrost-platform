@@ -1,5 +1,5 @@
 use crate::types::Network;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use clap::Parser;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -68,7 +68,7 @@ fn normalize_gateway_ws_url(raw: &str) -> Result<String> {
         },
         "ws" | "wss" => {},
         other => {
-            return Err(anyhow!("Unsupported URL scheme: {other}"));
+            bail!("Unsupported URL scheme: {other}");
         },
     }
 

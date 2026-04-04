@@ -1,5 +1,5 @@
 use crate::types::Network;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use std::path::PathBuf;
 use std::sync::{
     Arc,
@@ -305,12 +305,12 @@ impl State {
                     .lovelace_on_payment_skey(&self.config.cardano_signing_key)
                     .await?;
                 if potential_fuel < MIN_FUEL_LOVELACE {
-                    Err(anyhow!(
+                    bail!(
                         "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                         potential_fuel as f64 / 1_000_000.0,
                         self.config.cardano_signing_key,
                         MIN_FUEL_LOVELACE as f64 / 1_000_000.0,
-                    ))?
+                    )
                 }
 
                 info!("fuel on cardano_signing_key: {:?} lovelace", potential_fuel);

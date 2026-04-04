@@ -1,6 +1,6 @@
 use crate::config::HydraConfig as HydraTomlConfig;
 use crate::types::Network;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use std::path::PathBuf;
 use std::sync::{
     Arc,
@@ -46,18 +46,18 @@ impl HydrasManager {
                 + MIN_LOVELACE_PER_TRANSACTION) as f64
             / 1_000_000.0;
         if config.commit_ada < minimal_commit {
-            Err(anyhow!(
+            bail!(
                 "Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout + {}.",
                 MIN_LOVELACE_PER_TRANSACTION as f64 / 1_000_000.0
-            ))?
+            )
         }
 
         let microtransaction_lovelace: u64 =
             config.lovelace_per_request * config.requests_per_microtransaction;
         if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
-            Err(anyhow!(
+            bail!(
                 "Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
-            ))?
+            )
         }
 
         Ok(Self {
@@ -71,9 +71,7 @@ impl HydrasManager {
         req: KeyExchangeRequest,
     ) -> Result<KeyExchangeResponse> {
         if req.accepted_platform_h2h_port.is_some() {
-            Err(anyhow!(
-                "`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`"
-            ))?
+            bail!("`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`")
         }
 
         let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
@@ -138,24 +136,20 @@ impl HydrasManager {
                 ..final_req.clone()
             })
         {
-            Err(anyhow!(
-                "The 2nd `KeyExchangeRequest` must be the same as the 1st one."
-            ))?
+            bail!("The 2nd `KeyExchangeRequest` must be the same as the 1st one.")
         }
 
         if final_req.accepted_platform_h2h_port != Some(initial.1.proposed_platform_h2h_port) {
-            Err(anyhow!(
-                "The Bridge must accept the same port that was proposed to it."
-            ))?
+            bail!("The Bridge must accept the same port that was proposed to it.")
         }
 
         // Clone first, to prevent the nastier race condition:
         let maybe_new = Arc::clone(self.controller_counter.as_ref());
         let new_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
         if new_count as u64 > self.config.toml.max_concurrent_hydra_nodes {
-            Err(anyhow!(
+            bail!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
-            ))?
+            )
         }
 
         if !(matches!(
@@ -165,9 +159,9 @@ impl HydrasManager {
             verifications::is_tcp_port_free(initial.1.proposed_platform_h2h_port).await,
             Ok(true)
         )) {
-            Err(anyhow!(
+            bail!(
                 "The exchanged ports are no longer free on the gateway, please perform another KEx."
-            ))?
+            )
         }
 
         let final_resp = KeyExchangeResponse {
