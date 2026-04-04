@@ -625,7 +625,7 @@ pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bo
     Ok(true)
 }
 
-/// Finds a free port by bind to port 0, to let the OS pick a free port.
+/// Finds a free port by binding to port 0, to let the OS pick a free port.
 pub async fn find_free_tcp_port() -> std::io::Result<u16> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
     let port = listener.local_addr()?.port();
