@@ -193,7 +193,11 @@ impl State {
                 .map_err(|e| anyhow!(e))?;
 
         let config_dir = dirs::config_dir()
-            .expect("Could not determine config directory")
+            .ok_or_else(|| {
+                anyhow!(
+                    "Could not determine config directory (HOME or XDG_CONFIG_HOME may be unset)"
+                )
+            })?
             .join("blockfrost-sdk-bridge")
             .join("hydra")
             .join(config.network.as_str())
