@@ -584,6 +584,13 @@ impl State {
 
             Event::MonitorCredits => {
                 if self.hydra_head_open {
+                    debug!(
+                        "MonitorCredits: credits={}, last_balance={}, sent_microtxs={}, accounted_reqs={}",
+                        self.credits_available.load(Ordering::SeqCst),
+                        self.credits_last_balance,
+                        self.sent_microtransactions,
+                        self.accounted_requests,
+                    );
                     if self.gateway_payment_addr.is_empty() {
                         warn!("gateway payment address not set yet");
                     } else if let Some(params) = &self.payment_params {
@@ -651,7 +658,11 @@ impl State {
                 };
 
                 if !self.hydra_head_open {
-                    warn!("would account a request, but the Hydra Head is not Open");
+                    warn!(
+                        "request not yet accounted because Hydra Head is not Open; retrying shortly"
+                    );
+                    self.send_delayed(Event::AccountOneRequest, Duration::from_millis(500))
+                        .await;
                     return Ok(());
                 }
 

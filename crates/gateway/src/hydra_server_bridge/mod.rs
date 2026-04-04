@@ -358,8 +358,9 @@ enum Event {
     MonitorCredits,
     TryToClose,
     WaitForClosed { retries_before_reclose: u64 },
+    WaitForFanoutReady,
     DoFanout,
-    WaitForIdleAfterClose,
+    WaitForIdleAfterClose { retries_before_refanout: u64 },
 }
 
 fn mk_config_dir(network: &Network, customer_machine_id: &str) -> Result<PathBuf> {
@@ -572,6 +573,15 @@ impl State {
 
             Event::MonitorCredits => {
                 if self.hydra_head_open && !self.is_closing {
+                    debug!(
+                        "{}: MonitorCredits: credits={}, last_balance={}, received_microtxs={}/{}, closing={}",
+                        self.customer_log_id,
+                        self.credits_available.load(Ordering::SeqCst),
+                        self.credits_last_balance,
+                        self.received_microtransactions,
+                        self.config.toml.microtransactions_per_fanout,
+                        self.is_closing,
+                    );
                     match verifications::lovelace_in_snapshot_for_address(
                         self.api_port,
                         &self.config.gateway_cardano_addr,
@@ -667,12 +677,8 @@ impl State {
                     self.customer_log_id, status
                 );
                 if status == "Closed" {
-                    let invalidity_period = (2 + 1) * CONTESTATION_PERIOD_SECONDS;
-                    info!(
-                        "{}: will wait through the invalidity period ({:?}) before requesting `Fanout`",
-                        self.customer_log_id, invalidity_period,
-                    );
-                    self.send_delayed(Event::DoFanout, invalidity_period).await
+                    self.send_delayed(Event::WaitForFanoutReady, Duration::from_secs(3))
+                        .await
                 } else {
                     self.send_delayed(
                         if retries_before_reclose <= 1 {
@@ -688,6 +694,21 @@ impl State {
                 }
             },
 
+            Event::WaitForFanoutReady => {
+                let ready = verifications::fetch_head_ready_to_fanout(self.api_port).await?;
+                info!(
+                    "{}: waiting for readyToFanoutSent on Closed head: ready={:?}",
+                    self.customer_log_id, ready,
+                );
+                if ready {
+                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
+                        .await
+                } else {
+                    self.send_delayed(Event::WaitForFanoutReady, Duration::from_secs(3))
+                        .await
+                }
+            },
+
             Event::DoFanout => {
                 info!("{}: requesting `Fanout`", self.customer_log_id,);
                 verifications::send_one_websocket_msg(
@@ -696,15 +717,26 @@ impl State {
                     Duration::from_secs(2),
                 )
                 .await?;
-                self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
-                    .await;
+                // Allow up to 10 polls (30s) for the Fanout to land before
+                // retrying. Otherwise, the Cardano node may reject the tx with
+                // `OutsideValidityIntervalUTxO` due to slot-lag even though
+                // `readyToFanoutSent` was true.
+                self.send_delayed(
+                    Event::WaitForIdleAfterClose {
+                        retries_before_refanout: 10,
+                    },
+                    Duration::from_secs(3),
+                )
+                .await;
             },
 
-            Event::WaitForIdleAfterClose => {
+            Event::WaitForIdleAfterClose {
+                retries_before_refanout,
+            } => {
                 let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
-                    "{}: waiting for the Idle head status (after Fanout): status={:?}",
-                    self.customer_log_id, status
+                    "{}: waiting for the Idle head status (after Fanout): status={:?} (retries_before_refanout={})",
+                    self.customer_log_id, status, retries_before_refanout,
                 );
                 if status == "Idle" {
                     info!(
@@ -717,9 +749,23 @@ impl State {
                     self.credits_last_balance = 0;
                     self.send_delayed(Event::TryToInitHead, Duration::from_secs(3))
                         .await;
-                } else {
-                    self.send_delayed(Event::WaitForIdleAfterClose, Duration::from_secs(3))
+                } else if retries_before_refanout <= 1 {
+                    // Fanout tx was likely rejected (e.g.
+                    // OutsideValidityIntervalUTxO due to slot-lag), let's retry.
+                    warn!(
+                        "{}: head still {:?} after Fanout — retrying Fanout",
+                        self.customer_log_id, status,
+                    );
+                    self.send_delayed(Event::DoFanout, Duration::from_secs(1))
                         .await;
+                } else {
+                    self.send_delayed(
+                        Event::WaitForIdleAfterClose {
+                            retries_before_refanout: retries_before_refanout - 1,
+                        },
+                        Duration::from_secs(3),
+                    )
+                    .await;
                 }
             },
         }
