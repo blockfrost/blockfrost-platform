@@ -531,7 +531,7 @@ impl super::HydraConfig {
         );
 
         let ws_url = format!("ws://127.0.0.1:{hydra_api_port}/");
-        send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(2)).await?;
+        send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(5)).await?;
 
         Ok(())
     }

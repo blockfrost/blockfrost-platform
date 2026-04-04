@@ -584,7 +584,7 @@ impl State {
                     verifications::send_one_websocket_msg(
                         &format!("ws://127.0.0.1:{}/", self.api_port),
                         serde_json::json!({"tag":"Init"}),
-                        Duration::from_secs(2),
+                        Duration::from_secs(5),
                     )
                     .await?;
 
@@ -789,12 +789,12 @@ impl State {
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Close"}),
-                    Duration::from_secs(2),
+                    Duration::from_secs(5),
                 )
                 .await?;
                 self.send_delayed(
                     Event::WaitForClosed {
-                        retries_before_reclose: 200,
+                        retries_before_reclose: 15,
                     },
                     Duration::from_secs(3),
                 )
@@ -852,7 +852,7 @@ impl State {
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Fanout"}),
-                    Duration::from_secs(2),
+                    Duration::from_secs(5),
                 )
                 .await?;
                 // Wait for the Fanout to land on L1 before retrying.
