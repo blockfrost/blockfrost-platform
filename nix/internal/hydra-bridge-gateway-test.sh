@@ -104,7 +104,8 @@ requests_per_microtransaction=2
 # How many microtransactions until a fanout (the Gateway counts the prepay as
 # microtransaction #1, so only microtransactions_per_fanout-1 are request-driven):
 microtransactions_per_fanout=3
-# How many fanout cycles to test (each is ~7 minutes):
+# How many fanout cycles to test (each can take up to ~20 minutes on a slow
+# Preview testnet day due to L1 confirmation times):
 num_fanout_cycles=3
 
 # The prepay counts as microtransaction #1 for the Gateway's fanout trigger,
@@ -434,7 +435,7 @@ log info "Waiting for the Hydra Head to become Open…"
 # The initial Head opening can take several minutes on the Cardano L1 (init +
 # commit + open transactions need to be confirmed):
 
-wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 600 \
+wait_for_gw_log_count 'waiting for the Open head status: status="Open"' 1 1200 \
   "Hydra Head open (initial)" || exit 1
 
 log info "Hydra Head is Open! Waiting for the Bridge to have request credits…"
@@ -506,7 +507,7 @@ perform_fanout_cycle() {
 
   # The contestation period is 60s, the invalidity period is (2+1)*60 = 180s.
   # We wait much longer for: Close + Fanout + Idle (180s) + re-Init + re-Commit + re-Open.
-  fanout_wait_timeout=600
+  fanout_wait_timeout=1200
 
   # Wait for the Gateway log to show "re-initializing the Hydra Head" for the
   # Nth time, which means the Nth fanout completed and it's cycling back:

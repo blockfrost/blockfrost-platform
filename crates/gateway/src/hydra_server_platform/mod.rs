@@ -588,12 +588,11 @@ impl State {
                     )
                     .await?;
 
-                    // Allow up to 10 retries (30s) for the hydra-node's
-                    // Blockfrost chain follower to observe the Init tx on L1
-                    // before re-sending Init.
+                    // Wait for the hydra-node's Blockfrost chain follower
+                    // to observe the Init tx on L1 before re-sending Init.
                     self.send_delayed(
                         Event::WaitForInitial {
-                            retries_before_reinit: 10,
+                            retries_before_reinit: 80,
                         },
                         Duration::from_secs(3),
                     )
@@ -786,6 +785,7 @@ impl State {
             },
 
             Event::TryToClose => {
+                info!("{}: closing the Hydra Head", self.originator.as_str());
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Close"}),
@@ -794,7 +794,7 @@ impl State {
                 .await?;
                 self.send_delayed(
                     Event::WaitForClosed {
-                        retries_before_reclose: 10,
+                        retries_before_reclose: 200,
                     },
                     Duration::from_secs(3),
                 )
@@ -855,13 +855,13 @@ impl State {
                     Duration::from_secs(2),
                 )
                 .await?;
-                // Allow up to 10 polls (30s) for the Fanout to land before
-                // retrying. Otherwise, the Cardano node may reject the tx with
+                // Wait for the Fanout to land on L1 before retrying.
+                // Otherwise, the Cardano node may reject the tx with
                 // `OutsideValidityIntervalUTxO` due to slot-lag even though
                 // `readyToFanoutSent` was true.
                 self.send_delayed(
                     Event::WaitForIdleAfterClose {
-                        retries_before_refanout: 10,
+                        retries_before_refanout: 80,
                     },
                     Duration::from_secs(3),
                 )
