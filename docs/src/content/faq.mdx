@@ -76,9 +76,9 @@ Yes, you can transfer your Icebreaker NFT to another wallet address by following
 After receiving the NFT, follow these steps to set up the Icebreaker platform:
 
 - [Install the Blockfrost platform](/installation/installers) using your preferred method
-- [Configure the platform](/usage/configuration) with your NFT address and secret key
+- [Configure the platform](/configuration) with your NFT address and secret key
 - [Run the platform](/usage/cli) either directly or as a service
-- [Verify your installation](/installation/verification) is working correctly.
+- [Verify your installation](/verification) is working correctly.
 
 For detailed instructions on each step, follow the links above.
 
@@ -156,7 +156,7 @@ While a dedicated `-4` CLI switch isn't currently available, you can work around
 
 ### How can I monitor and verify that my Icebreaker node is working correctly?
 
-Please see the [Verifying that you are up and running](/installation/verification) guide.
+Please see the [Verifying that you are up and running](/verification) guide.
 
 ### How can I check if my Icebreaker node is active?
 
@@ -165,7 +165,7 @@ Here are a couple of ways you can verify if your Icebreaker node is active:
 - Access the Icebreaker dashboard at [http://icebreakers.blockfrost.io/](http://icebreakers.blockfrost.io/) to check the status of your node
 - Use the command line to check logs for successful registration messages:
   ```bash
-  blockfrost-platform --config /etc/cardano/mainnet/blockfrost.toml
+  blockfrost-platform --config /etc/cardano/mainnet/config.toml
   ```
   Look for "Successfully registered with Icebreakers API."
 
@@ -243,7 +243,7 @@ The `Incoming / Outgoing bytes` dashboard chart is helpful for this.
 
 Common issues include:
 
-1. Incorrect configuration of the `blockfrost.toml` file
+1. Incorrect configuration of the `config.toml` file
 2. Using outdated versions of the platform
 3. External IP and port accessibility problems.
 4. Network connectivity problems, especially with IPv6
@@ -282,7 +282,7 @@ To resolve it:
 3. Verify external reachability by running `curl -v http://YOUR_PUBLIC_IP:3000/` which should return a 404 error
 4. If using IPv6, consider temporarily disabling it or specifying an IPv4 address explicitly in your configuration.
 
-See the [Usage > configuration](/usage/configuration) documentation for more details.
+See the [configuration](/configuration) documentation for more details.
 
 ### How do I handle IPv6 connectivity issues?
 

@@ -65,7 +65,6 @@ The message `DEBUG: Decoding done` indicates normal operation.
 If you don't see this message or encounter errors, check:
 
 - Node socket path accessibility
-- Network configuration
 - Secret key validity.
 
 ### Operational verification
