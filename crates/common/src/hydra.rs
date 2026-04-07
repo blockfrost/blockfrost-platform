@@ -1,4 +1,6 @@
+#[cfg(unix)]
 use std::time::Duration;
+#[cfg(unix)]
 use tracing::warn;
 
 /// Send `SIGTERM` to every process in the group identified by `pgid`,
