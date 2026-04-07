@@ -40,10 +40,10 @@ impl HydrasManager {
     ) -> Result<Self> {
         // Let’s add some ε of 1% just to be sure about rounding etc.
         let minimal_commit: f64 = 1.01
-            * (config.lovelace_per_request
-                * config.requests_per_microtransaction
-                * config.microtransactions_per_fanout
-                + MIN_LOVELACE_PER_TRANSACTION) as f64
+            * (config.lovelace_per_request as u128
+                * config.requests_per_microtransaction as u128
+                * config.microtransactions_per_fanout as u128
+                + MIN_LOVELACE_PER_TRANSACTION as u128) as f64
             / 1_000_000.0;
         if config.commit_ada < minimal_commit {
             bail!(
@@ -52,9 +52,9 @@ impl HydrasManager {
             )
         }
 
-        let microtransaction_lovelace: u64 =
-            config.lovelace_per_request * config.requests_per_microtransaction;
-        if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION {
+        let microtransaction_lovelace: u128 =
+            config.lovelace_per_request as u128 * config.requests_per_microtransaction as u128;
+        if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION as u128 {
             bail!(
                 "Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
             )
