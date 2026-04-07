@@ -98,7 +98,7 @@
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
 
         checks = let
-          checks' = internal.cargoChecks // internal.nixChecks;
+          checks' = internal.cargoChecks // internal.nixChecks // internal.dockerChecks;
         in
           checks'
           // {

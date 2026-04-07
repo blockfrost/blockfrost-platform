@@ -269,6 +269,25 @@ in
         '';
     };
 
+    # Verify that the Docker config generation (Bash template + sed) produces
+    # configs identical to the Nix-generated ones, for every network.
+    dockerChecks = {
+      docker-dolos-config = pkgs.runCommandNoCC "docker-dolos-config-check" {} ''
+        for network in mainnet preprod preview; do
+          echo "Checking $network..."
+          bash ${../../docker}/generate-dolos-config.sh \
+            --genesis-prefix ${dolos-configs} \
+            --storage-path dolos \
+            "$network" >generated.toml
+          diff -u ${dolos-configs}/$network/dolos.toml generated.toml || {
+            echo >&2 "FAIL: Docker-generated config for $network does not match Nix-generated config."
+            exit 1
+          }
+        done
+        touch $out
+      '';
+    };
+
     cardano-node-flake = let
       unpatched = inputs.cardano-node;
     in
