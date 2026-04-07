@@ -254,7 +254,7 @@ mod event_loop {
                     if let Some(hydra_kex) = &hydra_kex {
                         // Only start the TCP-over-WebSocket tunnels if we’re running
                         // on different machines:
-                        if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
+                        if resp.machine_id != bf_common::hydra::MachineId::of_this_host() {
                             let (tunnel_ctl, mut tunnel_rx) =
                                 bf_common::tcp_mux_tunnel::Tunnel::new(
                                     bf_common::tcp_mux_tunnel::TunnelConfig {

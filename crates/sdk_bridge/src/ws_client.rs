@@ -193,7 +193,7 @@ async fn run_ws_loop(
             },
 
             BridgeEvent::NewGatewayMessage(GatewayMessage::HydraKExResponse(resp)) => {
-                if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
+                if resp.machine_id != bf_common::hydra::MachineId::of_this_host() {
                     let (tunnel_ctl, mut tunnel_rx) = bf_common::tcp_mux_tunnel::Tunnel::new(
                         bf_common::tcp_mux_tunnel::TunnelConfig {
                             expose_port: resp.proposed_platform_h2h_port,

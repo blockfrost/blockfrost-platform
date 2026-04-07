@@ -352,32 +352,6 @@ pub async fn fetch_head_ready_to_fanout(hydra_api_port: u16) -> Result<bool> {
     Ok(tag == "Closed" && ready)
 }
 
-/// We use it for `localhost` tests, to detect if the Gateway and Bridge are
-/// running on the same host. Then we cannot set up a
-/// `[bf_common::tcp_mux_tunnel::Tunnel]`, because the ports are already taken.
-pub fn hashed_machine_id() -> String {
-    const MACHINE_ID_NAMESPACE: &str = "blockfrost.machine-id.v1";
-
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(MACHINE_ID_NAMESPACE.as_bytes());
-    hasher.update(b":");
-
-    match machine_uid::get() {
-        Ok(id) => {
-            hasher.update(id.as_bytes());
-        },
-        Err(e) => {
-            tracing::warn!(error = ?e, "machine_uid::get() failed; falling back to random bytes");
-            let mut fallback = [0u8; 32];
-            getrandom::fill(&mut fallback)
-                .expect("getrandom::fill shouldn’t fail in normal circumstances");
-            hasher.update(&fallback);
-        },
-    }
-
-    hasher.finalize().to_hex().to_string()
-}
-
 /// Convert Blockfrost epoch-parameters JSON (snake_case field names) to the
 /// cardano-cli protocol-parameters format (camelCase) that hydra-node expects
 /// for `--ledger-protocol-parameters`.
