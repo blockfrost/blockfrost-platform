@@ -11,6 +11,7 @@ pub mod epochs;
 pub mod errors;
 pub mod find_libexec;
 pub mod genesis;
+pub mod hydra;
 pub mod json_client;
 pub mod metadata;
 pub mod pagination;
