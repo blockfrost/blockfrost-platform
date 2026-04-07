@@ -54,8 +54,7 @@ This should return the current version number.
 Start the service and check for successful initialization:
 
 ```shell
-blockfrost-platform --network mainnet \
-                    --node-address 127.0.0.1 \
+blockfrost-platform --node-socket-path /path/to/node.socket \
                     --secret your_icebreaker_secret \
                     --reward-address your_nft_address
 ```
