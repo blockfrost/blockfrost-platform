@@ -709,18 +709,6 @@ pub async fn fetch_head_tag(client: &reqwest::Client, hydra_api_port: u16) -> Re
         .map(|a| a.to_string())
 }
 
-#[cfg(unix)]
-pub fn sigterm(pid: u32) -> Result<()> {
-    use nix::sys::signal::{Signal, kill};
-    use nix::unistd::Pid;
-    Ok(kill(Pid::from_raw(pid as i32), Signal::SIGTERM)?)
-}
-
-#[cfg(windows)]
-pub fn sigterm(_pid: u32) -> Result<()> {
-    unimplemented!("SIGTERM is not available on Windows, but there's no `hydra-node` to run there")
-}
-
 /// We use it for `localhost` tests, to detect if the Gateway and Bridge are
 /// running on the same host. Then we cannot set up a
 /// `[bf_common::tcp_mux_tunnel::Tunnel]`, because the ports are already taken.

@@ -484,6 +484,8 @@ impl State {
         if let Some(pid) = self.hydra_pid.take() {
             #[cfg(unix)]
             bf_common::hydra::kill_and_wait_process_group(pid).await;
+            #[cfg(not(unix))]
+            let _ = pid;
         }
     }
 
