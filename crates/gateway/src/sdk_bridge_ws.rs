@@ -454,11 +454,12 @@ pub mod event_loop {
     }
 
     fn error_response(request_id: RequestId, code: StatusCode, why: String) -> JsonResponse {
+        use base64::{Engine as _, engine::general_purpose};
         JsonResponse {
             id: request_id,
             code: code.as_u16(),
             header: vec![],
-            body_base64: why,
+            body_base64: general_purpose::STANDARD.encode(why.as_bytes()),
         }
     }
 }
@@ -497,11 +498,12 @@ async fn handle_one(http_router: axum::Router, request: JsonRequest) -> JsonResp
         Ok(ok) => ok,
         Err((code, err)) => {
             error!("sdk-bridge-ws: returning {}, because: {}", code, err);
+            use base64::{Engine as _, engine::general_purpose};
             JsonResponse {
                 id: request_id_,
                 code: code.into(),
                 header: vec![],
-                body_base64: err,
+                body_base64: general_purpose::STANDARD.encode(err.as_bytes()),
             }
         },
     }

@@ -448,10 +448,11 @@ where
 }
 
 fn error_response(request_id: RequestId, code: u16, msg: String) -> JsonResponse {
+    use base64::{Engine as _, engine::general_purpose};
     JsonResponse {
         id: request_id,
         code,
         header: vec![],
-        body_base64: msg,
+        body_base64: general_purpose::STANDARD.encode(msg.as_bytes()),
     }
 }

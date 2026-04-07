@@ -1051,13 +1051,14 @@ pub mod event_loop {
             why,
             request.underlying,
         );
+        use base64::{Engine as _, engine::general_purpose};
         let _ignored_failure: Result<_, _> = request
             .respond_to
             .send(JsonResponse {
                 id: request_id.clone(),
                 code: code.as_u16(),
                 header: vec![],
-                body_base64: why.to_string(),
+                body_base64: general_purpose::STANDARD.encode(why.as_bytes()),
             })
             .inspect_err(|_| {
                 warn!(

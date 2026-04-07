@@ -573,11 +573,12 @@ mod event_loop {
             Ok(ok) => ok,
             Err((code, err)) => {
                 error!("returning {}, because: {}", code, err);
+                use base64::{Engine as _, engine::general_purpose};
                 JsonResponse {
                     id: request_id_,
                     code: code.into(),
                     header: vec![],
-                    body_base64: err,
+                    body_base64: general_purpose::STANDARD.encode(err.as_bytes()),
                 }
             },
         }
