@@ -858,7 +858,23 @@ pub mod event_loop {
         let (mut sock_tx, mut sock_rx) = socket.split();
         let asset_name_ = asset_name.clone();
         let response_task = tokio::spawn(async move {
-            while let Some(Ok(msg)) = sock_rx.next().await {
+            loop {
+                let msg = match sock_rx.next().await {
+                    Some(Ok(msg)) => msg,
+                    Some(Err(err)) => {
+                        warn!("{}: socket read error: {err:?}", asset_name_.as_str(),);
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish(format!("socket read error: {err:?}")))
+                            .await;
+                        break;
+                    },
+                    None => {
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish("relay disconnected".to_string()))
+                            .await;
+                        break;
+                    },
+                };
                 match msg {
                     Message::Text(text) => {
                         match serde_json::from_str::<RelayMessage>(&text) {

@@ -378,7 +378,23 @@ pub mod event_loop {
         let (msg_tx, mut msg_rx) = mpsc::channel::<Message>(64);
         let (mut sock_tx, mut sock_rx) = socket.split();
         let response_task = tokio::spawn(async move {
-            while let Some(Ok(msg)) = sock_rx.next().await {
+            loop {
+                let msg = match sock_rx.next().await {
+                    Some(Ok(msg)) => msg,
+                    Some(Err(err)) => {
+                        warn!("sdk-bridge-ws: socket read error: {err:?}");
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(BridgeEvent::Finish(format!("socket read error: {err:?}")))
+                            .await;
+                        break;
+                    },
+                    None => {
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(BridgeEvent::Finish("bridge disconnected".to_string()))
+                            .await;
+                        break;
+                    },
+                };
                 match msg {
                     Message::Text(text) => {
                         match serde_json::from_str::<BridgeMessage>(&text) {
