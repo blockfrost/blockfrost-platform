@@ -670,6 +670,7 @@ dependencies = [
  "getrandom 0.3.2",
  "hex",
  "inquire",
+ "nix",
  "pallas-addresses",
  "pallas-network",
  "pretty_assertions",

@@ -3,6 +3,7 @@ use crate::types::{AssetName, Network};
 use anyhow::{Result, anyhow, bail};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -363,6 +364,9 @@ struct State {
     is_closing: bool,
     hydra_pid: Option<u32>,
     hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
+    /// Incremented on every [`Event::Restart`] so that delayed events from a
+    /// previous epoch are silently dropped instead of piling up.
+    restart_gen: Arc<AtomicU64>,
 }
 
 impl State {
@@ -399,6 +403,7 @@ impl State {
             is_closing: false,
             hydra_pid: None,
             hydra_watchdog: None,
+            restart_gen: Arc::new(AtomicU64::new(0)),
         };
 
         self_.send(Event::Restart).await;
@@ -433,20 +438,44 @@ impl State {
 
     async fn send_delayed(&self, event: Event, delay: Duration) {
         let event_tx = self.event_tx.clone();
+        let current_gen = self.restart_gen.load(Ordering::Relaxed);
+        let restart_gen = self.restart_gen.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
-            event_tx
-                .send(event)
-                .await
-                .expect("we never close the event receiver");
+            // Drop the event if a restart has happened since it was scheduled,
+            // preventing stale event chains from piling up.
+            if restart_gen.load(Ordering::Relaxed) == current_gen {
+                event_tx
+                    .send(event)
+                    .await
+                    .expect("we never close the event receiver");
+            }
         });
+    }
+
+    /// Terminate the running `hydra-node` **and** all its descendant processes
+    /// (e.g. `etcd`) by killing the whole process group, wait for every member
+    /// to exit, then abort the watchdog task so it does not send a stale
+    /// [`Event::Restart`].
+    async fn stop_hydra_node(&mut self) {
+        if let Some(watchdog) = self.hydra_watchdog.take() {
+            watchdog.abort();
+        }
+        if let Some(pid) = self.hydra_pid.take() {
+            #[cfg(unix)]
+            bf_common::hydra::kill_and_wait_process_group(pid).await;
+        }
     }
 
     async fn process_event(&mut self, event: Event) -> Result<()> {
         match event {
             Event::Restart => {
+                // Invalidate all delayed events from the previous epoch so
+                // they do not pile up into parallel polling chains.
+                self.restart_gen.fetch_add(1, Ordering::Relaxed);
                 info!("{}: starting…", self.originator.as_str());
                 self.hydra_head_open = false;
+                self.hydra_peers_connected = false;
                 self.is_closing = false;
                 self.sent_microtransactions = 0;
                 self.accounted_requests = 0;
@@ -458,14 +487,7 @@ impl State {
             },
 
             Event::Terminate => {
-                // Abort the watchdog first so it doesn't send a Restart event
-                // when `hydra-node` exits:
-                if let Some(watchdog) = self.hydra_watchdog.take() {
-                    watchdog.abort();
-                }
-                if let Some(pid) = self.hydra_pid {
-                    verifications::sigterm(pid)?
-                }
+                self.stop_hydra_node().await;
             },
 
             Event::FundCommitAddr => {
@@ -928,6 +950,11 @@ impl State {
         use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
 
+        // Kill the previous hydra-node process group (including orphaned
+        // children like etcd) and wait for all members to exit before
+        // starting a fresh instance (avoids ETXTBSY on the etcd binary).
+        self.stop_hydra_node().await;
+
         self.api_port = verifications::find_free_tcp_port().await?;
         self.metrics_port = verifications::find_free_tcp_port().await?;
 
@@ -999,11 +1026,14 @@ impl State {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Ask the kernel to `SIGTERM` `hydra-node` if our process dies (e.g.
-        // killed by a test harness). This only applies to this single `cmd`.
-        #[cfg(target_os = "linux")]
+        // Put hydra-node in its own process group so we can kill the entire
+        // group (including children like etcd) on restart. Also ask the kernel
+        // to SIGTERM hydra-node if our gateway process dies (Linux only).
+        #[cfg(unix)]
         unsafe {
             cmd.pre_exec(|| {
+                nix::libc::setpgid(0, 0);
+                #[cfg(target_os = "linux")]
                 nix::libc::prctl(nix::libc::PR_SET_PDEATHSIG, nix::libc::SIGTERM);
                 Ok(())
             });
@@ -1033,15 +1063,21 @@ impl State {
         });
 
         let event_tx = self.event_tx.clone();
+        let current_gen = self.restart_gen.load(Ordering::Relaxed);
+        let restart_gen = self.restart_gen.clone();
         self.hydra_watchdog = Some(tokio::spawn(async move {
             match child.wait().await {
                 Ok(status) => {
                     warn!("hydra-node: exited: {}", status);
                     tokio::time::sleep(Self::RESTART_DELAY).await;
-                    event_tx
-                        .send(Event::Restart)
-                        .await
-                        .expect("we never close the event receiver");
+                    // Only send Restart if no newer restart has already been
+                    // initiated (e.g. by the error handler).
+                    if restart_gen.load(Ordering::Relaxed) == current_gen {
+                        event_tx
+                            .send(Event::Restart)
+                            .await
+                            .expect("we never close the event receiver");
+                    }
                 },
                 Err(e) => {
                     error!("hydra-node: failed to wait: {e}");

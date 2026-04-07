@@ -29,7 +29,8 @@ clap.workspace = true
 pallas-addresses.workspace = true
 base64.workspace = true
 bytes.workspace = true
-tokio = { workspace = true, features = ["net", "io-util", "sync"] }
+nix = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util", "sync", "time"] }
 tokio-util.workspace = true
 
 [dev-dependencies]
