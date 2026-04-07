@@ -163,7 +163,7 @@ impl LoadBalancerState {
             let still_valid = state.expires > now;
             if !still_valid {
                 warn!(
-                    "load balancer: {}: unused WebSocket access token expired",
+                    "{}: unused WebSocket access token expired",
                     state.name.as_str(),
                 )
             }
@@ -362,7 +362,7 @@ pub mod api {
         match rv {
             Ok(resp) => Ok(resp),
             Err((code, reason)) => {
-                error!("load balancer: returning {}, because: {}", code, reason);
+                error!("returning {}, because: {}", code, reason);
                 Ok((code, reason).into_response())
             },
         }
@@ -400,10 +400,7 @@ pub mod event_loop {
         // Allow only 1 connection per NFT:
         disconnect_existing_sessions_of(&token_state, &load_balancer).await;
 
-        info!(
-            "load balancer: {}: new relay connection",
-            asset_name.as_str()
-        );
+        info!("{}: new relay connection", asset_name.as_str());
 
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
         let (request_tx, request_task) = wire_requests(event_tx.clone()).await;
@@ -527,7 +524,7 @@ pub mod event_loop {
             .unwrap_or("reason unknown".to_string());
 
         warn!(
-            "load balancer: {}: connection event loop finished: {}",
+            "{}: connection event loop finished: {}",
             asset_name.as_str(),
             disconnection_reason_
         );
@@ -593,7 +590,7 @@ pub mod event_loop {
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
 
-        info!("load balancer: {}: lost relay", asset_name.as_str());
+        info!("{}: lost relay", asset_name.as_str());
     }
 
     /// We currently want to allow only a single connection per NFT:
@@ -710,7 +707,7 @@ pub mod event_loop {
                                 }
                             },
                             Err(err) => warn!(
-                                "load balancer: {}: received unparsable text message: {:?}: {:?}",
+                                "{}: received unparsable text message: {:?}: {:?}",
                                 asset_name.as_str(),
                                 text,
                                 err,
@@ -719,14 +716,14 @@ pub mod event_loop {
                     },
                     Message::Binary(bin) => {
                         warn!(
-                            "load balancer: {}: received unexpected binary message: {:?}",
+                            "{}: received unexpected binary message: {:?}",
                             asset_name.as_str(),
                             hex::encode(bin),
                         );
                     },
                     Message::Close(frame) => {
                         warn!(
-                            "load balancer: {}: relay disconnected (CloseFrame: {:?})",
+                            "{}: relay disconnected (CloseFrame: {:?})",
                             asset_name.as_str(),
                             frame,
                         );
@@ -758,7 +755,7 @@ pub mod event_loop {
                     Ok(_) => Ok(()),
                     Err(err) => {
                         error!(
-                            "load balancer: {}: error when sending a Pong: {:?}",
+                            "{}: error when sending a Pong: {:?}",
                             asset_name.as_str(),
                             err
                         );
@@ -773,7 +770,7 @@ pub mod event_loop {
                 let err = format!(
                     "error when serializing request to JSON (this will never happen): {err:?}"
                 );
-                error!("load balancer: {}: {}", asset_name.as_str(), err);
+                error!("{}: {}", asset_name.as_str(), err);
                 Err(err)
             },
         }
@@ -800,14 +797,14 @@ pub mod event_loop {
                 match request_state.respond_to.send(response) {
                     Ok(_) => (),
                     Err(_) => warn!(
-                        "load balancer: {}: received response after its request timed out: {}",
+                        "{}: received response after its request timed out: {}",
                         asset_name.as_str(),
                         request_id.0,
                     ),
                 }
             },
             None => warn!(
-                "load balancer: {}: received supposed response for non-existent request: {}",
+                "{}: received supposed response for non-existent request: {}",
                 asset_name.as_str(),
                 response.id.0,
             ),
@@ -869,7 +866,7 @@ pub mod event_loop {
     ) {
         let request_id = request.underlying.id.clone();
         error!(
-            "load balancer: {}: failing request with {}: {}: {:?}",
+            "{}: failing request with {}: {}: {:?}",
             asset_name.as_str(),
             code.to_string(),
             why,
@@ -885,7 +882,7 @@ pub mod event_loop {
             })
             .inspect_err(|_| {
                 warn!(
-                    "load balancer: {}: tried to fail a request after said request timed out: {}",
+                    "{}: tried to fail a request after said request timed out: {}",
                     asset_name.as_str(),
                     request_id.0,
                 )
