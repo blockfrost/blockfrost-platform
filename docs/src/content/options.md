@@ -12,32 +12,52 @@ Default: 3000
 Default: 8192\
 Maximum number of concurrent requests the server will handle. Requests exceeding this limit will receive a 503 Service Unavailable response.
 
-`--network <NETWORK>` (required)\
-Possible values: mainnet, preprod, preview
-
 `--log-level <LOG_LEVEL>`\
 Default: info\
 Possible values: debug, info, warn, error, trace
 
-`--node-socket-path <CARDANO_NODE_SOCKET_PATH>` (required)
+`--node-socket-path <CARDANO_NODE_SOCKET_PATH>` (required)\
+Path to the Cardano node socket. The network is automatically detected from the node.
 
 `--mode <MODE>`\
 Default: compact\
 Possible values: compact, light, full
 
+`--config <PATH>`\
+Path to an existing configuration file.
+
+`--init`\
+Initialize a new configuration file via an interactive wizard.
+
 `--solitary`\
-Run in solitary mode, without registering with the Icebreakers API\
+Run in solitary mode, without registering with the Icebreakers API.\
 Conflicts with `--secret` and `--reward-address`
 
 `--secret <SECRET>`\
-Required unless `--solitary` is present\
+Required unless `--solitary` is present.\
 Conflicts with `--solitary`\
 Requires `--reward-address`
 
 `--reward-address <REWARD_ADDRESS>`\
-Required unless `--solitary` is present\
+Required unless `--solitary` is present.\
 Conflicts with `--solitary`\
 Requires `--secret`
+
+`--data-node <ENDPOINT>`\
+URL of a data node (e.g. Dolos) to use for querying chain data.
+
+`--data-node-timeout-sec <SECONDS>`\
+Default: 30\
+Timeout in seconds for data node requests.
+
+`--gateway-url <URL>`\
+Override the Gateway API URL (default: derived from network). Useful for self-hosted gateways or testing.
+
+`--no-metrics`\
+Disable the Prometheus metrics endpoint.
+
+`--custom-genesis-config <PATH>`\
+Path to a custom genesis configuration file.
 
 `--help`\
 Print help information
