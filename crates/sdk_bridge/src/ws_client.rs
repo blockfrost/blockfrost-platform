@@ -130,6 +130,8 @@ async fn run_ws_loop(
     let inflight: std::sync::Arc<Mutex<HashMap<RequestId, oneshot::Sender<JsonResponse>>>> =
         std::sync::Arc::new(Mutex::new(HashMap::new()));
 
+    let clean_up_task = tokio::spawn(clean_up_expired_requests_periodically(inflight.clone()));
+
     let kex_fwd_task = {
         let event_tx = event_tx.clone();
         tokio::spawn(async move {
@@ -322,9 +324,25 @@ async fn run_ws_loop(
         arbitrary_msg_task,
         kex_fwd_task,
         request_fwd_task,
+        clean_up_task,
     ];
     children.iter().for_each(|t| t.abort());
     futures::future::join_all(children).await;
+}
+
+/// A background task to periodically remove timed-out requests from
+/// `inflight`. It matters only for conserving memory, no other logic depends
+/// on it.
+async fn clean_up_expired_requests_periodically(
+    inflight: std::sync::Arc<Mutex<HashMap<RequestId, oneshot::Sender<JsonResponse>>>>,
+) {
+    loop {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        inflight
+            .lock()
+            .await
+            .retain(|_, sender| !sender.is_closed());
+    }
 }
 
 enum BridgeEvent {
