@@ -48,7 +48,7 @@ async fn proxy_route(
         Err(err) => return bridge_error_to_response(err),
     };
 
-    if (200..400).contains(&response.code) {
+    if (200..500).contains(&response.code) {
         state.bridge.hydra().account_one_request().await;
     }
 
