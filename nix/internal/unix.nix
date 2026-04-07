@@ -520,7 +520,7 @@ in
     );
 
     # XXX: If unsure during updates, check that the configs evaluate to this command run in the ops repo:
-    # `nix </dev/null build --impure -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
+    # `nix </dev/null build -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
     dolos-configs = let
       networks = ["mainnet" "preprod" "preview"];
 
@@ -537,6 +537,15 @@ in
         magic = toString byronGenesis.protocolConsts.protocolMagic;
       in
         pkgs.writeText "dolos.toml" (''
+            [chain]
+            is_testnet = ${
+              if network != "mainnet"
+              then "true"
+              else "false"
+            }
+            magic = ${magic}
+            type = "cardano"
+
             [genesis]
             alonzo_path = "alonzo.json"
             byron_path = "byron.json"
@@ -575,12 +584,6 @@ in
             pull_batch_size = 100
 
             [upstream]
-          ''
-          + lib.optionalString (network != "mainnet") ''
-            is_testnet = true
-          ''
-          + ''
-            network_magic = ${magic}
             peer_address = "${peerAddr}"
           '');
     in
