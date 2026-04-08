@@ -126,7 +126,6 @@ impl HydrasManager {
             hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
             protocol_parameters: self.config.protocol_parameters.clone(),
             contestation_period: CONTESTATION_PERIOD_SECONDS,
-            blockfrost_project_id: self.config.blockfrost_project_id.clone(),
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
             kex_done: false,
@@ -273,7 +272,6 @@ pub struct KeyExchangeResponse {
     pub hydra_scripts_tx_id: String,
     pub protocol_parameters: serde_json::Value,
     pub contestation_period: Duration,
-    pub blockfrost_project_id: String,
     /// Unfortunately the ports have to be the same on both sides, so
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
