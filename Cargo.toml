@@ -30,7 +30,7 @@ bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 bip39 = "2.2.2"
-blockfrost = "1.2.3"
+blockfrost = { version = "1.2.3", default-features = false, features = ["native-tls"] }
 blockfrost-openapi = "0.1.87"
 bzip2 = "0.6.1"
 cardano-serialization-lib = "15.0.3"
