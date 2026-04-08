@@ -35,16 +35,16 @@
     "cardano-node": {
       "flake": false,
       "locked": {
-        "lastModified": 1763736877,
-        "narHash": "sha256-c1a6DzDlm+wzwa85TWeOFrPEldsfjiZw7+DcMMW9nc4=",
+        "lastModified": 1774886169,
+        "narHash": "sha256-TQHJmtgV33DhEeiOLokDS7BGTUX/4wdQt9DIP62SEuw=",
         "owner": "IntersectMBO",
         "repo": "cardano-node",
-        "rev": "6c034ec038d8d276a3595e10e2d38643f09bd1f2",
+        "rev": "e252edef4dfcd28ba8987e0c1368c6db0404beac",
         "type": "github"
       },
       "original": {
         "owner": "IntersectMBO",
-        "ref": "10.5.3",
+        "ref": "10.6.3",
         "repo": "cardano-node",
         "type": "github"
       }
@@ -52,17 +52,17 @@
     "cardano-playground": {
       "flake": false,
       "locked": {
-        "lastModified": 1763920364,
-        "narHash": "sha256-NxJUfXFfZ0jXDbgTKMcinE5BRF/KbGS8KDCn1szC1/c=",
+        "lastModified": 1775070913,
+        "narHash": "sha256-zX1uQvRTJ9B+IH4e9LPNfMsYxnHU/su6h2QkL3629A0=",
         "owner": "input-output-hk",
         "repo": "cardano-playground",
-        "rev": "c0715c2b04628ce1946803b0a829b3e1445b5c4d",
+        "rev": "419fcc2150552930944624e7a19aad6420539df0",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
         "repo": "cardano-playground",
-        "rev": "c0715c2b04628ce1946803b0a829b3e1445b5c4d",
+        "rev": "419fcc2150552930944624e7a19aad6420539df0",
         "type": "github"
       }
     },
@@ -399,16 +399,16 @@
     "testgen-hs": {
       "flake": false,
       "locked": {
-        "lastModified": 1751542906,
-        "narHash": "sha256-FYz1P11du5tSakpl2ec9CGdwEB5h+0FcdGPU3zXte60=",
+        "lastModified": 1775690075,
+        "narHash": "sha256-OjJjcQiiDdxiUlPNJ6GB6CPN+ql3w4CT91NWmnPmWhE=",
         "owner": "input-output-hk",
         "repo": "testgen-hs",
-        "rev": "7d58736ed578a9ccf8337376b302bb188b74303f",
+        "rev": "cf292cd541e31802058bc9e3096bde653bb4f7f9",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "10.4.1.1",
+        "ref": "pull/8/head",
         "repo": "testgen-hs",
         "type": "github"
       }
