@@ -24,7 +24,10 @@ const MIN_LOVELACE_PER_TRANSACTION: u64 = 840_450;
 /// transaction to be confirmed in a Hydra snapshot.
 const L2_TX_POLL_INTERVAL: Duration = Duration::from_secs(1);
 /// Give up waiting for L2 snapshot confirmation after this many attempts.
-const L2_TX_MAX_POLL_ATTEMPTS: u32 = 60;
+const L2_TX_MAX_POLL_ATTEMPTS: u32 = 15;
+/// How many times to re-submit an L2 transaction when snapshot confirmation
+/// times out (e.g. because the other hydra-node was not yet in `Open`).
+const L2_TX_MAX_RETRIES: u32 = 3;
 
 /// After cloning, it still represents the same set of [`HydraController`]s.
 #[derive(Clone, Debug)]
@@ -336,6 +339,8 @@ enum Event {
     WaitForL2Tx {
         spent_inputs: Vec<String>,
         attempts: u32,
+        amount_lovelace: u64,
+        retries_left: u32,
     },
     WaitForUtxoCount,
     TryToClose,
@@ -800,6 +805,8 @@ impl State {
                         self.send(Event::WaitForL2Tx {
                             spent_inputs,
                             attempts: 0,
+                            amount_lovelace,
+                            retries_left: L2_TX_MAX_RETRIES,
                         })
                         .await;
 
@@ -823,6 +830,8 @@ impl State {
             Event::WaitForL2Tx {
                 spent_inputs,
                 attempts,
+                amount_lovelace,
+                retries_left,
             } => {
                 // Polls `GET /snapshot/utxo` until the inputs spent by a
                 // previously sent L2 transaction have been consumed by a Hydra
@@ -859,17 +868,45 @@ impl State {
                     );
                     self.awaiting_l2_confirmation = false;
                 } else if attempts >= L2_TX_MAX_POLL_ATTEMPTS {
-                    warn!(
-                        "{}: L2 tx not confirmed after {} attempts, giving up",
-                        self.originator.as_str(),
-                        attempts
-                    );
-                    self.awaiting_l2_confirmation = false;
+                    if retries_left > 0 {
+                        warn!(
+                            "{}: L2 tx not confirmed after {} attempts, re-submitting ({} retries left)",
+                            self.originator.as_str(),
+                            attempts,
+                            retries_left
+                        );
+                        let new_spent_inputs = self
+                            .config
+                            .send_hydra_transaction(
+                                self.api_port,
+                                &self.commit_wallet_addr,
+                                &self.reward_addr,
+                                &self.commit_wallet_skey,
+                                amount_lovelace,
+                            )
+                            .await?;
+                        self.send(Event::WaitForL2Tx {
+                            spent_inputs: new_spent_inputs,
+                            attempts: 0,
+                            amount_lovelace,
+                            retries_left: retries_left - 1,
+                        })
+                        .await;
+                    } else {
+                        warn!(
+                            "{}: L2 tx not confirmed after {} attempts and all retries exhausted, giving up",
+                            self.originator.as_str(),
+                            attempts
+                        );
+                        self.awaiting_l2_confirmation = false;
+                    }
                 } else {
                     self.send_delayed(
                         Event::WaitForL2Tx {
                             spent_inputs,
                             attempts: attempts + 1,
+                            amount_lovelace,
+                            retries_left,
                         },
                         L2_TX_POLL_INTERVAL,
                     )
