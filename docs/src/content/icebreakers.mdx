@@ -84,7 +84,7 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
 
 ### 3. Ping–Pong to monitor connection liveness, and the round-trip time
 
-1. Both sides exchange `Ping` and `Pong` messages every 13 seconds, which allows us to detect the other side going offline quite quickly, even with silently dropped packets. And also to measure the pure network round-trip time, without the overhead of any advanced calculations. If a ping response is not received within the timeout, the connection is reset and re-registration is triggered.
+1. Both sides exchange `Ping` and `Pong` messages continuously, which allows us to detect the other side going offline quite quickly, even with silently dropped packets. And also to measure the pure network round-trip time, without the overhead of any advanced calculations.
 
 2. The load balancer code exposes a `GET /stats` endpoint, where you can see all currently connected IceBreakers:
 
