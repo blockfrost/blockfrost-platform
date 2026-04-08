@@ -174,13 +174,14 @@ pub mod event_loop {
                     let reply = match (
                         &state.hydras,
                         &req.accepted_platform_h2h_port,
-                        initial_hydra_kex.take(),
+                        initial_hydra_kex.as_ref(),
                     ) {
                         (None, _, _) => GatewayMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                        (Some(hydras), Some(_accepted_port), Some(_)) => {
+                            let initial_kex = initial_hydra_kex.take().unwrap();
                             let bridge_machine_id = req.machine_id.clone();
                             match hydras.spawn_new(initial_kex, req).await {
                                 Ok((ctl, resp)) => {
