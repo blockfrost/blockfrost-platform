@@ -20,6 +20,12 @@ const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 // TODO: At least on Preview that is. Where does this come from exactly?
 const MIN_LOVELACE_PER_TRANSACTION: u64 = 840_450;
 
+/// How often to re-check `GET /snapshot/utxo` when waiting for an L2
+/// transaction to be confirmed in a Hydra snapshot.
+const L2_TX_POLL_INTERVAL: Duration = Duration::from_secs(1);
+/// Give up waiting for L2 snapshot confirmation after this many attempts.
+const L2_TX_MAX_POLL_ATTEMPTS: u32 = 60;
+
 /// After cloning, it still represents the same set of [`HydraController`]s.
 #[derive(Clone, Debug)]
 pub struct HydrasManager {
@@ -321,16 +327,26 @@ enum Event {
     Terminate,
     FundCommitAddr,
     TryToInitHead,
-    WaitForInitial { retries_before_reinit: u64 },
+    WaitForInitial {
+        retries_before_reinit: u64,
+    },
     TryToCommit,
     WaitForOpen,
     AccountOneRequest,
+    WaitForL2Tx {
+        spent_inputs: Vec<String>,
+        attempts: u32,
+    },
     WaitForUtxoCount,
     TryToClose,
-    WaitForClosed { retries_before_reclose: u64 },
+    WaitForClosed {
+        retries_before_reclose: u64,
+    },
     WaitForFanoutReady,
     DoFanout,
-    WaitForIdleAfterClose { retries_before_refanout: u64 },
+    WaitForIdleAfterClose {
+        retries_before_refanout: u64,
+    },
 }
 
 fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
@@ -363,6 +379,9 @@ struct State {
     commit_wallet_addr: String,
     commit_fund_tx_sent: bool,
     is_closing: bool,
+    /// Set after sending an L2 tx; cleared when `WaitForL2Tx` confirms the
+    /// spent inputs are gone from the snapshot. Gates `AccountOneRequest`.
+    awaiting_l2_confirmation: bool,
     hydra_pid: Option<u32>,
     hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
     /// Incremented on every [`Event::Restart`] so that delayed events from a
@@ -402,6 +421,7 @@ impl State {
             commit_wallet_addr: String::new(),
             commit_fund_tx_sent: false,
             is_closing: false,
+            awaiting_l2_confirmation: false,
             hydra_pid: None,
             hydra_watchdog: None,
             restart_gen: Arc::new(AtomicU64::new(0)),
@@ -480,6 +500,7 @@ impl State {
                 self.hydra_head_open = false;
                 self.hydra_peers_connected = false;
                 self.is_closing = false;
+                self.awaiting_l2_confirmation = false;
                 self.sent_microtransactions = 0;
                 self.accounted_requests = 0;
                 // Start the hydra-node early so it can discover peers while the
@@ -742,6 +763,12 @@ impl State {
             },
 
             Event::AccountOneRequest => {
+                if self.awaiting_l2_confirmation {
+                    self.send_delayed(Event::AccountOneRequest, Duration::from_secs(1))
+                        .await;
+                    return Ok(());
+                }
+
                 self.accounted_requests += 1;
 
                 if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
@@ -755,7 +782,8 @@ impl State {
                         info!("{}: sending a microtransaction", self.originator.as_str());
                         let amount_lovelace: u64 =
                             self.accounted_requests * self.config.toml.lovelace_per_request;
-                        self.config
+                        let spent_inputs = self
+                            .config
                             .send_hydra_transaction(
                                 self.api_port,
                                 &self.commit_wallet_addr,
@@ -767,6 +795,13 @@ impl State {
 
                         self.accounted_requests = 0;
                         self.sent_microtransactions += 1;
+
+                        self.awaiting_l2_confirmation = true;
+                        self.send(Event::WaitForL2Tx {
+                            spent_inputs,
+                            attempts: 0,
+                        })
+                        .await;
 
                         if self.sent_microtransactions
                             >= self.config.toml.microtransactions_per_fanout
@@ -782,6 +817,63 @@ impl State {
                             self.accounted_requests
                         )
                     }
+                }
+            },
+
+            Event::WaitForL2Tx {
+                spent_inputs,
+                attempts,
+            } => {
+                // Polls `GET /snapshot/utxo` until the inputs spent by a
+                // previously sent L2 transaction have been consumed by a Hydra
+                // snapshot. This prevents the next transaction from reading a
+                // stale UTxO set and building a duplicate that Hydra would
+                // reject with `TxInvalid` / `BadInputsUTxO`, which would rarely
+                // happen.
+                let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", self.api_port);
+                let utxo: serde_json::Value = self
+                    .config
+                    .http
+                    .get(&snapshot_url)
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .json()
+                    .await?;
+
+                let still_present = if let Some(obj) = utxo.as_object() {
+                    spent_inputs.iter().any(|inp| obj.contains_key(inp))
+                } else {
+                    warn!(
+                        "{}: snapshot/utxo: expected JSON object, got something else",
+                        self.originator.as_str()
+                    );
+                    false
+                };
+
+                if !still_present {
+                    info!(
+                        "{}: L2 tx confirmed in snapshot (attempt {})",
+                        self.originator.as_str(),
+                        attempts + 1
+                    );
+                    self.awaiting_l2_confirmation = false;
+                } else if attempts >= L2_TX_MAX_POLL_ATTEMPTS {
+                    warn!(
+                        "{}: L2 tx not confirmed after {} attempts, giving up",
+                        self.originator.as_str(),
+                        attempts
+                    );
+                    self.awaiting_l2_confirmation = false;
+                } else {
+                    self.send_delayed(
+                        Event::WaitForL2Tx {
+                            spent_inputs,
+                            attempts: attempts + 1,
+                        },
+                        L2_TX_POLL_INTERVAL,
+                    )
+                    .await;
                 }
             },
 
@@ -917,6 +1009,7 @@ impl State {
                     // lovelace:
                     self.hydra_head_open = false;
                     self.is_closing = false;
+                    self.awaiting_l2_confirmation = false;
                     self.sent_microtransactions = 0;
                     self.accounted_requests = 0;
 

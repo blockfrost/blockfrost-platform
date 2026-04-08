@@ -15,6 +15,11 @@ pub mod verifications;
 const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 const MIN_COMMIT_TOPUP_LOVELACE: u64 = 1_000_000;
 const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
+/// How often to re-check `GET /snapshot/utxo` when waiting for an L2
+/// transaction to be confirmed in a Hydra snapshot.
+const L2_TX_POLL_INTERVAL: Duration = Duration::from_secs(1);
+/// Give up waiting for L2 snapshot confirmation after this many attempts.
+const L2_TX_MAX_POLL_ATTEMPTS: u32 = 60;
 
 #[derive(Clone, Debug)]
 pub struct HydraConfig {
@@ -148,6 +153,10 @@ enum Event {
     MonitorStates,
     AccountOneRequest,
     MonitorCredits,
+    WaitForL2Tx {
+        spent_inputs: Vec<String>,
+        attempts: u32,
+    },
 }
 
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
@@ -180,6 +189,9 @@ struct State {
     commit_wallet_skey: PathBuf,
     commit_wallet_addr: String,
     prepay_sent: bool,
+    /// Set after sending an L2 tx; cleared when `WaitForL2Tx` confirms the
+    /// spent inputs are gone from the snapshot. Gates `AccountOneRequest`.
+    awaiting_l2_confirmation: bool,
 }
 
 impl State {
@@ -244,6 +256,7 @@ impl State {
             commit_wallet_skey: PathBuf::new(),
             commit_wallet_addr: String::new(),
             prepay_sent: false,
+            awaiting_l2_confirmation: false,
         };
 
         self_.send(Event::Restart).await;
@@ -377,6 +390,7 @@ impl State {
                 self.sent_microtransactions = 0;
                 self.prepay_sent = false;
                 self.head_open_initialized = false;
+                self.awaiting_l2_confirmation = false;
                 self.last_hydra_head_state = String::new();
             },
 
@@ -690,6 +704,12 @@ impl State {
             },
 
             Event::AccountOneRequest => {
+                if self.awaiting_l2_confirmation {
+                    self.send_delayed(Event::AccountOneRequest, Duration::from_secs(1))
+                        .await;
+                    return Ok(());
+                }
+
                 let params = match &self.payment_params {
                     Some(p) => p.clone(),
                     None => {
@@ -718,17 +738,64 @@ impl State {
                     info!("sending a microtransaction");
                     let amount_lovelace: u64 =
                         self.accounted_requests * params.lovelace_per_request;
-                    self.send_hydra_transaction(
-                        self.api_port,
-                        &self.commit_wallet_addr,
-                        &self.gateway_payment_addr,
-                        &self.commit_wallet_skey,
-                        amount_lovelace,
-                    )
-                    .await?;
+                    let spent_inputs = self
+                        .send_hydra_transaction(
+                            self.api_port,
+                            &self.commit_wallet_addr,
+                            &self.gateway_payment_addr,
+                            &self.commit_wallet_skey,
+                            amount_lovelace,
+                        )
+                        .await?;
 
                     self.accounted_requests = 0;
                     self.sent_microtransactions += 1;
+
+                    self.awaiting_l2_confirmation = true;
+                    self.send(Event::WaitForL2Tx {
+                        spent_inputs,
+                        attempts: 0,
+                    })
+                    .await;
+                }
+            },
+
+            Event::WaitForL2Tx {
+                spent_inputs,
+                attempts,
+            } => {
+                let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", self.api_port);
+                let utxo: serde_json::Value = self
+                    .http
+                    .get(&snapshot_url)
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .json()
+                    .await?;
+
+                let still_present = if let Some(obj) = utxo.as_object() {
+                    spent_inputs.iter().any(|inp| obj.contains_key(inp))
+                } else {
+                    warn!("snapshot/utxo: expected JSON object, got something else");
+                    false
+                };
+
+                if !still_present {
+                    info!("L2 tx confirmed in snapshot (attempt {})", attempts + 1);
+                    self.awaiting_l2_confirmation = false;
+                } else if attempts >= L2_TX_MAX_POLL_ATTEMPTS {
+                    warn!("L2 tx not confirmed after {} attempts, giving up", attempts);
+                    self.awaiting_l2_confirmation = false;
+                } else {
+                    self.send_delayed(
+                        Event::WaitForL2Tx {
+                            spent_inputs,
+                            attempts: attempts + 1,
+                        },
+                        L2_TX_POLL_INTERVAL,
+                    )
+                    .await;
                 }
             },
         }
@@ -752,17 +819,26 @@ impl State {
 
         let amount_lovelace: u64 =
             params.requests_per_microtransaction * params.lovelace_per_request;
-        self.send_hydra_transaction(
-            self.api_port,
-            &self.commit_wallet_addr,
-            &self.gateway_payment_addr,
-            &self.commit_wallet_skey,
-            amount_lovelace,
-        )
-        .await?;
+        let spent_inputs = self
+            .send_hydra_transaction(
+                self.api_port,
+                &self.commit_wallet_addr,
+                &self.gateway_payment_addr,
+                &self.commit_wallet_skey,
+                amount_lovelace,
+            )
+            .await?;
 
         self.sent_microtransactions += 1;
         self.prepay_sent = true;
+
+        self.awaiting_l2_confirmation = true;
+        self.send(Event::WaitForL2Tx {
+            spent_inputs,
+            attempts: 0,
+        })
+        .await;
+
         Ok(())
     }
 

@@ -327,6 +327,8 @@ impl super::HydraConfig {
     }
 
     /// Build, sign, and send an L2 (Hydra) transaction (fee=0) via WebSocket.
+    ///
+    /// Returns the `"txhash#index"` refs of the inputs consumed by the tx.
     pub(super) async fn send_hydra_transaction(
         &self,
         hydra_api_port: u16,
@@ -334,7 +336,7 @@ impl super::HydraConfig {
         receiver_addr: &str,
         sender_skey_path: &Path,
         amount_lovelace: u64,
-    ) -> Result<()> {
+    ) -> Result<Vec<String>> {
         use anyhow::Context;
 
         fn utxo_lovelace(entry: &Value) -> Option<u64> {
@@ -533,7 +535,7 @@ impl super::HydraConfig {
         let ws_url = format!("ws://127.0.0.1:{hydra_api_port}/");
         send_one_websocket_msg(&ws_url, payload, std::time::Duration::from_secs(5)).await?;
 
-        Ok(())
+        Ok(selected)
     }
 
     pub(super) async fn hydra_utxo_count(&self, hydra_api_port: u16) -> Result<u64> {
