@@ -134,7 +134,7 @@ pub mod event_loop {
         )> = None;
         let mut hydra_controller: Option<hydra_server_bridge::HydraController> = None;
 
-        let tunnel_cancellation = CancellationToken::new();
+        let mut tunnel_cancellation = CancellationToken::new();
         let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
         // The actual connection event loop:
@@ -157,26 +157,30 @@ pub mod event_loop {
                 },
 
                 BridgeEvent::NewBridgeMessage(BridgeMessage::HydraKExRequest(req)) => {
-                    let already_exists = match &hydra_controller {
-                        None => false,
-                        Some(ctl) => ctl.is_alive(),
-                    };
+                    // If there's an existing controller (e.g. the bridge's hydra-node
+                    // crashed and restarted), tear it down so the KEx can start fresh.
+                    if let Some(ctl) = hydra_controller.take() {
+                        if ctl.is_alive() {
+                            info!(
+                                "sdk-bridge-ws: terminating existing Hydra controller for reconnection"
+                            );
+                            ctl.terminate().await;
+                        }
+                        tunnel_cancellation.cancel();
+                        tunnel_cancellation = CancellationToken::new();
+                        tunnel_controller = None;
+                    }
 
                     let reply = match (
-                        already_exists,
                         &state.hydras,
                         &req.accepted_platform_h2h_port,
                         initial_hydra_kex.take(),
                     ) {
-                        (true, _, _, _) => GatewayMessage::Error {
-                            code: 538,
-                            msg: "Hydra controller already exists on this connection".to_string(),
-                        },
-                        (false, None, _, _) => GatewayMessage::Error {
+                        (None, _, _) => GatewayMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (false, Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
+                        (Some(hydras), Some(_accepted_port), Some(initial_kex)) => {
                             let bridge_machine_id = req.machine_id.clone();
                             match hydras.spawn_new(initial_kex, req).await {
                                 Ok((ctl, resp)) => {
@@ -223,7 +227,7 @@ pub mod event_loop {
                                 },
                             }
                         },
-                        (false, Some(hydras), _, _) => {
+                        (Some(hydras), _, _) => {
                             match hydras.initialize_key_exchange(req.clone()).await {
                                 Ok(resp) => {
                                     initial_hydra_kex = Some((req, resp.clone()));

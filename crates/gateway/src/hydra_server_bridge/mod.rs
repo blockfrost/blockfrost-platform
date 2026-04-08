@@ -431,8 +431,13 @@ impl State {
 
         tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
+                let is_terminate = matches!(&event, Event::Terminate);
                 match self_.process_event(event).await {
-                    Ok(()) => (),
+                    Ok(()) => {
+                        if is_terminate {
+                            break;
+                        }
+                    },
                     Err(err) => {
                         error!(
                             "{}: error: {}; will restart in {:?}…",
@@ -451,14 +456,17 @@ impl State {
     }
 
     async fn send(&self, event: Event) {
-        self.event_tx
-            .send(event)
-            .await
-            .expect("we never close the event receiver");
+        if let Err(err) = self.event_tx.send(event).await {
+            warn!(
+                "{}: dropping hydra event because receiver is closed: {}",
+                self.customer_log_id, err
+            );
+        }
     }
 
     async fn send_delayed(&self, event: Event, delay: Duration) {
         let event_tx = self.event_tx.clone();
+        let customer_log_id = self.customer_log_id.clone();
         let current_gen = self.restart_gen.load(Ordering::Relaxed);
         let restart_gen = self.restart_gen.clone();
         tokio::spawn(async move {
@@ -466,10 +474,12 @@ impl State {
             // Drop the event if a restart has happened since it was scheduled,
             // preventing stale event chains from piling up.
             if restart_gen.load(Ordering::Relaxed) == current_gen {
-                event_tx
-                    .send(event)
-                    .await
-                    .expect("we never close the event receiver");
+                if let Err(err) = event_tx.send(event).await {
+                    warn!(
+                        "{}: dropping delayed hydra event because receiver is closed: {}",
+                        customer_log_id, err
+                    );
+                }
             }
         });
     }
