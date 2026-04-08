@@ -445,7 +445,11 @@ log info "Hydra Head is Open! Waiting for the Bridge to have request credits…"
 # It logs "req. credits +N" once credits are granted.  We wait for that before
 # sending traffic so we never fire a request that would get a 402.
 bridge_credits_seen=1
-wait_for_bridge_log_count "req. credits +" "$bridge_credits_seen" 30 \
+# The Bridge has its own hydra-node connection and may lag behind the Gateway in
+# detecting the Open status by 20+ seconds. On top of that, it schedules the
+# prepay with a 15 s delay and then waits for snapshot confirmation. Use a
+# generous timeout (90 s) so that 30 s is never too tight on slow CI.
+wait_for_bridge_log_count "req. credits +" "$bridge_credits_seen" 90 \
   "Bridge credits (initial)" || exit 1
 
 log info "Bridge has credits. Ready to send traffic."
@@ -527,7 +531,8 @@ perform_fanout_cycle() {
       "Fanout $fanout_num: head reopen" || exit 1
     log info "Fanout $fanout_num: head is Open again. Waiting for Bridge credits…"
     bridge_credits_seen=$((bridge_credits_seen + 1))
-    wait_for_bridge_log_count "req. credits +" "$bridge_credits_seen" 30 \
+    # Same lag as above: Bridge may take 20+ s to see Open + 15 s prepay delay.
+    wait_for_bridge_log_count "req. credits +" "$bridge_credits_seen" 90 \
       "Fanout $fanout_num: Bridge credits" || exit 1
     log info "Fanout $fanout_num: Bridge has credits, ready for next cycle."
     test_credits=$requests_per_microtransaction
