@@ -11,6 +11,8 @@ use tracing::{error, info, warn};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const WS_PING_TIMEOUT: Duration = Duration::from_secs(13);
+const RECONNECT_INITIAL_BACKOFF: Duration = Duration::from_secs(1);
+const RECONNECT_MAX_BACKOFF: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub struct BridgeHandle {
@@ -106,26 +108,59 @@ enum BridgeMessage {
 
 async fn run_ws_loop(
     ws_url: String,
-    mut request_rx: mpsc::Receiver<BridgeRequest>,
-    mut kex_request_rx: mpsc::Receiver<hydra_client::KeyExchangeRequest>,
+    request_rx: mpsc::Receiver<BridgeRequest>,
+    kex_request_rx: mpsc::Receiver<hydra_client::KeyExchangeRequest>,
     kex_response_tx: mpsc::Sender<hydra_client::KeyExchangeResponse>,
     terminate_tx: mpsc::Sender<hydra_client::TerminateRequest>,
 ) {
-    let connect_result = tokio_tungstenite::connect_async(&ws_url).await;
-    let (ws_stream, _response) = match connect_result {
+    let request_rx = std::sync::Arc::new(Mutex::new(request_rx));
+    let kex_request_rx = std::sync::Arc::new(Mutex::new(kex_request_rx));
+    let mut backoff = RECONNECT_INITIAL_BACKOFF;
+
+    loop {
+        let outcome = run_ws_session(
+            &ws_url,
+            request_rx.clone(),
+            kex_request_rx.clone(),
+            &kex_response_tx,
+        )
+        .await;
+
+        match outcome {
+            SessionOutcome::Shutdown => break,
+            SessionOutcome::Disconnected(reason) => {
+                warn!("sdk-bridge: disconnected from {ws_url}: {reason}");
+                backoff = RECONNECT_INITIAL_BACKOFF;
+            },
+            SessionOutcome::ConnectionFailed(reason) => {
+                error!("sdk-bridge: failed to connect to {ws_url}: {reason}");
+            },
+        }
+
+        warn!("sdk-bridge: reconnecting to {ws_url} in {backoff:?}");
+        tokio::time::sleep(backoff).await;
+        backoff = (backoff * 2).min(RECONNECT_MAX_BACKOFF);
+    }
+
+    let _ = terminate_tx.send(hydra_client::TerminateRequest).await;
+}
+
+async fn run_ws_session(
+    ws_url: &str,
+    request_rx: std::sync::Arc<Mutex<mpsc::Receiver<BridgeRequest>>>,
+    kex_request_rx: std::sync::Arc<Mutex<mpsc::Receiver<hydra_client::KeyExchangeRequest>>>,
+    kex_response_tx: &mpsc::Sender<hydra_client::KeyExchangeResponse>,
+) -> SessionOutcome {
+    let (ws_stream, _response) = match tokio_tungstenite::connect_async(ws_url).await {
         Ok(ok) => ok,
-        Err(err) => {
-            error!("sdk-bridge: failed to connect to {}: {}", ws_url, err);
-            let _ = terminate_tx.send(hydra_client::TerminateRequest).await;
-            return;
-        },
+        Err(err) => return SessionOutcome::ConnectionFailed(err.to_string()),
     };
 
     info!("sdk-bridge: connected to {}", ws_url);
 
     let (event_tx, mut event_rx) = mpsc::channel::<BridgeEvent>(64);
     let (socket_tx, request_task, arbitrary_msg_task) =
-        wire_socket(event_tx.clone(), ws_stream, ws_url.clone()).await;
+        wire_socket(event_tx.clone(), ws_stream, ws_url.to_string()).await;
 
     let inflight: std::sync::Arc<Mutex<HashMap<RequestId, oneshot::Sender<JsonResponse>>>> =
         std::sync::Arc::new(Mutex::new(HashMap::new()));
@@ -135,8 +170,22 @@ async fn run_ws_loop(
     let kex_fwd_task = {
         let event_tx = event_tx.clone();
         tokio::spawn(async move {
-            while let Some(req) = kex_request_rx.recv().await {
-                let _ = event_tx.send(BridgeEvent::HydraKExRequest(req)).await;
+            loop {
+                match kex_request_rx.lock().await.recv().await {
+                    Some(req) => {
+                        if event_tx
+                            .send(BridgeEvent::HydraKExRequest(req))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    },
+                    None => {
+                        let _ = event_tx.send(BridgeEvent::Shutdown).await;
+                        break;
+                    },
+                }
             }
         })
     };
@@ -144,9 +193,17 @@ async fn run_ws_loop(
     let request_fwd_task = {
         let event_tx = event_tx.clone();
         tokio::spawn(async move {
-            while let Some(req) = request_rx.recv().await {
-                if event_tx.send(BridgeEvent::NewRequest(req)).await.is_err() {
-                    break;
+            loop {
+                match request_rx.lock().await.recv().await {
+                    Some(req) => {
+                        if event_tx.send(BridgeEvent::NewRequest(req)).await.is_err() {
+                            break;
+                        }
+                    },
+                    None => {
+                        let _ = event_tx.send(BridgeEvent::Shutdown).await;
+                        break;
+                    },
                 }
             }
         })
@@ -166,6 +223,7 @@ async fn run_ws_loop(
     let mut last_ping_sent_at: Option<std::time::Instant> = None;
     let mut last_ping_id: u64 = 0;
     let mut loop_error: Result<(), String> = Ok(());
+    let mut shutdown = false;
 
     // Schedule the first `PingTick` immediately, otherwise we won’t start
     // checking for ping timeout:
@@ -176,6 +234,11 @@ async fn run_ws_loop(
 
     'event_loop: while let Some(msg) = event_rx.recv().await {
         match msg {
+            BridgeEvent::Shutdown => {
+                shutdown = true;
+                break 'event_loop;
+            },
+
             BridgeEvent::SocketError(err) => {
                 loop_error = Err(err);
                 break 'event_loop;
@@ -297,16 +360,14 @@ async fn run_ws_loop(
         }
     }
 
-    if let Err(err) = loop_error {
-        warn!("sdk-bridge: WebSocket loop finished with error: {err}");
+    if let Err(err) = &loop_error {
+        warn!("sdk-bridge: WebSocket session finished with error: {err}");
     }
 
     if let Some(tunnel_ctl) = &tunnel_controller {
         tunnel_ctl.cancel();
     }
     tunnel_cancellation.cancel();
-
-    let _ = terminate_tx.send(hydra_client::TerminateRequest).await;
 
     let inflight_keys: Vec<RequestId> = inflight.lock().await.keys().cloned().collect();
     for request_id in inflight_keys {
@@ -328,6 +389,12 @@ async fn run_ws_loop(
     ];
     children.iter().for_each(|t| t.abort());
     futures::future::join_all(children).await;
+
+    if shutdown {
+        SessionOutcome::Shutdown
+    } else {
+        SessionOutcome::Disconnected(loop_error.err().unwrap_or_else(|| "unknown".to_string()))
+    }
 }
 
 /// A background task to periodically remove timed-out requests from
@@ -345,12 +412,21 @@ async fn clean_up_expired_requests_periodically(
     }
 }
 
+enum SessionOutcome {
+    /// Initial WebSocket connection attempt failed.
+    ConnectionFailed(String),
+    /// Was connected, then lost the connection.
+    Disconnected(String),
+    /// The request channel was closed (bridge handle dropped); do not reconnect.
+    Shutdown,
+}
 enum BridgeEvent {
     NewGatewayMessage(GatewayMessage),
     NewRequest(BridgeRequest),
     HydraKExRequest(hydra_client::KeyExchangeRequest),
     PingTick,
     SocketError(String),
+    Shutdown,
 }
 
 async fn wire_socket(
