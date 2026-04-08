@@ -8,7 +8,7 @@ export default {
   "get-started": "Getting started",
   installation: "Installing the platform",
   configuration: "Configuring the platform",
-  "data-node": "Data node (Dolos)",
+  "data-node": "Data node",
   usage: "Running the platform",
   verification: "Verifying that you are up and running",
   options: "Advanced options",
