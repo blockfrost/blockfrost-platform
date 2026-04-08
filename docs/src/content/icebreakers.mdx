@@ -84,7 +84,7 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
 
 ### 3. Ping–Pong to monitor connection liveness, and the round-trip time
 
-1. Both sides exchange `Ping` and `Pong` messages continuously, which allows us to detect the other side going offline quite quickly, even with silently dropped packets. And also to measure the pure network round-trip time, without the overhead of any advanced calculations.
+1. Both sides exchange `Ping` and `Pong` messages every 13 seconds, which allows us to detect the other side going offline quite quickly, even with silently dropped packets. And also to measure the pure network round-trip time, without the overhead of any advanced calculations. If a ping response is not received within the timeout, the connection is reset and re-registration is triggered.
 
 2. The load balancer code exposes a `GET /stats` endpoint, where you can see all currently connected IceBreakers:
 
@@ -186,3 +186,11 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
    ```
 
 2. The `blockfrost-platform` API remains as-is on port 3000. After the WebSocket testing period it will no longer need to be open to the public, or have a UUID `api_prefix`.
+
+### Operational details
+
+- **Request timeout**: Each request forwarded over WebSocket has a 60-second timeout.
+- **Maximum body size**: Request bodies are limited to 1 MB.
+- **Re-registration**: If a load balancer connection drops, the platform automatically re-registers. On successful connection it re-registers after 1 second; on error, after 10 seconds.
+- **Connection behavior**: If any single load balancer connection breaks, all connections are aborted and a full re-registration cycle begins.
+- **No load balancers**: If the registration response contains no load balancers, the platform registers once and does not retry.

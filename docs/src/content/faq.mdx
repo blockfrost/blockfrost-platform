@@ -206,13 +206,21 @@ When a [data node (Dolos)](/data-node) is connected, the platform also serves bl
 
 The `blockfrost-platform` process exposes a Prometheus metrics endpoint by default at `http://localhost:3000/metrics` with detailed operational stats.
 
+The following metrics are available:
+
+- `health_errors_total` — gauge of current health errors
+- `http_requests_total` — counter with labels for method, path, and status code
+- `cardano_node_connections` — gauge of open node connections
+- `cardano_node_connections_initiated` — counter of initiated connections
+- `cardano_node_connections_failed` — counter of failed connections
+- `tx_submit_success` — counter of successful transaction submissions
+- `tx_submit_failure` — counter of failed transaction submissions
+
 To access richer metrics:
 
 1. Ensure port `3000` is accessible
 2. Install and configure [Prometheus](https://prometheus.io/docs/introduction/overview/) to scrape the metrics endpoint
 3. Use a visualization tool like [Grafana](https://grafana.com/docs/grafana/latest/getting-started/) to graph and analyze the data.
-
-The Blockfrost team also plans to expand the public dashboard over time with additional useful metrics as the platform matures.
 
 For detailed logging, consult the `stdout` from the `blockfrost-platform` process or the `systemd` logs if running as a service.
 
