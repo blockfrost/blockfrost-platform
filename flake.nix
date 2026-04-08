@@ -20,7 +20,7 @@
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.0.0-rc.12";
+      url = "github:txpipe/dolos/v1.0.3";
       flake = false;
     };
     blockfrost-tests = {
@@ -98,7 +98,7 @@
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
 
         checks = let
-          checks' = internal.cargoChecks // internal.nixChecks;
+          checks' = internal.cargoChecks // internal.nixChecks // internal.dockerChecks;
         in
           checks'
           // {
