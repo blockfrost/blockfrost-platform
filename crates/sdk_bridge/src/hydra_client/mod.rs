@@ -20,6 +20,9 @@ const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 const L2_TX_POLL_INTERVAL: Duration = Duration::from_secs(1);
 /// Give up waiting for L2 snapshot confirmation after this many attempts.
 const L2_TX_MAX_POLL_ATTEMPTS: u32 = 60;
+/// How long to wait after `HeadIsOpen` before sending the prepay
+/// microtransaction, giving both hydra-nodes time to settle into `Open`.
+const PREPAY_DELAY: Duration = Duration::from_secs(15);
 
 #[derive(Clone, Debug)]
 pub struct HydraConfig {
@@ -152,6 +155,9 @@ enum Event {
     WaitForOpen,
     MonitorStates,
     AccountOneRequest,
+    /// Deferred prepay: fires after `PREPAY_DELAY` so the event loop stays
+    /// unblocked while both hydra-nodes settle into `Open`.
+    SendPrepay,
     MonitorCredits,
     WaitForL2Tx {
         spent_inputs: Vec<String>,
@@ -760,6 +766,10 @@ impl State {
                 }
             },
 
+            Event::SendPrepay => {
+                self.send_prepay_microtransaction().await?;
+            },
+
             Event::WaitForL2Tx {
                 spent_inputs,
                 attempts,
@@ -857,16 +867,12 @@ impl State {
         self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
             .await;
 
-        // Wait before sending the prepay microtransaction. Both hydra-nodes
-        // must be in "Open" state for the snapshot to be signed. There can be a
-        // delay of tens of seconds between the Bridge and Gateway observing
-        // "Open" (Blockfrost lag). Without this delay the prepay tx may get
-        // `TxValid` but never reach `SnapshotConfirmed` because the Gateway's node
-        // wasn't ready to co-sign.
-        info!("delaying prepay by 15 s to let both nodes settle into Open");
-        tokio::time::sleep(Duration::from_secs(15)).await;
-
-        self.send_prepay_microtransaction().await?;
+        // Delay the prepay microtransaction without blocking the event loop.
+        // Both hydra-nodes must be in "Open" state for the snapshot to be
+        // signed. There can be a delay of tens of seconds between the Bridge
+        // and Gateway observing "Open" (Blockfrost lag).
+        info!("scheduling prepay in {} s", PREPAY_DELAY.as_secs());
+        self.send_delayed(Event::SendPrepay, PREPAY_DELAY).await;
         Ok(())
     }
 
