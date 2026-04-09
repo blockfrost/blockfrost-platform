@@ -584,27 +584,40 @@ mkdir -p $txdir
 
 declare -A lovelace_remaining
 
+max_return_attempts=5
+return_retry_delay=25
+
 for participant in alice-funds bob-funds alice-node bob-node; do
-  log info "Returning funds from $participant to ‘SUBMIT_MNEMONIC’"
+  for return_attempt in $(seq 1 $max_return_attempts); do
+    log info "Returning funds from $participant to 'SUBMIT_MNEMONIC'"
 
-  cardano-cli query utxo \
-    --address "$(cat credentials/"$participant"/payment.addr)" \
-    --out-file $txdir/utxo-"$participant".json
+    cardano-cli query utxo \
+      --address "$(cat credentials/"$participant"/payment.addr)" \
+      --out-file $txdir/utxo-"$participant".json
 
-  lovelace_remaining["$participant"]=$(jq '[.[] | .value.lovelace] | add // 0' $txdir/utxo-"$participant".json)
+    lovelace_remaining["$participant"]=$(jq '[.[] | .value.lovelace] | add // 0' $txdir/utxo-"$participant".json)
 
-  # shellcheck disable=SC2046
-  cardano-cli latest transaction build \
-    $(jq <$txdir/utxo-"$participant".json -j 'to_entries[].key | "--tx-in ", ., " "') \
-    --change-address "$(cat credentials/submit-mnemonic/payment.addr)" \
-    --out-file $txdir/tx-"$participant".json
+    # shellcheck disable=SC2046
+    if cardano-cli latest transaction build \
+      $(jq <$txdir/utxo-"$participant".json -j 'to_entries[].key | "--tx-in ", ., " "') \
+      --change-address "$(cat credentials/submit-mnemonic/payment.addr)" \
+      --out-file $txdir/tx-"$participant".json &&
+      cardano-cli latest transaction sign \
+        --tx-file $txdir/tx-"$participant".json \
+        --signing-key-file credentials/"$participant"/payment.sk \
+        --out-file $txdir/tx-signed-"$participant".json &&
+      cardano-cli latest transaction submit --tx-file $txdir/tx-signed-"$participant".json; then
+      break
+    fi
 
-  cardano-cli latest transaction sign \
-    --tx-file $txdir/tx-"$participant".json \
-    --signing-key-file credentials/"$participant"/payment.sk \
-    --out-file $txdir/tx-signed-"$participant".json
+    if ((return_attempt == max_return_attempts)); then
+      log fatal "All $max_return_attempts attempts to return funds from $participant failed."
+      exit 1
+    fi
 
-  cardano-cli latest transaction submit --tx-file $txdir/tx-signed-"$participant".json
+    log warn "Return attempt $return_attempt for $participant failed, retrying in ${return_retry_delay}s (waiting for a new block)…"
+    sleep "$return_retry_delay"
+  done
 done
 
 # ---------------------------------------------------------------------------- #
