@@ -468,7 +468,7 @@ pub mod event_loop {
         )> = None;
         let mut hydra_controller: Option<hydra_server_platform::HydraController> = None;
 
-        let tunnel_cancellation = CancellationToken::new();
+        let mut tunnel_cancellation = CancellationToken::new();
         let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
 
         // The actual connection event loop:
@@ -500,26 +500,31 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
-                    let already_exists = match &hydra_controller {
-                        None => false,
-                        Some(ctl) => ctl.is_alive(),
-                    };
+                    // If there's an existing controller (e.g. the platform's hydra-node
+                    // crashed and restarted), tear it down so the KEx can start fresh.
+                    if let Some(ctl) = hydra_controller.take() {
+                        if ctl.is_alive() {
+                            info!(
+                                "{}: terminating existing Hydra controller for reconnection",
+                                asset_name.as_str()
+                            );
+                            ctl.terminate().await;
+                        }
+                        tunnel_cancellation.cancel();
+                        tunnel_cancellation = CancellationToken::new();
+                        tunnel_controller = None;
+                    }
 
                     let reply = match (
-                        already_exists,
                         &load_balancer.hydras,
                         &req.accepted_platform_h2h_port,
                         initial_hydra_kex.is_some(),
                     ) {
-                        (true, _, _, _) => LoadBalancerMessage::Error {
-                            code: 538,
-                            msg: "Hydra controller already exists on this connection".to_string(),
-                        },
-                        (false, None, _, _) => LoadBalancerMessage::Error {
+                        (None, _, _) => LoadBalancerMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (false, Some(hydras), Some(_accepted_port), true) => {
+                        (Some(hydras), Some(_accepted_port), true) => {
                             let initial_kex = initial_hydra_kex.clone().unwrap();
                             let platform_machine_id = req.machine_id.clone();
                             match hydras
@@ -590,7 +595,7 @@ pub mod event_loop {
                                 },
                             }
                         },
-                        (false, Some(hydras), _, _) => {
+                        (Some(hydras), _, _) => {
                             match hydras
                                 .initialize_key_exchange(asset_name, req.clone())
                                 .await
@@ -614,7 +619,9 @@ pub mod event_loop {
 
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {
                     if let Some(ctl) = &hydra_controller {
-                        ctl.account_one_request().await
+                        if (200..500).contains(&response.code) {
+                            ctl.account_one_request().await;
+                        }
                     }
                     pass_on_response(response, &relay_state, asset_name).await;
                 },
@@ -856,7 +863,23 @@ pub mod event_loop {
         let (mut sock_tx, mut sock_rx) = socket.split();
         let asset_name_ = asset_name.clone();
         let response_task = tokio::spawn(async move {
-            while let Some(Ok(msg)) = sock_rx.next().await {
+            loop {
+                let msg = match sock_rx.next().await {
+                    Some(Ok(msg)) => msg,
+                    Some(Err(err)) => {
+                        warn!("{}: socket read error: {err:?}", asset_name_.as_str(),);
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish(format!("socket read error: {err:?}")))
+                            .await;
+                        break;
+                    },
+                    None => {
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish("relay disconnected".to_string()))
+                            .await;
+                        break;
+                    },
+                };
                 match msg {
                     Message::Text(text) => {
                         match serde_json::from_str::<RelayMessage>(&text) {
@@ -1049,13 +1072,14 @@ pub mod event_loop {
             why,
             request.underlying,
         );
+        use base64::{Engine as _, engine::general_purpose};
         let _ignored_failure: Result<_, _> = request
             .respond_to
             .send(JsonResponse {
                 id: request_id.clone(),
                 code: code.as_u16(),
                 header: vec![],
-                body_base64: why.to_string(),
+                body_base64: general_purpose::STANDARD.encode(why.as_bytes()),
             })
             .inspect_err(|_| {
                 warn!(

@@ -1,0 +1,36 @@
+[package]
+name = "blockfrost-sdk-bridge"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+bf-common.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+futures-util.workspace = true
+tokio-tungstenite = { workspace = true, features = ["native-tls"] }
+tungstenite = { workspace = true, features = ["native-tls"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+uuid.workspace = true
+base64.workspace = true
+reqwest.workspace = true
+dirs.workspace = true
+url.workspace = true
+hex.workspace = true
+blockfrost.workspace = true
+cardano-serialization-lib.workspace = true
+
+[lints]
+workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true

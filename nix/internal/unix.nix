@@ -67,6 +67,7 @@ in
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
     gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+    sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -124,6 +125,20 @@ in
         cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
       }
       // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = sdkBridgeCargoToml.package.name;
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = sdkBridgeCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+        '';
+        cargoExtraArgs = "--package blockfrost-sdk-bridge";
+      });
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
@@ -949,6 +964,41 @@ in
           };
       };
       text = builtins.readFile ./hydra-platform-gateway-test.sh;
+    };
+
+    hydra-bridge-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-bridge-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-sdk-bridge and blockfrost-gateway";
+      runtimeInputs = with pkgs; [
+        bash
+        bc
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        procps
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-sdk-bridge
+        blockfrost-gateway--dev-mock-db
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+      };
+      text = builtins.readFile ./hydra-bridge-gateway-test.sh;
     };
 
     midnight = let

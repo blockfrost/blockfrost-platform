@@ -254,7 +254,7 @@ mod event_loop {
                     if let Some(hydra_kex) = &hydra_kex {
                         // Only start the TCP-over-WebSocket tunnels if we’re running
                         // on different machines:
-                        if resp.machine_id != hydra_client::verifications::hashed_machine_id() {
+                        if resp.machine_id != bf_common::hydra::MachineId::of_this_host() {
                             let (tunnel_ctl, mut tunnel_rx) =
                                 bf_common::tcp_mux_tunnel::Tunnel::new(
                                     bf_common::tcp_mux_tunnel::TunnelConfig {
@@ -573,11 +573,12 @@ mod event_loop {
             Ok(ok) => ok,
             Err((code, err)) => {
                 error!("returning {}, because: {}", code, err);
+                use base64::{Engine as _, engine::general_purpose};
                 JsonResponse {
                     id: request_id_,
                     code: code.into(),
                     header: vec![],
-                    body_base64: err,
+                    body_base64: general_purpose::STANDARD.encode(err.as_bytes()),
                 }
             },
         }

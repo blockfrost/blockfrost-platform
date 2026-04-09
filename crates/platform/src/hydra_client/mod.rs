@@ -1,5 +1,6 @@
 use anyhow::{Result, anyhow, bail};
 use bf_common::errors::{AppError, BlockfrostError};
+use bf_common::hydra::MachineId;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
@@ -18,7 +19,7 @@ pub struct HydraController {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
-    pub machine_id: String,
+    pub machine_id: MachineId,
     pub platform_cardano_vkey: serde_json::Value,
     pub platform_hydra_vkey: serde_json::Value,
     pub accepted_platform_h2h_port: Option<u16>,
@@ -26,7 +27,7 @@ pub struct KeyExchangeRequest {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeResponse {
-    pub machine_id: String,
+    pub machine_id: MachineId,
     pub gateway_cardano_vkey: serde_json::Value,
     pub gateway_hydra_vkey: serde_json::Value,
     pub hydra_scripts_tx_id: String,
@@ -265,7 +266,7 @@ impl State {
 
                 self.kex_requests
                     .send(KeyExchangeRequest {
-                        machine_id: verifications::hashed_machine_id(),
+                        machine_id: MachineId::of_this_host(),
                         platform_cardano_vkey: self.platform_cardano_vkey.clone(),
                         platform_hydra_vkey: verifications::read_json_file(
                             &self.config_dir.join("hydra.vk"),
@@ -298,7 +299,7 @@ impl State {
                 } else {
                     self.kex_requests
                         .send(KeyExchangeRequest {
-                            machine_id: verifications::hashed_machine_id(),
+                            machine_id: MachineId::of_this_host(),
                             platform_cardano_vkey: self.platform_cardano_vkey.clone(),
                             platform_hydra_vkey: verifications::read_json_file(
                                 &self.config_dir.join("hydra.vk"),
