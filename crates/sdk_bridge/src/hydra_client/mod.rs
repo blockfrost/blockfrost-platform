@@ -639,6 +639,7 @@ impl State {
                     self.on_head_open().await?;
                 } else {
                     self.hydra_head_open = false;
+                    self.credits_available.store(0, Ordering::SeqCst);
                     self.credits_last_balance = 0;
                     self.head_open_initialized = false;
                 }
@@ -899,6 +900,7 @@ impl State {
 
         self.head_open_initialized = true;
         self.hydra_head_open = true;
+        self.credits_available.store(0, Ordering::SeqCst);
         self.credits_last_balance = 0;
         self.accounted_requests = 0;
         self.sent_microtransactions = 0;
