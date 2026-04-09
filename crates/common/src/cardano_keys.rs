@@ -194,10 +194,10 @@ fn write_json_file(path: &Path, json: &serde_json::Value) -> Result<()> {
     use std::fs::File;
     use std::io::Write;
 
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     let mut file = File::create(path)?;
@@ -233,21 +233,21 @@ pub fn sum_lovelace_from_utxo_json(json: &serde_json::Value) -> Result<u64> {
     let mut total: u64 = 0;
 
     for (_txin, utxo) in obj {
-        if let Some(value_obj) = utxo.get("value").and_then(|v| v.as_object()) {
-            if let Some(lovelace_val) = value_obj.get("lovelace") {
-                total = total
-                    .checked_add(json_as_u64(lovelace_val)?)
-                    .ok_or_else(|| anyhow!("lovelace sum overflow"))?;
-                continue;
-            }
+        if let Some(value_obj) = utxo.get("value").and_then(|v| v.as_object())
+            && let Some(lovelace_val) = value_obj.get("lovelace")
+        {
+            total = total
+                .checked_add(json_as_u64(lovelace_val)?)
+                .ok_or_else(|| anyhow!("lovelace sum overflow"))?;
+            continue;
         }
 
-        if let Some(amount_arr) = utxo.get("amount").and_then(|v| v.as_array()) {
-            if let Some(lovelace_val) = amount_arr.first() {
-                total = total
-                    .checked_add(json_as_u64(lovelace_val)?)
-                    .ok_or_else(|| anyhow!("lovelace sum overflow"))?;
-            }
+        if let Some(amount_arr) = utxo.get("amount").and_then(|v| v.as_array())
+            && let Some(lovelace_val) = amount_arr.first()
+        {
+            total = total
+                .checked_add(json_as_u64(lovelace_val)?)
+                .ok_or_else(|| anyhow!("lovelace sum overflow"))?;
         }
     }
 
