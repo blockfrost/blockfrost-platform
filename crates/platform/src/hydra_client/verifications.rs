@@ -188,20 +188,18 @@ pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bo
     use std::fs::File;
     use std::io::Write;
 
-    if path.exists() {
-        if let Ok(existing_str) = std::fs::read_to_string(path) {
-            if let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str) {
-                if existing_json == *json {
-                    return Ok(false);
-                }
-            }
-        }
+    if path.exists()
+        && let Ok(existing_str) = std::fs::read_to_string(path)
+        && let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str)
+        && existing_json == *json
+    {
+        return Ok(false);
     }
 
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     let mut file = File::create(path)?;

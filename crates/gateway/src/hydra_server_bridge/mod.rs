@@ -473,13 +473,13 @@ impl State {
             tokio::time::sleep(delay).await;
             // Drop the event if a restart has happened since it was scheduled,
             // preventing stale event chains from piling up.
-            if restart_gen.load(Ordering::Relaxed) == current_gen {
-                if let Err(err) = event_tx.send(event).await {
-                    warn!(
-                        "{}: dropping delayed hydra event because receiver is closed: {}",
-                        customer_log_id, err
-                    );
-                }
+            if restart_gen.load(Ordering::Relaxed) == current_gen
+                && let Err(err) = event_tx.send(event).await
+            {
+                warn!(
+                    "{}: dropping delayed hydra event because receiver is closed: {}",
+                    customer_log_id, err
+                );
             }
         });
     }

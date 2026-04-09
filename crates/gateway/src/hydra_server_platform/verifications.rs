@@ -150,16 +150,16 @@ impl super::HydraConfig {
         // Build unspent outputs (lovelace-only, max 200)
         let mut unspent_outputs = TransactionUnspentOutputs::new();
         for utxo in utxos.iter().take(200) {
-            if utxo.amount.iter().all(|a| a.unit == "lovelace") {
-                if let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace") {
-                    let input_value =
-                        cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
-                    let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
-                    let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
-                    let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into()?);
-                    let output = TransactionOutput::new(&change_addr, &input_value);
-                    unspent_outputs.add(&TransactionUnspentOutput::new(&input, &output));
-                }
+            if utxo.amount.iter().all(|a| a.unit == "lovelace")
+                && let Some(token) = utxo.amount.iter().find(|a| a.unit == "lovelace")
+            {
+                let input_value =
+                    cardano_serialization_lib::Value::new(&BigNum::from_str(&token.quantity)?);
+                let tx_hash_bytes = hex::decode(&utxo.tx_hash)?;
+                let tx_hash = TransactionHash::from_bytes(tx_hash_bytes)?;
+                let input = TransactionInput::new(&tx_hash, utxo.output_index.try_into()?);
+                let output = TransactionOutput::new(&change_addr, &input_value);
+                unspent_outputs.add(&TransactionUnspentOutput::new(&input, &output));
             }
         }
 
@@ -351,14 +351,14 @@ impl super::HydraConfig {
 
             if let Some(amounts) = entry.get("amount").and_then(Value::as_array) {
                 for item in amounts {
-                    if item.get("unit").and_then(Value::as_str) == Some("lovelace") {
-                        if let Some(q) = item.get("quantity") {
-                            if let Some(n) = q.as_u64() {
-                                return Some(n);
-                            }
-                            if let Some(s) = q.as_str() {
-                                return s.parse().ok();
-                            }
+                    if item.get("unit").and_then(Value::as_str) == Some("lovelace")
+                        && let Some(q) = item.get("quantity")
+                    {
+                        if let Some(n) = q.as_u64() {
+                            return Some(n);
+                        }
+                        if let Some(s) = q.as_str() {
+                            return s.parse().ok();
                         }
                     }
                 }
@@ -604,20 +604,18 @@ pub fn write_json_if_changed(path: &Path, json: &serde_json::Value) -> Result<bo
     use std::fs::File;
     use std::io::Write;
 
-    if path.exists() {
-        if let Ok(existing_str) = std::fs::read_to_string(path) {
-            if let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str) {
-                if existing_json == *json {
-                    return Ok(false);
-                }
-            }
-        }
+    if path.exists()
+        && let Ok(existing_str) = std::fs::read_to_string(path)
+        && let Ok(existing_json) = serde_json::from_str::<serde_json::Value>(&existing_str)
+        && existing_json == *json
+    {
+        return Ok(false);
     }
 
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     let mut file = File::create(path)?;

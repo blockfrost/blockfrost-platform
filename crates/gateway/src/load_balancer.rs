@@ -618,10 +618,10 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {
-                    if let Some(ctl) = &hydra_controller {
-                        if (200..500).contains(&response.code) {
-                            ctl.account_one_request().await;
-                        }
+                    if let Some(ctl) = &hydra_controller
+                        && (200..500).contains(&response.code)
+                    {
+                        ctl.account_one_request().await;
                     }
                     pass_on_response(response, &relay_state, asset_name).await;
                 },
