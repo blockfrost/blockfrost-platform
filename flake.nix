@@ -37,8 +37,7 @@
     };
     mithril.url = "github:input-output-hk/mithril/2524.0";
     testgen-hs = {
-      url = "github:input-output-hk/testgen-hs/pull/8/head"; # make sure it follows cardano-node
-      # FIXME: url = "github:input-output-hk/testgen-hs/10.6.3.0"; # make sure it follows cardano-node
+      url = "github:input-output-hk/testgen-hs/10.6.3.0"; # make sure it follows cardano-node
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     hydra = {
