@@ -94,7 +94,7 @@ impl FallbackDecoder {
               "contents": {
                 "era": "ShelleyBasedEraConway",
                 "error": [
-                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (fromList []))"
+                  "ConwayCertsFailure (WithdrawalsNotInRewardsCERTS (Withdrawals {unWithdrawals = fromList []}))"
                 ],
                 "kind": "ShelleyTxValidationError"
               },
