@@ -2,8 +2,8 @@ use integration_tests::gateway::*;
 
 use base64::Engine;
 use blockfrost_gateway::{
-    blockfrost::AssetName,
     load_balancer::{JsonResponse, LoadBalancerMessage, LoadBalancerState, RelayMessage},
+    types::AssetName,
 };
 use futures::{SinkExt, StreamExt};
 use std::vec;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn test_websocket_connection_invalid_token() {
-    let lb = LoadBalancerState::new().await;
+    let lb = LoadBalancerState::new(None).await;
 
     let router = build_router(lb.clone()).await;
     let (addr, _shutdown_tx, server_handle) = start_server(router, None).await;
@@ -33,11 +33,11 @@ async fn test_websocket_connection_invalid_token() {
 
 #[tokio::test]
 async fn test_websocket_request_response_flow() {
-    let lb = LoadBalancerState::new().await;
+    let lb = LoadBalancerState::new(None).await;
 
     let name = AssetName("test-asset".to_string());
     let prefix = Uuid::new_v4();
-    let token = lb.new_access_token(name.clone(), prefix).await;
+    let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
 
     let router = build_router(lb.clone()).await;
     let (addr, _shutdown_tx, server_handle) = start_server(router, None).await;

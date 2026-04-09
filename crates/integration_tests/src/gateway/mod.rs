@@ -5,10 +5,12 @@ use axum::{
     routing::{any, get, post},
 };
 use blockfrost_gateway::{
-    blockfrost::AssetName,
     load_balancer::{LoadBalancerState, api},
+    types::AssetName,
 };
-use blockfrost_platform::{icebreakers::manager::IcebreakersManager, server::state::ApiPrefix};
+use blockfrost_platform::{
+    hydra_client, icebreakers::manager::IcebreakersManager, server::state::ApiPrefix,
+};
 use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::json;
@@ -74,7 +76,7 @@ impl TestGateway {
     ///
     /// `None` binds to a random port.
     pub async fn start_on(addr: Option<SocketAddr>) -> Self {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let router = build_router(lb.clone())
             .await
             .route("/register", post(mock_register_handler))
@@ -153,7 +155,7 @@ async fn mock_register_handler(
     })?;
 
     let token = lb
-        .new_access_token(AssetName("test".into()), api_prefix)
+        .new_access_token(AssetName("test".into()), api_prefix, "reward_addr_test")
         .await;
 
     let host = headers
@@ -210,7 +212,15 @@ pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
     let health_errors = Arc::new(Mutex::new(vec![]));
 
     let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix.clone());
-    manager.run().await;
+
+    let (kex_req_tx, kex_req_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::KeyExchangeRequest>(1);
+    let (kex_resp_tx, _kex_resp_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::KeyExchangeResponse>(1);
+    let (terminate_tx, _terminate_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::TerminateRequest>(1);
+    drop(kex_req_tx); // not used in tests
+    manager.run((kex_req_rx, kex_resp_tx, terminate_tx)).await;
 
     let client = Client::new();
     let base = format!("http://{}{}", gw.addr, api_prefix);

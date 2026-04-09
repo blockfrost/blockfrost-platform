@@ -103,7 +103,8 @@ in {
   };
 
   env =
-    [
+    internal.hydraScriptsEnvVars
+    ++ [
       {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;

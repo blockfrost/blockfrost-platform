@@ -13,6 +13,7 @@ members = [
   "crates/node",
   "crates/data_node",
   "crates/gateway",
+  "crates/sdk_bridge",
   "crates/integration_tests",
 ]
 default-members = ["crates/platform"]
@@ -22,6 +23,8 @@ anyhow = "1.0.102"
 axum = { version = "0.8.8", features = ["ws"] }
 base64 = "0.22.1"
 bech32 = "0.11.1"
+blake3 = "1"
+bytes = "1"
 blockfrost-platform = { path = "crates/platform", package = "blockfrost-platform" }
 blockfrost-gateway = { path = "crates/gateway", package = "blockfrost-gateway" }
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
@@ -48,13 +51,16 @@ dirs = "6.0.0"
 dotenvy = "0.15.7"
 futures = "0.3"
 futures-util = "0.3"
+getrandom = "0.3"
 hex = "0.4.3"
 hyper = "1.8.1"
 inquire = "0.9"
 jemalloc = "0.3"
+machine-uid = "0.5"
 metrics = { version = "0.24.3", default-features = false }
 metrics-exporter-prometheus = { version = "0.18.1", default-features = false }
 metrics-process = "2.4.3"
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
 pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
@@ -80,8 +86,14 @@ serde_json = "1.0.149"
 sysinfo = "~0.37"
 tar = "0.4.44"
 thiserror = "2.0.18"
-tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
+tokio = { version = "1.49.0", features = [
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "process",
+] }
 tokio-tungstenite = "0.28.0"
+tokio-util = "0.7"
 toml = "1.0.2"
 tower = { version = "0.5.3", features = ["limit"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }

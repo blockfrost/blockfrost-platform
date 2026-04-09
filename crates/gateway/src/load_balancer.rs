@@ -1,10 +1,12 @@
-use crate::blockfrost::AssetName;
 use crate::errors::APIError;
+use crate::hydra_server_platform;
+use crate::types::AssetName;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, atomic};
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -54,14 +56,19 @@ pub enum JsonRequestMethod {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoadBalancerMessage {
     Request(JsonRequest),
+    HydraKExResponse(hydra_server_platform::KeyExchangeResponse),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
+    Error { code: u64, msg: String },
 }
 
 /// The WebSocket messages that we receive.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RelayMessage {
     Response(JsonResponse),
+    HydraKExRequest(hydra_server_platform::KeyExchangeRequest),
+    HydraTunnel(bf_common::tcp_mux_tunnel::TunnelMsg),
     Ping(u64),
     Pong(u64),
 }
@@ -71,11 +78,13 @@ pub struct LoadBalancerState {
     pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
     pub background_worker: Arc<JoinHandle<()>>,
+    pub hydras: Option<hydra_server_platform::HydrasManager>,
 }
 
 #[derive(Debug)]
 pub struct AccessTokenState {
     pub name: AssetName,
+    pub reward_addr: String,
     pub api_prefix: Uuid,
     pub expires: std::time::Instant,
 }
@@ -103,7 +112,7 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new() -> LoadBalancerState {
+    pub async fn new(hydras: Option<hydra_server_platform::HydrasManager>) -> LoadBalancerState {
         let access_tokens = Arc::new(Mutex::new(HashMap::new()));
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
         let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
@@ -114,16 +123,23 @@ impl LoadBalancerState {
             access_tokens,
             active_relays,
             background_worker,
+            hydras,
         }
     }
 
-    pub async fn new_access_token(&self, name: AssetName, api_prefix: Uuid) -> AccessToken {
+    pub async fn new_access_token(
+        &self,
+        name: AssetName,
+        api_prefix: Uuid,
+        reward_addr: &str,
+    ) -> AccessToken {
         let expires = std::time::Instant::now() + ACCESS_TOKEN_TIMEOUT;
         let token = random_token();
         self.access_tokens.lock().await.insert(
             token.clone(),
             AccessTokenState {
                 name,
+                reward_addr: reward_addr.to_string(),
                 api_prefix,
                 expires,
             },
@@ -375,10 +391,6 @@ pub mod event_loop {
     use super::*;
     use axum::extract::ws::{Message, WebSocket};
     use axum::http::StatusCode;
-    use futures_util::{
-        sink::SinkExt,
-        stream::{SplitSink, StreamExt},
-    };
 
     /// For clarity, let’s have a single connection 'event_loop per WebSocket
     /// connection, with the following events:
@@ -396,6 +408,7 @@ pub mod event_loop {
         socket: WebSocket,
     ) {
         let asset_name = &token_state.name;
+        let reward_addr = token_state.reward_addr.clone();
 
         // Allow only 1 connection per NFT:
         disconnect_existing_sessions_of(&token_state, &load_balancer).await;
@@ -405,7 +418,7 @@ pub mod event_loop {
         let (event_tx, mut event_rx) = mpsc::channel::<LBEvent>(64);
         let (request_tx, request_task) = wire_requests(event_tx.clone()).await;
         let (finish_tx, finish_task) = wire_do_finish(event_tx.clone()).await;
-        let (mut socket_tx, response_task) =
+        let (socket_tx, response_task, arbitrary_msg_task) =
             wire_responses(event_tx.clone(), socket, asset_name).await;
 
         let relay_state = RelayState {
@@ -449,6 +462,15 @@ pub mod event_loop {
         let mut last_ping_id: u64 = 0;
         let mut disconnection_reason = None;
 
+        let mut initial_hydra_kex: Option<(
+            hydra_server_platform::KeyExchangeRequest,
+            hydra_server_platform::KeyExchangeResponse,
+        )> = None;
+        let mut hydra_controller: Option<hydra_server_platform::HydraController> = None;
+
+        let mut tunnel_cancellation = CancellationToken::new();
+        let mut tunnel_controller: Option<bf_common::tcp_mux_tunnel::Tunnel> = None;
+
         // The actual connection event loop:
         'event_loop: while let Some(msg) = event_rx.recv().await {
             match msg {
@@ -458,7 +480,7 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRequest(request) => {
-                    if pass_on_request(request, &relay_state, asset_name, &mut socket_tx)
+                    if pass_on_request(request, &relay_state, asset_name, &socket_tx)
                         .await
                         .is_err()
                     {
@@ -466,18 +488,148 @@ pub mod event_loop {
                     }
                 },
 
+                LBEvent::NewRelayMessage(RelayMessage::HydraTunnel(tun_msg)) => {
+                    if let Some(tunnel_ctl) = &tunnel_controller {
+                        match tunnel_ctl.on_msg(tun_msg).await {
+                            Ok(()) => (),
+                            Err(err) => error!(
+                                "hydra-tunnel: got an error when passing message through WebSocket: {err}; ignoring"
+                            ),
+                        }
+                    }
+                },
+
+                LBEvent::NewRelayMessage(RelayMessage::HydraKExRequest(req)) => {
+                    // If there's an existing controller (e.g. the platform's hydra-node
+                    // crashed and restarted), tear it down so the KEx can start fresh.
+                    if let Some(ctl) = hydra_controller.take() {
+                        if ctl.is_alive() {
+                            info!(
+                                "{}: terminating existing Hydra controller for reconnection",
+                                asset_name.as_str()
+                            );
+                            ctl.terminate().await;
+                        }
+                        tunnel_cancellation.cancel();
+                        tunnel_cancellation = CancellationToken::new();
+                        tunnel_controller = None;
+                    }
+
+                    let reply = match (
+                        &load_balancer.hydras,
+                        &req.accepted_platform_h2h_port,
+                        initial_hydra_kex.is_some(),
+                    ) {
+                        (None, _, _) => LoadBalancerMessage::Error {
+                            code: 536,
+                            msg: "Hydra micropayments not supported".to_string(),
+                        },
+                        (Some(hydras), Some(_accepted_port), true) => {
+                            let initial_kex = initial_hydra_kex.clone().unwrap();
+                            let platform_machine_id = req.machine_id.clone();
+                            match hydras
+                                .spawn_new(asset_name, &reward_addr, initial_kex, req)
+                                .await
+                            {
+                                Ok((ctl, resp)) => {
+                                    // Consume the cached KEx only after spawn succeeds:
+                                    initial_hydra_kex = None;
+                                    hydra_controller = Some(ctl);
+
+                                    // Only start the TCP-over-WebSocket tunnels if we’re running
+                                    // on different machines:
+                                    if platform_machine_id != resp.machine_id {
+                                        let (tunnel_ctl, mut tunnel_rx) =
+                                            bf_common::tcp_mux_tunnel::Tunnel::new(
+                                                bf_common::tcp_mux_tunnel::TunnelConfig {
+                                                    expose_port: resp.gateway_h2h_port,
+                                                    id_prefix_bit: true,
+                                                    ..(bf_common::tcp_mux_tunnel::TunnelConfig::default(
+                                                    ))
+                                                },
+                                                tunnel_cancellation.clone(),
+                                            );
+
+                                        // This really shouldn’t fail, unless we hit the
+                                        // TOCTOU race condition (very, very rare):
+                                        if let Err(err) = tunnel_ctl
+                                            .spawn_listener(resp.proposed_platform_h2h_port)
+                                            .await
+                                        {
+                                            error!(
+                                                "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                                resp.proposed_platform_h2h_port
+                                            );
+                                            disconnection_reason = Some(format!(
+                                                "hydra-tunnel: failed to bind listener on port {}: {err}",
+                                                resp.proposed_platform_h2h_port
+                                            ));
+                                            break 'event_loop;
+                                        }
+
+                                        let socket_tx_ = socket_tx.clone();
+                                        let asset_name_ = asset_name.clone();
+                                        tokio::spawn(async move {
+                                            while let Some(tun_msg) = tunnel_rx.recv().await {
+                                                if send_json_msg(
+                                                    &socket_tx_,
+                                                    &LoadBalancerMessage::HydraTunnel(tun_msg),
+                                                    &asset_name_,
+                                                )
+                                                .await
+                                                .is_err()
+                                                {
+                                                    break;
+                                                }
+                                            }
+                                        });
+
+                                        tunnel_controller = Some(tunnel_ctl);
+                                    }
+
+                                    LoadBalancerMessage::HydraKExResponse(resp)
+                                },
+                                Err(err) => LoadBalancerMessage::Error {
+                                    code: 537,
+                                    msg: format!("Hydra micropayments setup error: {err}"),
+                                },
+                            }
+                        },
+                        (Some(hydras), _, _) => {
+                            match hydras
+                                .initialize_key_exchange(asset_name, req.clone())
+                                .await
+                            {
+                                Ok(resp) => {
+                                    initial_hydra_kex = Some((req, resp.clone()));
+                                    LoadBalancerMessage::HydraKExResponse(resp)
+                                },
+                                Err(err) => LoadBalancerMessage::Error {
+                                    code: 537,
+                                    msg: format!("Hydra micropayments setup error: {err}"),
+                                },
+                            }
+                        },
+                    };
+
+                    if send_json_msg(&socket_tx, &reply, asset_name).await.is_err() {
+                        break 'event_loop;
+                    }
+                },
+
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {
+                    if let Some(ctl) = &hydra_controller {
+                        if (200..500).contains(&response.code) {
+                            ctl.account_one_request().await;
+                        }
+                    }
                     pass_on_response(response, &relay_state, asset_name).await;
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Ping(ping_id)) => {
-                    if send_json_msg(
-                        &mut socket_tx,
-                        &LoadBalancerMessage::Pong(ping_id),
-                        asset_name,
-                    )
-                    .await
-                    .is_err()
+                    if send_json_msg(&socket_tx, &LoadBalancerMessage::Pong(ping_id), asset_name)
+                        .await
+                        .is_err()
                     {
                         break 'event_loop;
                     }
@@ -505,7 +657,7 @@ pub mod event_loop {
                         last_ping_id += 1;
                         last_ping_sent_at = Some(std::time::Instant::now());
                         if send_json_msg(
-                            &mut socket_tx,
+                            &socket_tx,
                             &LoadBalancerMessage::Ping(last_ping_id),
                             asset_name,
                         )
@@ -518,6 +670,12 @@ pub mod event_loop {
                 },
             }
         }
+
+        if let Some(ctl) = hydra_controller {
+            ctl.terminate().await
+        }
+
+        tunnel_cancellation.cancel();
 
         let disconnection_reason_ = disconnection_reason
             .clone()
@@ -586,7 +744,13 @@ pub mod event_loop {
         }
 
         // Wait for all children to finish:
-        let children = [request_task, finish_task, response_task, clean_up_task];
+        let children = [
+            request_task,
+            finish_task,
+            response_task,
+            arbitrary_msg_task,
+            clean_up_task,
+        ];
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
 
@@ -693,11 +857,29 @@ pub mod event_loop {
         event_tx: mpsc::Sender<LBEvent>,
         socket: WebSocket,
         asset_name: &AssetName,
-    ) -> (SplitSink<WebSocket, Message>, JoinHandle<()>) {
-        let (tx, mut rx) = socket.split();
-        let asset_name = asset_name.clone();
-        let task = tokio::spawn(async move {
-            while let Some(Ok(msg)) = rx.next().await {
+    ) -> (mpsc::Sender<Message>, JoinHandle<()>, JoinHandle<()>) {
+        use futures_util::{sink::SinkExt, stream::StreamExt};
+        let (msg_tx, mut msg_rx) = mpsc::channel::<Message>(64);
+        let (mut sock_tx, mut sock_rx) = socket.split();
+        let asset_name_ = asset_name.clone();
+        let response_task = tokio::spawn(async move {
+            loop {
+                let msg = match sock_rx.next().await {
+                    Some(Ok(msg)) => msg,
+                    Some(Err(err)) => {
+                        warn!("{}: socket read error: {err:?}", asset_name_.as_str(),);
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish(format!("socket read error: {err:?}")))
+                            .await;
+                        break;
+                    },
+                    None => {
+                        let _ignored_failure: Result<_, _> = event_tx
+                            .send(LBEvent::Finish("relay disconnected".to_string()))
+                            .await;
+                        break;
+                    },
+                };
                 match msg {
                     Message::Text(text) => {
                         match serde_json::from_str::<RelayMessage>(&text) {
@@ -708,7 +890,7 @@ pub mod event_loop {
                             },
                             Err(err) => warn!(
                                 "{}: received unparsable text message: {:?}: {:?}",
-                                asset_name.as_str(),
+                                asset_name_.as_str(),
                                 text,
                                 err,
                             ),
@@ -717,14 +899,14 @@ pub mod event_loop {
                     Message::Binary(bin) => {
                         warn!(
                             "{}: received unexpected binary message: {:?}",
-                            asset_name.as_str(),
+                            asset_name_.as_str(),
                             hex::encode(bin),
                         );
                     },
                     Message::Close(frame) => {
                         warn!(
                             "{}: relay disconnected (CloseFrame: {:?})",
-                            asset_name.as_str(),
+                            asset_name_.as_str(),
                             frame,
                         );
                         let _ignored_failure: Result<_, _> = event_tx
@@ -736,13 +918,31 @@ pub mod event_loop {
                 }
             }
         });
-        (tx, task)
+        let asset_name_ = asset_name.clone();
+        let arbitrary_msg_task = tokio::spawn(async move {
+            while let Some(msg) = msg_rx.recv().await {
+                match sock_tx.send(msg).await {
+                    Ok(()) => (),
+                    Err(err) => {
+                        error!(
+                            "load balancer: {}: error when sending a message: {:?}",
+                            asset_name_.as_str(),
+                            err
+                        );
+                        // Something wrong with the socket, let’s break the 'event_loop
+                        // (eventually, by closing `msg_rx`):
+                        break;
+                    },
+                }
+            }
+        });
+        (msg_tx, response_task, arbitrary_msg_task)
     }
 
     /// Sends a JSON message to a WebSocket. `Err(_)` is returned when you
     /// need to break the 'event_loop, because the connection is already broken.
     async fn send_json_msg<J>(
-        socket_tx: &mut SplitSink<WebSocket, Message>,
+        socket_tx: &mpsc::Sender<Message>,
         msg: &J,
         asset_name: &AssetName,
     ) -> Result<(), String>
@@ -817,7 +1017,7 @@ pub mod event_loop {
         request: RequestState,
         relay_state: &RelayState,
         asset_name: &AssetName,
-        socket_tx: &mut SplitSink<WebSocket, Message>,
+        socket_tx: &mpsc::Sender<Message>,
     ) -> Result<(), String> {
         let request_id = request.underlying.id.clone();
         let (request, json) = serialize_request(request);
@@ -872,13 +1072,14 @@ pub mod event_loop {
             why,
             request.underlying,
         );
+        use base64::{Engine as _, engine::general_purpose};
         let _ignored_failure: Result<_, _> = request
             .respond_to
             .send(JsonResponse {
                 id: request_id.clone(),
                 code: code.as_u16(),
                 header: vec![],
-                body_base64: why.to_string(),
+                body_base64: general_purpose::STANDARD.encode(why.as_bytes()),
             })
             .inspect_err(|_| {
                 warn!(
@@ -1012,7 +1213,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_new_creates_empty_state() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
 
         let tokens = lb.access_tokens.lock().await;
         assert!(tokens.is_empty());
@@ -1023,10 +1224,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_new_access_token_register() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
-        let token = lb.new_access_token(name.clone(), prefix).await;
+        let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
         let state = lb.register(&token.0).await.expect("should register");
 
         assert_eq!(state.name, name);
@@ -1039,14 +1240,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_invalid_token() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let res = lb.register("invalid").await;
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
     #[tokio::test]
     async fn test_register_expired_token() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
         let token = random_token();
@@ -1056,6 +1257,7 @@ mod tests {
             token.clone(),
             AccessTokenState {
                 name,
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires,
             },
@@ -1067,7 +1269,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_clean_up_expired_tokens_logic() {
-        let lb = LoadBalancerState::new().await;
+        let lb = LoadBalancerState::new(None).await;
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
 
@@ -1078,6 +1280,7 @@ mod tests {
             token_expired.clone(),
             AccessTokenState {
                 name: name.clone(),
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires: expires_expired,
             },
@@ -1091,6 +1294,7 @@ mod tests {
             token_valid.clone(),
             AccessTokenState {
                 name,
+                reward_addr: "addr1…".to_string(),
                 api_prefix: prefix,
                 expires: expires_valid,
             },

@@ -28,6 +28,7 @@ pub struct Config {
     pub network: Network,
     pub custom_genesis_config: Option<PathBuf>,
     pub data_node: Option<DataNodeConfig>,
+    pub hydra: Option<HydraConfig>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
@@ -41,6 +42,11 @@ pub struct IcebreakersConfig {
     pub reward_address: String,
     pub secret: String,
     pub gateway_url: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct HydraConfig {
+    pub cardano_signing_key: PathBuf,
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]
@@ -104,6 +110,12 @@ impl Config {
             }
         });
 
+        let hydra = args
+            .hydra_cardano_signing_key
+            .map(|cardano_signing_key| HydraConfig {
+                cardano_signing_key,
+            });
+
         Ok(Config {
             server_address: args.server_address,
             server_port: args.server_port,
@@ -116,6 +128,7 @@ impl Config {
             network,
             custom_genesis_config: args.custom_genesis_config,
             data_node,
+            hydra,
             server_concurrency_limit: args.server_concurrency_limit,
         })
     }
