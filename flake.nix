@@ -87,12 +87,13 @@
         packages =
           {
             default = internal.blockfrost-platform;
-            inherit (internal) blockfrost-platform blockfrost-gateway;
+            inherit (internal) blockfrost-platform blockfrost-gateway blockfrost-sdk-bridge;
             inherit (internal) tx-build cardano-address testgen-hs;
           }
           // (lib.optionalAttrs (system == "x86_64-linux") {
             blockfrost-platform-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-platform;
             blockfrost-gateway-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-gateway;
+            blockfrost-sdk-bridge-x86_64-windows = inputs.self.internal.x86_64-windows.blockfrost-sdk-bridge;
           });
 
         devshells.default = import ./nix/devshells.nix {inherit inputs;};
@@ -185,6 +186,9 @@
             );
             blockfrost-gateway = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.blockfrost-gateway
+            );
+            blockfrost-sdk-bridge = lib.genAttrs (config.systems ++ crossSystems) (
+              targetSystem: inputs.self.internal.${targetSystem}.blockfrost-sdk-bridge
             );
             devshell = lib.genAttrs config.systems (
               targetSystem: inputs.self.devShells.${targetSystem}.default

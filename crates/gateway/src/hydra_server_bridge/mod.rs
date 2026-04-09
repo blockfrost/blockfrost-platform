@@ -1,10 +1,12 @@
 use crate::config::HydraConfig as HydraTomlConfig;
-use crate::types::{AssetName, Network};
+use crate::types::Network;
 use anyhow::{Result, anyhow, bail};
 use bf_common::hydra::MachineId;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
@@ -20,14 +22,7 @@ const MIN_FUEL_LOVELACE: u64 = 15_000_000;
 // TODO: At least on Preview that is. Where does this come from exactly?
 const MIN_LOVELACE_PER_TRANSACTION: u64 = 840_450;
 
-/// How often to re-check `GET /snapshot/utxo` when waiting for an L2
-/// transaction to be confirmed in a Hydra snapshot.
-const L2_TX_POLL_INTERVAL: Duration = Duration::from_secs(1);
-/// Give up waiting for L2 snapshot confirmation after this many attempts.
-const L2_TX_MAX_POLL_ATTEMPTS: u32 = 15;
-/// How many times to re-submit an L2 transaction when snapshot confirmation
-/// times out (e.g. because the other hydra-node was not yet in `Open`).
-const L2_TX_MAX_RETRIES: u32 = 3;
+const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 /// After cloning, it still represents the same set of [`HydraController`]s.
 #[derive(Clone, Debug)]
@@ -55,15 +50,15 @@ impl HydrasManager {
             bail!(
                 "Please make sure that configured commit_ada ≥ lovelace_per_request * requests_per_microtransaction * microtransactions_per_fanout + {}.",
                 MIN_LOVELACE_PER_TRANSACTION as f64 / 1_000_000.0
-            );
+            )
         }
 
         let microtransaction_lovelace: u128 =
             config.lovelace_per_request as u128 * config.requests_per_microtransaction as u128;
         if microtransaction_lovelace < MIN_LOVELACE_PER_TRANSACTION as u128 {
             bail!(
-                "Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}.",
-            );
+                "Please make sure that each microtransaction will be larger than {MIN_LOVELACE_PER_TRANSACTION} lovelace. Currently it would be {microtransaction_lovelace}."
+            )
         }
 
         Ok(Self {
@@ -74,19 +69,18 @@ impl HydrasManager {
 
     pub async fn initialize_key_exchange(
         &self,
-        originator: &AssetName,
         req: KeyExchangeRequest,
     ) -> Result<KeyExchangeResponse> {
         if req.accepted_platform_h2h_port.is_some() {
-            bail!("`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`");
+            bail!("`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`")
         }
 
-        let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
         if cur_count as u64 >= self.config.toml.max_concurrent_hydra_nodes {
             let err = anyhow!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
             );
-            warn!("{}", err);
+            warn!("{err}");
             Err(err)?
         }
 
@@ -95,28 +89,22 @@ impl HydrasManager {
             .lovelace_on_addr(&self.config.gateway_cardano_addr)
             .await? as f64
             / 1_000_000.0;
-        let required_funds_ada: f64 =
-            self.config.toml.commit_ada + (MIN_FUEL_LOVELACE as f64 / 1_000_000.0);
+        let required_funds_ada: f64 = MIN_FUEL_LOVELACE as f64 / 1_000_000.0;
         if have_funds < required_funds_ada {
             let err = anyhow!(
-                "{}: {} ADA is too little for the Hydra L1 fees and committed funds on the enterprise address associated with {:?}. Please provide at least {} ADA",
-                originator.as_str(),
+                "{} ADA is too little for the Hydra L1 fees on the enterprise address associated with {:?}. Please provide at least {} ADA",
                 have_funds,
                 self.config.toml.cardano_signing_key,
                 required_funds_ada,
             );
-            error!("{}", err);
+            error!("{err}");
             Err(err)?
         }
-        info!(
-            "{}: funds on cardano_signing_key: {:?} ADA",
-            originator.as_str(),
-            have_funds
-        );
+        info!("funds on cardano_signing_key: {:?} ADA", have_funds);
 
         use verifications::{find_free_tcp_port, read_json_file};
 
-        let config_dir = mk_config_dir(&self.config.network, originator)?;
+        let config_dir = mk_config_dir(&self.config.network, &req.machine_id)?;
         self.config.gen_hydra_keys(&config_dir).await?;
 
         Ok(KeyExchangeResponse {
@@ -129,6 +117,10 @@ impl HydrasManager {
             proposed_platform_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
             kex_done: false,
+            commit_ada: self.config.toml.commit_ada,
+            lovelace_per_request: self.config.toml.lovelace_per_request,
+            requests_per_microtransaction: self.config.toml.requests_per_microtransaction,
+            microtransactions_per_fanout: self.config.toml.microtransactions_per_fanout,
         })
     }
 
@@ -136,8 +128,6 @@ impl HydrasManager {
     /// function with the initial request/response pair.
     pub async fn spawn_new(
         &self,
-        originator: &AssetName,
-        reward_addr: &str,
         initial: (KeyExchangeRequest, KeyExchangeResponse),
         final_req: KeyExchangeRequest,
     ) -> Result<(HydraController, KeyExchangeResponse)> {
@@ -147,20 +137,20 @@ impl HydrasManager {
                 ..final_req.clone()
             })
         {
-            bail!("The 2nd `KeyExchangeRequest` must be the same as the 1st one.");
+            bail!("The 2nd `KeyExchangeRequest` must be the same as the 1st one.")
         }
 
         if final_req.accepted_platform_h2h_port != Some(initial.1.proposed_platform_h2h_port) {
-            bail!("The Platform must accept the same port that was proposed to it.");
+            bail!("The Bridge must accept the same port that was proposed to it.")
         }
 
         // Clone first, to prevent the nastier race condition:
         let maybe_new = Arc::clone(self.controller_counter.as_ref());
-        let new_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1); // subtract the manager
+        let new_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
         if new_count as u64 > self.config.toml.max_concurrent_hydra_nodes {
             bail!(
                 "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
-            );
+            )
         }
 
         if !(matches!(
@@ -172,7 +162,7 @@ impl HydrasManager {
         )) {
             bail!(
                 "The exchanged ports are no longer free on the gateway, please perform another KEx."
-            );
+            )
         }
 
         let final_resp = KeyExchangeResponse {
@@ -182,8 +172,7 @@ impl HydrasManager {
 
         let ctl = HydraController::spawn(
             self.config.clone(),
-            originator.clone(),
-            reward_addr.to_string(),
+            final_req.machine_id.clone(),
             maybe_new,
             final_req,
             final_resp.clone(),
@@ -244,15 +233,30 @@ impl HydraConfig {
     }
 }
 
-/// Runs a `hydra-node` and sets up an L2 network with the Platform for microtransactions.
+/// Runs a `hydra-node` and sets up an L2 network with the Bridge for microtransactions.
 ///
 /// You can safely clone it, and the clone will represent the same `hydra-node` etc.
 #[derive(Clone)]
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
-    originator: AssetName,
+    credits_available: Arc<AtomicU64>,
     _controller_counter: Arc<()>,
 }
+
+#[derive(Debug)]
+pub enum CreditError {
+    InsufficientCredits,
+}
+
+impl std::fmt::Display for CreditError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CreditError::InsufficientCredits => write!(f, "insufficient prepaid credits"),
+        }
+    }
+}
+
+impl std::error::Error for CreditError {}
 
 // FIXME: send a Quit event on `drop()` of all controller instances
 
@@ -264,7 +268,7 @@ pub struct KeyExchangeRequest {
     pub accepted_platform_h2h_port: Option<u16>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Clone)]
 pub struct KeyExchangeResponse {
     pub machine_id: MachineId,
     pub gateway_cardano_vkey: serde_json::Value,
@@ -275,28 +279,38 @@ pub struct KeyExchangeResponse {
     /// Unfortunately the ports have to be the same on both sides, so
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
-    /// Platform, too (as both sides open both ports).
+    /// Bridge, too (as both sides open both ports).
     pub proposed_platform_h2h_port: u16,
     pub gateway_h2h_port: u16,
     /// This being set to `true` means that the ceremony is successful, and the
-    /// Gateway is going to start its own `hydra-node`, and the Platform should too.
+    /// Gateway is going to start its own `hydra-node`, and the Bridge should too.
     pub kex_done: bool,
+    pub commit_ada: f64,
+    pub lovelace_per_request: u64,
+    pub requests_per_microtransaction: u64,
+    pub microtransactions_per_fanout: u64,
 }
 
 impl HydraController {
     async fn spawn(
         config: HydraConfig,
-        originator: AssetName,
-        reward_addr: String,
+        customer_id: MachineId,
         controller_counter: Arc<()>,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
-        let event_tx =
-            State::spawn(config, originator.clone(), reward_addr, kex_req, kex_resp).await?;
+        let credits_available = Arc::new(AtomicU64::new(0));
+        let event_tx = State::spawn(
+            config,
+            customer_id.clone(),
+            kex_req,
+            kex_resp,
+            credits_available.clone(),
+        )
+        .await?;
         Ok(Self {
             event_tx,
-            originator,
+            credits_available,
             _controller_counter: controller_counter,
         })
     }
@@ -306,16 +320,23 @@ impl HydraController {
         !self.event_tx.is_closed()
     }
 
-    pub async fn account_one_request(&self) {
-        self.event_tx
-            .send(Event::AccountOneRequest)
-            .await
-            .unwrap_or_else(|_| {
-                error!(
-                    "{}: failed to account one request: event channel closed",
-                    self.originator.as_str()
-                )
-            })
+    pub fn try_consume_credit(&self) -> Result<(), CreditError> {
+        let mut current = self.credits_available.load(Ordering::SeqCst);
+        loop {
+            if current == 0 {
+                return Err(CreditError::InsufficientCredits);
+            }
+
+            match self.credits_available.compare_exchange(
+                current,
+                current - 1,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => return Ok(()),
+                Err(next) => current = next,
+            }
+        }
     }
 
     pub async fn terminate(&self) {
@@ -326,39 +347,24 @@ impl HydraController {
 enum Event {
     Restart,
     Terminate,
-    FundCommitAddr,
     TryToInitHead,
-    WaitForInitial {
-        retries_before_reinit: u64,
-    },
     TryToCommit,
     WaitForOpen,
-    AccountOneRequest,
-    WaitForL2Tx {
-        spent_inputs: Vec<String>,
-        attempts: u32,
-        amount_lovelace: u64,
-        retries_left: u32,
-    },
-    WaitForUtxoCount,
+    MonitorCredits,
     TryToClose,
-    WaitForClosed {
-        retries_before_reclose: u64,
-    },
+    WaitForClosed { retries_before_reclose: u64 },
     WaitForFanoutReady,
     DoFanout,
-    WaitForIdleAfterClose {
-        retries_before_refanout: u64,
-    },
+    WaitForIdleAfterClose { retries_before_refanout: u64 },
 }
 
-fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
+fn mk_config_dir(network: &Network, customer_machine_id: &MachineId) -> Result<PathBuf> {
     let config_dir = dirs::config_dir()
         .ok_or(anyhow!("`dirs::config_dir()` returned `None`"))?
         .join("blockfrost-gateway")
         .join("hydra")
         .join(network.as_str())
-        .join(originator.as_str());
+        .join(format!("customer-{customer_machine_id}"));
     std::fs::create_dir_all(&config_dir)?;
     Ok(config_dir)
 }
@@ -366,25 +372,19 @@ fn mk_config_dir(network: &Network, originator: &AssetName) -> Result<PathBuf> {
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
 struct State {
     config: HydraConfig,
-    originator: AssetName,
-    reward_addr: String,
+    customer_log_id: String,
     config_dir: PathBuf,
     event_tx: mpsc::Sender<Event>,
     kex_req: KeyExchangeRequest,
     kex_resp: KeyExchangeResponse,
     api_port: u16,
     metrics_port: u16,
-    hydra_peers_connected: bool, // FIXME: they can become disconnected…
+    hydra_peers_connected: bool,
     hydra_head_open: bool,
-    accounted_requests: u64,
-    sent_microtransactions: u64,
-    commit_wallet_skey: PathBuf,
-    commit_wallet_addr: String,
-    commit_fund_tx_sent: bool,
+    credits_available: Arc<AtomicU64>,
+    credits_last_balance: u64,
+    received_microtransactions: u64,
     is_closing: bool,
-    /// Set after sending an L2 tx; cleared when `WaitForL2Tx` confirms the
-    /// spent inputs are gone from the snapshot. Gates `AccountOneRequest`.
-    awaiting_l2_confirmation: bool,
     hydra_pid: Option<u32>,
     hydra_watchdog: Option<tokio::task::JoinHandle<()>>,
     /// Incremented on every [`Event::Restart`] so that delayed events from a
@@ -397,19 +397,19 @@ impl State {
 
     async fn spawn(
         config: HydraConfig,
-        originator: AssetName,
-        reward_addr: String,
+        customer_id: MachineId,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
+        credits_available: Arc<AtomicU64>,
     ) -> Result<mpsc::Sender<Event>> {
-        let config_dir = mk_config_dir(&config.network, &originator)?;
+        let config_dir = mk_config_dir(&config.network, &customer_id)?;
+        let customer_log_id = format!("customer-{customer_id}");
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
         let mut self_ = Self {
             config,
-            originator,
-            reward_addr,
+            customer_log_id,
             config_dir,
             event_tx: event_tx.clone(),
             kex_req,
@@ -418,13 +418,10 @@ impl State {
             metrics_port: 0,
             hydra_peers_connected: false,
             hydra_head_open: false,
-            accounted_requests: 0,
-            sent_microtransactions: 0,
-            commit_wallet_skey: PathBuf::new(),
-            commit_wallet_addr: String::new(),
-            commit_fund_tx_sent: false,
+            credits_available,
+            credits_last_balance: 0,
+            received_microtransactions: 0,
             is_closing: false,
-            awaiting_l2_confirmation: false,
             hydra_pid: None,
             hydra_watchdog: None,
             restart_gen: Arc::new(AtomicU64::new(0)),
@@ -444,7 +441,7 @@ impl State {
                     Err(err) => {
                         error!(
                             "{}: error: {}; will restart in {:?}…",
-                            self_.originator.as_str(),
+                            self_.customer_log_id,
                             err,
                             Self::RESTART_DELAY
                         );
@@ -462,15 +459,14 @@ impl State {
         if let Err(err) = self.event_tx.send(event).await {
             warn!(
                 "{}: dropping hydra event because receiver is closed: {}",
-                self.originator.as_str(),
-                err
+                self.customer_log_id, err
             );
         }
     }
 
     async fn send_delayed(&self, event: Event, delay: Duration) {
         let event_tx = self.event_tx.clone();
-        let originator = self.originator.as_str().to_owned();
+        let customer_log_id = self.customer_log_id.clone();
         let current_gen = self.restart_gen.load(Ordering::Relaxed);
         let restart_gen = self.restart_gen.clone();
         tokio::spawn(async move {
@@ -481,7 +477,7 @@ impl State {
                 if let Err(err) = event_tx.send(event).await {
                     warn!(
                         "{}: dropping delayed hydra event because receiver is closed: {}",
-                        originator, err
+                        customer_log_id, err
                     );
                 }
             }
@@ -510,17 +506,15 @@ impl State {
                 // Invalidate all delayed events from the previous epoch so
                 // they do not pile up into parallel polling chains.
                 self.restart_gen.fetch_add(1, Ordering::Relaxed);
-                info!("{}: starting…", self.originator.as_str());
+                info!("{}: starting…", self.customer_log_id);
                 self.hydra_head_open = false;
                 self.hydra_peers_connected = false;
+                self.credits_available.store(0, Ordering::SeqCst);
+                self.credits_last_balance = 0;
+                self.received_microtransactions = 0;
                 self.is_closing = false;
-                self.awaiting_l2_confirmation = false;
-                self.sent_microtransactions = 0;
-                self.accounted_requests = 0;
-                // Start the hydra-node early so it can discover peers while the
-                // commit wallet is being funded.
                 self.start_hydra_node().await?;
-                self.send_delayed(Event::FundCommitAddr, Duration::from_secs(1))
+                self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                     .await
             },
 
@@ -528,104 +522,8 @@ impl State {
                 self.stop_hydra_node().await;
             },
 
-            Event::FundCommitAddr => {
-                // The hydra-node in --blockfrost mode needs its signing key
-                // address to be indexed by Blockfrost before it can build the
-                // Init tx. Poll until visible (mirrors what
-                // `hydra-blockfrost-test.sh` does).
-                let fuel_lovelace = self
-                    .config
-                    .lovelace_on_addr(&self.config.gateway_cardano_addr)
-                    .await?;
-                if fuel_lovelace == 0 {
-                    info!(
-                        "{}: waiting for Blockfrost to index \
-                         the signing key address ({})",
-                        self.originator.as_str(),
-                        &self.config.gateway_cardano_addr,
-                    );
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
-                        .await;
-                    return Ok(());
-                }
-
-                let commit_wallet = self.config_dir.join("commit-funds");
-                self.commit_wallet_skey = commit_wallet.with_extension("sk");
-
-                if !std::fs::exists(&self.commit_wallet_skey)? {
-                    HydraConfig::new_cardano_keypair(&commit_wallet)?;
-                }
-
-                self.commit_wallet_addr = self
-                    .config
-                    .derive_enterprise_address_from_skey(&self.commit_wallet_skey)?;
-
-                let target_lovelace = (self.config.toml.commit_ada * 1_000_000.0).round() as u64;
-                let current_lovelace = self
-                    .config
-                    .lovelace_on_addr(&self.commit_wallet_addr)
-                    .await?;
-
-                if current_lovelace < target_lovelace {
-                    if self.commit_fund_tx_sent {
-                        // Already submitted a top-up tx; just wait for
-                        // Blockfrost to index it.
-                        info!(
-                            "{}: waiting for commit \
-                             top-up to appear on Blockfrost \
-                             (current={}, target={})",
-                            self.originator.as_str(),
-                            current_lovelace,
-                            target_lovelace
-                        );
-                        self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
-                            .await;
-                        return Ok(());
-                    }
-
-                    let top_up =
-                        (target_lovelace - current_lovelace).max(MIN_LOVELACE_PER_TRANSACTION);
-                    info!(
-                        "{}: topping up commit address by \
-                         {} lovelace (current={}, target={})",
-                        self.originator.as_str(),
-                        top_up,
-                        current_lovelace,
-                        target_lovelace
-                    );
-                    self.config
-                        .fund_address(
-                            &self.config.gateway_cardano_addr,
-                            &self.commit_wallet_addr,
-                            top_up,
-                            &self.config.toml.cardano_signing_key,
-                        )
-                        .await?;
-
-                    self.commit_fund_tx_sent = true;
-
-                    // Wait for the top-up to be visible on Blockfrost
-                    // before proceeding to Init.
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(5))
-                        .await
-                } else {
-                    self.commit_fund_tx_sent = false;
-                    info!(
-                        "{}: commit address funded \
-                         (current={}, target={})",
-                        self.originator.as_str(),
-                        current_lovelace,
-                        target_lovelace
-                    );
-
-                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
-                        .await
-                }
-            },
-
             Event::TryToInitHead => {
                 let ready = verifications::prometheus_metric_at_least(
-                    &self.config.http,
                     &format!("http://127.0.0.1:{}/metrics", self.metrics_port),
                     "hydra_head_peers_connected",
                     1.0,
@@ -634,8 +532,7 @@ impl State {
 
                 info!(
                     "{}: waiting for hydras to connect: ready={:?}",
-                    self.originator.as_str(),
-                    ready
+                    self.customer_log_id, ready
                 );
 
                 if matches!(ready, Ok(true)) {
@@ -648,307 +545,166 @@ impl State {
                     )
                     .await?;
 
-                    // Wait for the hydra-node's Blockfrost chain follower
-                    // to observe the Init tx on L1 before re-sending Init.
-                    self.send_delayed(
-                        Event::WaitForInitial {
-                            retries_before_reinit: 10,
-                        },
-                        Duration::from_secs(3),
-                    )
-                    .await
+                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                        .await
                 } else {
                     self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
                         .await
-                }
-            },
-
-            Event::WaitForInitial {
-                retries_before_reinit,
-            } => {
-                let status =
-                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
-
-                info!(
-                    "{}: waiting for the Initial head \
-                     status: status={:?} (retries_before_reinit={})",
-                    self.originator.as_str(),
-                    status,
-                    retries_before_reinit
-                );
-
-                if status == "Initial" {
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(1))
-                        .await
-                } else if status == "Open" {
-                    warn!(
-                        "{}: head is already Open, \
-                         skipping Commit",
-                        self.originator.as_str(),
-                    );
-                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(1))
-                        .await
-                } else if retries_before_reinit <= 1 {
-                    // The Init tx likely failed (e.g. stale UTxO in the
-                    // hydra-node's Blockfrost wallet cache). Re-send Init so
-                    // the node can build a fresh InitTx with up-to-date UTxOs.
-                    warn!(
-                        "{}: head stuck on {:?} after \
-                         Init — re-sending Init command",
-                        self.originator.as_str(),
-                        status
-                    );
-                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(1))
-                        .await
-                } else {
-                    self.send_delayed(
-                        Event::WaitForInitial {
-                            retries_before_reinit: retries_before_reinit - 1,
-                        },
-                        Duration::from_secs(3),
-                    )
-                    .await
                 }
             },
 
             Event::TryToCommit => {
-                let commit_wallet_lovelace = self
-                    .config
-                    .lovelace_on_addr(&self.commit_wallet_addr)
-                    .await?;
-
-                let lovelace_needed = 0.99 * self.config.toml.commit_ada * 1_000_000.0;
+                let status = verifications::fetch_head_tag(self.api_port).await;
 
                 info!(
-                    "{}: waiting for enough lovelace (> {}) to appear on the commit address: lovelace={:?}",
-                    self.originator.as_str(),
-                    lovelace_needed.round(),
-                    commit_wallet_lovelace
+                    "{}: waiting for the Initial head status: status={:?}",
+                    self.customer_log_id, status
                 );
 
-                if commit_wallet_lovelace as f64 >= lovelace_needed {
-                    info!(
-                        "{}: submitting a Commit transaction to join the Hydra Head",
-                        self.originator.as_str()
-                    );
-                    match self
-                        .config
-                        .commit_all_utxo_to_hydra(
-                            &self.commit_wallet_addr,
-                            self.api_port,
-                            &self.commit_wallet_skey,
-                        )
-                        .await
-                    {
-                        Ok(()) => {
+                match status.as_deref() {
+                    Err(_) => {
+                        self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
+                            .await
+                    },
+                    Ok(status) => {
+                        if status == "Initial" {
+                            info!(
+                                "{}: submitting an empty Commit transaction to join the Hydra Head",
+                                self.customer_log_id
+                            );
+                            match self
+                                .config
+                                .empty_commit_to_hydra(
+                                    self.api_port,
+                                    &self.config.toml.cardano_signing_key,
+                                )
+                                .await
+                            {
+                                Ok(()) => {
+                                    self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
+                                        .await
+                                },
+                                Err(err) => {
+                                    warn!(
+                                        "{}: commit failed (will retry): {}",
+                                        self.customer_log_id, err,
+                                    );
+                                    self.send_delayed(Event::TryToCommit, Duration::from_secs(30))
+                                        .await
+                                },
+                            }
+                        } else if status == "Open" {
                             self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                                 .await
-                        },
-                        Err(err) => {
-                            warn!(
-                                "{}: commit failed (will retry): {}",
-                                self.originator.as_str(),
-                                err,
-                            );
-                            self.send_delayed(Event::TryToCommit, Duration::from_secs(30))
+                        } else {
+                            self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
                                 .await
-                        },
-                    }
-                } else {
-                    self.send_delayed(Event::TryToCommit, Duration::from_secs(3))
-                        .await
+                        }
+                    },
                 }
             },
 
             Event::WaitForOpen => {
-                let status =
-                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
+                let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
                     "{}: waiting for the Open head status: status={:?}",
-                    self.originator.as_str(),
-                    status
+                    self.customer_log_id, status
                 );
                 if status == "Open" {
                     self.hydra_head_open = true;
+                    self.credits_last_balance = 0;
+                    self.received_microtransactions = 0;
+                    self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
+                        .await;
                 } else {
                     self.send_delayed(Event::WaitForOpen, Duration::from_secs(3))
                         .await
                 }
             },
 
-            Event::AccountOneRequest => {
-                if self.awaiting_l2_confirmation {
-                    self.send_delayed(Event::AccountOneRequest, Duration::from_secs(1))
-                        .await;
-                    return Ok(());
-                }
-
-                self.accounted_requests += 1;
-
-                if self.accounted_requests >= self.config.toml.requests_per_microtransaction {
-                    if self.is_closing {
-                        warn!(
-                            "{}: would send a microtransaction, but the Hydra Head state is currently closing for `Fanout` (backlog of requests: {})",
-                            self.originator.as_str(),
-                            self.accounted_requests
-                        )
-                    } else if self.hydra_head_open {
-                        info!("{}: sending a microtransaction", self.originator.as_str());
-                        let amount_lovelace: u64 =
-                            self.accounted_requests * self.config.toml.lovelace_per_request;
-                        let spent_inputs = self
-                            .config
-                            .send_hydra_transaction(
-                                self.api_port,
-                                &self.commit_wallet_addr,
-                                &self.reward_addr,
-                                &self.commit_wallet_skey,
-                                amount_lovelace,
-                            )
-                            .await?;
-
-                        self.accounted_requests = 0;
-                        self.sent_microtransactions += 1;
-
-                        self.awaiting_l2_confirmation = true;
-                        self.send(Event::WaitForL2Tx {
-                            spent_inputs,
-                            attempts: 0,
-                            amount_lovelace,
-                            retries_left: L2_TX_MAX_RETRIES,
-                        })
-                        .await;
-
-                        if self.sent_microtransactions
-                            >= self.config.toml.microtransactions_per_fanout
-                        {
-                            self.is_closing = true;
-                            self.send_delayed(Event::WaitForUtxoCount, Duration::from_secs(3))
-                                .await;
-                        }
-                    } else {
-                        warn!(
-                            "{}: would send a microtransaction, but the Hydra Head state is still not `Open` (backlog of requests: {})",
-                            self.originator.as_str(),
-                            self.accounted_requests
-                        )
-                    }
-                }
-            },
-
-            Event::WaitForL2Tx {
-                spent_inputs,
-                attempts,
-                amount_lovelace,
-                retries_left,
-            } => {
-                // Polls `GET /snapshot/utxo` until the inputs spent by a
-                // previously sent L2 transaction have been consumed by a Hydra
-                // snapshot. This prevents the next transaction from reading a
-                // stale UTxO set and building a duplicate that Hydra would
-                // reject with `TxInvalid` / `BadInputsUTxO`, which would rarely
-                // happen.
-                let snapshot_url = format!("http://127.0.0.1:{}/snapshot/utxo", self.api_port);
-                let utxo: serde_json::Value = self
-                    .config
-                    .http
-                    .get(&snapshot_url)
-                    .send()
-                    .await?
-                    .error_for_status()?
-                    .json()
-                    .await?;
-
-                let still_present = if let Some(obj) = utxo.as_object() {
-                    spent_inputs.iter().any(|inp| obj.contains_key(inp))
-                } else {
-                    warn!(
-                        "{}: snapshot/utxo: expected JSON object, got something else",
-                        self.originator.as_str()
+            Event::MonitorCredits => {
+                if self.hydra_head_open && !self.is_closing {
+                    debug!(
+                        "{}: MonitorCredits: credits={}, last_balance={}, received_microtxs={}/{}, closing={}",
+                        self.customer_log_id,
+                        self.credits_available.load(Ordering::SeqCst),
+                        self.credits_last_balance,
+                        self.received_microtransactions,
+                        self.config.toml.microtransactions_per_fanout,
+                        self.is_closing,
                     );
-                    false
-                };
-
-                if !still_present {
-                    info!(
-                        "{}: L2 tx confirmed in snapshot (attempt {})",
-                        self.originator.as_str(),
-                        attempts + 1
-                    );
-                    self.awaiting_l2_confirmation = false;
-                } else if attempts >= L2_TX_MAX_POLL_ATTEMPTS {
-                    if retries_left > 0 {
-                        warn!(
-                            "{}: L2 tx not confirmed after {} attempts, re-submitting ({} retries left)",
-                            self.originator.as_str(),
-                            attempts,
-                            retries_left
-                        );
-                        let new_spent_inputs = self
-                            .config
-                            .send_hydra_transaction(
-                                self.api_port,
-                                &self.commit_wallet_addr,
-                                &self.reward_addr,
-                                &self.commit_wallet_skey,
-                                amount_lovelace,
-                            )
-                            .await?;
-                        self.send(Event::WaitForL2Tx {
-                            spent_inputs: new_spent_inputs,
-                            attempts: 0,
-                            amount_lovelace,
-                            retries_left: retries_left - 1,
-                        })
-                        .await;
-                    } else {
-                        warn!(
-                            "{}: L2 tx not confirmed after {} attempts and all retries exhausted, giving up",
-                            self.originator.as_str(),
-                            attempts
-                        );
-                        self.awaiting_l2_confirmation = false;
-                    }
-                } else {
-                    self.send_delayed(
-                        Event::WaitForL2Tx {
-                            spent_inputs,
-                            attempts: attempts + 1,
-                            amount_lovelace,
-                            retries_left,
-                        },
-                        L2_TX_POLL_INTERVAL,
+                    match verifications::lovelace_in_snapshot_for_address(
+                        self.api_port,
+                        &self.config.gateway_cardano_addr,
                     )
-                    .await;
-                }
-            },
+                    .await
+                    {
+                        Ok(current_balance) => {
+                            if current_balance < self.credits_last_balance {
+                                warn!(
+                                    "{}: snapshot balance decreased ({} -> {}), resetting",
+                                    self.customer_log_id,
+                                    self.credits_last_balance,
+                                    current_balance
+                                );
+                                self.credits_last_balance = current_balance;
+                            } else {
+                                let delta = current_balance - self.credits_last_balance;
+                                if delta > 0 {
+                                    let microtransaction_lovelace =
+                                        self.config.toml.lovelace_per_request
+                                            * self.config.toml.requests_per_microtransaction;
+                                    if microtransaction_lovelace == 0 {
+                                        warn!(
+                                            "{}: microtransaction value is zero; ignoring credits",
+                                            self.customer_log_id
+                                        );
+                                    } else if delta >= microtransaction_lovelace {
+                                        let new_microtransactions =
+                                            delta / microtransaction_lovelace;
+                                        let new_credits = new_microtransactions
+                                            * self.config.toml.requests_per_microtransaction;
+                                        self.credits_available
+                                            .fetch_add(new_credits, Ordering::SeqCst);
+                                        self.received_microtransactions += new_microtransactions;
+                                        info!(
+                                            "{}: received {} microtransaction(s), req. credits +{}",
+                                            self.customer_log_id,
+                                            new_microtransactions,
+                                            new_credits
+                                        );
+                                    } else {
+                                        warn!(
+                                            "{}: snapshot delta {} is below expected microtransaction size {}",
+                                            self.customer_log_id, delta, microtransaction_lovelace
+                                        );
+                                    }
+                                    self.credits_last_balance = current_balance;
+                                }
+                            }
 
-            Event::WaitForUtxoCount => {
-                // XXX: `1 +`, because we also have the source UTxO of the `commit_wallet`
-                let expected_count = 1 + self.sent_microtransactions;
-                let current_count = self.config.hydra_utxo_count(self.api_port).await?;
-
-                if current_count >= expected_count {
-                    info!(
-                        "{}: got correct L2 UTxO count, will Close now…",
-                        self.originator.as_str()
-                    );
-                    self.send_delayed(Event::TryToClose, Duration::from_secs(1))
-                        .await;
-                } else {
-                    warn!(
-                        "{}: still have incorrect L2 UTxO count: {}, expected {}",
-                        self.originator.as_str(),
-                        current_count,
-                        expected_count
-                    );
-                    self.send_delayed(Event::WaitForUtxoCount, Duration::from_secs(3))
+                            if self.received_microtransactions
+                                >= self.config.toml.microtransactions_per_fanout
+                                && !self.is_closing
+                            {
+                                self.is_closing = true;
+                                self.send_delayed(Event::TryToClose, Duration::from_secs(1))
+                                    .await;
+                            }
+                        },
+                        Err(err) => warn!(
+                            "{}: failed to read snapshot/utxo: {err}",
+                            self.customer_log_id
+                        ),
+                    }
+                    self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
                         .await;
                 }
             },
 
             Event::TryToClose => {
-                info!("{}: closing the Hydra Head", self.originator.as_str());
+                info!("{}: closing the Hydra Head", self.customer_log_id);
+                self.hydra_head_open = false;
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Close"}),
@@ -967,12 +723,10 @@ impl State {
             Event::WaitForClosed {
                 retries_before_reclose,
             } => {
-                let status =
-                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
+                let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
                     "{}: waiting for the Closed head status: status={:?}",
-                    self.originator.as_str(),
-                    status
+                    self.customer_log_id, status
                 );
                 if status == "Closed" {
                     self.send_delayed(Event::WaitForFanoutReady, Duration::from_secs(3))
@@ -993,13 +747,10 @@ impl State {
             },
 
             Event::WaitForFanoutReady => {
-                let ready =
-                    verifications::fetch_head_ready_to_fanout(&self.config.http, self.api_port)
-                        .await?;
+                let ready = verifications::fetch_head_ready_to_fanout(self.api_port).await?;
                 info!(
                     "{}: waiting for readyToFanoutSent on Closed head: ready={:?}",
-                    self.originator.as_str(),
-                    ready,
+                    self.customer_log_id, ready,
                 );
                 if ready {
                     self.send_delayed(Event::DoFanout, Duration::from_secs(1))
@@ -1011,7 +762,7 @@ impl State {
             },
 
             Event::DoFanout => {
-                info!("{}: requesting `Fanout`", self.originator.as_str(),);
+                info!("{}: requesting `Fanout`", self.customer_log_id,);
                 verifications::send_one_websocket_msg(
                     &format!("ws://127.0.0.1:{}", self.api_port),
                     serde_json::json!({"tag":"Fanout"}),
@@ -1034,43 +785,28 @@ impl State {
             Event::WaitForIdleAfterClose {
                 retries_before_refanout,
             } => {
-                let status =
-                    verifications::fetch_head_tag(&self.config.http, self.api_port).await?;
+                let status = verifications::fetch_head_tag(self.api_port).await?;
                 info!(
                     "{}: waiting for the Idle head status (after Fanout): status={:?} (retries_before_refanout={})",
-                    self.originator.as_str(),
-                    status,
-                    retries_before_refanout,
+                    self.customer_log_id, status, retries_before_refanout,
                 );
                 if status == "Idle" {
                     info!(
                         "{}: re-initializing the Hydra Head for another L2 session",
-                        self.originator.as_str(),
+                        self.customer_log_id,
                     );
 
-                    // Reset all per-session state so the next L2 session starts
-                    // clean. The fresh head has only the initial commit amount
-                    // in its UTxO, so carrying over `accounted_requests` would
-                    // make the first microtransaction exceed the available
-                    // lovelace:
-                    self.hydra_head_open = false;
                     self.is_closing = false;
-                    self.awaiting_l2_confirmation = false;
-                    self.sent_microtransactions = 0;
-                    self.accounted_requests = 0;
-
-                    // Fund the commit wallet before the next Init, so
-                    // the signing key UTxOs stay untouched between Init
-                    // and Commit.
-                    self.send_delayed(Event::FundCommitAddr, Duration::from_secs(3))
+                    self.received_microtransactions = 0;
+                    self.credits_last_balance = 0;
+                    self.send_delayed(Event::TryToInitHead, Duration::from_secs(3))
                         .await;
                 } else if retries_before_refanout <= 1 {
                     // Fanout tx was likely rejected (e.g.
-                    // OutsideValidityIntervalUTxO due to slot-lag), let’s retry.
+                    // OutsideValidityIntervalUTxO due to slot-lag), let's retry.
                     warn!(
                         "{}: head still {:?} after Fanout — retrying Fanout",
-                        self.originator.as_str(),
-                        status,
+                        self.customer_log_id, status,
                     );
                     self.send_delayed(Event::DoFanout, Duration::from_secs(1))
                         .await;
@@ -1136,13 +872,13 @@ impl State {
             .arg("--persistence-dir")
             .arg(self.config_dir.join("persistence"))
             .arg("--cardano-signing-key")
-            .arg(&self.config.toml.cardano_signing_key) // FIXME: copy it somewhere else in case the source file changes
+            .arg(&self.config.toml.cardano_signing_key)
             .arg("--hydra-signing-key")
             .arg(self.config_dir.join("hydra.sk"))
             .arg("--hydra-scripts-tx-id")
             .arg(&self.kex_resp.hydra_scripts_tx_id)
             .arg("--ledger-protocol-parameters")
-            .arg(&protocol_parameters_path) // FIXME: copy it somewhere else in case the source file changes
+            .arg(&protocol_parameters_path)
             .arg("--contestation-period")
             .arg(format!("{}s", self.kex_resp.contestation_period.as_secs()))
             .arg("--blockfrost")
@@ -1164,7 +900,7 @@ impl State {
             .arg(platform_hydra_vkey_path)
             .arg("--cardano-verification-key")
             .arg(platform_cardano_vkey_path)
-            .stdin(Stdio::null()) // FIXME: try an empty pipe, and see if it exits on our `kill -9`
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 

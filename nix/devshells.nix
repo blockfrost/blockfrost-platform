@@ -103,16 +103,13 @@ in {
   };
 
   env =
-    [
+    internal.hydraScriptsEnvVars
+    ++ [
       {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
       }
     ]
-    ++ (map (network: {
-      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
-      value = (builtins.fromJSON (builtins.readFile internal.hydraNetworksJson)).${network}.${internal.hydraVersion};
-    }) ["mainnet" "preprod" "preview"])
     ++ lib.optionals pkgs.stdenv.isDarwin [
       {
         name = "LIBCLANG_PATH";
