@@ -27,7 +27,6 @@ impl DB {
         }
 
         let connection = pool.get().await.expect("Failed to get a connection.");
-
         connection
             .interact(|c| c.run_pending_migrations(MIGRATIONS).map(|_| ()))
             .await

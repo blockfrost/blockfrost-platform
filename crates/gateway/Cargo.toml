@@ -11,10 +11,14 @@ default = []
 dev_mock_db = []
 
 [dependencies]
+anyhow.workspace = true
 axum.workspace = true
+bf-common.workspace = true
 tokio = { workspace = true, features = ["full"] }
+tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+tokio-tungstenite.workspace = true
 tungstenite.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -22,19 +26,28 @@ serde.workspace = true
 serde_json.workspace = true
 colored.workspace = true
 clap.workspace = true
+dirs.workspace = true
 toml.workspace = true
 thiserror.workspace = true
 chrono = { workspace = true, features = ["serde"] }
+reqwest.workspace = true
 blockfrost.workspace = true
+cardano-serialization-lib.workspace = true
 dotenvy.workspace = true
 hex.workspace = true
 rand.workspace = true
 base64.workspace = true
 uuid.workspace = true
 hyper.workspace = true
+machine-uid.workspace = true
+blake3.workspace = true
+getrandom.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
 diesel_migrations.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
 
 [lib]
 name = "blockfrost_gateway"
@@ -42,6 +55,11 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 rstest.workspace = true
+
+[build-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
 
 [lints]
 workspace = true

@@ -8,7 +8,7 @@ use integration_tests::{
 };
 
 use bf_common::config::IcebreakersConfig;
-use blockfrost_platform::{icebreakers::manager::IcebreakersManager, server::build};
+use blockfrost_platform::{hydra_client, icebreakers::manager::IcebreakersManager, server::build};
 use reqwest::StatusCode;
 use tokio::sync::Mutex;
 
@@ -123,7 +123,15 @@ async fn test_ws_invalid_credentials_rejected() {
     let health_errors = Arc::new(Mutex::new(vec![]));
 
     let manager = IcebreakersManager::new(icebreakers_api, health_errors.clone(), app, api_prefix);
-    manager.run().await;
+
+    let (kex_req_tx, kex_req_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::KeyExchangeRequest>(1);
+    let (kex_resp_tx, _kex_resp_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::KeyExchangeResponse>(1);
+    let (terminate_tx, _terminate_rx) =
+        tokio::sync::mpsc::channel::<hydra_client::TerminateRequest>(1);
+    drop(kex_req_tx);
+    manager.run((kex_req_rx, kex_resp_tx, terminate_tx)).await;
 
     // Wait long enough for the first registration attempt to fail. The manager
     // retries after 10 s on error, so 2 s is enough for the first attempt:
