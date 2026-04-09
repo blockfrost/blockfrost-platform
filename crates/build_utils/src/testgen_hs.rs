@@ -16,7 +16,7 @@ pub fn ensure() {
         return;
     }
 
-    let testgen_lib_version = "10.4.1.1";
+    let testgen_lib_version = "10.6.3.0";
 
     let target_os = if cfg!(target_os = "macos") {
         "darwin"

@@ -11,20 +11,20 @@ pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
     match pallas_codec::minicbor::decode::<Tx>(tx) {
         Ok(decoded) => {
             if _check_multiasset_zero(decoded) {
-                Err(BlockfrostError::custom_400(as_cbor_decode_failure(
-                    "MultiAsset cannot contain zeros".to_string(),
-                    0,
-                )))
+                Err(BlockfrostError::custom_400(
+                    as_cbor_decode_failure("MultiAsset cannot contain zeros".to_string(), 0)
+                        .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
+                ))
             } else {
                 Ok(())
             }
         },
         Err(e) => {
             info!("Invalid TX CBOR: {:?}, CBOR: {}", e, hex::encode(tx));
-            Err(BlockfrostError::custom_400(as_cbor_decode_failure(
-                e.to_string(),
-                e.position().unwrap_or(0) as u64,
-            )))
+            Err(BlockfrostError::custom_400(
+                as_cbor_decode_failure(e.to_string(), e.position().unwrap_or(0) as u64)
+                    .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
+            ))
         },
     }
 }

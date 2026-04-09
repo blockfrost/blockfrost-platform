@@ -191,7 +191,7 @@ async fn verify_one(cbor: &str) {
 
     let our_decoding = decode_error(&cbor);
 
-    let our_json = serialize_error(our_decoding);
+    let our_json = serialize_error(our_decoding).unwrap();
     assert_json_eq!(reference_json, our_json)
 }
 #[cfg(not(feature = "tarpaulin"))]
