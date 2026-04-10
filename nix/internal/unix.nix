@@ -126,6 +126,8 @@ in
           mv $out/bin $out/libexec
           mkdir -p $out/bin
           ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+          mkdir -p $out/libexec/hydra-node/
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
         '';
         cargoExtraArgs = "--package blockfrost-sdk-bridge";
       });

@@ -7,7 +7,7 @@
 # `dev_mock_db`, receiver):
 #
 # 1. Start the Gateway with a `[hydra_bridge]` config section
-# 2. Start the SDK Bridge pointing at the local Gateway (`--gateway-ws-url`)
+# 2. Start the SDK Bridge pointing at the local Gateway (`--gateway-url`)
 # 3. Wait for Hydra key exchange, Head Init, Commit, and Open
 # 4. Send API requests through the SDK Bridge -> Gateway
 # 5. Verify that the Gateway triggers Close -> Fanout after enough micropayments
