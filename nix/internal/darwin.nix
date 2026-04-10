@@ -84,6 +84,22 @@ in
         '';
     });
 
+    archive-bridge = let
+      outFileName = "${unix.sdkBridgeCargoToml.package.name}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+    in
+      pkgs.runCommandNoCC "${unix.sdkBridgeCargoToml.package.name}-archive" {
+        passthru = {inherit outFileName;};
+      } ''
+        cp -r ${bundle-bridge} ${unix.sdkBridgeCargoToml.package.name}
+
+        mkdir -p $out
+        tar -cjvf $out/${outFileName} ${unix.sdkBridgeCargoToml.package.name}/
+
+        # Make it downloadable from Hydra:
+        mkdir -p $out/nix-support
+        echo "file binary-dist \"$out/${outFileName}\"" >$out/nix-support/hydra-build-products
+      '';
+
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
     homebrew-tap =
