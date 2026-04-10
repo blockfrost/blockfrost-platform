@@ -68,7 +68,7 @@ in
     # Portable directory that can be run on any modern Darwin:
     bundle-bridge = (nix-bundle-exe-lib-subdir "${unix.blockfrost-sdk-bridge}/libexec/${unix.sdkBridgeCargoToml.package.name}")
       .overrideAttrs (drv: {
-      name = unix.sdkBridgeCargoToml.package.name;
+      inherit (unix.sdkBridgeCargoToml.package) name;
       buildCommand =
         drv.buildCommand
         + ''

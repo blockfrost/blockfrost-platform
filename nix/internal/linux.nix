@@ -69,7 +69,7 @@ in
         lib_dir = "lib";
       } "${unix.blockfrost-sdk-bridge}/libexec/${unix.sdkBridgeCargoToml.package.name}")
       .overrideAttrs (drv: {
-        name = unix.sdkBridgeCargoToml.package.name;
+        inherit (unix.sdkBridgeCargoToml.package) name;
         buildCommand =
           drv.buildCommand
           + ''
