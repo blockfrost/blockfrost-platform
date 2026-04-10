@@ -7,7 +7,7 @@
 //! - `transaction sign`
 //! - Reading/writing cardano-cli JSON envelope format
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use cardano_serialization_lib::{
     Address, Credential, EnterpriseAddress, FixedTransaction, NetworkId, PrivateKey, PublicKey,
 };
@@ -19,8 +19,10 @@ const CBOR_32_PREFIX: &str = "5820";
 /// Read a cardano-cli signing-key JSON envelope and return the raw 32-byte
 /// ed25519 private key.
 pub fn read_skey_bytes(skey_path: &Path) -> Result<[u8; 32]> {
-    let contents = std::fs::read_to_string(skey_path)?;
-    let envelope: serde_json::Value = serde_json::from_str(&contents)?;
+    let contents = std::fs::read_to_string(skey_path)
+        .with_context(|| format!("failed to read signing key from {}", skey_path.display()))?;
+    let envelope: serde_json::Value = serde_json::from_str(&contents)
+        .with_context(|| format!("invalid JSON in signing key {}", skey_path.display()))?;
     parse_skey_envelope(&envelope)
 }
 

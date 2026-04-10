@@ -91,40 +91,30 @@ in
         };
       });
 
-    blockfrost-gateway = craneLib.buildPackage (commonArgs
-      // {
-        inherit cargoArtifacts GIT_REVISION;
-        pname = gatewayCargoToml.package.name;
-        doCheck = false; # we run tests with `cargo-nextest` below
-        meta.mainProgram = gatewayCargoToml.package.name;
-        postInstall = ''
-          mv $out/bin $out/libexec
-          mkdir -p $out/bin
-          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
-          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
-        '';
-        cargoExtraArgs = "--package blockfrost-gateway";
-      }
-      // (builtins.listToAttrs hydraScriptsEnvVars));
+    mk-blockfrost-gateway = {mockDb ? false}:
+      craneLib.buildPackage (commonArgs
+        // {
+          inherit cargoArtifacts GIT_REVISION;
+          pname = gatewayCargoToml.package.name + lib.optionalString mockDb "-dev-mock-db";
+          doCheck = false; # we run tests with `cargo-nextest` below
+          meta = {
+            mainProgram = gatewayCargoToml.package.name;
+            description = "Blockfrost Gateway" + lib.optionalString mockDb " (dev mock DB build)";
+          };
+          postInstall = ''
+            mv $out/bin $out/libexec
+            mkdir -p $out/bin
+            ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+            mkdir -p $out/libexec/hydra-node/
+            ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+          '';
+          cargoExtraArgs = "--package blockfrost-gateway" + lib.optionalString mockDb " --features dev_mock_db";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
-    blockfrost-gateway--dev-mock-db = craneLib.buildPackage (commonArgs
-      // {
-        inherit cargoArtifacts GIT_REVISION;
-        pname = gatewayCargoToml.package.name + "-dev-mock-db";
-        doCheck = false; # we run tests with `cargo-nextest` below
-        meta = {
-          mainProgram = gatewayCargoToml.package.name;
-          description = "Blockfrost Gateway (dev mock DB build)";
-        };
-        postInstall = ''
-          mv $out/bin $out/libexec
-          mkdir -p $out/bin
-          ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
-          ln -s ${hydra-node}/bin/hydra-node $out/libexec/
-        '';
-        cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
-      }
-      // (builtins.listToAttrs hydraScriptsEnvVars));
+    blockfrost-gateway = mk-blockfrost-gateway {mockDb = false;};
+
+    blockfrost-gateway--dev-mock-db = mk-blockfrost-gateway {mockDb = true;};
 
     blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
       // {
