@@ -577,31 +577,46 @@ change_address=$(cat credentials/submit-mnemonic/payment.addr)
 
 declare -A lovelace_remaining
 
+max_return_attempts=5
+return_retry_delay=25
+
 for participant in gateway-hydra platform-hydra platform-reward; do
-  addr=$(cat credentials/"$participant"/payment.addr)
-  utxo_json=$(cardano-cli query utxo --address "$addr" --out-file /dev/stdout)
-  funds=$(echo "$utxo_json" | jq '[.[] | .value.lovelace] | add // 0')
-  lovelace_remaining["$participant"]=$funds
-  log info "Returning funds from $participant ($funds lovelace)…"
+  for return_attempt in $(seq 1 $max_return_attempts); do
+    addr=$(cat credentials/"$participant"/payment.addr)
+    utxo_json=$(cardano-cli query utxo --address "$addr" --out-file /dev/stdout)
+    funds=$(echo "$utxo_json" | jq '[.[] | .value.lovelace] | add // 0')
+    lovelace_remaining["$participant"]=$funds
+    log info "Returning funds from $participant ($funds lovelace)…"
 
-  if ((funds == 0)); then
-    log warn "$participant has no funds to return; skipping."
-    continue
-  fi
+    if ((funds == 0)); then
+      log warn "$participant has no funds to return; skipping."
+      break
+    fi
 
-  tx_ins=$(echo "$utxo_json" | jq -j 'to_entries[].key | "--tx-in ", ., " "')
+    tx_ins=$(echo "$utxo_json" | jq -j 'to_entries[].key | "--tx-in ", ., " "')
 
-  # shellcheck disable=SC2086
-  cardano-cli latest transaction build \
-    $tx_ins \
-    --change-address "$change_address" \
-    --out-file "$txdir/tx-$participant.json"
-  cardano-cli latest transaction sign \
-    --tx-file "$txdir/tx-$participant.json" \
-    --signing-key-file "credentials/$participant/payment.sk" \
-    --out-file "$txdir/tx-signed-$participant.json"
-  cardano-cli latest transaction submit --tx-file "$txdir/tx-signed-$participant.json"
-  log info "Returned funds from $participant."
+    # shellcheck disable=SC2086
+    if cardano-cli latest transaction build \
+      $tx_ins \
+      --change-address "$change_address" \
+      --out-file "$txdir/tx-$participant.json" &&
+      cardano-cli latest transaction sign \
+        --tx-file "$txdir/tx-$participant.json" \
+        --signing-key-file "credentials/$participant/payment.sk" \
+        --out-file "$txdir/tx-signed-$participant.json" &&
+      cardano-cli latest transaction submit --tx-file "$txdir/tx-signed-$participant.json"; then
+      log info "Returned funds from $participant."
+      break
+    fi
+
+    if ((return_attempt == max_return_attempts)); then
+      log fatal "All $max_return_attempts attempts to return funds from $participant failed."
+      exit 1
+    fi
+
+    log warn "Return attempt $return_attempt for $participant failed, retrying in ${return_retry_delay}s (waiting for a new block)…"
+    sleep "$return_retry_delay"
+  done
 done
 
 # ---------------------------------------------------------------------------- #
