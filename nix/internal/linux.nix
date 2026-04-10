@@ -41,9 +41,8 @@ in
             chmod -R +w $out
             ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/.
             ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/.
-            ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/.
             chmod -R +w $out
-            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
+            ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos,hydra-node} ./ ; )
           '';
       });
 
@@ -60,11 +59,4 @@ in
       exe_dir = "exe";
       lib_dir = "lib";
     } "${unix.hydra-node}/bin/hydra-node";
-
-    bundle-cardano-cli = nix-bundle-exe {
-      inherit pkgs;
-      bin_dir = "bin";
-      exe_dir = "exe";
-      lib_dir = "lib";
-    } "${unix.cardano-cli}/bin/cardano-cli";
   }
