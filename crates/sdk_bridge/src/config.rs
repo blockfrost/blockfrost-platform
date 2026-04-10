@@ -8,11 +8,10 @@ use url::Url;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    #[arg(
-        long,
-        default_value = "wss://icebreakers1.platform.blockfrost.io/sdk/ws"
-    )]
-    pub gateway_ws_url: String,
+    /// Override the Gateway URL (default: derived from network). Useful for
+    /// self-hosted gateways or testing.
+    #[arg(long)]
+    pub gateway_url: Option<String>,
 
     #[arg(long, default_value = "127.0.0.1:3002")]
     pub listen_address: String,
@@ -42,7 +41,11 @@ impl BridgeConfig {
             .listen_address
             .parse::<SocketAddr>()
             .map_err(|err| anyhow!("Invalid listen address: {err}"))?;
-        let gateway_ws_url = normalize_gateway_ws_url(&args.gateway_ws_url)?;
+
+        let gateway_base_url = args
+            .gateway_url
+            .unwrap_or_else(|| args.network.to_common().default_gateway_url().to_string());
+        let gateway_ws_url = normalize_gateway_ws_url(&gateway_base_url)?;
 
         Ok(Self {
             gateway_ws_url,

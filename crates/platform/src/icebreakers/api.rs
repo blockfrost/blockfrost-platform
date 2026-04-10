@@ -1,5 +1,5 @@
 use crate::{load_balancer::LoadBalancerConfig, server::state::ApiPrefix};
-use bf_common::{config::Config, errors::AppError, types::Network};
+use bf_common::{config::Config, errors::AppError};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -48,17 +48,10 @@ impl IcebreakersAPI {
     ) -> Result<Option<Arc<Self>>, AppError> {
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
-                let api_url = icebreakers_config.gateway_url.clone().unwrap_or_else(|| {
-                    match config.network {
-                        Network::Preprod | Network::Preview => {
-                            "https://api-dev.icebreakers.blockfrost.io"
-                        },
-                        Network::Mainnet | Network::Custom => {
-                            "https://icebreakers-api.blockfrost.io"
-                        },
-                    }
-                    .to_string()
-                });
+                let api_url = icebreakers_config
+                    .gateway_url
+                    .clone()
+                    .unwrap_or_else(|| config.network.default_gateway_url().to_string());
 
                 let client = Client::builder()
                     .local_address(config.server_address)

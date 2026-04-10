@@ -65,6 +65,25 @@ in
 
     bundle-hydra = nix-bundle-exe-lib-subdir "${unix.hydra-node}/bin/hydra-node";
 
+    # Portable directory that can be run on any modern Darwin:
+    bundle-bridge = (nix-bundle-exe-lib-subdir "${unix.blockfrost-sdk-bridge}/libexec/${unix.sdkBridgeCargoToml.package.name}")
+      .overrideAttrs (drv: {
+      name = unix.sdkBridgeCargoToml.package.name;
+      buildCommand =
+        drv.buildCommand
+        + ''
+          mkdir -p $out/libexec
+          mv $out/{${unix.sdkBridgeCargoToml.package.name},lib} $out/libexec
+          mkdir -p $out/bin
+
+          chmod -R +w $out
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
+          chmod -R +w $out
+
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},hydra-node} ./ ; )
+        '';
+    });
+
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
     homebrew-tap =
