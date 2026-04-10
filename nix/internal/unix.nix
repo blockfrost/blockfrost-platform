@@ -79,7 +79,9 @@ in
           chmod -R +w $out
           mv $out/bin $out/libexec
           mkdir -p $out/bin
-          ln -sf $out/libexec/${packageName.pname} $out/bin/
+          ( cd $out/bin && ln -s ../libexec/${packageName.pname} ./ ; )
+          mkdir -p $out/libexec/hydra-node/
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
         '';
         meta = {
           mainProgram = packageName.pname;
