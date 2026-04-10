@@ -350,7 +350,7 @@ log info "Gateway is up at ${gateway_url}"
 log info "Starting the SDK Bridge (blockfrost-sdk-bridge)…"
 
 blockfrost-sdk-bridge \
-  --gateway-ws-url "${gateway_url}" \
+  --gateway-url "${gateway_url}" \
   --listen-address "127.0.0.1:${bridge_port}" \
   --network "${NETWORK}" \
   --blockfrost-project-id "${BLOCKFROST_PROJECT_ID}" \
