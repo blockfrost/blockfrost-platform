@@ -52,10 +52,12 @@ in
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
-          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
+          chmod -R +w $out
+          mkdir -p $out/libexec/hydra-node
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/hydra-node/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos,hydra-node} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
         '';
     });
 
