@@ -191,6 +191,10 @@ struct State {
     /// Incremented on every [`Event::Restart`] so that delayed events from a
     /// previous epoch are silently dropped instead of piling up.
     restart_gen: Arc<AtomicU64>,
+    /// Snapshot of [`Self::restart_gen`] captured when the current key-exchange
+    /// round was initiated. Used to discard stale [`KeyExchangeResponse`]s
+    /// that arrive after a newer restart has already begun.
+    kex_restart_gen: u64,
     hydra_head_open: bool,
     head_open_initialized: bool,
     credits_available: Arc<AtomicU64>,
@@ -258,6 +262,7 @@ impl State {
             hydra_pid: None,
             hydra_watchdog: None,
             restart_gen: Arc::new(AtomicU64::new(0)),
+            kex_restart_gen: 0,
             hydra_head_open: false,
             head_open_initialized: false,
             credits_available,
@@ -362,6 +367,7 @@ impl State {
                 // Invalidate all delayed events from the previous epoch so
                 // they do not pile up into parallel polling chains.
                 self.restart_gen.fetch_add(1, Ordering::Relaxed);
+                self.kex_restart_gen = self.restart_gen.load(Ordering::Relaxed);
                 // Kill leftover hydra-node + descendants (e.g. etcd) from the
                 // previous run, if any.
                 self.stop_hydra_node().await;
@@ -414,6 +420,12 @@ impl State {
                     kex_done: false, ..
                 },
             ) => {
+                // A newer restart may have already begun a fresh KEx round;
+                // discard responses belonging to an older round.
+                if self.restart_gen.load(Ordering::Relaxed) != self.kex_restart_gen {
+                    debug!("discarding stale KEx response (restart happened since)");
+                    return Ok(());
+                }
                 let params = PaymentParams {
                     commit_ada: kex_resp.commit_ada,
                     lovelace_per_request: kex_resp.lovelace_per_request,
@@ -460,6 +472,10 @@ impl State {
             },
 
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
+                if self.restart_gen.load(Ordering::Relaxed) != self.kex_restart_gen {
+                    debug!("discarding stale KEx response (restart happened since)");
+                    return Ok(());
+                }
                 if self.gateway_payment_addr.is_empty() {
                     let addr = self
                         .derive_enterprise_address_from_vkey_json(&kex_resp.gateway_cardano_vkey)?;
