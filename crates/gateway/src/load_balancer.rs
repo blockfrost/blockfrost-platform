@@ -595,7 +595,13 @@ pub mod event_loop {
                                 },
                             }
                         },
-                        (Some(hydras), _, _) => {
+                        // Stale finalize: no pending initial KEx to match against.
+                        (Some(_), Some(_), false) => LoadBalancerMessage::Error {
+                            code: 537,
+                            msg: "Hydra micropayments setup error: no pending key exchange; please re-initiate".to_string(),
+                        },
+                        // Initial step: start a new key exchange.
+                        (Some(hydras), None, _) => {
                             match hydras
                                 .initialize_key_exchange(asset_name, req.clone())
                                 .await

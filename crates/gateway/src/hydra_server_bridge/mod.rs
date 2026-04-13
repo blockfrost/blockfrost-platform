@@ -611,8 +611,19 @@ impl State {
                     self.customer_log_id, status
                 );
                 if status == "Open" {
+                    // Seed credits_last_balance from the current snapshot so
+                    // that MonitorCredits does not double-count pre-existing
+                    // funds (e.g. after a hydra-node crash-restart that
+                    // re-joins an already-Open head).
+                    let initial_balance = verifications::lovelace_in_snapshot_for_address(
+                        self.api_port,
+                        &self.config.gateway_cardano_addr,
+                    )
+                    .await
+                    .unwrap_or(0);
+
                     self.hydra_head_open = true;
-                    self.credits_last_balance = 0;
+                    self.credits_last_balance = initial_balance;
                     self.received_microtransactions = 0;
                     self.send_delayed(Event::MonitorCredits, CREDIT_POLL_INTERVAL)
                         .await;
