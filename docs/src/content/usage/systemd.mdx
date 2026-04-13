@@ -21,7 +21,7 @@ CARDANO_NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
                                    --reward-address $REWARD_ADDR
 ```
 
-Create a new `blockfrost-platform.service` file and add this to it:
+Create a new `blockfrost-platform.service` file and add this to it (replace `$USER` and `$HOME` with your actual username and home directory path):
 
 ```systemd
 [Unit]
@@ -30,10 +30,10 @@ Wants             = network-online.target
 After             = network-online.target
 
 [Service]
-User              = <$USER>
+User              = $USER
 Type              = simple
-WorkingDirectory  = <$HOME>/blockfrost-platform
-ExecStart         = /bin/bash -c '<$HOME>/blockfrost-platform/start-blockfrost-platform.sh'
+WorkingDirectory  = $HOME/blockfrost-platform
+ExecStart         = /bin/bash -c '$HOME/blockfrost-platform/start-blockfrost-platform.sh'
 ExecReload        = pkill -HUP blockfrost-platform
 KillSignal        = SIGINT
 RestartKillSignal = SIGINT
