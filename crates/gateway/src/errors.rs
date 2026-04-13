@@ -27,6 +27,9 @@ pub enum APIError {
     #[error("Unauthorized registration access")]
     Unauthorized(),
 
+    #[error("Rate limited")]
+    RateLimited(),
+
     #[error("Database connection error: {0}")]
     DatabaseConnection(#[from] deadpool_diesel::PoolError),
 
@@ -76,6 +79,14 @@ impl IntoResponse for APIError {
                     status: "failed".to_string(),
                     reason: "unauthorized".to_string(),
                     details: "You are not authorized to access the registration.".to_string(),
+                },
+            ),
+            APIError::RateLimited() => (
+                StatusCode::TOO_MANY_REQUESTS,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "rate_limited".to_string(),
+                    details: "Too many registration requests. Please try again later.".to_string(),
                 },
             ),
             APIError::DatabaseConnection(_)

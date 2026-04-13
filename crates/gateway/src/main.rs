@@ -6,7 +6,7 @@ use axum::{
 };
 use blockfrost_gateway::{
     api, blockfrost, config, db, hydra_server_bridge, hydra_server_platform, load_balancer,
-    sdk_bridge_ws,
+    rate_limit, sdk_bridge_ws,
 };
 use clap::Parser;
 use colored::Colorize;
@@ -60,6 +60,7 @@ async fn main() -> Result<()> {
         None
     };
     let load_balancer = load_balancer::LoadBalancerState::new(hydras_manager).await;
+    let register_rate_limiter = rate_limit::new_register_rate_limiter();
 
     let base_router = Router::new()
         .route("/", get(root::route))
@@ -81,7 +82,8 @@ async fn main() -> Result<()> {
         .layer(Extension(load_balancer))
         .layer(Extension(config.clone()))
         .layer(Extension(pool))
-        .layer(Extension(blockfrost_api));
+        .layer(Extension(blockfrost_api))
+        .layer(Extension(register_rate_limiter));
 
     let sdk_state = sdk_bridge_ws::SdkBridgeState::new(base_router.clone(), hydras_bridge_manager);
 

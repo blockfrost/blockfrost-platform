@@ -5,6 +5,7 @@ use crate::errors::APIError;
 use crate::load_balancer::{AccessToken, LoadBalancerState};
 use crate::models::RequestNewItem;
 use crate::payload::Payload;
+use crate::rate_limit::RegisterRateLimiter;
 use axum::body::Bytes;
 use axum::extract::ConnectInfo;
 use axum::http::HeaderMap;
@@ -14,7 +15,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,15 +39,23 @@ pub struct LoadBalancer {
     access_token: AccessToken,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn route(
     Extension(db): Extension<DB>,
     Extension(config): Extension<Config>,
     Extension(blockfrost_api): Extension<BlockfrostAPI>,
     Extension(load_balancer): Extension<LoadBalancerState>,
+    Extension(rate_limiter): Extension<RegisterRateLimiter>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Json<ResponseSuccess>, APIError> {
+    // rate limit by ip
+    if rate_limiter.check_key(&addr.ip()).is_err() {
+        warn!(ip = %addr.ip(), "Rate limited registration attempt");
+        return Err(APIError::RateLimited());
+    }
+
     let payload: Payload = match serde_json::from_slice(&body) {
         Ok(payload) => payload,
         Err(e) => return Err(APIError::Validation(e.to_string())),

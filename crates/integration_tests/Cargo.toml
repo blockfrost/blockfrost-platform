@@ -18,6 +18,7 @@ bf-data-node.workspace = true
 bf-node.workspace = true
 
 anyhow.workspace = true
+governor.workspace = true
 axum.workspace = true
 bip39.workspace = true
 blockfrost.workspace = true

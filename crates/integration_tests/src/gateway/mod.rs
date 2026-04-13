@@ -1,11 +1,13 @@
 use axum::{
     Extension, Json, Router,
+    extract::ConnectInfo,
     extract::rejection::JsonRejection,
     http::{HeaderMap, StatusCode},
     routing::{any, get, post},
 };
 use blockfrost_gateway::{
     load_balancer::{LoadBalancerState, api},
+    rate_limit::{self, RegisterRateLimiter},
     types::AssetName,
 };
 use blockfrost_platform::{
@@ -14,7 +16,7 @@ use blockfrost_platform::{
 use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::json;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, num::NonZeroU32, sync::Arc, time::Duration};
 use tokio::{
     net::TcpListener,
     sync::{Mutex, oneshot},
@@ -60,6 +62,7 @@ pub async fn start_server(
 pub struct TestGateway {
     pub addr: SocketAddr,
     pub lb: LoadBalancerState,
+    pub rate_limiter: RegisterRateLimiter,
     shutdown_tx: Option<oneshot::Sender<()>>,
     server_handle: JoinHandle<()>,
 }
@@ -73,18 +76,41 @@ impl TestGateway {
     }
 
     /// Start a gateway bound to a specific address (for restart tests).
-    ///
-    /// `None` binds to a random port.
     pub async fn start_on(addr: Option<SocketAddr>) -> Self {
         let lb = LoadBalancerState::new(None).await;
+        let rate_limiter = rate_limit::new_register_rate_limiter();
         let router = build_router(lb.clone())
             .await
             .route("/register", post(mock_register_handler))
+            .layer(Extension(rate_limiter.clone()))
             .layer(Extension(lb.clone()));
         let (addr, shutdown_tx, server_handle) = start_server(router, addr).await;
+
         Self {
             addr,
             lb,
+            rate_limiter,
+            shutdown_tx: Some(shutdown_tx),
+            server_handle,
+        }
+    }
+
+    /// Start a gateway with a custom rate limit (for rate limit tests).
+    pub async fn start_with_rate_limit(max_per_minute: u32) -> Self {
+        let lb = LoadBalancerState::new(None).await;
+        let quota = governor::Quota::per_minute(NonZeroU32::new(max_per_minute).unwrap());
+        let rate_limiter: RegisterRateLimiter = Arc::new(governor::RateLimiter::keyed(quota));
+        let router = build_router(lb.clone())
+            .await
+            .route("/register", post(mock_register_handler))
+            .layer(Extension(rate_limiter.clone()))
+            .layer(Extension(lb.clone()));
+        let (addr, shutdown_tx, server_handle) = start_server(router, None).await;
+
+        Self {
+            addr,
+            lb,
+            rate_limiter,
             shutdown_tx: Some(shutdown_tx),
             server_handle,
         }
@@ -121,9 +147,22 @@ struct RegisterPayload {
 
 async fn mock_register_handler(
     Extension(lb): Extension<LoadBalancerState>,
+    Extension(rate_limiter): Extension<RegisterRateLimiter>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     payload: Result<Json<RegisterPayload>, JsonRejection>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    // rate limit by ip
+    if rate_limiter.check_key(&addr.ip()).is_err() {
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!({
+                "status": "failed",
+                "reason": "rate_limited",
+                "details": "Too many registration requests. Please try again later."
+            })),
+        ));
+    }
     let Json(payload) = payload.map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
