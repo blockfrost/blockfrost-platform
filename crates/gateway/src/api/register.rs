@@ -58,7 +58,7 @@ pub async fn route(
     info!(
         mode = %payload.mode,
         port = payload.port,
-        secret = %format!("{}***", &payload.secret[..3]),
+        secret = %format!("{}***", payload.secret.chars().take(3).collect::<String>()),
         reward_address = %payload.reward_address,
         api_prefix = %payload.api_prefix,
         "Received valid payload for registration"
