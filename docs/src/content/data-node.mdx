@@ -30,23 +30,35 @@ The `--init` wizard will also prompt you for the data node URL during configurat
 
 ## Supported endpoints
 
-The following endpoints are always available regardless of data node configuration:
-
-- `GET /` — root health endpoint with service status
-- `GET /metrics` — Prometheus metrics (unless disabled with `--no-metrics`)
-- `POST /tx/submit` — transaction submission (accepts both hex-encoded and raw CBOR)
-- `GET /health` — health check (`{"is_healthy": true}`)
-- `GET /health/clock` — server time (`{"server_time": 1234567890}`)
+<Callout>
+  The following endpoints work without a data node:
+  - `GET /` — root health endpoint
+  - `GET /metrics` — Prometheus metrics (unless disabled with `--no-metrics`)
+  - `GET /health` — health check
+  - `GET /health/clock` — server time
+  - `POST /tx/submit` — transaction submission
+  - `GET /genesis` — network genesis parameters
+</Callout>
 
 When a data node is connected, the following endpoints become available:
 
 ### Accounts
 
 - `GET /accounts/{stake_address}`
-- `GET /accounts/{stake_address}/addresses`
+- `GET /accounts/{stake_address}/rewards`
 - `GET /accounts/{stake_address}/delegations`
 - `GET /accounts/{stake_address}/registrations`
-- `GET /accounts/{stake_address}/rewards`
+- `GET /accounts/{stake_address}/addresses`
+
+### Addresses
+
+- `GET /addresses/{address}/utxos`
+- `GET /addresses/{address}/utxos/{asset}`
+- `GET /addresses/{address}/transactions`
+
+### Assets
+
+- `GET /assets/{asset}`
 
 ### Blocks
 
@@ -57,10 +69,34 @@ When a data node is connected, the following endpoints become available:
 - `GET /blocks/{hash_or_number}/previous`
 - `GET /blocks/{hash_or_number}/txs`
 
+### Epochs
+
+- `GET /epochs/latest/parameters`
+- `GET /epochs/{epoch_number}/parameters`
+
+### Metadata
+
+- `GET /metadata/txs/labels`
+- `GET /metadata/txs/labels/{label}`
+- `GET /metadata/txs/labels/{label}/cbor`
+
+### Network
+
+- `GET /network`
+- `GET /network/eras`
+
+### Pools
+
+- `GET /pools/extended`
+- `GET /pools/{pool_id}/delegators`
+
+### Governance
+
+- `GET /governance/dreps/{drep_id}`
+
 ### Transactions
 
 - `GET /txs/{hash}`
-- `GET /txs/{hash}/cbor`
 - `GET /txs/{hash}/utxos`
 - `GET /txs/{hash}/stakes`
 - `GET /txs/{hash}/delegations`
@@ -71,30 +107,7 @@ When a data node is connected, the following endpoints become available:
 - `GET /txs/{hash}/metadata`
 - `GET /txs/{hash}/metadata/cbor`
 - `GET /txs/{hash}/redeemers`
-
-### Epochs
-
-- `GET /epochs/latest/parameters`
-- `GET /epochs/{epoch_number}/parameters`
-
-### Network
-
-- `GET /network`
-- `GET /network/eras`
-
-### Metadata
-
-- `GET /metadata/txs/labels`
-- `GET /metadata/txs/labels/{label}`
-- `GET /metadata/txs/labels/{label}/cbor`
-
-### Governance
-
-- `GET /governance/dreps/{drep_id}`
-
-### Ledger
-
-- `GET /genesis`
+- `GET /txs/{hash}/cbor`
 
 ## Docker Compose
 

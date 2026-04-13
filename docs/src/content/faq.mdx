@@ -194,13 +194,7 @@ Tooltips explain each metric.
 
 ### What endpoints are currently supported by the Blockfrost platform?
 
-The following endpoints are always available:
-
-- `/` — root health endpoint
-- `/metrics` — Prometheus metrics (unless disabled with `--no-metrics`)
-- `/tx/submit` — transaction submission (in [solitary mode](/usage/solitary) served at root, otherwise at `/{UUID}/tx/submit`)
-
-When a [data node (Dolos)](/data-node) is connected, the platform also serves blockchain query endpoints including blocks, transactions, accounts, addresses, assets, pools, epochs, governance, metadata, network info, and more.
+Some endpoints (such as `/`, `/metrics`, `/health`, `/tx/submit`, and `/genesis`) work without any additional configuration. When a [data node (Dolos)](/data-node) is connected, the platform also serves blockchain query endpoints including blocks, transactions, accounts, addresses, assets, pools, epochs, metadata, network info, and more. See the [data node page](/data-node#supported-endpoints) for the full list.
 
 ### How can I get more detailed metrics or logs for my Icebreaker node?
 
