@@ -55,7 +55,14 @@ pub async fn route(
     // validate POST payload
     Payload::validate(&payload)?;
 
-    info!("Received valid payload for registration: {:?}", payload);
+    info!(
+        mode = %payload.mode,
+        port = payload.port,
+        secret = %format!("{}***", &payload.secret[..3]),
+        reward_address = %payload.reward_address,
+        api_prefix = %payload.api_prefix,
+        "Received valid payload for registration"
+    );
 
     let is_testnet_address = payload.reward_address.starts_with("addr_test");
 
