@@ -79,10 +79,11 @@ in
           mkdir -p $out/bin
 
           chmod -R +w $out
-          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
+          mkdir -p $out/libexec/hydra-node
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/hydra-node/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},hydra-node} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/${unix.sdkBridgeCargoToml.package.name} ./ ; )
         '';
     });
 
