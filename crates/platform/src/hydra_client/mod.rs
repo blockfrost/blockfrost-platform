@@ -107,6 +107,10 @@ struct State {
     /// Incremented on every [`Event::Restart`] so that delayed events from a
     /// previous epoch are silently dropped instead of piling up.
     restart_gen: Arc<AtomicU64>,
+    /// Snapshot of [`Self::restart_gen`] captured when the current key-exchange
+    /// round was initiated. Used to discard stale [`KeyExchangeResponse`]s
+    /// that arrive after a newer restart has already begun.
+    kex_restart_gen: u64,
 }
 
 impl State {
@@ -169,6 +173,7 @@ impl State {
             hydra_pid: None,
             hydra_watchdog: None,
             restart_gen: Arc::new(AtomicU64::new(0)),
+            kex_restart_gen: 0,
         };
 
         self_.send(Event::Restart).await;
@@ -257,6 +262,7 @@ impl State {
                 // Invalidate all delayed events from the previous epoch so
                 // they do not pile up into parallel polling chains.
                 self.restart_gen.fetch_add(1, Ordering::Relaxed);
+                self.kex_restart_gen = self.restart_gen.load(Ordering::Relaxed);
                 // Kill leftover hydra-node + descendants (e.g. etcd) from the
                 // previous run, if any.
                 self.stop_hydra_node().await;
@@ -287,6 +293,12 @@ impl State {
                     kex_done: false, ..
                 },
             ) => {
+                // A newer restart may have already begun a fresh KEx round;
+                // discard responses belonging to an older round.
+                if self.restart_gen.load(Ordering::Relaxed) != self.kex_restart_gen {
+                    debug!("discarding stale KEx response (restart happened since)");
+                    return Ok(());
+                }
                 if !(matches!(
                     verifications::is_tcp_port_free(kex_resp.gateway_h2h_port).await,
                     Ok(true)
@@ -311,6 +323,10 @@ impl State {
             },
 
             Event::KeyExchangeResponse(kex_resp @ KeyExchangeResponse { kex_done: true, .. }) => {
+                if self.restart_gen.load(Ordering::Relaxed) != self.kex_restart_gen {
+                    debug!("discarding stale KEx response (restart happened since)");
+                    return Ok(());
+                }
                 // Check that we have enough fuel lovelace for L1 fees by
                 // querying the local cardano-node via Pallas.
                 let potential_fuel = self

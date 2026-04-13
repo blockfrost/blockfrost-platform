@@ -174,17 +174,20 @@ pub mod event_loop {
                     let reply = match (
                         &state.hydras,
                         &req.accepted_platform_h2h_port,
-                        initial_hydra_kex.as_ref(),
+                        initial_hydra_kex.is_some(),
                     ) {
                         (None, _, _) => GatewayMessage::Error {
                             code: 536,
                             msg: "Hydra micropayments not supported".to_string(),
                         },
-                        (Some(hydras), Some(_accepted_port), Some(_)) => {
-                            let initial_kex = initial_hydra_kex.take().unwrap();
+                        // Finalize step: bridge accepted the proposed port.
+                        (Some(hydras), Some(_accepted_port), true) => {
+                            let initial_kex = initial_hydra_kex.clone().unwrap();
                             let bridge_machine_id = req.machine_id.clone();
                             match hydras.spawn_new(initial_kex, req).await {
                                 Ok((ctl, resp)) => {
+                                    // Consume the cached KEx only after spawn succeeds:
+                                    initial_hydra_kex = None;
                                     hydra_controller = Some(ctl);
 
                                     // Only start the TCP-over-WebSocket tunnels if we’re running
@@ -228,7 +231,13 @@ pub mod event_loop {
                                 },
                             }
                         },
-                        (Some(hydras), _, _) => {
+                        // Stale finalize: no pending initial KEx to match against.
+                        (Some(_), Some(_), false) => GatewayMessage::Error {
+                            code: 537,
+                            msg: "Hydra micropayments setup error: no pending key exchange; please re-initiate".to_string(),
+                        },
+                        // Initial step: start a new key exchange.
+                        (Some(hydras), None, _) => {
                             match hydras.initialize_key_exchange(req.clone()).await {
                                 Ok(resp) => {
                                     initial_hydra_kex = Some((req, resp.clone()));

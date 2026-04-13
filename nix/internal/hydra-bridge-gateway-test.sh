@@ -530,7 +530,10 @@ perform_fanout_cycle() {
     wait_for_gw_log_count 'waiting for the Open head status: status="Open"' "$head_opens_seen" "$fanout_wait_timeout" \
       "Fanout $fanout_num: head reopen" || exit 1
     log info "Fanout $fanout_num: head is Open again. Waiting for Bridge credits…"
-    bridge_credits_seen=$((bridge_credits_seen + 1))
+    # Snapshot the current count so we wait for a genuinely NEW credit grant
+    # from the new head session (stale entries from previous cycles must not
+    # satisfy the check since credits_available is reset on head close).
+    bridge_credits_seen=$(($(bridge_log_count "req. credits +") + 1))
     # Same lag as above: Bridge may take 20+ s to see Open + 15 s prepay delay.
     wait_for_bridge_log_count "req. credits +" "$bridge_credits_seen" 90 \
       "Fanout $fanout_num: Bridge credits" || exit 1
