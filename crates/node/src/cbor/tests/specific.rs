@@ -615,7 +615,7 @@ async fn test_cbor_145() {
 #[tokio::test]
 #[allow(non_snake_case)]
 async fn test_cbor_146() {
-    verify_one("818206818201820083030020").await
+    verify_one("818206818201820083030001").await
 }
 #[tokio::test]
 #[allow(non_snake_case)]
@@ -729,7 +729,7 @@ async fn test_cbor_165() {
 #[tokio::test]
 #[allow(non_snake_case)]
 async fn test_cbor_166() {
-    verify_one("8182068282018200830320208201820a80").await
+    verify_one("8182068282018200830301018201820a80").await
 }
 #[tokio::test]
 #[allow(non_snake_case)]

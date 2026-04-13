@@ -26,10 +26,10 @@ pub fn assert_submit_error_responses(bf_response: &[u8], local_response: &[u8]) 
         match value {
             Value::Object(map) => {
                 for (key, val) in map.iter_mut() {
-                    if key == "error" {
-                        if let Value::Array(arr) = val {
-                            arr.sort_by_key(|v| v.to_string());
-                        }
+                    if key == "error"
+                        && let Value::Array(arr) = val
+                    {
+                        arr.sort_by_key(|v| v.to_string());
                     }
                     sort_all_error_arrays(val);
                 }

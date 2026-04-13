@@ -28,11 +28,11 @@ impl ChainStalenessMonitor {
     }
 
     pub async fn update(&mut self, node_info: &Option<NodeInfo>) {
-        if let Some(node_info) = node_info {
-            if self.last_chain_block != node_info.block {
-                self.last_chain_block = node_info.block.clone();
-                self.last_chain_advancement = std::time::Instant::now();
-            }
+        if let Some(node_info) = node_info
+            && self.last_chain_block != node_info.block
+        {
+            self.last_chain_block = node_info.block.clone();
+            self.last_chain_advancement = std::time::Instant::now();
         }
 
         let elapsed = self.last_chain_advancement.elapsed();

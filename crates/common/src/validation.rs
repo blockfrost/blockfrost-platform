@@ -63,10 +63,10 @@ mod tests {
             assert!(result.is_ok());
         } else {
             assert!(result.is_err());
-            if let Some(expected_err_msg) = expected_err {
-                if let Err(e) = result {
-                    assert_eq!(e.to_string(), expected_err_msg);
-                }
+            if let Some(expected_err_msg) = expected_err
+                && let Err(e) = result
+            {
+                assert_eq!(e.to_string(), expected_err_msg);
             }
         }
     }

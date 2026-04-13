@@ -67,6 +67,7 @@ in
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
     gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+    sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
@@ -103,7 +104,8 @@ in
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway";
-      });
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
 
     blockfrost-gateway--dev-mock-db = craneLib.buildPackage (commonArgs
       // {
@@ -121,6 +123,21 @@ in
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/
         '';
         cargoExtraArgs = "--package blockfrost-gateway --features dev_mock_db";
+      }
+      // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+      // {
+        inherit cargoArtifacts GIT_REVISION;
+        pname = sdkBridgeCargoToml.package.name;
+        doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = sdkBridgeCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+        '';
+        cargoExtraArgs = "--package blockfrost-sdk-bridge";
       });
 
     cargoChecks = let
@@ -133,14 +150,16 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           # Maybe also add `--deny clippy::pedantic`?
-          cargoClippyExtraArgs = "--all-targets -- --deny warnings";
-        });
+          cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-doc = craneLib.cargoDoc (commonArgs
         // {
           inherit cargoArtifacts GIT_REVISION;
           RUSTDOCFLAGS = "-D warnings";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-audit = craneLib.cargoAudit {
         inherit (packageName) pname;
@@ -157,7 +176,8 @@ in
         // {
           inherit cargoArtifacts GIT_REVISION;
           cargoNextestExtraArgs = "--workspace --lib";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-udeps = nightlyCraneLib.mkCargoDerivation (commonArgs
         // {
@@ -166,7 +186,8 @@ in
           pnameSuffix = "-udeps";
           nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-udeps];
           buildPhaseCargoCommand = "cargo udeps --workspace --all-targets";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       cargo-machete = let
         # Use the PR branch that adds `[dev-dependency]` checking:
@@ -199,7 +220,8 @@ in
           pnameSuffix = "-shear";
           nativeBuildInputs = (commonArgs.nativeBuildInputs or []) ++ [pkgs.cargo-shear];
           buildPhaseCargoCommand = "cargo-shear --expand";
-        });
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
 
       workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
         touch $out
@@ -267,6 +289,25 @@ in
           done
           exit $ec
         '';
+    };
+
+    # Verify that the Docker config generation (Bash template + sed) produces
+    # configs identical to the Nix-generated ones, for every network.
+    dockerChecks = {
+      docker-dolos-config = pkgs.runCommandNoCC "docker-dolos-config-check" {} ''
+        for network in mainnet preprod preview; do
+          echo "Checking $network..."
+          bash ${../../docker}/generate-dolos-config.sh \
+            --genesis-prefix ${dolos-configs} \
+            --storage-path dolos \
+            "$network" >generated.toml
+          diff -u ${dolos-configs}/$network/dolos.toml generated.toml || {
+            echo >&2 "FAIL: Docker-generated config for $network does not match Nix-generated config."
+            exit 1
+          }
+        done
+        touch $out
+      '';
     };
 
     cardano-node-flake = let
@@ -520,7 +561,7 @@ in
     );
 
     # XXX: If unsure during updates, check that the configs evaluate to this command run in the ops repo:
-    # `nix </dev/null build --impure -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
+    # `nix </dev/null build -L '.#colmenaHive.nodes."runner1.blockfrost.io".config.environment.etc."preview.toml".source'`
     dolos-configs = let
       networks = ["mainnet" "preprod" "preview"];
 
@@ -537,6 +578,15 @@ in
         magic = toString byronGenesis.protocolConsts.protocolMagic;
       in
         pkgs.writeText "dolos.toml" (''
+            [chain]
+            is_testnet = ${
+              if network != "mainnet"
+              then "true"
+              else "false"
+            }
+            magic = ${magic}
+            type = "cardano"
+
             [genesis]
             alonzo_path = "alonzo.json"
             byron_path = "byron.json"
@@ -575,12 +625,6 @@ in
             pull_batch_size = 100
 
             [upstream]
-          ''
-          + lib.optionalString (network != "mainnet") ''
-            is_testnet = true
-          ''
-          + ''
-            network_magic = ${magic}
             peer_address = "${peerAddr}"
           '');
     in
@@ -843,6 +887,11 @@ in
       path = hydra-flake + "/hydra-node/networks.json";
     };
 
+    hydraScriptsEnvVars = map (network: {
+      name = "HYDRA_SCRIPTS_TX_ID_${lib.strings.toUpper network}";
+      value = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${network}.${hydraVersion};
+    }) ["mainnet" "preprod" "preview"];
+
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";
     };
@@ -880,6 +929,76 @@ in
         HYDRA_SCRIPTS_TX_ID = (builtins.fromJSON (builtins.readFile hydraNetworksJson)).${NETWORK}.${hydraVersion};
       };
       text = builtins.readFile ./hydra-blockfrost-test.sh;
+    };
+
+    hydra-platform-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-platform-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-platform and blockfrost-gateway";
+      runtimeInputs = with pkgs; [
+        bash
+        bc
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        procps
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-platform
+        blockfrost-gateway--dev-mock-db
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+      };
+      text = builtins.readFile ./hydra-platform-gateway-test.sh;
+    };
+
+    hydra-bridge-gateway-test = pkgs.writeShellApplication {
+      name = "test-hydra-bridge-gateway";
+      meta.description = "Tests the Hydra micropayments between blockfrost-sdk-bridge and blockfrost-gateway";
+      runtimeInputs = with pkgs; [
+        bash
+        bc
+        coreutils
+        gnused
+        gnugrep
+        gawk
+        procps
+        jq
+        curl
+        hydra-node
+        cardano-cli
+        cardano-address
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-sdk-bridge
+        blockfrost-gateway--dev-mock-db
+      ];
+      runtimeEnv = rec {
+        NETWORK = "preview";
+        CARDANO_NODE_NETWORK_ID =
+          {
+            mainnet = "mainnet";
+            preprod = 1;
+            preview = 2;
+          }.${
+            NETWORK
+          };
+      };
+      text = builtins.readFile ./hydra-bridge-gateway-test.sh;
     };
 
     midnight = let

@@ -1,4 +1,4 @@
-use blockfrost_platform::BlockfrostError;
+use blockfrost_platform::{BlockfrostError, hydra_client};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -74,7 +74,14 @@ async fn test_icebreakers_registrations() -> Result<(), BlockfrostError> {
             );
 
             tokio::spawn(async move {
-                manager.run().await;
+                let (kex_req_tx, kex_req_rx) =
+                    tokio::sync::mpsc::channel::<hydra_client::KeyExchangeRequest>(1);
+                let (kex_resp_tx, _kex_resp_rx) =
+                    tokio::sync::mpsc::channel::<hydra_client::KeyExchangeResponse>(1);
+                let (terminate_tx, _terminate_rx) =
+                    tokio::sync::mpsc::channel::<hydra_client::TerminateRequest>(1);
+                drop(kex_req_tx);
+                manager.run((kex_req_rx, kex_resp_tx, terminate_tx)).await;
             });
         }
     }

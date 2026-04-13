@@ -44,7 +44,8 @@ impl NodeClient {
                 Ok(txid)
             },
             Ok(Response::Rejected(reason)) => {
-                let haskell_display = as_node_submit_error(reason);
+                let haskell_display = as_node_submit_error(reason)
+                    .unwrap_or_else(|e| format!("Failed to format submit error: {e}"));
                 info!(
                     connection_id = self.connection_id,
                     "TxSubmitFail: {}, CBOR: {}",

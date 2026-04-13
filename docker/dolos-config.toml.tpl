@@ -1,46 +1,40 @@
-[upstream]
-peer_address = "PEER_ADDRESS"
-network_magic = NETWORK_MAGIC
+[chain]
 is_testnet = IS_TESTNET
-
-[storage]
-version = "v1"
-path = "/data"
-max_wal_history = 25920
+magic = NETWORK_MAGIC
+type = "cardano"
 
 [genesis]
-byron_path = "/etc/genesis/NETWORK/byron.json"
-shelley_path = "/etc/genesis/NETWORK/shelley.json"
-alonzo_path = "/etc/genesis/NETWORK/alonzo.json"
-conway_path = "/etc/genesis/NETWORK/conway.json"
-force_protocol = 6
+alonzo_path = "GENESIS_PREFIX/NETWORK/alonzo.json"
+byron_path = "GENESIS_PREFIX/NETWORK/byron.json"
+conway_path = "GENESIS_PREFIX/NETWORK/conway.json"
+FORCE_PROTOCOL_LINE
+shelley_path = "GENESIS_PREFIX/NETWORK/shelley.json"
+
+[logging]
+include_grpc = false
+include_pallas = false
+include_tokio = false
+include_trp = false
+max_level = "INFO"
+
+[mithril]
+aggregator = "MITHRIL_AGGREGATOR"
+ancillary_key = "MITHRIL_ANCILLARY_KEY"
+genesis_key = "MITHRIL_GENESIS_KEY"
+
+[serve.minibf]
+listen_address = "[::]:3010"
+token_registry_url = "TOKEN_REGISTRY_URL"
+
+[storage]
+max_wal_history = 25920
+path = "STORAGE_PATH"
+version = "v3"
+
+[submit]
 
 [sync]
 pull_batch_size = 100
 
-[submit]
-
-[serve.grpc]
-listen_address = "[::]:50051"
-permissive_cors = true
-
-[serve.ouroboros]
-listen_path = "/dolos.socket"
-magic = NETWORK_MAGIC
-
-[serve.minibf]
-listen_address = "[::]:3010"
-
-[relay]
-listen_address = "[::]:30031"
-magic = NETWORK_MAGIC
-
-[mithril]
-aggregator = "MITHRIL_AGGREGATOR"
-genesis_key = "MITHRIL_GENESIS_KEY"
-
-[logging]
-max_level = "INFO"
-include_tokio = false
-include_pallas = false
-include_grpc = false
+[upstream]
+peer_address = "PEER_ADDRESS"

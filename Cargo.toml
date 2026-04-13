@@ -1,7 +1,7 @@
 [workspace.package]
 version = "0.0.3-rc.3"
 license = "Apache-2.0"
-edition = "2021"
+edition = "2024"
 
 [workspace]
 resolver = "2"
@@ -13,15 +13,18 @@ members = [
   "crates/node",
   "crates/data_node",
   "crates/gateway",
+  "crates/sdk_bridge",
   "crates/integration_tests",
 ]
 default-members = ["crates/platform"]
 
 [workspace.dependencies]
-anyhow = "1.0.101"
+anyhow = "1.0.102"
 axum = { version = "0.8.8", features = ["ws"] }
 base64 = "0.22.1"
 bech32 = "0.11.1"
+blake3 = "1"
+bytes = "1"
 blockfrost-platform = { path = "crates/platform", package = "blockfrost-platform" }
 blockfrost-gateway = { path = "crates/gateway", package = "blockfrost-gateway" }
 bf-api-provider = { path = "crates/api_provider", package = "blockfrost-platform-api-provider" }
@@ -30,8 +33,10 @@ bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
 bip39 = "2.2.2"
-blockfrost = "1.2.1"
-blockfrost-openapi = "0.1.85"
+blockfrost = { version = "1.2.3", default-features = false, features = [
+  "native-tls",
+] }
+blockfrost-openapi = "0.1.87"
 bzip2 = "0.6.1"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"
@@ -46,22 +51,26 @@ dirs = "6.0.0"
 dotenvy = "0.15.7"
 futures = "0.3"
 futures-util = "0.3"
+getrandom = "0.3"
 hex = "0.4.3"
 hyper = "1.8.1"
 inquire = "0.9"
 jemalloc = "0.3"
+machine-uid = "0.5"
 metrics = { version = "0.24.3", default-features = false }
 metrics-exporter-prometheus = { version = "0.18.1", default-features = false }
 metrics-process = "2.4.3"
+nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", tag = "blockfrost-platform-0.0.3-alpha4" }
+# FIXME: use a proper Pallas release after they merge <https://github.com/txpipe/pallas/pull/624>:
+pallas-addresses = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-codec = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-crypto = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-hardano = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-network = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-primitives = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-traverse = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
 pretty_assertions = "1.4.1"
 proptest = "1.10.0"
 rand = "0.8.5"
@@ -78,8 +87,14 @@ serde_json = "1.0.149"
 sysinfo = "~0.37"
 tar = "0.4.44"
 thiserror = "2.0.18"
-tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "signal"] }
+tokio = { version = "1.49.0", features = [
+  "rt",
+  "rt-multi-thread",
+  "signal",
+  "process",
+] }
 tokio-tungstenite = "0.28.0"
+tokio-util = "0.7"
 toml = "1.0.2"
 tower = { version = "0.5.3", features = ["limit"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }

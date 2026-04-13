@@ -249,10 +249,6 @@
     {
       "_comment": "accounts/stake_test1urvp7670m5ec50fz5dekdu5e8pycx62ys2fkuu80m5v823q59qmel/registrations?count=2&page=1, accounts/stake_test1urvp7670m5ec50fz5dekdu5e8pycx62ys2fkuu80m5v823q59qmel/registrations?count=2&page=1&order=asc",
       "id": "accounts-stake-address-queryparams-generic-stake-address-registrations_40bbd32ffbe9"
-    },
-    {
-      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
-      "id": "pools-extended-queryparams_33c8fc92f5c2"
     }
   ],
   "preview": [

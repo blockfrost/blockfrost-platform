@@ -16,6 +16,7 @@ bf-api-provider.workspace = true
 
 axum.workspace = true
 tokio.workspace = true
+tokio-util.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 tungstenite = { workspace = true, features = ["native-tls"] }
@@ -30,6 +31,9 @@ serde_json.workspace = true
 sentry.workspace = true
 base64.workspace = true
 reqwest.workspace = true
+pallas-network.workspace = true
+pallas-addresses.workspace = true
+pallas-codec.workspace = true
 hex.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
@@ -37,11 +41,16 @@ metrics-process.workspace = true
 chrono.workspace = true
 dotenvy.workspace = true
 uuid.workspace = true
+dirs.workspace = true
+anyhow.workspace = true
 
 [dev-dependencies]
 bf-api-provider.workspace = true
 rstest.workspace = true
 proptest.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
 
 [target.'cfg(target_env = "musl")'.dependencies]
 jemalloc.workspace = true

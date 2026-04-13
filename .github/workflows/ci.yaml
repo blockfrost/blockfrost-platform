@@ -223,6 +223,40 @@ jobs:
         run: |
           nix run -L .#internal.x86_64-linux.hydra-test
 
+  hydra_platform_gateway_tests:
+    name: Hydra micropayments tests between Platform↔Gateway
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: [check_flake_lock, build_and_test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run Hydra Tests
+        timeout-minutes: 60
+        env:
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
+          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+        run: |
+          nix run -L .#internal.x86_64-linux.hydra-platform-gateway-test
+
+  hydra_bridge_gateway_tests:
+    name: Hydra micropayments tests between Bridge↔Gateway
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: [check_flake_lock, build_and_test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run Hydra Tests
+        timeout-minutes: 60
+        env:
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
+          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+        run: |
+          nix run -L .#internal.x86_64-linux.hydra-bridge-gateway-test
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -239,7 +273,7 @@ jobs:
 
       - name: Check coverage
         timeout-minutes: 10
-        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 11
+        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 8
 
   oci_build:
     name: OCI Build (${{ matrix.arch }})

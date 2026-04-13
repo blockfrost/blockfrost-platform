@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use bf_api_provider::types::{EpochsParamResponse, TestsAddressUtxoResponse};
 use bip39::Mnemonic;
 use blockfrost::{BlockfrostAPI, Pagination};
@@ -32,9 +32,7 @@ pub async fn build_tx(blockfrost_client: &BlockfrostAPI) -> Result<FixedTransact
     };
 
     if utxos.is_empty() || has_low_balance {
-        return Err(anyhow!(
-            "You should send ADA to {address} to have enough funds to send a transaction",
-        ));
+        bail!("You should send ADA to {address} to have enough funds to send a transaction",);
     }
 
     let latest_block = blockfrost_client.blocks_latest().await?;
@@ -65,7 +63,7 @@ pub fn compose_transaction(
     current_slot: u64,
 ) -> Result<(String, TransactionBody)> {
     if utxos.is_empty() {
-        return Err(anyhow!("No UTXO on address {address}"));
+        bail!("No UTXO on address {address}");
     }
 
     let config = TransactionBuilderConfigBuilder::new()

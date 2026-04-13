@@ -6,6 +6,7 @@ assert builtins.elem targetSystem ["x86_64-windows"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
+  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars;
 in rec {
   toolchain = with inputs.fenix.packages.${buildSystem};
     combine [
@@ -73,12 +74,28 @@ in rec {
     });
 
   gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
   blockfrost-gateway = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;
       pname = gatewayCargoToml.package.name;
       doCheck = false; # we run Windows tests on real Windows on GHA
       cargoExtraArgs = "--package blockfrost-gateway";
+      postPatch = ''
+        find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
+          sed -r '/^build = .*/d' -i "$cargo_toml"
+        done
+        find -name 'build.rs' -delete
+      '';
+    }
+    // (builtins.listToAttrs hydraScriptsEnvVars));
+
+  blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
+    // {
+      inherit cargoArtifacts GIT_REVISION;
+      pname = sdkBridgeCargoToml.package.name;
+      doCheck = false; # we run Windows tests on real Windows on GHA
+      cargoExtraArgs = "--package blockfrost-sdk-bridge";
       postPatch = ''
         find -name 'Cargo.toml' | while IFS= read -r cargo_toml ; do
           sed -r '/^build = .*/d' -i "$cargo_toml"
@@ -205,6 +222,8 @@ in rec {
       '';
     };
 
+  # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
+  # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle = pkgs.runCommandNoCC "bundle" {} ''
     mkdir -p $out
     cp -r ${packageWithIcon}/. $out/.
