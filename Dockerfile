@@ -36,7 +36,7 @@ FROM base AS hydra
 ARG TARGETARCH
 # hadolint ignore=DL3008
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends unzip \
+  && apt-get install -y --no-install-recommends unzip patchelf \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 RUN set -eux; \
@@ -50,11 +50,19 @@ RUN set -eux; \
     curl -fSL -o /tmp/hydra.tar.bz2 \
       "https://github.com/blockfrost/hydra-aarch64-linux/releases/download/1.0.0/hydra-aarch64-linux-1.0.0.tar.bz2" \
     && tar xjf /tmp/hydra.tar.bz2 -C /app/hydra-node \
-    && rm /tmp/hydra.tar.bz2; \
+    && rm /tmp/hydra.tar.bz2 \
+    && patchelf \
+      --set-interpreter /app/hydra-node/lib/ld-linux-aarch64.so.1 \
+      --set-rpath /app/hydra-node/lib \
+      /app/hydra-node/exe/hydra-node \
+    && rm -f /app/hydra-node/hydra-node \
+    && mv /app/hydra-node/exe/hydra-node /app/hydra-node/hydra-node \
+    && rm -rf /app/hydra-node/bin /app/hydra-node/exe; \
   else \
     echo "Unsupported architecture: $TARGETARCH" >&2; exit 1; \
   fi; \
-  chmod +x /app/hydra-node/*
+  chmod +x /app/hydra-node/hydra-node; \
+  /app/hydra-node/hydra-node --version
 
 FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
