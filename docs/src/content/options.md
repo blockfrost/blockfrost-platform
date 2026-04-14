@@ -53,6 +53,9 @@ Timeout in seconds for data node requests.
 `--gateway-url <URL>`\
 Override the Gateway API URL (default: derived from network). Useful for self-hosted gateways or testing.
 
+`--hydra-cardano-signing-key <PATH>`\
+Path to a prefunded Cardano signing key used to pay L1 transaction fees when opening and closing Hydra heads (roughly 13 ADA per L2 payment-channel cycle).
+
 `--no-metrics`\
 Disable the Prometheus metrics endpoint.
 

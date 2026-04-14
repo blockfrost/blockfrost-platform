@@ -2,7 +2,7 @@ export default {
   index: "Introduction",
   usecases: "Use cases",
   icebreakers: "Icebreakers 🧊",
-  "---": {
+  "--- 1": {
     type: "separator",
   },
   "get-started": "Getting started",
@@ -13,7 +13,7 @@ export default {
   verification: "Verifying that you are up and running",
   options: "Advanced options",
   faq: "FAQ",
-  "---": {
+  "--- 2": {
     type: "separator",
   },
   roadmap: "Roadmap",
