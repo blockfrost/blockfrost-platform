@@ -61,9 +61,9 @@ impl std::error::Error for CreditError {}
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
     pub machine_id: MachineId,
-    pub platform_cardano_vkey: serde_json::Value,
-    pub platform_hydra_vkey: serde_json::Value,
-    pub accepted_platform_h2h_port: Option<u16>,
+    pub bridge_cardano_vkey: serde_json::Value,
+    pub bridge_hydra_vkey: serde_json::Value,
+    pub accepted_bridge_h2h_port: Option<u16>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Clone)]
@@ -78,7 +78,7 @@ pub struct KeyExchangeResponse {
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
     /// Bridge, too (as both sides open both ports).
-    pub proposed_platform_h2h_port: u16,
+    pub proposed_bridge_h2h_port: u16,
     pub gateway_h2h_port: u16,
     /// This being set to `true` means that the ceremony is successful, and the
     /// Gateway is going to start its own `hydra-node`, and the Bridge should too.
@@ -178,7 +178,7 @@ struct State {
     /// Shared HTTP client for all outgoing requests.
     http: reqwest::Client,
     config_dir: PathBuf,
-    platform_cardano_vkey: serde_json::Value,
+    bridge_cardano_vkey: serde_json::Value,
     gateway_payment_addr: String,
     payment_params: Option<PaymentParams>,
     event_tx: mpsc::Sender<Event>,
@@ -237,7 +237,7 @@ impl State {
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 
-        let platform_cardano_vkey =
+        let bridge_cardano_vkey =
             bf_common::cardano_keys::derive_vkey_from_skey(&config.cardano_signing_key)?;
 
         let blockfrost_api = blockfrost::BlockfrostAPI::new(
@@ -251,7 +251,7 @@ impl State {
             blockfrost_api: Some(blockfrost_api),
             http: reqwest::Client::new(),
             config_dir,
-            platform_cardano_vkey,
+            bridge_cardano_vkey,
             gateway_payment_addr: String::new(),
             payment_params: None,
             event_tx: event_tx.clone(),
@@ -392,11 +392,11 @@ impl State {
                 self.kex_requests
                     .send(KeyExchangeRequest {
                         machine_id: MachineId::of_this_host(),
-                        platform_cardano_vkey: self.platform_cardano_vkey.clone(),
-                        platform_hydra_vkey: verifications::read_json_file(
+                        bridge_cardano_vkey: self.bridge_cardano_vkey.clone(),
+                        bridge_hydra_vkey: verifications::read_json_file(
                             &self.config_dir.join("hydra.vk"),
                         )?,
-                        accepted_platform_h2h_port: None,
+                        accepted_bridge_h2h_port: None,
                     })
                     .await?;
 
@@ -452,7 +452,7 @@ impl State {
                     verifications::is_tcp_port_free(kex_resp.gateway_h2h_port).await,
                     Ok(true)
                 ) && matches!(
-                    verifications::is_tcp_port_free(kex_resp.proposed_platform_h2h_port).await,
+                    verifications::is_tcp_port_free(kex_resp.proposed_bridge_h2h_port).await,
                     Ok(true)
                 )) {
                     warn!("the ports proposed by the Gateway are not free locally, will ask again");
@@ -461,11 +461,11 @@ impl State {
                     self.kex_requests
                         .send(KeyExchangeRequest {
                             machine_id: MachineId::of_this_host(),
-                            platform_cardano_vkey: self.platform_cardano_vkey.clone(),
-                            platform_hydra_vkey: verifications::read_json_file(
+                            bridge_cardano_vkey: self.bridge_cardano_vkey.clone(),
+                            bridge_hydra_vkey: verifications::read_json_file(
                                 &self.config_dir.join("hydra.vk"),
                             )?,
-                            accepted_platform_h2h_port: Some(kex_resp.proposed_platform_h2h_port),
+                            accepted_bridge_h2h_port: Some(kex_resp.proposed_bridge_h2h_port),
                         })
                         .await?;
                 }
@@ -994,7 +994,7 @@ impl State {
             .arg("--listen")
             .arg(format!(
                 "127.0.0.1:{}",
-                kex_response.proposed_platform_h2h_port
+                kex_response.proposed_bridge_h2h_port
             ))
             .arg("--peer")
             .arg(format!("127.0.0.1:{}", kex_response.gateway_h2h_port))
