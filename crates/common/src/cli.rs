@@ -76,7 +76,7 @@ pub struct Args {
     #[arg(long)]
     pub no_metrics: bool,
 
-    #[arg(long, help = "Path to an configuration file")]
+    #[arg(long, help = "Path to a custom genesis configuration file")]
     pub custom_genesis_config: Option<PathBuf>,
 
     #[clap(long = "data-node")]

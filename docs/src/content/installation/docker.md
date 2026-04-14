@@ -13,7 +13,7 @@ cd blockfrost-platform
 git checkout main
 
 # To build a release version (recommended)
-git checkout 0.0.2
+git checkout 1.0.0
 
 # Build the docker image
 docker build -t blockfrost-platform .
@@ -29,7 +29,7 @@ docker pull ghcr.io/blockfrost/blockfrost-platform:edge
 docker pull ghcr.io/blockfrost/blockfrost-platform:latest
 
 # Pulling a specific version
-docker pull ghcr.io/blockfrost/blockfrost-platform:0.0.2
+docker pull ghcr.io/blockfrost/blockfrost-platform:1.0.0
 ```
 
 After you have your Docker image on your machine, you can move on to [Configuring the platform](/configuration).

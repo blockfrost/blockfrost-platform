@@ -10,7 +10,6 @@ docker run -it --init --rm \
            -p 3000:3000 \
            -v /home/user/my_node.socket:/var/run/node.socket \
               blockfrost-platform --node-socket-path /var/run/node.socket \
-                                  --network mainnet \
                                   --secret my_secret \
                                   --reward-address my_reward_address
 ```
