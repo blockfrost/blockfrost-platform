@@ -32,10 +32,31 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
   cargo build --release
 
+FROM base AS hydra
+ARG TARGETARCH
+# hadolint ignore=DL3008
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends unzip \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+  if [ "$TARGETARCH" = "amd64" ]; then \
+    url="https://github.com/cardano-scaling/hydra/releases/download/1.0.0/hydra-x86_64-linux-1.0.0.zip"; \
+  elif [ "$TARGETARCH" = "arm64" ]; then \
+    url="https://github.com/blockfrost/hydra-aarch64-linux/releases/download/1.0.0/hydra-aarch64-linux-1.0.0.zip"; \
+  else \
+    echo "Unsupported architecture: $TARGETARCH" >&2; exit 1; \
+  fi; \
+  curl -fSL -o /tmp/hydra.zip "$url" \
+  && mkdir -p /app/hydra-node \
+  && unzip /tmp/hydra.zip -d /app/hydra-node \
+  && chmod +x /app/hydra-node/* \
+  && rm /tmp/hydra.zip
+
 FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
-# FIXME: add hydra-node somehow – `aarch64-linux` will be a problem, because it's not published anywhere
-#COPY --from=hydra-node /hydra-node /app/hydra-node/hydra-node
+COPY --from=hydra /app/hydra-node/ /app/hydra-node/
+
 RUN ["/app/blockfrost-platform", "--version"]
 
 ARG GIT_REVISION
