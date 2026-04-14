@@ -174,7 +174,7 @@ enum Event {
 struct State {
     config: HydraConfig,
     hydra_node_exe: String,
-    blockfrost_api: Option<blockfrost::BlockfrostAPI>,
+    blockfrost_api: blockfrost::BlockfrostAPI,
     /// Shared HTTP client for all outgoing requests.
     http: reqwest::Client,
     config_dir: PathBuf,
@@ -248,7 +248,7 @@ impl State {
         let mut self_ = Self {
             config,
             hydra_node_exe,
-            blockfrost_api: Some(blockfrost_api),
+            blockfrost_api,
             http: reqwest::Client::new(),
             config_dir,
             bridge_cardano_vkey,
@@ -353,12 +353,6 @@ impl State {
             #[cfg(not(unix))]
             let _ = pid;
         }
-    }
-
-    fn blockfrost_api(&self) -> Result<&blockfrost::BlockfrostAPI> {
-        self.blockfrost_api
-            .as_ref()
-            .ok_or_else(|| anyhow!("blockfrost API not initialized"))
     }
 
     async fn process_event(&mut self, event: Event) -> Result<()> {

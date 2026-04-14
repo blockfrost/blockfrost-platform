@@ -54,7 +54,7 @@ impl super::State {
     /// Check how much lovelace is available on an address (via Blockfrost).
     pub(super) async fn lovelace_on_addr(&self, address: &str) -> Result<u64> {
         let utxos = self
-            .blockfrost_api()?
+            .blockfrost_api
             .addresses_utxos(address, Pagination::all())
             .await;
 
@@ -117,7 +117,7 @@ impl super::State {
     /// hydra-node's `/commit` endpoint expects.
     pub(super) async fn query_utxo_json(&self, address: &str) -> Result<serde_json::Value> {
         let utxos = self
-            .blockfrost_api()?
+            .blockfrost_api
             .addresses_utxos(address, Pagination::all())
             .await;
 
@@ -205,7 +205,7 @@ impl super::State {
         use cardano_serialization_lib::CoinSelectionStrategyCIP2;
 
         let priv_key = cardano_keys::load_private_key(payment_skey_path)?;
-        let bf = self.blockfrost_api()?;
+        let bf = &self.blockfrost_api;
 
         // Fetch UTxOs via Blockfrost (limit to 200 to avoid MaxTxSizeUTxO)
         let utxos = bf.addresses_utxos(addr_from, Pagination::all()).await?;
@@ -262,7 +262,7 @@ impl super::State {
 
         // Submit via Blockfrost
         let tx_cbor = fixed_tx.to_bytes();
-        self.blockfrost_api()?
+        self.blockfrost_api
             .transactions_submit(tx_cbor.to_vec())
             .await?;
 
@@ -324,7 +324,7 @@ impl super::State {
         let signed_cbor = hex::decode(signed_cbor_hex)?;
 
         // Submit via Blockfrost.
-        self.blockfrost_api()?
+        self.blockfrost_api
             .transactions_submit(signed_cbor.to_vec())
             .await?;
 
