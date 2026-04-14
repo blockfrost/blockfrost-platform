@@ -34,6 +34,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
+# FIXME: add hydra-node somehow – `aarch64-linux` will be a problem, because it's not published anywhere
+#COPY --from=hydra-node /hydra-node /app/hydra-node/hydra-node
+RUN ["/app/blockfrost-platform", "--version"]
 
 ARG GIT_REVISION
 LABEL org.opencontainers.image.title="Blockfrost platform" \

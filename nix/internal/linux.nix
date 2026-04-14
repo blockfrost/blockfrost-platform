@@ -43,6 +43,7 @@ in
             ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/.
             chmod -R +w $out
             ( cd $out ; ln -s bin/{${unix.packageName.pname},dolos,hydra-node} ./ ; )
+            $out/bin/${unix.packageName.pname} --version
           '';
       });
 
@@ -77,6 +78,7 @@ in
             ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/.
             chmod -R +w $out
             ( cd $out ; ln -s bin/{${unix.sdkBridgeCargoToml.package.name},hydra-node} ./ ; )
+            $out/bin/${unix.sdkBridgeCargoToml.package.name} --version
           '';
       });
 

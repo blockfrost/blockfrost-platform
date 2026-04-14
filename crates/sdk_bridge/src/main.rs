@@ -12,6 +12,15 @@ use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Fail early if hydra-node is not found (not applicable on Windows).
+    #[cfg(not(target_os = "windows"))]
+    if let Err(e) =
+        bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+    {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+
     let args = config::Args::parse();
     let config = config::BridgeConfig::from_args(args)?;
 

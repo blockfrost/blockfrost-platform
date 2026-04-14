@@ -14,6 +14,15 @@ use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
+    // Fail early if hydra-node is not found (not applicable on Windows).
+    #[cfg(not(target_os = "windows"))]
+    if let Err(e) =
+        bf_common::find_libexec::find_libexec("hydra-node", "HYDRA_NODE_PATH", &["--version"])
+    {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+
     dotenv().ok();
     let config = Args::init().await?;
 
