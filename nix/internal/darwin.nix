@@ -58,6 +58,7 @@ in
           chmod -R +w $out
 
           ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
+          $out/bin/${unix.packageName.pname} --version
         '';
     });
 
@@ -84,6 +85,7 @@ in
           chmod -R +w $out
 
           ( cd $out/bin ; ln -s ../libexec/${unix.sdkBridgeCargoToml.package.name} ./ ; )
+          $out/bin/${unix.sdkBridgeCargoToml.package.name} --version
         '';
     });
 

@@ -82,6 +82,7 @@ in
           ( cd $out/bin && ln -s ../libexec/${packageName.pname} ./ ; )
           mkdir -p $out/libexec/hydra-node/
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+          $out/bin/${packageName.pname} --version
         '';
         meta = {
           mainProgram = packageName.pname;
@@ -109,6 +110,7 @@ in
             ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
             mkdir -p $out/libexec/hydra-node/
             ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+            $out/bin/${gatewayCargoToml.package.name} --version
           '';
           cargoExtraArgs = "--package blockfrost-gateway" + lib.optionalString mockDb " --features dev_mock_db";
         }
@@ -130,6 +132,7 @@ in
           ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
           mkdir -p $out/libexec/hydra-node/
           ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+          $out/bin/${sdkBridgeCargoToml.package.name} --version
         '';
         cargoExtraArgs = "--package blockfrost-sdk-bridge";
       });
