@@ -40,18 +40,21 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 RUN set -eux; \
+  mkdir -p /app/hydra-node; \
   if [ "$TARGETARCH" = "amd64" ]; then \
-    url="https://github.com/cardano-scaling/hydra/releases/download/1.0.0/hydra-x86_64-linux-1.0.0.zip"; \
+    curl -fSL -o /tmp/hydra.zip \
+      "https://github.com/cardano-scaling/hydra/releases/download/1.0.0/hydra-x86_64-linux-1.0.0.zip" \
+    && unzip /tmp/hydra.zip -d /app/hydra-node \
+    && rm /tmp/hydra.zip; \
   elif [ "$TARGETARCH" = "arm64" ]; then \
-    url="https://github.com/blockfrost/hydra-aarch64-linux/releases/download/1.0.0/hydra-aarch64-linux-1.0.0.zip"; \
+    curl -fSL -o /tmp/hydra.tar.bz2 \
+      "https://github.com/blockfrost/hydra-aarch64-linux/releases/download/1.0.0/hydra-aarch64-linux-1.0.0.tar.bz2" \
+    && tar xjf /tmp/hydra.tar.bz2 -C /app/hydra-node \
+    && rm /tmp/hydra.tar.bz2; \
   else \
     echo "Unsupported architecture: $TARGETARCH" >&2; exit 1; \
   fi; \
-  curl -fSL -o /tmp/hydra.zip "$url" \
-  && mkdir -p /app/hydra-node \
-  && unzip /tmp/hydra.zip -d /app/hydra-node \
-  && chmod +x /app/hydra-node/* \
-  && rm /tmp/hydra.zip
+  chmod +x /app/hydra-node/*
 
 FROM gcr.io/distroless/cc-debian13@sha256:05d26fe67a875592cd65f26b2bcfadb8830eae53e68945784e39b23e62c382e0 AS runtime
 COPY --from=builder /app/target/release/blockfrost-platform /app/
