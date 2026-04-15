@@ -12,8 +12,15 @@ pub fn initialize_logging() {
     let _ = INIT_LOGGING;
 }
 
+pub fn blockfrost_preview_project_id() -> String {
+    std::env::var("BLOCKFROST_PREVIEW_PROJECT_ID").expect(
+        "BLOCKFROST_PREVIEW_PROJECT_ID is not set. \
+         In CI it comes from a GitHub Secret. locally add it to .envrc.local.",
+    )
+}
+
 pub fn get_blockfrost_client() -> BlockfrostAPI {
     let settings = BlockFrostSettings::default();
 
-    BlockfrostAPI::new("previewy2pbyga8FifUwJSverBCwhESegV6I7gT", settings)
+    BlockfrostAPI::new(&blockfrost_preview_project_id(), settings)
 }
