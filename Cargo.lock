@@ -534,7 +534,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-gateway"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -632,14 +632,14 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-api-provider"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "blockfrost-openapi",
 ]
 
 [[package]]
 name = "blockfrost-platform-build-utils"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "bzip2",
  "reqwest 0.13.2",
@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-common"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-data-node"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "axum",
  "blockfrost-platform-api-provider",
@@ -699,7 +699,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-integration-tests"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -734,7 +734,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-node"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-sdk-bridge"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",

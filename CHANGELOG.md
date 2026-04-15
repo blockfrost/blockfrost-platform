@@ -1,3 +1,36 @@
+## [1.0.0-rc.1] - 2026-04-15
+
+### Added
+
+- Hydra micropayments between gateway and platform, and between gateway and end users
+- `blockfrost-gateway` is now part of the monorepo and shipped together with the platform
+- CIP-129 support
+- Multi-arch OCI (Docker) images
+- Data node monitoring with version and revision reporting
+- Concurrency limiting
+
+### Changed
+
+- Updated `cardano-node` to 10.6.3
+- Updated Dolos to 1.0.3
+- Dolos config is now a generic data node config
+- Unified error handling and logging
+- Improved data node error logging
+- Only single data node support
+
+### Fixed
+
+- Tests: hardcoded `project_id` now correctly resolved from environment
+- Gateway no longer logs secrets
+- Hydra: reset stale credits on Head `Close` and seed Gateway balance on `Open`
+- Hydra: `Commit` each participant as soon as their own node hits `Initial`
+- Addresses dummy response
+- Incorrect `drep_id` mapping removed
+- Genesis preview start
+- `glibc` version alignment in the Dockerfile
+- Windows build of `blockfrost-gateway.exe` now includes `libpq`
+- Installers fixed and verified before release
+
 ## [0.0.3-rc.3] - 2025-09-23
 
 ### Removed
