@@ -1,16 +1,15 @@
-## [1.0.0-rc.1] - 2026-04-15
+## [1.0.0-rc.1] - 2026-04-xx
 
 ### Highlights
 
 This release introduces two major integrations:
 
-- **[Dolos](https://github.com/txpipe/dolos)** — a lightweight Cardano data node used as an alternative to `cardano-db-sync`
-- **[Hydra](https://hydra.family/head-protocol/)** — Cardano's Layer 2 protocol, enabling Blockfrost API access to Hydra Heads and micropayments between Gateway, Platform and end users
+<img src="docs/hydra.png" alt="" height="30" align="center" /> &nbsp; + &nbsp;<img src="docs/dolos.png" alt="" height="40" align="center" />
 
 ### Added
 
-- [Dolos](https://github.com/txpipe/dolos) integration as a data node (alternative to `cardano-db-sync`)
 - [Hydra](https://hydra.family/head-protocol/) integration: Blockfrost API access to Hydra Heads
+- [Dolos](https://github.com/txpipe/dolos) integration as a data node (alternative to `cardano-db-sync`)
 - Hydra micropayments between Gateway and Platform, and between Gateway and end users
 - Hydra Head with `--blockfrost` integration test
 - `hydra-node` 1.0.0 bundled with the installers (no external `cardano-cli` required at runtime)
