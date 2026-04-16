@@ -4,7 +4,7 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, warn};
 
 #[derive(Serialize, Deserialize)]
 pub struct ApiError {
@@ -42,8 +42,6 @@ pub enum APIError {
 
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
-        error!("API Error occurred: {}", self);
-
         let (status_code, error_response) = match &self {
             APIError::Validation(_) => (
                 StatusCode::BAD_REQUEST,
@@ -100,6 +98,12 @@ impl IntoResponse for APIError {
                 },
             ),
         };
+
+        if status_code.is_server_error() {
+            error!("API Error occurred: {}", self);
+        } else {
+            warn!("API Error occurred: {}", self);
+        }
 
         (status_code, Json(error_response)).into_response()
     }
