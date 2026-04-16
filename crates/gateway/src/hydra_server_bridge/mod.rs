@@ -71,8 +71,8 @@ impl HydrasManager {
         &self,
         req: KeyExchangeRequest,
     ) -> Result<KeyExchangeResponse> {
-        if req.accepted_platform_h2h_port.is_some() {
-            bail!("`accepted_platform_h2h_port` must not be set in `initialize_key_exchange`")
+        if req.accepted_bridge_h2h_port.is_some() {
+            bail!("`accepted_bridge_h2h_port` must not be set in `initialize_key_exchange`")
         }
 
         let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
@@ -114,7 +114,7 @@ impl HydrasManager {
             hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
             protocol_parameters: self.config.protocol_parameters.clone(),
             contestation_period: CONTESTATION_PERIOD_SECONDS,
-            proposed_platform_h2h_port: find_free_tcp_port().await?,
+            proposed_bridge_h2h_port: find_free_tcp_port().await?,
             gateway_h2h_port: find_free_tcp_port().await?,
             kex_done: false,
             commit_ada: self.config.toml.commit_ada,
@@ -133,14 +133,14 @@ impl HydrasManager {
     ) -> Result<(HydraController, KeyExchangeResponse)> {
         if initial.0
             != (KeyExchangeRequest {
-                accepted_platform_h2h_port: None,
+                accepted_bridge_h2h_port: None,
                 ..final_req.clone()
             })
         {
             bail!("The 2nd `KeyExchangeRequest` must be the same as the 1st one.")
         }
 
-        if final_req.accepted_platform_h2h_port != Some(initial.1.proposed_platform_h2h_port) {
+        if final_req.accepted_bridge_h2h_port != Some(initial.1.proposed_bridge_h2h_port) {
             bail!("The Bridge must accept the same port that was proposed to it.")
         }
 
@@ -157,7 +157,7 @@ impl HydrasManager {
             verifications::is_tcp_port_free(initial.1.gateway_h2h_port).await,
             Ok(true)
         ) && matches!(
-            verifications::is_tcp_port_free(initial.1.proposed_platform_h2h_port).await,
+            verifications::is_tcp_port_free(initial.1.proposed_bridge_h2h_port).await,
             Ok(true)
         )) {
             bail!(
@@ -263,9 +263,9 @@ impl std::error::Error for CreditError {}
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct KeyExchangeRequest {
     pub machine_id: MachineId,
-    pub platform_cardano_vkey: serde_json::Value,
-    pub platform_hydra_vkey: serde_json::Value,
-    pub accepted_platform_h2h_port: Option<u16>,
+    pub bridge_cardano_vkey: serde_json::Value,
+    pub bridge_hydra_vkey: serde_json::Value,
+    pub accepted_bridge_h2h_port: Option<u16>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Clone)]
@@ -280,7 +280,7 @@ pub struct KeyExchangeResponse {
     /// since we’re tunneling through the WebSocket, and our hosts are
     /// both 127.0.0.1, the Gateway has to propose the port on the
     /// Bridge, too (as both sides open both ports).
-    pub proposed_platform_h2h_port: u16,
+    pub proposed_bridge_h2h_port: u16,
     pub gateway_h2h_port: u16,
     /// This being set to `true` means that the ceremony is successful, and the
     /// Gateway is going to start its own `hydra-node`, and the Bridge should too.
@@ -858,16 +858,16 @@ impl State {
             &self.kex_resp.protocol_parameters,
         )?;
 
-        let platform_hydra_vkey_path = self.config_dir.join("platform-hydra.vk");
+        let bridge_hydra_vkey_path = self.config_dir.join("bridge-hydra.vk");
         verifications::write_json_if_changed(
-            &platform_hydra_vkey_path,
-            &self.kex_req.platform_hydra_vkey,
+            &bridge_hydra_vkey_path,
+            &self.kex_req.bridge_hydra_vkey,
         )?;
 
-        let platform_cardano_vkey_path = self.config_dir.join("platform-payment.vk");
+        let bridge_cardano_vkey_path = self.config_dir.join("bridge-payment.vk");
         verifications::write_json_if_changed(
-            &platform_cardano_vkey_path,
-            &self.kex_req.platform_cardano_vkey,
+            &bridge_cardano_vkey_path,
+            &self.kex_req.bridge_cardano_vkey,
         )?;
 
         // Write the Blockfrost project ID to a file for hydra-node's --blockfrost option
@@ -903,14 +903,14 @@ impl State {
             .arg("--peer")
             .arg(format!(
                 "127.0.0.1:{}",
-                self.kex_resp.proposed_platform_h2h_port
+                self.kex_resp.proposed_bridge_h2h_port
             ))
             .arg("--monitoring-port")
             .arg(format!("{}", self.metrics_port))
             .arg("--hydra-verification-key")
-            .arg(platform_hydra_vkey_path)
+            .arg(bridge_hydra_vkey_path)
             .arg("--cardano-verification-key")
-            .arg(platform_cardano_vkey_path)
+            .arg(bridge_cardano_vkey_path)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

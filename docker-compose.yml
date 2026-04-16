@@ -58,9 +58,9 @@ services:
       - $REWARD_ADDRESS
       - --node-socket-path
       - /ipc/node.socket
-      - --dolos-endpoint
+      - --data-node
       - http://dolos:3010
-      - --dolos-timeout-sec
+      - --data-node-timeout-sec
       - "30"
   blockfrost-platform-solitary:
     image: ghcr.io/blockfrost/blockfrost-platform:edge
@@ -83,9 +83,9 @@ services:
       - --solitary
       - --node-socket-path
       - /ipc/node.socket
-      - --dolos-endpoint
+      - --data-node
       - http://dolos:3010
-      - --dolos-timeout-sec
+      - --data-node-timeout-sec
       - "30"
 volumes:
   node-db:

@@ -7,7 +7,7 @@ If you are using Nix, building `blockfrost-platform` is straightforward.
 nix build github:blockfrost/blockfrost-platform
 
 # To build a release version (recommended)
-nix build github:blockfrost/blockfrost-platform/0.0.2
+nix build github:blockfrost/blockfrost-platform/1.0.0
 ```
 
 To make the builds much faster, it’s worth adding the IOG binary cache to your Nix configuration (`/etc/nix/nix.conf`):
@@ -23,5 +23,5 @@ Then you can move on to [Configuring the platform](/configuration).
 
 ```bash
 $ ./result/bin/blockfrost-platform --version
-blockfrost-platform 0.0.2 (e06029b9da747fa5daa027605a918fc9fe103b7c)
+blockfrost-platform 1.0.0 (<V1_GIT_REVISION>)
 ```

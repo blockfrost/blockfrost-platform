@@ -1,6 +1,6 @@
 # Blockfrost Platform Docs
 
-http://platform.blockfrost.io
+https://platform.blockfrost.io
 
 ## Development
 

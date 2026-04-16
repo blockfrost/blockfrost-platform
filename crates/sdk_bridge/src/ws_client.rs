@@ -259,7 +259,7 @@ async fn run_ws_session(
                 if resp.machine_id != bf_common::hydra::MachineId::of_this_host() {
                     let (tunnel_ctl, mut tunnel_rx) = bf_common::tcp_mux_tunnel::Tunnel::new(
                         bf_common::tcp_mux_tunnel::TunnelConfig {
-                            expose_port: resp.proposed_platform_h2h_port,
+                            expose_port: resp.proposed_bridge_h2h_port,
                             id_prefix_bit: true,
                             ..(bf_common::tcp_mux_tunnel::TunnelConfig::default())
                         },

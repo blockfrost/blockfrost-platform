@@ -3,7 +3,7 @@ use axum::{
     http::Request,
 };
 use integration_tests::{
-    get_blockfrost_client, initialize_logging,
+    blockfrost_preview_project_id, get_blockfrost_client, initialize_logging,
     platform::{asserts, build_app, tx_builder::build_tx},
 };
 use pretty_assertions::assert_eq;
@@ -73,7 +73,7 @@ async fn test_route_submit_error() {
     let bf_response = reqwest::Client::new()
         .post("https://cardano-preview.blockfrost.io/api/v0/tx/submit")
         .header("Content-Type", "application/cbor")
-        .header("project_id", "previewWrlEvs2PlZUw8hEN5usP5wG4DK4L46A3")
+        .header("project_id", blockfrost_preview_project_id())
         .body(hex::decode(tx).unwrap())
         .send()
         .await

@@ -128,6 +128,7 @@ in rec {
       projectName = blockfrost-platform.pname;
       projectVersion = blockfrost-platform.version;
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
+      WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
     } ''
       mkdir home
       export HOME=$(realpath home)
@@ -224,11 +225,19 @@ in rec {
 
   # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
   # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
-  bundle = pkgs.runCommandNoCC "bundle" {} ''
-    mkdir -p $out
-    cp -r ${packageWithIcon}/. $out/.
-    cp -r ${dolos}/bin/. $out/.
-  '';
+  bundle =
+    pkgs.runCommandNoCC "bundle" {
+      buildInputs = [pkgs.wine64];
+      WINEDEBUG = "-all";
+      WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
+    } ''
+      mkdir home
+      export HOME=$(realpath home)
+      mkdir -p $out
+      cp -r ${packageWithIcon}/. $out/.
+      cp -r ${dolos}/bin/. $out/.
+      wine64 $out/${packageName.pname}.exe --version
+    '';
 
   archive =
     pkgs.runCommandNoCC "archive"
@@ -310,6 +319,7 @@ in rec {
         samba # samba is for bin/ntlm_auth
       ];
       WINEDEBUG = "-all"; # comment out to get normal output (err,fixme), or set to +all for a flood
+      WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
     } ''
       export HOME=$(realpath $NIX_BUILD_TOP/home)
       mkdir -p $HOME

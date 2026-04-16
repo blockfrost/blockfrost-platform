@@ -89,7 +89,7 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
 2. The load balancer code exposes a `GET /stats` endpoint, where you can see all currently connected IceBreakers:
 
    ```
-   ❯ curl -fsSL http://icebreakers-api.blockfrost.io/stats | jq .
+   ❯ curl -fsSL https://icebreakers-api.blockfrost.io/stats | jq .
    ```
 
    ```json
@@ -166,8 +166,8 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
    ```json
    {
      "name": "blockfrost-platform",
-     "version": "0.0.2",
-     "revision": "c21d2d93a2da14174ed4a8ba247c75c8971ce507",
+     "version": "1.0.0",
+     "revision": "<V1_GIT_REVISION>",
      "healthy": true,
      "node_info": {
        "block": "6d87f87a0642fd4a59bb8af89400e8c7a777e290d2c2e02ceb93059ac7b4aaba",
@@ -176,8 +176,21 @@ Currently, this new WebSocket endpoint is served by the same IceBreakers API dur
        "slot": 76533840,
        "sync_progress": 100.0
      },
+     "data_node": {
+       "url": "http://localhost:3010",
+       "version": "1.0.0",
+       "revision": "abc123"
+     },
      "errors": []
    }
    ```
 
 2. The `blockfrost-platform` API remains as-is on port 3000. After the WebSocket testing period it will no longer need to be open to the public, or have a UUID `api_prefix`.
+
+### Operational details
+
+- **Request timeout**: Each request forwarded over WebSocket has a 60-second timeout.
+- **Maximum body size**: Request bodies are limited to 1 MB.
+- **Re-registration**: If a load balancer connection drops, the platform automatically re-registers. On successful connection it re-registers after 1 second; on error, after 10 seconds.
+- **Connection behavior**: If any single load balancer connection breaks, all connections are aborted and a full re-registration cycle begins.
+- **No load balancers**: If the registration response contains no load balancers, the platform registers once and does not retry.

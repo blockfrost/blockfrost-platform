@@ -173,7 +173,7 @@ pub mod event_loop {
 
                     let reply = match (
                         &state.hydras,
-                        &req.accepted_platform_h2h_port,
+                        &req.accepted_bridge_h2h_port,
                         initial_hydra_kex.is_some(),
                     ) {
                         (None, _, _) => GatewayMessage::Error {
@@ -203,7 +203,7 @@ pub mod event_loop {
                                                 tunnel_cancellation.clone(),
                                             );
 
-                                        tunnel_ctl.spawn_listener(resp.proposed_platform_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
+                                        tunnel_ctl.spawn_listener(resp.proposed_bridge_h2h_port).await.expect("FIXME: this really shouldn’t fail, unless we hit the TOCTOU race condition…");
 
                                         let socket_tx_ = socket_tx.clone();
                                         tokio::spawn(async move {
