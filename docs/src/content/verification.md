@@ -54,8 +54,7 @@ This should return the current version number.
 Start the service and check for successful initialization:
 
 ```shell
-blockfrost-platform --network mainnet \
-                    --node-address 127.0.0.1 \
+blockfrost-platform --node-socket-path /path/to/node.socket \
                     --secret your_icebreaker_secret \
                     --reward-address your_nft_address
 ```
@@ -66,7 +65,6 @@ The message `DEBUG: Decoding done` indicates normal operation.
 If you don't see this message or encounter errors, check:
 
 - Node socket path accessibility
-- Network configuration
 - Secret key validity.
 
 ### Operational verification
@@ -75,8 +73,8 @@ Once the service is running, verify that it is functioning correctly:
 
 ### Understanding the UUID
 
-The Blockfrost platform generates a new UUID each time it starts.
-This UUID is critical for accessing endpoints:
+When running in non-solitary mode, the Blockfrost platform generates a new UUID each time it starts.
+This UUID is used as a prefix for routing requests through the Icebreakers load balancers.
 
 ### Example log entry showing UUID
 
@@ -87,6 +85,7 @@ INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 
 You would need this UUID for things like your own manual transaction submission tests.
 Otherwise, it's an implementation detail.
+In solitary mode, no UUID is generated.
 Remember that this changes every time you restart the service.
 
 ### Metrics endpoint verification
@@ -149,9 +148,8 @@ If verification fails, check these common issues:
 
 ### Cannot access metrics endpoint
 
-- Verify you're using the current UUID
 - Confirm port 3000 is accessible from your network
-- Check if you need to update to the latest binary.
+- Make sure metrics are not disabled (`--no-metrics` flag or config).
 
 ### Receiving 503 errors under load
 

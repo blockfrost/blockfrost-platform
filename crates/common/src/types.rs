@@ -29,6 +29,14 @@ impl Network {
             Self::Custom => "custom",
         }
     }
+
+    /// Default public Gateway URL for this network.
+    pub fn default_gateway_url(&self) -> &'static str {
+        match self {
+            Self::Preprod | Self::Preview => "https://api-dev.icebreakers.blockfrost.io",
+            Self::Mainnet | Self::Custom => "https://icebreakers-api.blockfrost.io",
+        }
+    }
 }
 
 #[derive(Debug, Clone, ValueEnum, Serialize, Deserialize, PartialEq, Eq)]

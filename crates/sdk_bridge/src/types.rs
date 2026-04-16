@@ -1,3 +1,4 @@
+use bf_common::types::Network as CommonNetwork;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +16,14 @@ impl Network {
             Self::Mainnet => "mainnet",
             Self::Preprod => "preprod",
             Self::Preview => "preview",
+        }
+    }
+
+    pub fn to_common(&self) -> CommonNetwork {
+        match self {
+            Self::Mainnet => CommonNetwork::Mainnet,
+            Self::Preprod => CommonNetwork::Preprod,
+            Self::Preview => CommonNetwork::Preview,
         }
     }
 }

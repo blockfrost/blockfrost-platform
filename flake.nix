@@ -196,6 +196,9 @@
             archive = lib.genAttrs (config.systems ++ crossSystems) (
               targetSystem: inputs.self.internal.${targetSystem}.archive
             );
+            archive-bridge = lib.genAttrs config.systems (
+              targetSystem: inputs.self.internal.${targetSystem}.archive-bridge
+            );
             installer = {
               x86_64-windows = inputs.self.internal.x86_64-windows.installer;
               x86_64-darwin = inputs.self.internal.x86_64-darwin.installer;

@@ -7,7 +7,7 @@
 # `dev_mock_db`, receiver):
 #
 # 1. Start the Gateway with a `[hydra_bridge]` config section
-# 2. Start the SDK Bridge pointing at the local Gateway (`--gateway-ws-url`)
+# 2. Start the SDK Bridge pointing at the local Gateway (`--gateway-url`)
 # 3. Wait for Hydra key exchange, Head Init, Commit, and Open
 # 4. Send API requests through the SDK Bridge -> Gateway
 # 5. Verify that the Gateway triggers Close -> Fanout after enough micropayments
@@ -350,7 +350,7 @@ log info "Gateway is up at ${gateway_url}"
 log info "Starting the SDK Bridge (blockfrost-sdk-bridge)…"
 
 blockfrost-sdk-bridge \
-  --gateway-ws-url "${gateway_url}" \
+  --gateway-url "${gateway_url}" \
   --listen-address "127.0.0.1:${bridge_port}" \
   --network "${NETWORK}" \
   --blockfrost-project-id "${BLOCKFROST_PROJECT_ID}" \

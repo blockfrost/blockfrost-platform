@@ -1,0 +1,128 @@
+import { Callout } from "nextra/components";
+
+# Data node
+
+The platform can connect to a [Dolos](https://github.com/txpipe/dolos) data node to serve blockchain query endpoints such as blocks, transactions, accounts, addresses, assets, pools, and more. Without a data node configured, these endpoints will not be available.
+
+<Callout>
+  Dolos provides indexed blockchain data over HTTP. The cardano-node is still
+  required for node synchronization and health monitoring.
+</Callout>
+
+## Configuration
+
+To connect to a Dolos instance, use the `--data-node` flag:
+
+```
+blockfrost-platform --node-socket-path /path/to/node.socket \
+                    --data-node http://localhost:3010
+```
+
+You can also set a custom timeout for data node requests (default is 30 seconds):
+
+```
+blockfrost-platform --node-socket-path /path/to/node.socket \
+                    --data-node http://localhost:3010 \
+                    --data-node-timeout-sec 60
+```
+
+The `--init` wizard will also prompt you for the data node URL during configuration file generation.
+
+## Supported endpoints
+
+{/* prettier-ignore */}
+<Callout>
+  The following endpoints work without a data node:
+  - `GET /` — root health endpoint
+  - `GET /metrics` — Prometheus metrics (unless disabled with `--no-metrics`)
+  - `GET /health` — health check
+  - `GET /health/clock` — server time
+  - `POST /tx/submit` — transaction submission
+  - `GET /genesis` — network genesis parameters
+</Callout>
+
+When a data node is connected, the following endpoints become available:
+
+### Accounts
+
+- `GET /accounts/{stake_address}`
+- `GET /accounts/{stake_address}/rewards`
+- `GET /accounts/{stake_address}/delegations`
+- `GET /accounts/{stake_address}/registrations`
+- `GET /accounts/{stake_address}/addresses`
+
+### Addresses
+
+- `GET /addresses/{address}/utxos`
+- `GET /addresses/{address}/utxos/{asset}`
+- `GET /addresses/{address}/transactions`
+
+### Assets
+
+- `GET /assets/{asset}`
+
+### Blocks
+
+- `GET /blocks/latest`
+- `GET /blocks/latest/txs`
+- `GET /blocks/{hash_or_number}`
+- `GET /blocks/{hash_or_number}/next`
+- `GET /blocks/{hash_or_number}/previous`
+- `GET /blocks/{hash_or_number}/txs`
+- `GET /blocks/slot/{slot_number}`
+
+### Epochs
+
+- `GET /epochs/latest/parameters`
+- `GET /epochs/{epoch_number}/parameters`
+
+### Metadata
+
+- `GET /metadata/txs/labels`
+- `GET /metadata/txs/labels/{label}`
+- `GET /metadata/txs/labels/{label}/cbor`
+
+### Network
+
+- `GET /network`
+- `GET /network/eras`
+
+### Pools
+
+- `GET /pools/extended`
+- `GET /pools/{pool_id}/delegators`
+
+### Governance
+
+- `GET /governance/dreps/{drep_id}`
+
+### Transactions
+
+- `GET /txs/{hash}`
+- `GET /txs/{hash}/utxos`
+- `GET /txs/{hash}/stakes`
+- `GET /txs/{hash}/delegations`
+- `GET /txs/{hash}/withdrawals`
+- `GET /txs/{hash}/mirs`
+- `GET /txs/{hash}/pool_updates`
+- `GET /txs/{hash}/pool_retires`
+- `GET /txs/{hash}/metadata`
+- `GET /txs/{hash}/metadata/cbor`
+- `GET /txs/{hash}/redeemers`
+- `GET /txs/{hash}/cbor`
+
+## Docker Compose
+
+When using Docker Compose, the platform automatically connects to the Dolos container:
+
+```yaml
+dolos:
+  image: ghcr.io/txpipe/dolos
+  ports:
+    - 3010:3010
+
+blockfrost-platform:
+  command:
+    - --data-node
+    - http://dolos:3010
+```

@@ -52,11 +52,13 @@ in
 
           chmod -R +w $out
           ${with pkgs; lib.getExe rsync} -a ${bundle-dolos}/. $out/libexec/.
-          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/.
-          ${with pkgs; lib.getExe rsync} -a ${bundle-cardano-cli}/. $out/libexec/.
+          chmod -R +w $out
+          mkdir -p $out/libexec/hydra-node
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/hydra-node/.
           chmod -R +w $out
 
-          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos,hydra-node,cardano-cli} ./ ; )
+          ( cd $out/bin ; ln -s ../libexec/{${unix.packageName.pname},dolos} ./ ; )
+          $out/bin/${unix.packageName.pname} --version
         '';
     });
 
@@ -66,7 +68,42 @@ in
 
     bundle-hydra = nix-bundle-exe-lib-subdir "${unix.hydra-node}/bin/hydra-node";
 
-    bundle-cardano-cli = nix-bundle-exe-lib-subdir "${unix.cardano-cli}/bin/cardano-cli";
+    # Portable directory that can be run on any modern Darwin:
+    bundle-bridge = (nix-bundle-exe-lib-subdir "${unix.blockfrost-sdk-bridge}/libexec/${unix.sdkBridgeCargoToml.package.name}")
+      .overrideAttrs (drv: {
+      inherit (unix.sdkBridgeCargoToml.package) name;
+      buildCommand =
+        drv.buildCommand
+        + ''
+          mkdir -p $out/libexec
+          mv $out/{${unix.sdkBridgeCargoToml.package.name},lib} $out/libexec
+          mkdir -p $out/bin
+
+          chmod -R +w $out
+          mkdir -p $out/libexec/hydra-node
+          ${with pkgs; lib.getExe rsync} -a ${bundle-hydra}/. $out/libexec/hydra-node/.
+          chmod -R +w $out
+
+          ( cd $out/bin ; ln -s ../libexec/${unix.sdkBridgeCargoToml.package.name} ./ ; )
+          $out/bin/${unix.sdkBridgeCargoToml.package.name} --version
+        '';
+    });
+
+    archive-bridge = let
+      outFileName = "${unix.sdkBridgeCargoToml.package.name}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
+    in
+      pkgs.runCommandNoCC "${unix.sdkBridgeCargoToml.package.name}-archive" {
+        passthru = {inherit outFileName;};
+      } ''
+        cp -r ${bundle-bridge} ${unix.sdkBridgeCargoToml.package.name}
+
+        mkdir -p $out
+        tar -cjvf $out/${outFileName} ${unix.sdkBridgeCargoToml.package.name}/
+
+        # Make it downloadable from Hydra:
+        mkdir -p $out/nix-support
+        echo "file binary-dist \"$out/${outFileName}\"" >$out/nix-support/hydra-build-products
+      '';
 
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
