@@ -67,7 +67,7 @@ pub struct TestGateway {
     server_handle: JoinHandle<()>,
 }
 
-const EXPECTED_SECRET: &str = "kka0pnx9zqdvh9wl96nsg6sje0f5";
+pub const EXPECTED_SECRET: &str = "000666000";
 
 impl TestGateway {
     /// Start a gateway on a random port with WS routes + mock /register.
@@ -98,7 +98,10 @@ impl TestGateway {
     /// Start a gateway with a custom rate limit (for rate limit tests).
     pub async fn start_with_rate_limit(max_per_minute: u32) -> Self {
         let lb = LoadBalancerState::new(None).await;
-        let quota = governor::Quota::per_minute(NonZeroU32::new(max_per_minute).unwrap());
+        let quota = governor::Quota::per_minute(
+            NonZeroU32::new(max_per_minute)
+                .expect("TestGateway::start_with_rate_limit requires max_per_minute > 0"),
+        );
         let rate_limiter: RegisterRateLimiter = Arc::new(governor::RateLimiter::keyed(quota));
         let router = build_router(lb.clone())
             .await

@@ -1,4 +1,4 @@
-use integration_tests::gateway::TestGateway;
+use integration_tests::gateway::{EXPECTED_SECRET, TestGateway};
 use reqwest::Client;
 use serde_json::json;
 
@@ -9,17 +9,22 @@ async fn test_register_rate_limit_returns_429() {
     let url = format!("http://{}/register", gw.addr);
 
     let body = json!({
-        "secret": "00000000",
+        "secret": EXPECTED_SECRET,
         "api_prefix": uuid::Uuid::new_v4().to_string(),
     });
 
     // first 3 requests should succeed
     for i in 0..3 {
         let resp = client.post(&url).json(&body).send().await.unwrap();
-        assert_ne!(
-            resp.status().as_u16(),
-            429,
-            "Request {i} should not be rate limited"
+        let status = resp.status();
+        let body_json: serde_json::Value = resp.json().await.unwrap();
+        assert!(
+            status.is_success(),
+            "Request {i} should succeed, got {status}: {body_json}"
+        );
+        assert_eq!(
+            body_json["status"], "registered",
+            "Request {i} should register, got {body_json}"
         );
     }
 
@@ -44,18 +49,20 @@ async fn test_register_within_rate_limit_succeeds() {
     let url = format!("http://{}/register", gw.addr);
 
     let body = json!({
-        "secret": "00000000",
+        "secret": EXPECTED_SECRET,
         "api_prefix": uuid::Uuid::new_v4().to_string(),
     });
 
     // requests should go through
-    for _ in 0..5 {
+    for i in 0..5 {
         let resp = client.post(&url).json(&body).send().await.unwrap();
-        assert_ne!(
-            resp.status().as_u16(),
-            429,
-            "Should not be rate limited with generous limit"
+        let status = resp.status();
+        let body_json: serde_json::Value = resp.json().await.unwrap();
+        assert!(
+            status.is_success(),
+            "Request {i} should succeed under generous limit, got {status}: {body_json}"
         );
+        assert_eq!(body_json["status"], "registered");
     }
 
     gw.stop().await;
