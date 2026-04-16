@@ -351,12 +351,13 @@ in
         cp -r ${cardano-node-configs-verbose} $out
         chmod -R +w $out
         find $out -name 'config.json' | while IFS= read -r configFile ; do
-          jq '.
-            | .TraceConnectionManager = false
-            | .TracePeerSelection = false
-            | .TracePeerSelectionActions = false
-            | .TracePeerSelectionCounters = false
-            | .TraceInboundGovernor = false
+          jq '
+              .TraceOptions["Net.ConnectionManager.Remote"].severity = "Silence"
+            | .TraceOptions["Net.PeerSelection"].severity = "Silence"
+            | .TraceOptions["Net.InboundGovernor"].severity = "Silence"
+            | .TraceOptions["Net.InboundGovernor.Remote"].severity = "Silence"
+            | .TraceOptions["Net.Mux.Remote"].severity = "Silence"
+            | .TraceOptions["Net.Peers.Ledger.TraceUseLedgerPeers"].severity = "Silence"
           ' "$configFile" >tmp.json
           mv tmp.json "$configFile"
         done
