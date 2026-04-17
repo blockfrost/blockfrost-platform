@@ -707,6 +707,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockfrost-platform-error-decoder"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-platform-build-utils",
+ "blockfrost-platform-common",
+ "blockfrost-platform-testgen",
+ "hex",
+ "pallas-codec",
+ "pallas-hardano",
+ "pallas-network",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+]
+
+[[package]]
 name = "blockfrost-platform-integration-tests"
 version = "1.0.0-rc.2"
 dependencies = [
@@ -748,11 +764,9 @@ dependencies = [
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "chrono",
- "crossbeam",
  "deadpool 0.13.0",
  "hex",
  "metrics",
- "num_cpus",
  "pallas-codec",
  "pallas-crypto",
  "pallas-hardano",
@@ -760,8 +774,20 @@ dependencies = [
  "pallas-primitives",
  "pallas-traverse",
  "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "blockfrost-platform-testgen"
+version = "0.0.3-rc.3"
+dependencies = [
+ "blockfrost-platform-common",
+ "crossbeam",
+ "hex",
+ "num_cpus",
+ "serde",
  "serde_json",
- "sysinfo",
  "tokio",
  "tracing",
 ]
