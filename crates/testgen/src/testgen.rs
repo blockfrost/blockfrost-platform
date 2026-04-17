@@ -367,3 +367,51 @@ fn partition_result<A, E>(ae: Result<A, E>) -> (Result<A, ()>, Result<(), E>) {
         Ok(ok) => (Ok(ok), Ok(())),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TestgenResponse;
+    use serde_json::json;
+
+    fn parse(s: &str) -> Result<TestgenResponse, serde_json::Error> {
+        serde_json::from_str(s)
+    }
+
+    #[test]
+    fn only_json_field_is_ok() {
+        match parse(r#"{"json": {"value": 42}}"#).unwrap() {
+            TestgenResponse::Ok(v) => assert_eq!(v, json!({"value": 42})),
+            other => panic!("expected Ok, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn only_error_field_is_err() {
+        match parse(r#"{"error": "boom"}"#).unwrap() {
+            TestgenResponse::Err(v) => assert_eq!(v, json!("boom")),
+            other => panic!("expected Err, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn both_fields_prefer_json() {
+        match parse(r#"{"json": {"ok": true}, "error": "ignored"}"#).unwrap() {
+            TestgenResponse::Ok(v) => assert_eq!(v, json!({"ok": true})),
+            other => panic!("expected Ok, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn neither_field_fails_deserialization() {
+        let err = parse(r#"{}"#).unwrap_err();
+        assert!(err.to_string().contains("missing both"));
+    }
+
+    #[test]
+    fn unknown_fields_are_ignored() {
+        match parse(r#"{"json": 1, "extra": "meta"}"#).unwrap() {
+            TestgenResponse::Ok(v) => assert_eq!(v, json!(1)),
+            other => panic!("expected Ok, got {other:?}"),
+        }
+    }
+}
