@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-error-decoder"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.2"
 dependencies = [
  "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
@@ -780,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-platform-testgen"
-version = "0.0.3-rc.3"
+version = "1.0.0-rc.2"
 dependencies = [
  "blockfrost-platform-common",
  "crossbeam",

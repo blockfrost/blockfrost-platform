@@ -1,5 +1,5 @@
 use bf_common::errors::AppError;
-use bf_testgen::testgen::{Testgen, TestgenResponse};
+use bf_testgen::testgen::{Testgen, TestgenResponse, Variant};
 
 #[derive(Clone)]
 pub struct ExternalDecoder {
@@ -7,7 +7,7 @@ pub struct ExternalDecoder {
 }
 impl ExternalDecoder {
     pub fn spawn() -> Result<Self, AppError> {
-        let testgen = Testgen::spawn("deserialize-stream")
+        let testgen = Testgen::spawn(Variant::DeserializeStream)
             .map_err(|err| AppError::Server(format!("Failed to spawn ExternalDecoder: {err}")))?;
 
         Ok(Self { testgen })
