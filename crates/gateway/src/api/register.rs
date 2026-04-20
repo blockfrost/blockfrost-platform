@@ -82,22 +82,27 @@ pub async fn route(
     // When `server.url` is configured we map http(s) to ws(s) so the
     // platform receives a fully qualified URI. Otherwise fall back to a
     // protocol-relative URI derived from the Host header.
-    let ws_uri: String = if let Some(ref url) = config.server.url {
-        let base = if let Some(rest) = url.strip_prefix("https://") {
-            format!("wss://{}", rest.trim_end_matches('/'))
-        } else if let Some(rest) = url.strip_prefix("http://") {
-            format!("ws://{}", rest.trim_end_matches('/'))
+    let ws_uri: String = if let Some(url) = config.server.url.clone() {
+        let mut ws_url = url;
+        let ws_scheme = if ws_url.scheme() == "https" {
+            "wss"
         } else {
-            unreachable!("server.url scheme is validated at config load time")
+            "ws"
         };
-        format!("{base}/ws")
+        ws_url
+            .set_scheme(ws_scheme)
+            .expect("ws(s) is a valid scheme transition from http(s)");
+        ws_url.set_path("/ws");
+        ws_url.set_query(None);
+        ws_url.set_fragment(None);
+        ws_url.into()
     } else {
         let host =
             headers
                 .get("Host")
                 .and_then(|a| a.to_str().ok())
                 .ok_or(APIError::Validation(
-                    "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP ≥ 1.1
+                    "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP >= 1.1
                 ))?;
         format!("//{host}/ws")
     };
