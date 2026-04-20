@@ -4,7 +4,7 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Response {
-    pub url: Option<String>,
+    pub url: Option<url::Url>,
     pub version: String,
     pub healthy: bool,
     pub commit: &'static str,

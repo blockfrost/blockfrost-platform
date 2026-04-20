@@ -6,7 +6,9 @@ use tokio::sync::Mutex;
 use axum::ServiceExt as AxumServiceExt;
 use axum::extract::Request as AxumExtractRequest;
 use blockfrost_platform::icebreakers::manager::IcebreakersManager;
-use integration_tests::{initialize_logging, platform::build_app_non_solitary};
+use integration_tests::{
+    gateway::TestGateway, initialize_logging, platform::build_app_non_solitary,
+};
 use tokio::sync::oneshot;
 use tracing::info;
 
@@ -16,7 +18,10 @@ use tracing::info;
 async fn test_icebreakers_registrations() -> Result<(), BlockfrostError> {
     initialize_logging();
 
-    let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary(None)
+    let gw = TestGateway::start().await;
+    let gateway_url = format!("http://{}", gw.addr);
+
+    let (app, _, _, icebreakers_api, api_prefix) = build_app_non_solitary(Some(gateway_url))
         .await
         .expect("Failed to build the application");
 
