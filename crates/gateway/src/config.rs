@@ -150,7 +150,16 @@ pub fn load_config(path: PathBuf) -> Config {
         hydra_bridge: toml_config.hydra_bridge,
     };
 
-    override_with_env(config)
+    let config = override_with_env(config);
+
+    if let Some(ref url) = config.server.url {
+        assert!(
+            url.starts_with("http://") || url.starts_with("https://"),
+            "server.url must start with http:// or https://, got: {url}"
+        );
+    }
+
+    config
 }
 
 fn network_from_project_id(project_id: &str) -> Result<Network> {

@@ -78,14 +78,29 @@ pub async fn route(
         ));
     }
 
-    // How the client sees us, needed for the load balancing experiment:
-    let our_host: String = headers
-        .get("Host")
-        .and_then(|a| a.to_str().ok())
-        .ok_or(APIError::Validation(
-            "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP ≥ 1.1
-        ))?
-        .to_string();
+    // WebSocket URI for the load balancing experiment.
+    // When `server.url` is configured we map http(s) to ws(s) so the
+    // platform receives a fully qualified URI. Otherwise fall back to a
+    // protocol-relative URI derived from the Host header.
+    let ws_uri: String = if let Some(ref url) = config.server.url {
+        let base = if let Some(rest) = url.strip_prefix("https://") {
+            format!("wss://{}", rest.trim_end_matches('/'))
+        } else if let Some(rest) = url.strip_prefix("http://") {
+            format!("ws://{}", rest.trim_end_matches('/'))
+        } else {
+            unreachable!("server.url scheme is validated at config load time")
+        };
+        format!("{base}/ws")
+    } else {
+        let host =
+            headers
+                .get("Host")
+                .and_then(|a| a.to_str().ok())
+                .ok_or(APIError::Validation(
+                    "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP ≥ 1.1
+                ))?;
+        format!("//{host}/ws")
+    };
 
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
@@ -183,8 +198,7 @@ pub async fn route(
         status: "registered".to_string(),
         route: payload.api_prefix,
         load_balancers: vec![LoadBalancer {
-            // We can’t know if it’s HTTPS or HTTP here, so we have to count on `blockfrost-platform`:
-            uri: format!("//{our_host}/ws"),
+            uri: ws_uri,
             access_token: token,
         }],
     };
