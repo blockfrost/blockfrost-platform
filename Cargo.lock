@@ -569,6 +569,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tungstenite",
+ "url",
  "uuid",
 ]
 

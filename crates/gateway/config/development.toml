@@ -1,7 +1,8 @@
 [server]
 address = '0.0.0.0:3001'
 log_level = 'info'
-url = 'https://api.domain.com'
+# If unset, we fall back to the `Host:` header
+#url = 'http://127.0.0.1:3001'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'

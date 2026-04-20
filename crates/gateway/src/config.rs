@@ -22,7 +22,7 @@ pub struct Args {
 pub struct ServerInput {
     pub address: String,
     pub log_level: String,
-    pub url: Option<String>,
+    pub url: Option<url::Url>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -52,7 +52,7 @@ pub struct Server {
     #[serde(deserialize_with = "deserialize_log_level")]
     pub log_level: Level,
     pub network: Network,
-    pub url: Option<String>,
+    pub url: Option<url::Url>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -139,7 +139,7 @@ pub fn load_config(path: PathBuf) -> Config {
             address: toml_config.server.address,
             log_level,
             network,
-            url: toml_config.server.url,
+            url: toml_config.server.url.inspect(validate_server_url),
         },
         database: Db { connection_string },
         blockfrost: Blockfrost {
@@ -151,6 +151,28 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     override_with_env(config)
+}
+
+/// Validate that a parsed `server.url` uses http(s) and includes a host.
+/// Panics on violation so that misconfiguration is caught at startup.
+fn validate_server_url(url: &url::Url) {
+    match url.scheme() {
+        "http" | "https" => {},
+        other => panic!("server.url must use http:// or https://, got: {other}://"),
+    }
+    assert!(
+        url.host().is_some(),
+        "server.url must include a host, got: {url}"
+    );
+}
+
+/// Parse a raw string into a [`url::Url`] and validate it.
+/// Used for the `SERVER_URL` environment variable override.
+fn parse_server_url(raw: &str) -> url::Url {
+    let parsed = url::Url::parse(raw)
+        .unwrap_or_else(|e| panic!("SERVER_URL is not a valid URL ({raw}): {e}"));
+    validate_server_url(&parsed);
+    parsed
 }
 
 fn network_from_project_id(project_id: &str) -> Result<Network> {
@@ -166,7 +188,10 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
 }
 
 fn override_with_env(config: Config) -> Config {
-    let server_url = var("SERVER_URL").ok().or(config.server.url.clone());
+    let server_url = var("SERVER_URL")
+        .ok()
+        .map(|s| parse_server_url(&s))
+        .or(config.server.url);
     let server_address = var("SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str =
         var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());

@@ -53,8 +53,16 @@ impl IcebreakersAPI {
                     .clone()
                     .unwrap_or_else(|| config.network.default_gateway_url().to_string());
 
-                let client = Client::builder()
-                    .local_address(config.server_address)
+                let mut builder = Client::builder();
+
+                // Only bind outgoing requests to a specific local address when
+                // it's a real routable interface IP. EINVAL otherwise.
+                let addr = config.server_address;
+                if !addr.is_loopback() && !addr.is_unspecified() {
+                    builder = builder.local_address(addr);
+                }
+
+                let client = builder
                     .build()
                     .map_err(|e| AppError::Registration(format!("Registering failed: {e}")))?;
                 let icebreakers_api = IcebreakersAPI {

@@ -102,7 +102,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
 tungstenite = "0.28.0"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
-url = "2"
+url = { version = "2", features = ["serde"] }
 uuid = { version = "1.10", features = ["serde", "v4"] }
 zip = "8.1.0"
 

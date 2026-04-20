@@ -9,7 +9,7 @@ use crate::types::ApiResult;
 use axum::Json;
 use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 #[derive(Clone)]
 pub struct JsonClient {
@@ -40,7 +40,11 @@ impl JsonClient {
         let url_str = url.to_string();
         let resp = self.client.request(Method::GET, url).send().await?;
 
-        info!(path, url = %url_str, ?pagination, "JsonClient GET");
+        if path.is_empty() || path == "health" {
+            debug!(path, url = %url_str, ?pagination, "JsonClient GET");
+        } else {
+            info!(path, url = %url_str, ?pagination, "JsonClient GET");
+        }
 
         if resp.status() == 404 {
             warn!(
