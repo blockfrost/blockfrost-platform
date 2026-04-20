@@ -4,7 +4,7 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, warn};
 
 #[derive(Serialize, Deserialize)]
 pub struct ApiError {
@@ -27,6 +27,9 @@ pub enum APIError {
     #[error("Unauthorized registration access")]
     Unauthorized(),
 
+    #[error("Rate limited")]
+    RateLimited(),
+
     #[error("Database connection error: {0}")]
     DatabaseConnection(#[from] deadpool_diesel::PoolError),
 
@@ -39,8 +42,6 @@ pub enum APIError {
 
 impl IntoResponse for APIError {
     fn into_response(self) -> Response {
-        error!("API Error occurred: {}", self);
-
         let (status_code, error_response) = match &self {
             APIError::Validation(_) => (
                 StatusCode::BAD_REQUEST,
@@ -78,6 +79,14 @@ impl IntoResponse for APIError {
                     details: "You are not authorized to access the registration.".to_string(),
                 },
             ),
+            APIError::RateLimited() => (
+                StatusCode::TOO_MANY_REQUESTS,
+                ApiError {
+                    status: "failed".to_string(),
+                    reason: "rate_limited".to_string(),
+                    details: "Too many registration requests. Please try again later.".to_string(),
+                },
+            ),
             APIError::DatabaseConnection(_)
             | APIError::DatabaseQuery(_)
             | APIError::DatabaseInteraction(_) => (
@@ -89,6 +98,12 @@ impl IntoResponse for APIError {
                 },
             ),
         };
+
+        if status_code.is_server_error() {
+            error!("API Error occurred: {}", self);
+        } else {
+            warn!("API Error occurred: {}", self);
+        }
 
         (status_code, Json(error_response)).into_response()
     }
