@@ -6,9 +6,9 @@ mod types;
 mod ws_client;
 
 use anyhow::Result;
+use bf_common::tracing::setup_tracing;
 use clap::Parser;
 use tracing::info;
-use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,16 +24,7 @@ async fn main() -> Result<()> {
     let args = config::Args::parse();
     let config = config::BridgeConfig::from_args(args)?;
 
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .event_format(
-            Format::default()
-                .with_ansi(true)
-                .with_level(true)
-                .with_target(true)
-                .compact(),
-        )
-        .init();
+    setup_tracing(tracing::Level::INFO, "BLOCKFROST_SDK_BRIDGE_LOG_TARGET");
 
     let hydra_config = hydra_client::HydraConfig {
         cardano_signing_key: config.cardano_signing_key.clone(),

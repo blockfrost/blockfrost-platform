@@ -100,7 +100,7 @@ toml = "1.0.2"
 tower = { version = "0.5.3", features = ["limit"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }
 tracing = "0.1.44"
-tracing-journald = "0.3"
+tracing-journald = "0.3.2"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
 tungstenite = "0.28.0"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }

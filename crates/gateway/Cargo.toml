@@ -49,9 +49,6 @@ diesel_migrations.workspace = true
 [target.'cfg(unix)'.dependencies]
 nix.workspace = true
 
-[target.'cfg(target_os = "linux")'.dependencies]
-tracing-journald.workspace = true
-
 [lib]
 name = "blockfrost_gateway"
 path = "src/lib.rs"
