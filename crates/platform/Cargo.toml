@@ -22,7 +22,6 @@ futures-util.workspace = true
 tungstenite = { workspace = true, features = ["native-tls"] }
 tokio-tungstenite = { workspace = true, features = ["native-tls"] }
 tracing.workspace = true
-tracing-subscriber.workspace = true
 serde.workspace = true
 hyper.workspace = true
 tower-http.workspace = true

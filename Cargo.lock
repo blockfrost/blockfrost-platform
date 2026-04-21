@@ -574,7 +574,6 @@ dependencies = [
  "toml 1.0.2+spec-1.1.0",
  "tower",
  "tracing",
- "tracing-subscriber",
  "tungstenite",
  "url",
  "uuid",
@@ -633,7 +632,6 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
- "tracing-subscriber",
  "tungstenite",
  "uuid",
 ]
@@ -791,7 +789,6 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "tracing",
- "tracing-subscriber",
  "tungstenite",
  "url",
  "uuid",
