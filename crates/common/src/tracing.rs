@@ -54,8 +54,16 @@ where
 /// - `syslog` – syslog priority prefixes on stdout, suitable for journald
 ///   ingestion via `SyslogLevelPrefix=yes` (the default)
 /// - otherwise – default colored compact format
+///
+/// When `log_target_env` is unset but `$JOURNAL_STREAM` is present (i.e. the
+/// process was started by systemd with stdout/stderr connected to the journal),
+/// the mode defaults to `syslog` so that journald can parse priority levels.
 pub fn setup_tracing(log_level: Level, log_target_env: &str) {
-    let log_target = std::env::var(log_target_env).ok();
+    let log_target = std::env::var(log_target_env).ok().or_else(|| {
+        std::env::var("JOURNAL_STREAM")
+            .ok()
+            .map(|_| "syslog".into())
+    });
 
     match log_target.as_deref() {
         #[cfg(target_os = "linux")]
