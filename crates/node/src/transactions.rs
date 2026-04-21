@@ -7,7 +7,7 @@ use pallas_network::miniprotocols::{
     localstate,
     localtxsubmission::{EraTx, Response},
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 impl NodeClient {
     /// Submits a transaction to the connected Cardano node.
@@ -46,7 +46,7 @@ impl NodeClient {
             Ok(Response::Rejected(reason)) => {
                 let haskell_display = as_node_submit_error(reason)
                     .unwrap_or_else(|e| format!("Failed to format submit error: {e}"));
-                info!(
+                warn!(
                     connection_id = self.connection_id,
                     "TxSubmitFail: {}, CBOR: {}",
                     haskell_display,

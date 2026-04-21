@@ -1,7 +1,7 @@
 use bf_common::errors::BlockfrostError;
 use pallas_hardano::display::haskell_error::as_cbor_decode_failure;
 use pallas_primitives::{alonzo::Value, babbage::GenTransactionOutput, conway::Tx};
-use tracing::info;
+use tracing::warn;
 
 /// Checks if the given transaction is a valid CBOR-encoded transaction, by trying to decode it.
 /// This function is used to validate the transaction before submitting it to the node.
@@ -20,7 +20,7 @@ pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
             }
         },
         Err(e) => {
-            info!("Invalid TX CBOR: {:?}, CBOR: {}", e, hex::encode(tx));
+            warn!("Invalid TX CBOR: {:?}, CBOR: {}", e, hex::encode(tx));
             Err(BlockfrostError::custom_400(
                 as_cbor_decode_failure(e.to_string(), e.position().unwrap_or(0) as u64)
                     .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
