@@ -30,6 +30,12 @@ importers:
         specifier: 19.2.5
         version: 19.2.5(react@19.2.5)
     devDependencies:
+      '@pagefind/linux-arm64':
+        specifier: ^1.5.2
+        version: 1.5.2
+      '@pagefind/linux-x64':
+        specifier: ^1.5.2
+        version: 1.5.2
       '@types/node':
         specifier: 25.2.3
         version: 25.2.3
@@ -3791,11 +3797,9 @@ snapshots:
   '@pagefind/freebsd-x64@1.5.2':
     optional: true
 
-  '@pagefind/linux-arm64@1.5.2':
-    optional: true
+  '@pagefind/linux-arm64@1.5.2': {}
 
-  '@pagefind/linux-x64@1.5.2':
-    optional: true
+  '@pagefind/linux-x64@1.5.2': {}
 
   '@pagefind/windows-arm64@1.5.2':
     optional: true

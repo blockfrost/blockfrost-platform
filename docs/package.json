@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next --turbopack",
-    "build": "next build && pagefind --site out --output-subdir _pagefind",
+    "build": "next build && pagefind --site out --output-path public/_pagefind && next build",
     "pagefind-local": "pagefind --site out --output-path public/_pagefind",
     "start": "next start",
     "lint": "eslint ."
@@ -27,6 +27,8 @@
     "react-dom": "19.2.5"
   },
   "devDependencies": {
+    "@pagefind/linux-arm64": "^1.5.2",
+    "@pagefind/linux-x64": "^1.5.2",
     "@types/node": "25.2.3",
     "@types/react": "19.2.14",
     "eslint": "^9.28.0",
