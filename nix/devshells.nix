@@ -34,8 +34,6 @@ in {
     {package = internal.mithril-client;}
     {package = internal.hydra-node;}
     {package = internal.dolos;}
-    {package = internal.midnight.midnight-node;}
-    {package = internal.midnight.midnight-indexer;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {
