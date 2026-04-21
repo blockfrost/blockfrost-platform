@@ -167,10 +167,11 @@ fn validate_server_url(url: &url::Url) {
 }
 
 /// Parse a raw string into a [`url::Url`] and validate it.
-/// Used for the `SERVER_URL` environment variable override.
+/// Used for the `BLOCKFROST_GATEWAY_SERVER_URL` environment variable override.
 fn parse_server_url(raw: &str) -> url::Url {
-    let parsed = url::Url::parse(raw)
-        .unwrap_or_else(|e| panic!("SERVER_URL is not a valid URL ({raw}): {e}"));
+    let parsed = url::Url::parse(raw).unwrap_or_else(|e| {
+        panic!("BLOCKFROST_GATEWAY_SERVER_URL is not a valid URL ({raw}): {e}")
+    });
     validate_server_url(&parsed);
     parsed
 }
@@ -188,16 +189,17 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
 }
 
 fn override_with_env(config: Config) -> Config {
-    let server_url = var("SERVER_URL")
+    let server_url = var("BLOCKFROST_GATEWAY_SERVER_URL")
         .ok()
         .map(|s| parse_server_url(&s))
         .or(config.server.url);
-    let server_address = var("SERVER_ADDRESS").unwrap_or(config.server.address);
-    let log_level_str =
-        var("SERVER_LOG_LEVEL").unwrap_or_else(|_| config.server.log_level.to_string());
-    let db_connection = var("DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
-    let project_id = var("BLOCKFROST_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
-    let nft_asset = var("BLOCKFROST_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
+    let server_address = var("BLOCKFROST_GATEWAY_SERVER_ADDRESS").unwrap_or(config.server.address);
+    let log_level_str = var("BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL")
+        .unwrap_or_else(|_| config.server.log_level.to_string());
+    let db_connection =
+        var("BLOCKFROST_GATEWAY_DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
+    let project_id = var("BLOCKFROST_GATEWAY_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
+    let nft_asset = var("BLOCKFROST_GATEWAY_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
     let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
     let final_log_level = match log_level_str.to_lowercase().as_str() {
