@@ -47,9 +47,6 @@ in
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
-            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk_12_3.frameworks.Security
-            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
           ];
       }
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
@@ -538,9 +535,6 @@ in
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
-            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk_12_3.frameworks.Security
-            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
           ];
         doCheck = false; # some unit tests seem to require network access, so they’re failing in the sandbox
         meta = {
@@ -1065,9 +1059,6 @@ in
             ]
             ++ lib.optionals pkgs.stdenv.isDarwin [
               pkgs.libiconv
-              pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-              pkgs.darwin.apple_sdk_12_3.frameworks.Security
-              pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
             ];
         }
         // lib.optionalAttrs pkgs.stdenv.isLinux {
