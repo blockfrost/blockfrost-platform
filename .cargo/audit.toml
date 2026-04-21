@@ -3,6 +3,11 @@ ignore = [
   "RUSTSEC-2022-0004", # Solution:  No fixed upgrade is available!
   "RUSTSEC-2024-0421", # FIXME: upgrade to idna >=1.0.0 (transitive dependency of `url`)
   "RUSTSEC-2024-0436", # FIXME: see <https://github.com/blockfrost/blockfrost-platform/pull/264#issuecomment-2772436194>.
+  "RUSTSEC-2025-0124", # rand_os unmaintained (transitive via cardano-serialization-lib)
+  "RUSTSEC-2025-0134", # rustls-pemfile unmaintained (transitive via sentry/ureq)
+  "RUSTSEC-2026-0049", # FIXME: upgrade rustls-webpki >=0.103.10 (transitive via rustls)
+  "RUSTSEC-2026-0098", # FIXME: upgrade rustls-webpki >=0.103.12 (transitive via rustls)
+  "RUSTSEC-2026-0099", # FIXME: upgrade rustls-webpki >=0.103.12 (transitive via rustls)
 ]
 informational_warnings = ["unmaintained"]
 severity_threshold = "low"
