@@ -474,7 +474,9 @@ in
           inherit pname version;
           hash = "sha256-1zS5KR/skf9OOuOLnGg53r8Ct5wHMUR26H2o6QssaMM=";
         };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0") darwin.libffi];
+        pyproject = true;
+        build-system = with pythonPackages; [setuptools];
+        buildInputs = with pkgs; [(darwinMinVersionHook "11.0") darwin.libffi];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type" "-Wno-error=cast-function-type-mismatch"];
         preBuild =
@@ -508,7 +510,9 @@ in
           inherit pname version;
           hash = "sha256-79eAgIctjI3mwrl+Dk6smdYgOl0WN6oTXQcdRk6y21M=";
         };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
+        pyproject = true;
+        build-system = with pythonPackages; [setuptools];
+        buildInputs = with pkgs; [(darwinMinVersionHook "11.0")];
         propagatedBuildInputs = [core];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         preBuild = commonPreBuild;
@@ -522,7 +526,9 @@ in
           inherit pname version;
           hash = "sha256-9YYYO5ue9/Fl8ERKe3FO2WXXn26SYXyq+GkVDc/Vpys=";
         };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
+        pyproject = true;
+        build-system = with pythonPackages; [setuptools];
+        buildInputs = with pkgs; [(darwinMinVersionHook "11.0")];
         propagatedBuildInputs = [framework-Cocoa];
         hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
         preBuild = commonPreBuild;
@@ -583,7 +589,7 @@ in
         ./dmgbuild--force-badge.diff
         ./dmgbuild--tmp-mount-root.diff
       ];
-      buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
+      buildInputs = with pkgs; [(darwinMinVersionHook "11.0")];
       propagatedBuildInputs = (with pythonPackages; [setuptools]) ++ [ds_store pyobjc.framework-Quartz];
       format = "pyproject";
       preBuild = ''sed -r 's+/usr/bin/SetFile+${lib.getExe SetFile}+g' -i src/dmgbuild/core.py''; # impure
