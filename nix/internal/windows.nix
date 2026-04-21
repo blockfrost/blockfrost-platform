@@ -122,7 +122,7 @@ in rec {
   };
 
   uninstaller =
-    pkgs.runCommandNoCC "uninstaller"
+    pkgs.runCommand "uninstaller"
     {
       buildInputs = [pkgs.nsis pkgs.wine];
       projectName = blockfrost-platform.pname;
@@ -163,7 +163,7 @@ in rec {
   make-installer = {doSign ? false}: let
     outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
     installer-nsi =
-      pkgs.runCommandNoCC "installer.nsi"
+      pkgs.runCommand "installer.nsi"
       {
         inherit outFileName;
         projectName = blockfrost-platform.pname;
@@ -226,7 +226,7 @@ in rec {
   # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
   # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle =
-    pkgs.runCommandNoCC "bundle" {
+    pkgs.runCommand "bundle" {
       buildInputs = [pkgs.wine64];
       WINEDEBUG = "-all";
       WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
@@ -240,7 +240,7 @@ in rec {
     '';
 
   archive =
-    pkgs.runCommandNoCC "archive"
+    pkgs.runCommand "archive"
     {
       buildInputs = with pkgs; [zip];
       outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
@@ -281,7 +281,7 @@ in rec {
   # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
   # https://github.com/fjall-rs/fjall/pull/259
   # Patch the source to use the pinned commit rev instead of the defunct branch name.
-  dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+  dolosSrc = pkgs.runCommand "dolos-src-patched" {} ''
     cp -r ${inputs.dolos} $out
     chmod -R +w $out
     sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml

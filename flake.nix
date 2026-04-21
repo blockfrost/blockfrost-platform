@@ -112,7 +112,7 @@
             rustfmt.package = internal.rustPackages.rustfmt;
             shfmt.enable = true;
             taplo.enable = true; # TOML
-            yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            yamlfmt.enable = pkgs.stdenv.hostPlatform.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
             yamllint.enable = true;
           };
           settings.global.excludes = [
@@ -167,7 +167,7 @@
           ...
         }: {
           imports = [./nix/nixos];
-          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.system}.blockfrost-platform;
+          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.blockfrost-platform;
         };
 
         hydraJobs = let

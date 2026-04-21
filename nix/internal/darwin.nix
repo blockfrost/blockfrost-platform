@@ -13,7 +13,7 @@ in
     archive = let
       outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {
+      pkgs.runCommand "${unix.blockfrost-platform.pname}-archive" {
         passthru = {inherit outFileName;};
       } ''
         cp -r ${bundle} ${unix.blockfrost-platform.pname}
@@ -92,7 +92,7 @@ in
     archive-bridge = let
       outFileName = "${unix.sdkBridgeCargoToml.package.name}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.sdkBridgeCargoToml.package.name}-archive" {
+      pkgs.runCommand "${unix.sdkBridgeCargoToml.package.name}-archive" {
         passthru = {inherit outFileName;};
       } ''
         cp -r ${bundle-bridge} ${unix.sdkBridgeCargoToml.package.name}
@@ -108,7 +108,7 @@ in
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
     homebrew-tap =
-      pkgs.runCommandNoCC "homebrew-repo" {
+      pkgs.runCommand "homebrew-repo" {
         inherit (unix.blockfrost-platform) version;
         url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
@@ -144,7 +144,7 @@ in
     prettyName = "Blockfrost Platform";
 
     app-bundle =
-      pkgs.runCommandNoCC "app-bundle" rec {
+      pkgs.runCommand "app-bundle" rec {
         buildInputs = with pkgs; [shellcheck];
         appName = prettyName;
         launcherName = "BlockfrostPlatform";
