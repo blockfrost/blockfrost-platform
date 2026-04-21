@@ -13,7 +13,42 @@ use colored::Colorize;
 use config::{Args, Config};
 use db::DB;
 use std::net::SocketAddr;
+use tracing::Level;
 use tracing_subscriber::fmt::format::Format;
+
+fn setup_tracing(log_level: Level) {
+    #[cfg(target_os = "linux")]
+    if std::env::var("BLOCKFROST_GATEWAY_LOG_TARGET")
+        .ok()
+        .as_deref()
+        == Some("journal")
+    {
+        if let Ok(journald_layer) = tracing_journald::layer() {
+            use tracing_subscriber::prelude::*;
+            tracing_subscriber::registry()
+                .with(journald_layer)
+                .with(tracing_subscriber::filter::LevelFilter::from_level(
+                    log_level,
+                ))
+                .init();
+            return;
+        }
+        eprintln!(
+            "WARNING: BLOCKFROST_GATEWAY_LOG_TARGET=journal but failed to connect to journald, falling back to stdout"
+        );
+    }
+
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .event_format(
+            Format::default()
+                .with_ansi(true)
+                .with_level(true)
+                .with_target(true)
+                .compact(),
+        )
+        .init();
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -31,16 +66,7 @@ async fn main() -> Result<()> {
     let arguments = Args::parse();
     let config: Config = config::load_config(arguments.config);
 
-    tracing_subscriber::fmt()
-        .with_max_level(config.server.log_level)
-        .event_format(
-            Format::default()
-                .with_ansi(true)
-                .with_level(true)
-                .with_target(true)
-                .compact(),
-        )
-        .init();
+    setup_tracing(config.server.log_level);
 
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
