@@ -28,8 +28,14 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
+  # Nixpkgs 25.11 restricts mingw_w64-pthreads meta.platforms to Windows only,
+  # which breaks cross-compilation from Linux. Override to allow it as a build dep.
+  pthreads = pkgsCross.windows.pthreads.overrideAttrs (old: {
+    meta = old.meta // {platforms = lib.platforms.all;};
+  });
+
   # Cross-compile libpq for Windows (pkgsCross.postgresql is broken in Nixpkgs):
-  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross;};
+  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross pthreads;};
 
   packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
 
@@ -52,7 +58,7 @@ in rec {
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc
-      pkgsCross.windows.pthreads
+      pthreads
     ];
   };
 
@@ -304,7 +310,7 @@ in rec {
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc
-      pkgsCross.windows.pthreads
+      pthreads
     ];
 
     doCheck = false; # we run Windows tests on real Windows on GHA
