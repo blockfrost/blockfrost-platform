@@ -25,6 +25,8 @@ jobs:
 
       - uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
+          branch: "chore/update-flake-lock"
+          commit-msg: "chore(nix): update `flake.lock`"
           pr-title: "chore(nix): update `flake.lock`"
           pr-labels: dependencies,automated
           # A separate token, so the PR triggers CI recursively (the original `GITHUB_TOKEN` won’t).

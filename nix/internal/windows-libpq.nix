@@ -9,6 +9,7 @@
 {
   pkgs,
   pkgsCross,
+  pthreads,
 }: let
   inherit (pkgs) lib;
 
@@ -53,7 +54,7 @@ in
     ];
 
     buildInputs = [
-      pkgsCross.windows.pthreads
+      pthreads
     ];
 
     # We use Meson's cross-compilation support. We only build the `libpq`

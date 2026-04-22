@@ -17,7 +17,7 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
     ) {inherit inputs targetSystem unix;};
 in
   extendForTarget rec {
-    rustPackages = inputs.fenix.packages.${pkgs.system}.stable;
+    rustPackages = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.stable;
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
 
     src = lib.cleanSourceWith {
@@ -47,9 +47,6 @@ in
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
-            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk_12_3.frameworks.Security
-            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
           ];
       }
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
@@ -139,7 +136,7 @@ in
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
-      nightlyToolchain = inputs.fenix.packages.${pkgs.system}.complete.toolchain;
+      nightlyToolchain = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.complete.toolchain;
       nightlyCraneLib = (inputs.crane.mkLib pkgs).overrideToolchain nightlyToolchain;
       nightlyCargoArtifacts = nightlyCraneLib.buildDepsOnly commonArgs;
     in {
@@ -202,7 +199,7 @@ in
           doCheck = false;
         };
       in
-        pkgs.runCommandNoCC "cargo-machete" {
+        pkgs.runCommand "cargo-machete" {
           buildInputs = [cargo-machete-pr169];
         } ''
           touch $out
@@ -220,7 +217,7 @@ in
         }
         // (builtins.listToAttrs hydraScriptsEnvVars));
 
-      workspace-deps = pkgs.runCommandNoCC "workspace-deps" {} ''
+      workspace-deps = pkgs.runCommand "workspace-deps" {} ''
         touch $out
         cd ${src}
         found=$(find ./crates -type f -name Cargo.toml -exec grep -nH -E '= ".?[0-9]' {} +) || true
@@ -234,7 +231,7 @@ in
 
     nixChecks = {
       nix-statix =
-        pkgs.runCommandNoCC "nix-statix"
+        pkgs.runCommand "nix-statix"
         {
           buildInputs = [pkgs.statix];
         } ''
@@ -244,7 +241,7 @@ in
         '';
 
       nix-deadnix =
-        pkgs.runCommandNoCC "nix-deadnix"
+        pkgs.runCommand "nix-deadnix"
         {
           buildInputs = [pkgs.deadnix];
         } ''
@@ -254,7 +251,7 @@ in
         '';
 
       nix-nil =
-        pkgs.runCommandNoCC "nix-nil"
+        pkgs.runCommand "nix-nil"
         {
           buildInputs = [pkgs.nil];
         } ''
@@ -269,7 +266,7 @@ in
 
       # From `nixd`:
       nix-nixf =
-        pkgs.runCommandNoCC "nix-nil"
+        pkgs.runCommand "nix-nil"
         {
           buildInputs = [pkgs.nixf pkgs.jq];
         } ''
@@ -291,7 +288,7 @@ in
     # Verify that the Docker config generation (Bash template + sed) produces
     # configs identical to the Nix-generated ones, for every network.
     dockerChecks = {
-      docker-dolos-config = pkgs.runCommandNoCC "docker-dolos-config-check" {} ''
+      docker-dolos-config = pkgs.runCommand "docker-dolos-config-check" {} ''
         for network in mainnet preprod preview; do
           echo "Checking $network..."
           bash ${../../docker}/generate-dolos-config.sh \
@@ -344,7 +341,7 @@ in
     };
 
     cardano-node-configs =
-      pkgs.runCommandNoCC "cardano-node-configs"
+      pkgs.runCommand "cardano-node-configs"
       {
         buildInputs = with pkgs; [jq];
       } ''
@@ -363,7 +360,7 @@ in
         done
       '';
 
-    generated-dir = pkgs.runCommandNoCC "generated-dir" {} ''
+    generated-dir = pkgs.runCommand "generated-dir" {} ''
       mkdir -p $out
       ln -s ${cardano-node-configs} $out/cardano-node-configs
       ln -s ${dolos-configs} $out/dolos-configs
@@ -428,7 +425,7 @@ in
             };
         };
       in
-        pkgs.runCommandNoCC "cardano-address"
+        pkgs.runCommand "cardano-address"
         {
           meta.description = "Command-line for address and key manipulation in Cardano";
         } ''
@@ -468,7 +465,7 @@ in
 
     # This works for both Linux and Darwin, but we mostly use it on Linux:
     curl-bash-install =
-      pkgs.runCommandNoCC "curl-bash-install"
+      pkgs.runCommand "curl-bash-install"
       {
         nativeBuildInputs = with pkgs; [shellcheck];
         projectName = packageName.pname;
@@ -515,7 +512,7 @@ in
     # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
     # https://github.com/fjall-rs/fjall/pull/259
     # Patch the source to use the pinned commit rev instead of the defunct branch name.
-    dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+    dolosSrc = pkgs.runCommand "dolos-src-patched" {} ''
       cp -r ${inputs.dolos} $out
       chmod -R +w $out
       sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
@@ -538,9 +535,6 @@ in
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
-            pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk_12_3.frameworks.Security
-            pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
           ];
         doCheck = false; # some unit tests seem to require network access, so they’re failing in the sandbox
         meta = {
@@ -626,7 +620,7 @@ in
             peer_address = "${peerAddr}"
           '');
     in
-      pkgs.runCommandNoCC "dolos-configs" {} ''
+      pkgs.runCommand "dolos-configs" {} ''
         mkdir -p $out
         ${lib.concatMapStringsSep "\n" (network: ''
             mkdir -p $out/${network}
@@ -871,7 +865,7 @@ in
     run-blockfrost-tests =
       pkgs.writeShellScriptBin "test-blockfrost-tests" ''
         set -euo pipefail
-        exec nix run -L $PRJ_ROOT#internal.${pkgs.system}.${blockfrost-tests-preview.name}
+        exec nix run -L $PRJ_ROOT#internal.${pkgs.stdenv.hostPlatform.system}.${blockfrost-tests-preview.name}
       ''
       // {
         meta.description = blockfrost-tests-preview.meta.description;
@@ -1000,7 +994,7 @@ in
     };
 
     midnight = let
-      fenix = inputs.fenix.packages.${pkgs.system};
+      fenix = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system};
 
       # A toolchain with the wasm32 target available:
       rustToolchain = fenix.combine [
@@ -1065,9 +1059,6 @@ in
             ]
             ++ lib.optionals pkgs.stdenv.isDarwin [
               pkgs.libiconv
-              pkgs.darwin.apple_sdk_12_3.frameworks.SystemConfiguration
-              pkgs.darwin.apple_sdk_12_3.frameworks.Security
-              pkgs.darwin.apple_sdk_12_3.frameworks.CoreFoundation
             ];
         }
         // lib.optionalAttrs pkgs.stdenv.isLinux {

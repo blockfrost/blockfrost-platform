@@ -13,7 +13,7 @@ in
     archive = let
       outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {
+      pkgs.runCommand "${unix.blockfrost-platform.pname}-archive" {
         passthru = {inherit outFileName;};
       } ''
         cp -r ${bundle} ${unix.blockfrost-platform.pname}
@@ -92,7 +92,7 @@ in
     archive-bridge = let
       outFileName = "${unix.sdkBridgeCargoToml.package.name}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.sdkBridgeCargoToml.package.name}-archive" {
+      pkgs.runCommand "${unix.sdkBridgeCargoToml.package.name}-archive" {
         passthru = {inherit outFileName;};
       } ''
         cp -r ${bundle-bridge} ${unix.sdkBridgeCargoToml.package.name}
@@ -108,7 +108,7 @@ in
     # Contents of the <https://github.com/blockfrost/homebrew-tap>
     # repo. We replace that workdir on each release.
     homebrew-tap =
-      pkgs.runCommandNoCC "homebrew-repo" {
+      pkgs.runCommand "homebrew-repo" {
         inherit (unix.blockfrost-platform) version;
         url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
@@ -144,7 +144,7 @@ in
     prettyName = "Blockfrost Platform";
 
     app-bundle =
-      pkgs.runCommandNoCC "app-bundle" rec {
+      pkgs.runCommand "app-bundle" rec {
         buildInputs = with pkgs; [shellcheck];
         appName = prettyName;
         launcherName = "BlockfrostPlatform";
@@ -446,90 +446,6 @@ in
       postFixup = ''sed -r 's+main\(\)+main(sys.argv[1:])+g' -i $out/bin/.${pname}-wrapped'';
     };
 
-    pyobjc = rec {
-      version = "9.2";
-
-      commonPreBuild = ''
-        # 1004 instead of 10.4, 1100 instead of 11.0 etc.
-        PyObjC_BUILD_RELEASE=$(echo "$MACOSX_DEPLOYMENT_TARGET" | awk -F. '{printf "%02d%02d\n", $1, $2}')
-
-        # Force it to target our ‘darwinMinVersion’, it’s not recognized correctly:
-        grep -RF -- '-DPyObjC_BUILD_RELEASE=%02d%02d' | cut -d: -f1 | while IFS= read -r file ; do
-          sed -r '/-DPyObjC_BUILD_RELEASE=%02d%02d/{s/%02d%02d/'"$PyObjC_BUILD_RELEASE"'/;n;d;}' -i "$file"
-        done
-
-        # impurities:
-        ( grep -RF '/usr/bin/xcrun' || true ; ) | cut -d: -f1 | while IFS= read -r file ; do
-          sed -r "s+/usr/bin/xcrun+$(${lib.getExe pkgs.which} xcrun)+g" -i "$file"
-        done
-        ( grep -RF '/usr/bin/python' || true ; ) | cut -d: -f1 | while IFS= read -r file ; do
-          sed -r "s+/usr/bin/python+$(${lib.getExe pkgs.which} python)+g" -i "$file"
-        done
-      '';
-
-      core = pythonPackages.buildPythonPackage rec {
-        pname = "pyobjc-core";
-        inherit version;
-        src = pythonPackages.fetchPypi {
-          inherit pname version;
-          hash = "sha256-1zS5KR/skf9OOuOLnGg53r8Ct5wHMUR26H2o6QssaMM=";
-        };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0") darwin.libffi];
-        hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        NIX_CFLAGS_COMPILE = ["-Wno-error=deprecated-declarations" "-Wno-error=cast-of-sel-type" "-Wno-error=cast-function-type-mismatch"];
-        preBuild =
-          commonPreBuild
-          + ''
-            sed -r 's+/usr/include/ffi+${pkgs.darwin.libffi.dev}/include+g' -i setup.py
-
-            # Turn off clang’s Link Time Optimization, or else we can’t recognize (and link) Objective C .o’s:
-            sed -r 's/"-flto=[^"]+",//g' -i setup.py
-
-            # Fix some test code:
-            grep -RF '"sw_vers"' | cut -d: -f1 | while IFS= read -r file ; do
-              sed -r "s+"sw_vers"+"/usr/bin/sw_vers"+g" -i "$file"
-            done
-          '';
-        # XXX: We’re turning tests off, because they’re mostly working (0.54% failures among 4,600 tests),
-        # and I don’t have any more time to investigate now (maybe in a Nixpkgs contribution in the future):
-        #
-        # pyobjc-core> Ran 4600 tests in 273.830s
-        # pyobjc-core> FAILED (failures=3, errors=25, skipped=4, expected failures=3, unexpected successes=1)
-        # pyobjc-core> SUMMARY: {'count': 4600, 'fails': 3, 'errors': 25, 'xfails': 3, 'xpass': 0, 'skip': 4}
-        # pyobjc-core> error: some tests failed
-        dontUseSetuptoolsCheck = true;
-        doCheck = false;
-      };
-
-      framework-Cocoa = pythonPackages.buildPythonPackage rec {
-        pname = "pyobjc-framework-Cocoa";
-        inherit version;
-        src = pythonPackages.fetchPypi {
-          inherit pname version;
-          hash = "sha256-79eAgIctjI3mwrl+Dk6smdYgOl0WN6oTXQcdRk6y21M=";
-        };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
-        propagatedBuildInputs = [core];
-        hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        preBuild = commonPreBuild;
-        dontUseSetuptoolsCheck = true; # XXX: majority is passing
-      };
-
-      framework-Quartz = pythonPackages.buildPythonPackage rec {
-        pname = "pyobjc-framework-Quartz";
-        inherit version;
-        src = pythonPackages.fetchPypi {
-          inherit pname version;
-          hash = "sha256-9YYYO5ue9/Fl8ERKe3FO2WXXn26SYXyq+GkVDc/Vpys=";
-        };
-        buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
-        propagatedBuildInputs = [framework-Cocoa];
-        hardeningDisable = ["strictoverflow"]; # -fno-strict-overflow is not supported in clang on darwin
-        preBuild = commonPreBuild;
-        dontUseSetuptoolsCheck = true; # XXX: majority is passing
-      };
-    };
-
     CLTools_Executables = let
       mkSusDerivation = args:
         pkgs.stdenvNoCC.mkDerivation (args
@@ -583,8 +499,8 @@ in
         ./dmgbuild--force-badge.diff
         ./dmgbuild--tmp-mount-root.diff
       ];
-      buildInputs = with pkgs; [apple-sdk_11 (darwinMinVersionHook "11.0")];
-      propagatedBuildInputs = (with pythonPackages; [setuptools]) ++ [ds_store pyobjc.framework-Quartz];
+      buildInputs = with pkgs; [(darwinMinVersionHook "11.0")];
+      propagatedBuildInputs = (with pythonPackages; [setuptools pyobjc-framework-Quartz]) ++ [ds_store];
       format = "pyproject";
       preBuild = ''sed -r 's+/usr/bin/SetFile+${lib.getExe SetFile}+g' -i src/dmgbuild/core.py''; # impure
     };

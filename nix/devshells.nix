@@ -4,7 +4,7 @@
   ...
 }: let
   inherit (pkgs) lib;
-  internal = inputs.self.internal.${pkgs.system};
+  internal = inputs.self.internal.${pkgs.stdenv.hostPlatform.system};
 in {
   name = "blockfrost-platform-devshell";
 
@@ -14,7 +14,7 @@ in {
   ];
 
   commands = [
-    {package = inputs.self.formatter.${pkgs.system};}
+    {package = inputs.self.formatter.${pkgs.stdenv.hostPlatform.system};}
     {
       name = "cardano-node";
       package = internal.cardano-node;
@@ -34,8 +34,6 @@ in {
     {package = internal.mithril-client;}
     {package = internal.hydra-node;}
     {package = internal.dolos;}
-    {package = internal.midnight.midnight-node;}
-    {package = internal.midnight.midnight-indexer;}
     {package = pkgs.cargo-nextest;}
     {package = pkgs.cargo-tarpaulin;}
     {

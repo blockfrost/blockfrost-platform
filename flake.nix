@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -25,14 +25,6 @@
     };
     blockfrost-tests = {
       url = "github:blockfrost/blockfrost-tests";
-      flake = false;
-    };
-    midnight-node = {
-      url = "github:midnightntwrk/midnight-node/node-0.18.0-rc.4";
-      flake = false;
-    };
-    midnight-indexer = {
-      url = "github:midnightntwrk/midnight-indexer/v3.0.0-alpha.8";
       flake = false;
     };
     mithril.url = "github:input-output-hk/mithril/2524.0";
@@ -120,7 +112,7 @@
             rustfmt.package = internal.rustPackages.rustfmt;
             shfmt.enable = true;
             taplo.enable = true; # TOML
-            yamlfmt.enable = pkgs.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            yamlfmt.enable = pkgs.stdenv.hostPlatform.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
             yamllint.enable = true;
           };
           settings.global.excludes = [
@@ -175,7 +167,7 @@
           ...
         }: {
           imports = [./nix/nixos];
-          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.system}.blockfrost-platform;
+          services.blockfrost-platform.package = lib.mkDefault inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.blockfrost-platform;
         };
 
         hydraJobs = let

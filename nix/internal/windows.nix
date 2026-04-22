@@ -28,8 +28,14 @@ in rec {
 
   pkgsCross = pkgs.pkgsCross.mingwW64;
 
+  # Nixpkgs 25.11 restricts mingw_w64-pthreads meta.platforms to Windows only,
+  # which breaks cross-compilation from Linux. Override to allow it as a build dep.
+  pthreads = pkgsCross.windows.pthreads.overrideAttrs (old: {
+    meta = old.meta // {platforms = lib.platforms.all;};
+  });
+
   # Cross-compile libpq for Windows (pkgsCross.postgresql is broken in Nixpkgs):
-  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross;};
+  libpq-windows = import ./windows-libpq.nix {inherit pkgs pkgsCross pthreads;};
 
   packageName = craneLib.crateNameFromCargoToml {cargoToml = src + "/crates/platform/Cargo.toml";};
 
@@ -52,7 +58,7 @@ in rec {
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc
-      pkgsCross.windows.pthreads
+      pthreads
     ];
   };
 
@@ -122,7 +128,7 @@ in rec {
   };
 
   uninstaller =
-    pkgs.runCommandNoCC "uninstaller"
+    pkgs.runCommand "uninstaller"
     {
       buildInputs = [pkgs.nsis pkgs.wine];
       projectName = blockfrost-platform.pname;
@@ -163,7 +169,7 @@ in rec {
   make-installer = {doSign ? false}: let
     outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.exe";
     installer-nsi =
-      pkgs.runCommandNoCC "installer.nsi"
+      pkgs.runCommand "installer.nsi"
       {
         inherit outFileName;
         projectName = blockfrost-platform.pname;
@@ -226,7 +232,7 @@ in rec {
   # XXX: there’s no Hydra build for Windows currently, as `hydra-cluster`
   # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle =
-    pkgs.runCommandNoCC "bundle" {
+    pkgs.runCommand "bundle" {
       buildInputs = [pkgs.wine64];
       WINEDEBUG = "-all";
       WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
@@ -240,7 +246,7 @@ in rec {
     '';
 
   archive =
-    pkgs.runCommandNoCC "archive"
+    pkgs.runCommand "archive"
     {
       buildInputs = with pkgs; [zip];
       outFileName = "${blockfrost-platform.pname}-${blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.zip";
@@ -281,7 +287,7 @@ in rec {
   # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
   # https://github.com/fjall-rs/fjall/pull/259
   # Patch the source to use the pinned commit rev instead of the defunct branch name.
-  dolosSrc = pkgs.runCommandNoCC "dolos-src-patched" {} ''
+  dolosSrc = pkgs.runCommand "dolos-src-patched" {} ''
     cp -r ${inputs.dolos} $out
     chmod -R +w $out
     sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
@@ -304,7 +310,7 @@ in rec {
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc
-      pkgsCross.windows.pthreads
+      pthreads
     ];
 
     doCheck = false; # we run Windows tests on real Windows on GHA

@@ -12,7 +12,7 @@ in
     archive = let
       outFileName = "${unix.blockfrost-platform.pname}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.blockfrost-platform.pname}-archive" {} ''
+      pkgs.runCommand "${unix.blockfrost-platform.pname}-archive" {} ''
         cp -r ${bundle} ${unix.blockfrost-platform.pname}
 
         mkdir -p $out
@@ -85,7 +85,7 @@ in
     archive-bridge = let
       outFileName = "${unix.sdkBridgeCargoToml.package.name}-${unix.blockfrost-platform.version}-${inputs.self.shortRev or "dirty"}-${targetSystem}.tar.bz2";
     in
-      pkgs.runCommandNoCC "${unix.sdkBridgeCargoToml.package.name}-archive" {} ''
+      pkgs.runCommand "${unix.sdkBridgeCargoToml.package.name}-archive" {} ''
         cp -r ${bundle-bridge} ${unix.sdkBridgeCargoToml.package.name}
 
         mkdir -p $out
