@@ -3,11 +3,9 @@ pub mod mock_data_node;
 pub mod tx_builder;
 
 use axum::Router;
-use bf_common::{
-    config::{Config, DataNodeConfig, IcebreakersConfig, Mode},
-    types::{LogLevel, Network},
-};
+use bf_common::types::{LogLevel, Network};
 use bf_node::pool::NodePool;
+use blockfrost_platform::config::{Config, DataNodeConfig, IcebreakersConfig, Mode};
 use blockfrost_platform::{
     AppError, health_monitor,
     icebreakers::api::IcebreakersAPI,

@@ -1,10 +1,8 @@
+use crate::epochs::{EpochData, EpochsPath};
 use crate::server::state::AppState;
 use axum::extract::{Path, State};
 use bf_api_provider::types::EpochsParamResponse;
-use bf_common::{
-    epochs::{EpochData, EpochsPath},
-    types::ApiResult,
-};
+use bf_common::types::ApiResult;
 
 pub async fn route(
     State(state): State<AppState>,

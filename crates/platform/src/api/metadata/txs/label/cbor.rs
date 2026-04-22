@@ -1,10 +1,8 @@
+use crate::metadata::MetadataPath;
 use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::MetadataLabelCborResponse;
-use bf_common::{
-    metadata::MetadataPath,
-    pagination::{Pagination, PaginationQuery},
-};
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     State(state): State<AppState>,

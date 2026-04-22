@@ -1,5 +1,6 @@
+use crate::config::Config;
 use crate::{load_balancer::LoadBalancerConfig, server::state::ApiPrefix};
-use bf_common::{config::Config, errors::AppError};
+use bf_common::errors::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

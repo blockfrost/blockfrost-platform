@@ -1,7 +1,7 @@
+use crate::blocks::{BlockData, BlocksPath};
 use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::BlocksAddressesContentResponse;
-use bf_common::blocks::{BlockData, BlocksPath};
 use bf_common::pagination::PaginationQuery;
 
 pub async fn route(

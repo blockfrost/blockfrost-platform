@@ -1,4 +1,4 @@
-use crate::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 
 use bech32::{Bech32, Hrp};
 use cardano_serialization_lib::PublicKey;

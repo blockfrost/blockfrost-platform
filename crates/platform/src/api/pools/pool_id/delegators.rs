@@ -1,10 +1,8 @@
+use crate::pools::{PoolData, PoolsPath};
 use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::PoolsDelegatorsResponse;
-use bf_common::{
-    pagination::{Pagination, PaginationQuery},
-    pools::{PoolData, PoolsPath},
-};
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     State(state): State<AppState>,

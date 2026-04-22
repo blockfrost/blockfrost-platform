@@ -1,6 +1,6 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use bf_common::cli::Args;
+use blockfrost_platform::cli::Args;
 use blockfrost_platform::{
     AppError,
     hydra_client::HydraController,

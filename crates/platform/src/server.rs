@@ -3,13 +3,14 @@ pub mod metrics;
 pub mod routes;
 pub mod state;
 use crate::{
-    health_monitor, icebreakers::api::IcebreakersAPI, middlewares::errors::error_middleware,
+    config::Config,
+    genesis::{GenesisRegistry, genesis},
+    health_monitor,
+    icebreakers::api::IcebreakersAPI,
+    middlewares::errors::error_middleware,
 };
 use axum::{Extension, Router, middleware::from_fn};
-use bf_common::{
-    config::Config,
-    errors::{AppError, BlockfrostError},
-};
+use bf_common::errors::{AppError, BlockfrostError};
 use bf_data_node::client::DataNode;
 use bf_node::pool::NodePool;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
@@ -46,10 +47,21 @@ pub async fn build(
     };
 
     // Create node pool
-    let node_conn_pool = NodePool::new(&config)?;
+    let node_conn_pool = {
+        let network_magic = genesis().by_network(&config.network).network_magic as u64;
+        NodePool::new(
+            network_magic,
+            config.node_socket_path.to_string(),
+            config.max_pool_connections,
+        )?
+    };
 
     // Data node
-    let data_node = config.data_node.as_ref().map(DataNode::new).transpose()?;
+    let data_node = config
+        .data_node
+        .as_ref()
+        .map(|dn| DataNode::new(&dn.endpoint, dn.request_timeout))
+        .transpose()?;
 
     // Health monitor
     let health_monitor =

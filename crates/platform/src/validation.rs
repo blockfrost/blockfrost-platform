@@ -1,5 +1,5 @@
-use crate::errors::BlockfrostError;
 use axum::http::{HeaderMap, header::CONTENT_TYPE};
+use bf_common::errors::BlockfrostError;
 
 /// Helper to validate content type or return custom BlockfrostError 400
 ///   Arguments:

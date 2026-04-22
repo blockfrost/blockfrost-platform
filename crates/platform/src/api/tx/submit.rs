@@ -1,5 +1,6 @@
+use crate::validation::validate_content_type;
 use axum::{Extension, Json, http::HeaderMap, response::IntoResponse};
-use bf_common::{errors::BlockfrostError, validation::validate_content_type};
+use bf_common::errors::BlockfrostError;
 use bf_node::pool::NodePool;
 use metrics::counter;
 

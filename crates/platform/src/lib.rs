@@ -1,9 +1,23 @@
+pub mod accounts;
+pub mod addresses;
 pub mod api;
+pub mod assets;
+pub mod blocks;
+pub mod cli;
+pub mod config;
+pub mod dreps;
+pub mod epochs;
+pub mod genesis;
 pub mod health_monitor;
 pub mod hydra_client;
 pub mod icebreakers;
 pub mod load_balancer;
+pub mod metadata;
 pub mod middlewares;
+pub mod payment_cred;
+pub mod pools;
 pub mod server;
+pub mod txs;
+pub mod validation;
 
 pub use bf_common::errors::{AppError, BlockfrostError};
