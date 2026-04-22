@@ -90,15 +90,24 @@ where
 /// When `log_target_env` is unset but `$JOURNAL_STREAM` is present (i.e. the
 /// process was started by systemd with stdout/stderr connected to the journal),
 /// the mode defaults to `syslog` so that journald can parse priority levels.
-pub fn setup_tracing(log_level: Level, log_target_env: &str) {
-    let log_target = std::env::var(log_target_env)
-        .ok()
+/// Determines the logging target from two optional env var values.
+///
+/// Returns the explicit target when set and non-empty, falls back to `"syslog"`
+/// when `journal_stream` is present, or `None` for the default colored output.
+fn resolve_log_target(
+    log_target_value: Option<String>,
+    journal_stream: Option<String>,
+) -> Option<String> {
+    log_target_value
         .filter(|s| !s.trim().is_empty())
-        .or_else(|| {
-            std::env::var("JOURNAL_STREAM")
-                .ok()
-                .map(|_| "syslog".into())
-        });
+        .or_else(|| journal_stream.map(|_| "syslog".into()))
+}
+
+pub fn setup_tracing(log_level: Level, log_target_env: &str) {
+    let log_target = resolve_log_target(
+        std::env::var(log_target_env).ok(),
+        std::env::var("JOURNAL_STREAM").ok(),
+    );
 
     match log_target.as_deref() {
         #[cfg(target_os = "linux")]
@@ -150,4 +159,35 @@ fn setup_default(log_level: Level) {
                 .compact(),
         )
         .init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    fn s(v: &str) -> Option<String> {
+        Some(v.to_owned())
+    }
+
+    #[rstest]
+    #[case::both_unset(None, None, None)]
+    #[case::journal_stream_only(None, s("8:12345"), Some("syslog"))]
+    #[case::explicit_journal(s("journal"), None, Some("journal"))]
+    #[case::explicit_syslog(s("syslog"), None, Some("syslog"))]
+    #[case::empty_treated_as_unset(s(""), None, None)]
+    #[case::whitespace_treated_as_unset(s("  "), None, None)]
+    #[case::empty_falls_through_to_journal(s(""), s("8:12345"), Some("syslog"))]
+    #[case::whitespace_falls_through_to_journal(s(" \t "), s("8:12345"), Some("syslog"))]
+    #[case::explicit_overrides_journal_stream(s("journal"), s("8:12345"), Some("journal"))]
+    fn resolve_log_target_cases(
+        #[case] target: Option<String>,
+        #[case] journal: Option<String>,
+        #[case] expected: Option<&str>,
+    ) {
+        assert_eq!(
+            resolve_log_target(target, journal),
+            expected.map(String::from),
+        );
+    }
 }
