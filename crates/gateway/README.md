@@ -31,11 +31,12 @@ nft_asset = 'b0d07d45fe9514f80213f4020e5a61241458be626841cde717cb38a76e7574636f6
 
 The following environment variables can be used to override config file:
 
-- `SERVER_ADDRESS` — The server address (e.g., `0.0.0.0:3000`)
-- `SERVER_LOG_LEVEL` — The log level (e.g., `info`, `debug`, `warn`)
-- `DB_CONNECTION_STRING` — The database connection string (PostgreSQL supported)
-- `BLOCKFROST_PROJECT_ID` — The Blockfrost project ID
-- `BLOCKFROST_NFT_ASSET` — Hex of the NFT asset used for validating license
+- `BLOCKFROST_GATEWAY_SERVER_URL` — The public URL of the server
+- `BLOCKFROST_GATEWAY_SERVER_ADDRESS` — The server address (e.g., `0.0.0.0:3000`)
+- `BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL` — The log level (e.g., `info`, `debug`, `warn`)
+- `BLOCKFROST_GATEWAY_DB_CONNECTION_STRING` — The database connection string (PostgreSQL supported)
+- `BLOCKFROST_GATEWAY_PROJECT_ID` — The Blockfrost project ID
+- `BLOCKFROST_GATEWAY_NFT_ASSET` — Hex of the NFT asset used for validating license
 
 ### Development
 
