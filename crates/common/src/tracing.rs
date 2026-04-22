@@ -1,8 +1,27 @@
-use std::fmt;
+use std::fmt::{self, Write as _};
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::fmt::format::Format;
 use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, FormattedFields, format};
 use tracing_subscriber::registry::LookupSpan;
+
+/// A [`fmt::Write`] adapter that inserts `prefix` after every embedded `\n`,
+/// so that each output line carries the syslog priority tag.
+struct LinePrefixer<'a, W> {
+    inner: W,
+    prefix: &'a str,
+}
+
+impl<W: fmt::Write> fmt::Write for LinePrefixer<'_, W> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let mut rest = s;
+        while let Some(nl) = rest.find('\n') {
+            self.inner.write_str(&rest[..=nl])?;
+            self.inner.write_str(self.prefix)?;
+            rest = &rest[nl + 1..];
+        }
+        self.inner.write_str(rest)
+    }
+}
 
 /// A log event formatter that prepends syslog priority prefixes (`<N>`) to each line.
 pub struct SyslogFormat;
@@ -21,23 +40,36 @@ where
         let metadata = event.metadata();
         let level = metadata.level();
 
-        let priority = match *level {
-            Level::ERROR => 3,
-            Level::WARN => 4,
-            Level::INFO => 6,
-            _ => 7,
+        let prefix: &str = match *level {
+            Level::ERROR => "<3>",
+            Level::WARN => "<4>",
+            Level::INFO => "<6>",
+            _ => "<7>",
         };
 
-        write!(writer, "<{priority}>{}: ", metadata.target())?;
-        ctx.format_fields(writer.by_ref(), event)?;
+        writer.write_str(prefix)?;
 
-        if let Some(scope) = ctx.event_scope() {
-            for span in scope.from_root() {
-                let ext = span.extensions();
-                if let Some(fields) = ext.get::<FormattedFields<N>>()
-                    && !fields.is_empty()
-                {
-                    write!(writer, " {fields}")?;
+        {
+            let mut prefixer = LinePrefixer {
+                inner: writer.by_ref(),
+                prefix,
+            };
+
+            write!(prefixer, "{}: ", metadata.target())?;
+
+            {
+                let pw = format::Writer::new(&mut prefixer);
+                ctx.format_fields(pw, event)?;
+            }
+
+            if let Some(scope) = ctx.event_scope() {
+                for span in scope.from_root() {
+                    let ext = span.extensions();
+                    if let Some(fields) = ext.get::<FormattedFields<N>>()
+                        && !fields.is_empty()
+                    {
+                        write!(prefixer, " {fields}")?;
+                    }
                 }
             }
         }
