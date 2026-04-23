@@ -3,6 +3,10 @@ address = '0.0.0.0:3001'
 log_level = 'info'
 # If unset, we fall back to the `Host:` header
 #url = 'http://127.0.0.1:3001'
+# HA: base URLs of all gateway peers to advertise to platforms.
+# Platforms will open a WebSocket connection to each of these.
+# When unset, falls back to `url` above (or the `Host:` header).
+#peer_urls = ['http://127.0.0.1:3001', 'http://127.0.0.1:3002']
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'

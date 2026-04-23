@@ -90,24 +90,14 @@ pub async fn route(
         ));
     }
 
-    // WebSocket URI for the load balancing experiment.
-    // When `server.url` is configured we map http(s) to ws(s) so the
-    // platform receives a fully qualified URI. Otherwise fall back to a
+    // WebSocket URIs for the load balancing / HA experiment.
+    // When `server.peer_urls` is set, each entry is converted to a ws(s) URI.
+    // Otherwise we fall back to `server.url` (mapped to ws(s)) or a
     // protocol-relative URI derived from the Host header.
-    let ws_uri: String = if let Some(url) = config.server.url.clone() {
-        let mut ws_url = url;
-        let ws_scheme = if ws_url.scheme() == "https" {
-            "wss"
-        } else {
-            "ws"
-        };
-        ws_url
-            .set_scheme(ws_scheme)
-            .expect("ws(s) is a valid scheme transition from http(s)");
-        ws_url.set_path("/ws");
-        ws_url.set_query(None);
-        ws_url.set_fragment(None);
-        ws_url.into()
+    let ws_uris: Vec<String> = if !config.server.peer_urls.is_empty() {
+        config.server.peer_urls.iter().map(url_to_ws).collect()
+    } else if let Some(url) = config.server.url.clone() {
+        vec![url_to_ws(&url)]
     } else {
         let host =
             headers
@@ -116,7 +106,7 @@ pub async fn route(
                 .ok_or(APIError::Validation(
                     "The request didn't set the Host: header field.".to_string(), // unreachable in HTTP >= 1.1
                 ))?;
-        format!("//{host}/ws")
+        vec![format!("//{host}/ws")]
     };
 
     // check if user has correct secret
@@ -190,10 +180,13 @@ pub async fn route(
     let success_response = ResponseSuccess {
         status: "registered".to_string(),
         route: payload.api_prefix,
-        load_balancers: vec![LoadBalancer {
-            uri: ws_uri,
-            access_token: token,
-        }],
+        load_balancers: ws_uris
+            .into_iter()
+            .map(|uri| LoadBalancer {
+                uri,
+                access_token: token.clone(),
+            })
+            .collect(),
     };
 
     db.insert_request(new_item_request).await?;
@@ -208,6 +201,23 @@ async fn is_port_open(ip: SocketAddr) -> bool {
         timeout(Duration::from_secs(10), connection_future).await,
         Ok(Ok(_))
     )
+}
+
+/// Convert an `http(s)://` URL to the corresponding `ws(s)://…/ws` URI string.
+fn url_to_ws(url: &url::Url) -> String {
+    let mut ws_url = url.clone();
+    let ws_scheme = if ws_url.scheme() == "https" {
+        "wss"
+    } else {
+        "ws"
+    };
+    ws_url
+        .set_scheme(ws_scheme)
+        .expect("ws(s) is a valid scheme transition from http(s)");
+    ws_url.set_path("/ws");
+    ws_url.set_query(None);
+    ws_url.set_fragment(None);
+    ws_url.into()
 }
 
 /// Extract the real client IP from proxy headers, falling back to the socket

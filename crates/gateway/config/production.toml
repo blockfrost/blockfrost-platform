@@ -1,7 +1,12 @@
 [server]
 address = '0.0.0.0:3000'
 log_level = 'info'
+# If unset, we fall back to the `Host:` header
 url = 'https://api.domain.com'
+# HA: base URLs of all gateway peers to advertise to platforms.
+# Platforms will open a WebSocket connection to each of these.
+# When unset, falls back to `url` above (or the `Host:` header).
+#peer_urls = ['https://api1.domain.com', 'https://api2.domain.com']
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'

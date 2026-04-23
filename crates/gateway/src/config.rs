@@ -23,6 +23,11 @@ pub struct ServerInput {
     pub address: String,
     pub log_level: String,
     pub url: Option<url::Url>,
+    /// Base URLs of all gateway peers to advertise in `/register` responses.
+    /// Platforms will open a WebSocket connection to each of these for HA.
+    /// When empty, the single `url` (or the `Host:` header) is used as fallback.
+    #[serde(default)]
+    pub peer_urls: Vec<url::Url>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -53,6 +58,8 @@ pub struct Server {
     pub log_level: Level,
     pub network: Network,
     pub url: Option<url::Url>,
+    /// Base URLs of all gateway peers to advertise for HA (see [`ServerInput::peer_urls`]).
+    pub peer_urls: Vec<url::Url>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -134,12 +141,18 @@ pub fn load_config(path: PathBuf) -> Config {
 
     let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
+    let peer_urls = toml_config.server.peer_urls;
+    for u in &peer_urls {
+        validate_server_url(u);
+    }
+
     let config = Config {
         server: Server {
             address: toml_config.server.address,
             log_level,
             network,
             url: toml_config.server.url.inspect(validate_server_url),
+            peer_urls,
         },
         database: Db { connection_string },
         blockfrost: Blockfrost {
@@ -193,6 +206,10 @@ fn override_with_env(config: Config) -> Config {
         .ok()
         .map(|s| parse_server_url(&s))
         .or(config.server.url);
+    let peer_urls = var("BLOCKFROST_GATEWAY_SERVER_PEER_URLS")
+        .ok()
+        .map(|s| s.split(',').map(|u| parse_server_url(u.trim())).collect())
+        .unwrap_or(config.server.peer_urls);
     let server_address = var("BLOCKFROST_GATEWAY_SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str = var("BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL")
         .unwrap_or_else(|_| config.server.log_level.to_string());
@@ -217,6 +234,7 @@ fn override_with_env(config: Config) -> Config {
             log_level: final_log_level,
             network,
             url: server_url,
+            peer_urls,
         },
         database: Db {
             connection_string: db_connection,
