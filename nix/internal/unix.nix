@@ -760,6 +760,7 @@ in
             address = '127.0.0.1:$gateway_port'
             log_level = 'info'
             url = 'http://127.0.0.1:$gateway_port'
+            peer_secret = 'blockfrost-tests-peer-secret'
 
             [database]
             connection_string = 'postgresql://unused:unused@127.0.0.1:5432/unused'
