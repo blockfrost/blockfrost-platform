@@ -76,6 +76,7 @@ pub enum RelayMessage {
 #[derive(Clone, Debug)]
 pub struct LoadBalancerState {
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
+    pub any_relay_cursor: Arc<atomic::AtomicU64>,
     pub hydras: Option<hydra_server_platform::HydrasManager>,
     /// 32-byte key for stateless keyed-hash tokens.
     peer_secret: [u8; 32],
@@ -116,12 +117,59 @@ impl LoadBalancerState {
         peer_secret: [u8; 32],
     ) -> LoadBalancerState {
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
+        let any_relay_cursor = Arc::new(atomic::AtomicU64::new(0));
 
         LoadBalancerState {
             active_relays,
+            any_relay_cursor,
             hydras,
             peer_secret,
         }
+    }
+
+    async fn relay_for_prefix(
+        &self,
+        api_prefix: Uuid,
+        rest: &str,
+    ) -> Result<(mpsc::Sender<RequestState>, AssetName), (hyper::StatusCode, String)> {
+        self.active_relays
+            .lock()
+            .await
+            .get(&api_prefix)
+            .ok_or_else(|| {
+                (
+                    hyper::StatusCode::NOT_FOUND,
+                    format!("relay {api_prefix} not found for request: {rest}"),
+                )
+            })
+            .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))
+    }
+
+    async fn relay_for_any(
+        &self,
+        rest: &str,
+    ) -> Result<(mpsc::Sender<RequestState>, AssetName), (hyper::StatusCode, String)> {
+        let active_relays = self.active_relays.lock().await;
+        let mut api_prefixes: Vec<Uuid> = active_relays.keys().copied().collect();
+        api_prefixes.sort_unstable();
+
+        if api_prefixes.is_empty() {
+            return Err((
+                hyper::StatusCode::NOT_FOUND,
+                format!("no relays connected for request: {rest}"),
+            ));
+        }
+
+        let request_count = self
+            .any_relay_cursor
+            .fetch_add(1, atomic::Ordering::Relaxed);
+        let api_prefix = select_round_robin_uuid(&api_prefixes, request_count)
+            .expect("non-empty relay list must yield a relay");
+
+        Ok(active_relays
+            .get(&api_prefix)
+            .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))
+            .expect("selected relay must exist in active_relays"))
     }
 
     /// Create a stateless token: `base64url(payload) + "." + hex(blake3_keyed_hash)`.
@@ -204,6 +252,15 @@ struct KeyedTokenPayload {
     expires: u64,
 }
 
+fn select_round_robin_uuid(sorted_api_prefixes: &[Uuid], request_count: u64) -> Option<Uuid> {
+    if sorted_api_prefixes.is_empty() {
+        return None;
+    }
+
+    let next_idx = (request_count % sorted_api_prefixes.len() as u64) as usize;
+    sorted_api_prefixes.get(next_idx).copied()
+}
+
 /// The HTTP (incl. WebSocket) endpoints that the load balancer exposes.
 pub mod api {
     use super::*;
@@ -243,6 +300,14 @@ pub mod api {
         handle_prefix_route(load_balancer, uuid, "/".to_string(), req).await
     }
 
+    /// Axum noise, a proxy to `handle_any_route`.
+    pub async fn any_route_root(
+        Extension(load_balancer): Extension<LoadBalancerState>,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        handle_any_route(load_balancer, "/".to_string(), req).await
+    }
+
     /// Axum noise, a proxy to `handle_prefix_route`.
     pub async fn prefix_route(
         Path((uuid, rest)): Path<(String, String)>,
@@ -250,6 +315,15 @@ pub mod api {
         req: Request,
     ) -> Result<impl IntoResponse, APIError> {
         handle_prefix_route(load_balancer, uuid, format!("/{rest}"), req).await
+    }
+
+    /// Axum noise, a proxy to `handle_any_route`.
+    pub async fn any_route(
+        Path(rest): Path<String>,
+        Extension(load_balancer): Extension<LoadBalancerState>,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        handle_any_route(load_balancer, format!("/{rest}"), req).await
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -314,60 +388,10 @@ pub mod api {
                 )
             })?;
 
-            let (new_request_channel, relay_name): (mpsc::Sender<RequestState>, AssetName) =
-                load_balancer
-                    .active_relays
-                    .lock()
-                    .await
-                    .get(&api_prefix)
-                    .ok_or_else(|| {
-                        (
-                            StatusCode::NOT_FOUND,
-                            format!("relay {api_prefix} not found for request: {rest}"),
-                        )
-                    })
-                    .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))?;
+            let (new_request_channel, relay_name) =
+                load_balancer.relay_for_prefix(api_prefix, &rest).await?;
 
-            let query = req.uri().query().map(ToString::to_string);
-            let json_req = request_to_json(req, rest.clone(), query, &relay_name).await?;
-
-            let (response_tx, response_rx) = oneshot::channel::<JsonResponse>();
-
-            let new_request = RequestState {
-                expires: std::time::Instant::now() + REQUEST_TIMEOUT,
-                respond_to: response_tx,
-                underlying: json_req,
-            };
-
-            new_request_channel.send(new_request).await.map_err(|_| {
-                (
-                    StatusCode::BAD_GATEWAY,
-                    format!(
-                        "receiver {} dropped; request: {}",
-                        relay_name.as_str(),
-                        rest
-                    ),
-                )
-            })?;
-
-            match tokio::time::timeout(REQUEST_TIMEOUT, response_rx).await {
-                Ok(Ok(response)) => json_to_response(response, &relay_name).await,
-                Ok(Err(_)) => {
-                    // sender dropped
-                    Err((
-                        StatusCode::BAD_GATEWAY,
-                        format!(
-                            "relay {} dropped while awaiting response for: {}",
-                            relay_name.as_str(),
-                            rest
-                        ),
-                    ))
-                },
-                Err(_) => Err((
-                    StatusCode::GATEWAY_TIMEOUT,
-                    format!("relay {} timed out for: {}", relay_name.as_str(), rest),
-                )),
-            }
+            forward_request(new_request_channel, relay_name, rest, req).await
         }
         .await;
 
@@ -377,6 +401,78 @@ pub mod api {
                 error!("returning {}, because: {}", code, reason);
                 Ok((code, reason).into_response())
             },
+        }
+    }
+
+    /// This route handles requests directed at any active relay. The relay is
+    /// picked by sorting all connected UUIDs and selecting the next one via a
+    /// shared round-robin counter.
+    async fn handle_any_route(
+        load_balancer: LoadBalancerState,
+        rest: String,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        let rv: Result<hyper::Response<axum::body::Body>, (StatusCode, String)> = async move {
+            let (new_request_channel, relay_name) = load_balancer.relay_for_any(&rest).await?;
+
+            forward_request(new_request_channel, relay_name, rest, req).await
+        }
+        .await;
+
+        match rv {
+            Ok(resp) => Ok(resp),
+            Err((code, reason)) => {
+                error!("returning {}, because: {}", code, reason);
+                Ok((code, reason).into_response())
+            },
+        }
+    }
+
+    async fn forward_request(
+        new_request_channel: mpsc::Sender<RequestState>,
+        relay_name: AssetName,
+        rest: String,
+        req: Request,
+    ) -> Result<hyper::Response<axum::body::Body>, (StatusCode, String)> {
+        let query = req.uri().query().map(ToString::to_string);
+        let json_req = request_to_json(req, rest.clone(), query, &relay_name).await?;
+
+        let (response_tx, response_rx) = oneshot::channel::<JsonResponse>();
+
+        let new_request = RequestState {
+            expires: std::time::Instant::now() + REQUEST_TIMEOUT,
+            respond_to: response_tx,
+            underlying: json_req,
+        };
+
+        new_request_channel.send(new_request).await.map_err(|_| {
+            (
+                StatusCode::BAD_GATEWAY,
+                format!(
+                    "receiver {} dropped; request: {}",
+                    relay_name.as_str(),
+                    rest
+                ),
+            )
+        })?;
+
+        match tokio::time::timeout(REQUEST_TIMEOUT, response_rx).await {
+            Ok(Ok(response)) => json_to_response(response, &relay_name).await,
+            Ok(Err(_)) => {
+                // sender dropped
+                Err((
+                    StatusCode::BAD_GATEWAY,
+                    format!(
+                        "relay {} dropped while awaiting response for: {}",
+                        relay_name.as_str(),
+                        rest
+                    ),
+                ))
+            },
+            Err(_) => Err((
+                StatusCode::GATEWAY_TIMEOUT,
+                format!("relay {} timed out for: {}", relay_name.as_str(), rest),
+            )),
         }
     }
 }
@@ -1213,6 +1309,22 @@ async fn json_to_response(
 mod tests {
     use super::*;
 
+    fn test_relay_state(name: &str) -> RelayState {
+        let (new_request_channel, _request_rx) = mpsc::channel(1);
+        let (do_finish, _finish_rx) = mpsc::channel(1);
+
+        RelayState {
+            name: AssetName(name.to_string()),
+            new_request_channel,
+            do_finish,
+            requests_in_progress: Arc::new(Mutex::new(HashMap::new())),
+            network_rtt: Arc::new(Mutex::new(None)),
+            connected_since: std::time::Instant::now(),
+            requests_sent: Arc::new(atomic::AtomicU64::new(0)),
+            responses_received: Arc::new(atomic::AtomicU64::new(0)),
+        }
+    }
+
     fn test_key() -> [u8; 32] {
         *blake3::hash(b"test-peer-secret").as_bytes()
     }
@@ -1222,6 +1334,44 @@ mod tests {
         let lb = LoadBalancerState::new(None, test_key());
         // active_relays starts empty (we can't check much else now)
         assert!(lb.active_relays.blocking_lock().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_relay_for_any_uses_sorted_uuid_round_robin() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let first = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let second = Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let third = Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap();
+
+        lb.active_relays
+            .lock()
+            .await
+            .insert(third, test_relay_state("third"));
+        lb.active_relays
+            .lock()
+            .await
+            .insert(first, test_relay_state("first"));
+        lb.active_relays
+            .lock()
+            .await
+            .insert(second, test_relay_state("second"));
+
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "first"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "second"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "third"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "first"
+        );
     }
 
     #[test]
