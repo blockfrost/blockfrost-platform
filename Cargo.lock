@@ -563,7 +563,6 @@ dependencies = [
  "hex",
  "hyper",
  "nix",
- "rand 0.8.5",
  "reqwest 0.13.2",
  "rstest",
  "serde",

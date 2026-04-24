@@ -35,7 +35,6 @@ cardano-serialization-lib.workspace = true
 dotenvy.workspace = true
 governor.workspace = true
 hex.workspace = true
-rand.workspace = true
 base64.workspace = true
 blake3.workspace = true
 url.workspace = true
