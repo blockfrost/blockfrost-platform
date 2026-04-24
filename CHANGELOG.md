@@ -126,6 +126,7 @@ This release introduces two major integrations:
 - `/accounts/{stake_address}/addresses`
 - `/accounts/{stake_address}/delegations`
 - `/accounts/{stake_address}/registrations`
+- `/accounts/{stake_address}/withdrawals`
 
 **Assets**
 
@@ -143,6 +144,8 @@ This release introduces two major integrations:
 **Pools**
 
 - `/pools/extended`
+- `/pools/{pool_id}`
+- `/pools/{pool_id}/metadata`
 - `/pools/{pool_id}/delegators`
 
 **Epochs**

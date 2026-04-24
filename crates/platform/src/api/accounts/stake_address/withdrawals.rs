@@ -1,4 +1,4 @@
-use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
+use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::AccountsWithdrawalsResponse;
 use bf_common::{
@@ -11,8 +11,12 @@ pub async fn route(
     State(state): State<AppState>,
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<AccountsWithdrawalsResponse> {
-    let _ = AccountData::from_account_path(path.stake_address, &state.config.network)?;
-    let _ = Pagination::from_query(pagination_query)?;
+    let account = AccountData::from_account_path(path.stake_address, &state.config.network)?;
+    let pagination = Pagination::from_query(pagination_query)?;
+    let data_node = state.data_node()?;
 
-    Err(BlockfrostError::not_found())
+    data_node
+        .accounts()
+        .withdrawals(&account.stake_address, &pagination)
+        .await
 }
