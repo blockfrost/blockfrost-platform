@@ -10,8 +10,8 @@
 # 1. Start two Gateways (A and B) configured as peers (`peer_urls`, `peer_secret`)
 # 2. Start one Platform pointing at Gateway A (`--gateway-url`)
 # 3. Wait for the Platform to register and appear on both Gateways
-# 4. Send 2 requests through Gateway A and 2 through Gateway B
-# 5. Verify all requests succeed (HTTP 200, proxied to the Platform)
+# 4. Send 2 requests through each Gateway via `/{uuid}/*` and verify HTTP 200
+# 5. Send 2 requests through each Gateway via `/any/*` round-robin and verify HTTP 200
 
 set -euo pipefail
 
@@ -238,7 +238,24 @@ done
 
 # ---------------------------------------------------------------------------- #
 
-log info "All 4 requests succeeded through both gateways!"
+for gw in A B; do
+  log info "Sending 2 requests through Gateway ${gw} via /any/ round-robin route…"
+
+  for i in 1 2; do
+    resp=$(curl -sS -w '\n%{http_code}' "${gateway_url[$gw]}/any/" 2>/dev/null || true)
+    code="${resp##*$'\n'}"
+    if [ "$code" != "200" ]; then
+      log fatal "Gateway ${gw}: /any/ request $i failed with http/$code"
+      exit 1
+    fi
+    log info "Gateway ${gw}: /any/ request $i: http/$code OK"
+    sleep 0.5
+  done
+done
+
+# ---------------------------------------------------------------------------- #
+
+log info "All 8 requests succeeded through both gateways!"
 
 test_passed=true
 log info "Test passed! Exiting."
