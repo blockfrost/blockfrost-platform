@@ -28,6 +28,10 @@ pub struct ServerInput {
     /// When empty, the single `url` (or the `Host:` header) is used as fallback.
     #[serde(default)]
     pub peer_urls: Vec<url::Url>,
+    /// Shared secret used to create stateless HMAC tokens that any peer gateway
+    /// can verify. Required when `peer_urls` has more than one entry.
+    pub peer_secret: Option<String>,
+    pub peer_secret_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -60,6 +64,8 @@ pub struct Server {
     pub url: Option<url::Url>,
     /// Base URLs of all gateway peers to advertise for HA (see [`ServerInput::peer_urls`]).
     pub peer_urls: Vec<url::Url>,
+    /// Derived 32-byte key for stateless HMAC tokens (see [`ServerInput::peer_secret`]).
+    pub peer_secret: [u8; 32],
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -126,7 +132,7 @@ pub fn load_config(path: PathBuf) -> Config {
         None => toml_config
             .database
             .connection_string
-            .expect("connection_string must be provided"),
+            .expect("connection_string or connection_string_file must be provided"),
     };
 
     let project_id = match toml_config.blockfrost.project_id_file {
@@ -146,6 +152,18 @@ pub fn load_config(path: PathBuf) -> Config {
         validate_server_url(u);
     }
 
+    let peer_secret_raw = match toml_config.server.peer_secret_file {
+        Some(file_path) => read_to_string(file_path)
+            .expect("Failed to read peer secret file")
+            .trim()
+            .to_string(),
+        None => toml_config
+            .server
+            .peer_secret
+            .expect("peer_secret or peer_secret_file must be provided"),
+    };
+    let peer_secret = derive_peer_key(&peer_secret_raw);
+
     let config = Config {
         server: Server {
             address: toml_config.server.address,
@@ -153,6 +171,7 @@ pub fn load_config(path: PathBuf) -> Config {
             network,
             url: toml_config.server.url.inspect(validate_server_url),
             peer_urls,
+            peer_secret,
         },
         database: Db { connection_string },
         blockfrost: Blockfrost {
@@ -164,6 +183,11 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     override_with_env(config)
+}
+
+/// Derive a 32-byte key from an arbitrary-length secret string using Blake3.
+fn derive_peer_key(secret: &str) -> [u8; 32] {
+    *blake3::hash(secret.as_bytes()).as_bytes()
 }
 
 /// Validate that a parsed `server.url` uses http(s) and includes a host.
@@ -210,6 +234,21 @@ fn override_with_env(config: Config) -> Config {
         .ok()
         .map(|s| s.split(',').map(|u| parse_server_url(u.trim())).collect())
         .unwrap_or(config.server.peer_urls);
+    let peer_secret = var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
+        .ok()
+        .map(|path| {
+            let raw = read_to_string(path)
+                .expect("Failed to read BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
+                .trim()
+                .to_string();
+            derive_peer_key(&raw)
+        })
+        .or_else(|| {
+            var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET")
+                .ok()
+                .map(|s| derive_peer_key(&s))
+        })
+        .unwrap_or(config.server.peer_secret);
     let server_address = var("BLOCKFROST_GATEWAY_SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str = var("BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL")
         .unwrap_or_else(|_| config.server.log_level.to_string());
@@ -235,6 +274,7 @@ fn override_with_env(config: Config) -> Config {
             network,
             url: server_url,
             peer_urls,
+            peer_secret,
         },
         database: Db {
             connection_string: db_connection,

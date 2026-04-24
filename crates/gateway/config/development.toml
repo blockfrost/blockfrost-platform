@@ -7,9 +7,14 @@ log_level = 'info'
 # Platforms will open a WebSocket connection to each of these.
 # When unset, falls back to `url` above (or the `Host:` header).
 #peer_urls = ['http://127.0.0.1:3001', 'http://127.0.0.1:3002']
+# Shared secret for stateless keyed-hash access tokens.
+# All gateway instances must share the same secret.
+peer_secret = 'change-me-to-a-long-random-string'
+#peer_secret_file = '/run/keys/blockfrost-gateway-peer-secret'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'
+#connection_string_file = '/run/keys/blockfrost-gateway-db-connection-string'
 
 [blockfrost]
 project_id = 'preview_BLOCKFROST_PROJECT_ID'

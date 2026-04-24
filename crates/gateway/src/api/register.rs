@@ -169,13 +169,11 @@ pub async fn route(
         asset_name: Some(asset.asset_name.as_str().to_string()),
     };
 
-    let token = load_balancer
-        .new_access_token(
-            asset.asset_name,
-            payload.api_prefix,
-            &payload.reward_address,
-        )
-        .await;
+    let token = load_balancer.new_access_token(
+        asset.asset_name,
+        payload.api_prefix,
+        &payload.reward_address,
+    );
 
     let success_response = ResponseSuccess {
         status: "registered".to_string(),

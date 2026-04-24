@@ -545,6 +545,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "blake3",
  "blockfrost",
  "blockfrost-platform-common",
  "cardano-serialization-lib",

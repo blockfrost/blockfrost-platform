@@ -75,10 +75,10 @@ pub enum RelayMessage {
 
 #[derive(Clone, Debug)]
 pub struct LoadBalancerState {
-    pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
     pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
-    pub background_worker: Arc<JoinHandle<()>>,
     pub hydras: Option<hydra_server_platform::HydrasManager>,
+    /// 32-byte key for stateless keyed-hash tokens.
+    peer_secret: [u8; 32],
 }
 
 #[derive(Debug)]
@@ -86,7 +86,6 @@ pub struct AccessTokenState {
     pub name: AssetName,
     pub reward_addr: String,
     pub api_prefix: Uuid,
-    pub expires: std::time::Instant,
 }
 
 #[derive(Clone, Debug)]
@@ -112,100 +111,97 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new(hydras: Option<hydra_server_platform::HydrasManager>) -> LoadBalancerState {
-        let access_tokens = Arc::new(Mutex::new(HashMap::new()));
+    pub fn new(
+        hydras: Option<hydra_server_platform::HydrasManager>,
+        peer_secret: [u8; 32],
+    ) -> LoadBalancerState {
         let active_relays = Arc::new(Mutex::new(HashMap::new()));
-        let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
-            access_tokens.clone(),
-        )));
 
         LoadBalancerState {
-            access_tokens,
             active_relays,
-            background_worker,
             hydras,
+            peer_secret,
         }
     }
 
-    pub async fn new_access_token(
+    /// Create a stateless token: `base64url(payload) + "." + hex(blake3_keyed_hash)`.
+    pub fn new_access_token(
         &self,
         name: AssetName,
         api_prefix: Uuid,
         reward_addr: &str,
     ) -> AccessToken {
-        let expires = std::time::Instant::now() + ACCESS_TOKEN_TIMEOUT;
-        let token = random_token();
-        self.access_tokens.lock().await.insert(
-            token.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: reward_addr.to_string(),
-                api_prefix,
-                expires,
-            },
-        );
-        token
+        use base64::{Engine as _, engine::general_purpose};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let expires = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before UNIX epoch")
+            .as_secs()
+            + ACCESS_TOKEN_TIMEOUT.as_secs();
+
+        let payload = KeyedTokenPayload {
+            api_prefix,
+            asset_name: name.0,
+            reward_addr: reward_addr.to_string(),
+            expires,
+        };
+        let payload_json =
+            serde_json::to_string(&payload).expect("KeyedTokenPayload is serializable");
+        let payload_b64 = general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+        let hash = blake3::keyed_hash(&self.peer_secret, payload_b64.as_bytes());
+        AccessToken(format!("{payload_b64}.{}", hash.to_hex()))
     }
 
-    pub async fn register(&self, token: &str) -> Result<AccessTokenState, APIError> {
-        let token = AccessToken(token.to_string());
-        let state = self
-            .access_tokens
-            .lock()
-            .await
-            .remove(&token)
-            .ok_or(APIError::Unauthorized())?;
-        if state.expires < std::time::Instant::now() {
-            Err(APIError::Unauthorized())?;
+    /// Verify a keyed token and reconstruct [`AccessTokenState`].
+    pub fn register(&self, token: &str) -> Result<AccessTokenState, APIError> {
+        use base64::{Engine as _, engine::general_purpose};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let (payload_b64, hash_hex) = token.split_once('.').ok_or(APIError::Unauthorized())?;
+
+        // Verify the keyed hash.
+        let expected = blake3::keyed_hash(&self.peer_secret, payload_b64.as_bytes());
+        if expected.to_hex().as_str() != hash_hex {
+            return Err(APIError::Unauthorized());
         }
-        Ok(state)
-    }
 
-    async fn clean_up_expired_tokens_periodically(
-        access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    ) {
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            Self::clean_up_expired_tokens(&access_tokens).await;
+        // Decode & deserialize the payload.
+        let payload_json = general_purpose::URL_SAFE_NO_PAD
+            .decode(payload_b64)
+            .map_err(|_| APIError::Unauthorized())?;
+        let payload: KeyedTokenPayload =
+            serde_json::from_slice(&payload_json).map_err(|_| APIError::Unauthorized())?;
+
+        // Check expiry.
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before UNIX epoch")
+            .as_secs();
+        if payload.expires < now {
+            return Err(APIError::Unauthorized());
         }
-    }
 
-    async fn clean_up_expired_tokens(
-        access_tokens: &Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    ) {
-        let now = std::time::Instant::now();
-
-        access_tokens.lock().await.retain(|_, state| {
-            let still_valid = state.expires > now;
-            if !still_valid {
-                warn!(
-                    "{}: unused WebSocket access token expired",
-                    state.name.as_str(),
-                )
-            }
-            still_valid
-        });
+        Ok(AccessTokenState {
+            name: AssetName(payload.asset_name),
+            reward_addr: payload.reward_addr,
+            api_prefix: payload.api_prefix,
+        })
     }
 }
 
-/// Cancels its background tasks, when all clones of a particular [`LoadBalancerState`] go out of scope.
-impl Drop for LoadBalancerState {
-    fn drop(&mut self) {
-        // Abort the background task, if this is the _last_ clone of [`LoadBalancerState`]:
-        if Arc::strong_count(&self.background_worker) == 1 {
-            self.background_worker.abort();
-        }
-    }
-}
-
-/// Generates a random Base64-encoded string. Used for generating access tokens.
-pub fn random_token() -> AccessToken {
-    use base64::{Engine as _, engine::general_purpose};
-    use rand::RngCore;
-    let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    let token = general_purpose::STANDARD.encode(bytes);
-    AccessToken(token)
+/// Payload encoded inside a stateless keyed token.
+#[derive(Serialize, Deserialize)]
+struct KeyedTokenPayload {
+    #[serde(rename = "p")]
+    api_prefix: Uuid,
+    #[serde(rename = "n")]
+    asset_name: String,
+    #[serde(rename = "r")]
+    reward_addr: String,
+    /// Expiry as seconds since the UNIX epoch.
+    #[serde(rename = "e")]
+    expires: u64,
 }
 
 /// The HTTP (incl. WebSocket) endpoints that the load balancer exposes.
@@ -234,7 +230,7 @@ pub mod api {
             .and_then(|a| a.strip_prefix("Bearer "))
             .ok_or(APIError::Unauthorized())?
             .to_string();
-        let token_state = load_balancer.register(&token).await?;
+        let token_state = load_balancer.register(&token)?;
         Ok(ws.on_upgrade(|socket| event_loop::run(load_balancer, token_state, socket)))
     }
 
@@ -1217,103 +1213,72 @@ async fn json_to_response(
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_new_creates_empty_state() {
-        let lb = LoadBalancerState::new(None).await;
-
-        let tokens = lb.access_tokens.lock().await;
-        assert!(tokens.is_empty());
-
-        let relays = lb.active_relays.lock().await;
-        assert!(relays.is_empty());
+    fn test_key() -> [u8; 32] {
+        *blake3::hash(b"test-peer-secret").as_bytes()
     }
 
-    #[tokio::test]
-    async fn test_new_access_token_register() {
-        let lb = LoadBalancerState::new(None).await;
+    #[test]
+    fn test_new_creates_empty_state() {
+        let lb = LoadBalancerState::new(None, test_key());
+        // active_relays starts empty (we can't check much else now)
+        assert!(lb.active_relays.blocking_lock().is_empty());
+    }
+
+    #[test]
+    fn test_token_roundtrip() {
+        let lb = LoadBalancerState::new(None, test_key());
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
-        let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
-        let state = lb.register(&token.0).await.expect("should register");
+        let token = lb.new_access_token(name.clone(), prefix, "addr1…");
 
+        // Any instance with the same key can verify it.
+        let state = lb.register(&token.0).expect("should verify");
         assert_eq!(state.name, name);
         assert_eq!(state.api_prefix, prefix);
-
-        // token should be removed after register
-        let tokens = lb.access_tokens.lock().await;
-        assert!(tokens.is_empty());
+        assert_eq!(state.reward_addr, "addr1…");
     }
 
-    #[tokio::test]
-    async fn test_register_invalid_token() {
-        let lb = LoadBalancerState::new(None).await;
-        let res = lb.register("invalid").await;
+    #[test]
+    fn test_register_invalid_token() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let res = lb.register("invalid");
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
-    #[tokio::test]
-    async fn test_register_expired_token() {
-        let lb = LoadBalancerState::new(None).await;
-        let name = AssetName("x-asset-x".to_string());
-        let prefix = Uuid::new_v4();
-        let token = random_token();
-        let expires = std::time::Instant::now() - std::time::Duration::from_secs(1);
-
-        lb.access_tokens.lock().await.insert(
-            token.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires,
-            },
-        );
-        let res = lb.register(&token.0).await;
-
+    #[test]
+    fn test_wrong_key_rejected() {
+        let key_a = *blake3::hash(b"secret-a").as_bytes();
+        let key_b = *blake3::hash(b"secret-b").as_bytes();
+        let lb_a = LoadBalancerState::new(None, key_a);
+        let lb_b = LoadBalancerState::new(None, key_b);
+        let token = lb_a.new_access_token(AssetName("a".into()), Uuid::new_v4(), "addr");
+        let res = lb_b.register(&token.0);
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
-    #[tokio::test]
-    async fn test_clean_up_expired_tokens_logic() {
-        let lb = LoadBalancerState::new(None).await;
-        let name = AssetName("x-asset-x".to_string());
+    #[test]
+    fn test_expired_token_rejected() {
+        use base64::Engine as _;
+
+        let key = test_key();
         let prefix = Uuid::new_v4();
 
-        // insert expired token
-        let token_expired = random_token();
-        let expires_expired = std::time::Instant::now() - std::time::Duration::from_secs(1);
-        lb.access_tokens.lock().await.insert(
-            token_expired.clone(),
-            AccessTokenState {
-                name: name.clone(),
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires: expires_expired,
-            },
-        );
+        // Manually create a token that is already expired.
+        let payload = KeyedTokenPayload {
+            api_prefix: prefix,
+            asset_name: "x".to_string(),
+            reward_addr: "addr".to_string(),
+            expires: 0, // epoch 0 = expired
+        };
+        let payload_json = serde_json::to_string(&payload).unwrap();
+        let payload_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+        let hash = blake3::keyed_hash(&key, payload_b64.as_bytes());
+        let token = format!("{payload_b64}.{}", hash.to_hex());
 
-        // insert valid token
-        let token_valid = random_token();
-        let expires_valid = std::time::Instant::now() + std::time::Duration::from_secs(300);
-
-        lb.access_tokens.lock().await.insert(
-            token_valid.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires: expires_valid,
-            },
-        );
-
-        // cleanup
-        LoadBalancerState::clean_up_expired_tokens(&lb.access_tokens).await;
-        let tokens = lb.access_tokens.lock().await;
-
-        assert_eq!(tokens.len(), 1);
-
-        assert!(tokens.contains_key(&token_valid));
-        assert!(!tokens.contains_key(&token_expired));
+        let lb = LoadBalancerState::new(None, key);
+        let res = lb.register(&token);
+        assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
     #[tokio::test]

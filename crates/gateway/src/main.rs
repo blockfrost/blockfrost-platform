@@ -59,7 +59,8 @@ async fn main() -> Result<()> {
     } else {
         None
     };
-    let load_balancer = load_balancer::LoadBalancerState::new(hydras_manager).await;
+    let load_balancer =
+        load_balancer::LoadBalancerState::new(hydras_manager, config.server.peer_secret);
     let register_rate_limiter = rate_limit::new_register_rate_limiter();
 
     let base_router = Router::new()

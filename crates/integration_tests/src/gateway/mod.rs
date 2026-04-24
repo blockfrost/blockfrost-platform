@@ -68,6 +68,7 @@ pub struct TestGateway {
 }
 
 pub const EXPECTED_SECRET: &str = "000666000";
+pub const TEST_PEER_SECRET: [u8; 32] = [7; 32];
 
 impl TestGateway {
     /// Start a gateway on a random port with WS routes + mock /register.
@@ -77,7 +78,7 @@ impl TestGateway {
 
     /// Start a gateway bound to a specific address (for restart tests).
     pub async fn start_on(addr: Option<SocketAddr>) -> Self {
-        let lb = LoadBalancerState::new(None).await;
+        let lb = LoadBalancerState::new(None, TEST_PEER_SECRET);
         let rate_limiter = rate_limit::new_register_rate_limiter();
         let router = build_router(lb.clone())
             .await
@@ -97,7 +98,7 @@ impl TestGateway {
 
     /// Start a gateway with a custom rate limit (for rate limit tests).
     pub async fn start_with_rate_limit(max_per_minute: u32) -> Self {
-        let lb = LoadBalancerState::new(None).await;
+        let lb = LoadBalancerState::new(None, TEST_PEER_SECRET);
         let quota = governor::Quota::per_minute(
             NonZeroU32::new(max_per_minute)
                 .expect("TestGateway::start_with_rate_limit requires max_per_minute > 0"),
@@ -196,9 +197,7 @@ async fn mock_register_handler(
         )
     })?;
 
-    let token = lb
-        .new_access_token(AssetName("test".into()), api_prefix, "reward_addr_test")
-        .await;
+    let token = lb.new_access_token(AssetName("test".into()), api_prefix, "reward_addr_test");
 
     let host = headers
         .get("Host")
