@@ -4,6 +4,7 @@ use axum::{
     Extension, Router,
     routing::{get, post},
 };
+use bf_common::tracing::setup_tracing;
 use blockfrost_gateway::{
     api, blockfrost, config, db, hydra_server_bridge, hydra_server_platform, load_balancer,
     rate_limit, sdk_bridge_ws,
@@ -13,7 +14,6 @@ use colored::Colorize;
 use config::{Args, Config};
 use db::DB;
 use std::net::SocketAddr;
-use tracing_subscriber::fmt::format::Format;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -31,16 +31,7 @@ async fn main() -> Result<()> {
     let arguments = Args::parse();
     let config: Config = config::load_config(arguments.config);
 
-    tracing_subscriber::fmt()
-        .with_max_level(config.server.log_level)
-        .event_format(
-            Format::default()
-                .with_ansi(true)
-                .with_level(true)
-                .with_target(true)
-                .compact(),
-        )
-        .init();
+    setup_tracing(config.server.log_level, "BLOCKFROST_GATEWAY_LOG_TARGET");
 
     let pool = DB::new(&config.database.connection_string).await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);

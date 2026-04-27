@@ -1,11 +1,10 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
+use bf_common::tracing::setup_tracing;
 use blockfrost_platform::cli::Args;
 use blockfrost_platform::{
-    AppError,
-    hydra_client::HydraController,
-    icebreakers::manager::IcebreakersManager,
-    server::{build, logging::setup_tracing},
+    AppError, hydra_client::HydraController, icebreakers::manager::IcebreakersManager,
+    server::build,
 };
 use dotenvy::dotenv;
 use std::sync::Arc;
@@ -27,7 +26,7 @@ async fn main() -> Result<(), AppError> {
     let config = Args::init().await?;
 
     // Logging
-    setup_tracing(config.log_level);
+    setup_tracing(config.log_level, "BLOCKFROST_PLATFORM_LOG_TARGET");
 
     info!(
         "Starting {} {} ({})",

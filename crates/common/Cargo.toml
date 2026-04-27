@@ -27,7 +27,11 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["net", "io-util", "sync", "time"] }
 tokio-util.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 url.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tracing-journald.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
