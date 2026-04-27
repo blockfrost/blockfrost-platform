@@ -69,6 +69,9 @@ pub async fn run_all(
         }
         match icebreakers_api.register().await {
             Ok(response) => {
+                // A successful registration supersedes any earlier failure:
+                health_errors.lock().await.clear();
+
                 let new_configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
 
                 if new_configs.is_empty() {
