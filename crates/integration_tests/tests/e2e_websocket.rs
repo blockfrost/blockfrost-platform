@@ -7,7 +7,7 @@ use integration_tests::{
     platform::test_config,
 };
 
-use bf_common::config::IcebreakersConfig;
+use blockfrost_platform::config::IcebreakersConfig;
 use blockfrost_platform::{hydra_client, icebreakers::manager::IcebreakersManager, server::build};
 use reqwest::StatusCode;
 use tokio::sync::Mutex;

@@ -1,11 +1,11 @@
+use crate::{
+    addresses::{AddressInfo, AddressPathWithAsset},
+    assets::AssetData,
+};
 use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::AddressesUtxosAssetResponse;
-use bf_common::{
-    addresses::{AddressInfo, AddressPathWithAsset},
-    assets::AssetData,
-    pagination::{Pagination, PaginationQuery},
-};
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Path(address_path_with_asset): Path<AddressPathWithAsset>,

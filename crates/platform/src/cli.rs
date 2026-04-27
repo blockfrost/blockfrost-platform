@@ -1,9 +1,6 @@
-use crate::{
-    config::{Config, Mode},
-    errors::AppError,
-    types::LogLevel,
-};
+use crate::config::{Config, Mode};
 use anyhow::{Error, Result, anyhow};
+use bf_common::{errors::AppError, types::LogLevel};
 use clap::{CommandFactory, Parser, ValueEnum};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
@@ -329,7 +326,7 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Network;
+    use bf_common::types::Network;
     use futures::FutureExt;
     use futures::future::BoxFuture;
     use pretty_assertions::assert_eq;

@@ -1,8 +1,5 @@
-use crate::{
-    errors::BlockfrostError,
-    genesis::{GenesisRegistry, genesis},
-    types::Network,
-};
+use crate::genesis::{GenesisRegistry, genesis};
+use bf_common::{errors::BlockfrostError, types::Network};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

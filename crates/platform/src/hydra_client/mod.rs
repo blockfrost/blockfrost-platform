@@ -50,7 +50,7 @@ impl HydraController {
     // FIXME: refactor
     #[allow(clippy::too_many_arguments)]
     pub async fn spawn(
-        config: bf_common::config::HydraConfig,
+        config: crate::config::HydraConfig,
         network: bf_common::types::Network,
         node_socket_path: String,
         reward_address: String,
@@ -89,7 +89,7 @@ enum Event {
 
 // FIXME: don’t construct all key and other paths manually, keep them in a single place
 struct State {
-    config: bf_common::config::HydraConfig,
+    config: crate::config::HydraConfig,
     network: bf_common::types::Network,
     genesis: bf_api_provider::types::GenesisResponse,
     node_socket_path: String,
@@ -120,7 +120,7 @@ impl State {
     // FIXME: refactor
     #[allow(clippy::too_many_arguments)]
     async fn spawn(
-        config: bf_common::config::HydraConfig,
+        config: crate::config::HydraConfig,
         network: bf_common::types::Network,
         node_socket_path: String,
         reward_address: String,
@@ -148,7 +148,7 @@ impl State {
             .join(gateway_prefix);
 
         let genesis = {
-            use bf_common::genesis::*;
+            use crate::genesis::*;
             genesis().by_network(&network)
         };
 

@@ -6,53 +6,40 @@ license.workspace = true
 build = "build.rs"
 
 [dependencies]
-axum.workspace = true
-bf-api-provider.workspace = true
-pallas-network.workspace = true
-thiserror.workspace = true
-serde.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-serde_json.workspace = true
-reqwest.workspace = true
-bech32.workspace = true
-cardano-serialization-lib.workspace = true
-hex.workspace = true
-getrandom.workspace = true
-dirs.workspace = true
-url.workspace = true
-toml.workspace = true
-futures.workspace = true
-twelf.workspace = true
-inquire.workspace = true
 anyhow.workspace = true
-blake3.workspace = true
-machine-uid.workspace = true
-clap.workspace = true
-pallas-addresses.workspace = true
+axum.workspace = true
 base64.workspace = true
+bech32.workspace = true
+bf-api-provider.workspace = true
+blake3.workspace = true
 bytes.workspace = true
+cardano-serialization-lib.workspace = true
+clap.workspace = true
+getrandom.workspace = true
+hex.workspace = true
+machine-uid.workspace = true
 nix = { workspace = true }
+pallas-network.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["net", "io-util", "sync", "time"] }
 tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 tracing-journald.workspace = true
 
 [dev-dependencies]
-rstest.workspace = true
 pretty_assertions.workspace = true
+rstest.workspace = true
 tokio.workspace = true
 
 [build-dependencies]
 bf-build-utils.workspace = true
-
-[package.metadata.cargo-machete]
-ignored = [
-  "base64",
-  "bytes",
-  "tokio-util",
-] # used in tunnel.rs; machete's grep heuristic misses them
 
 [lints]
 workspace = true

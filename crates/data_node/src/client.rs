@@ -1,5 +1,6 @@
-use bf_common::{config::DataNodeConfig, errors::AppError, json_client::JsonClient};
+use bf_common::{errors::AppError, json_client::JsonClient};
 use reqwest::Url;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct DataNode {
@@ -7,9 +8,9 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    pub fn new(config: &DataNodeConfig) -> Result<Self, AppError> {
-        let url = Url::parse(&config.endpoint).map_err(|e| AppError::DataNode(e.to_string()))?;
-        let client = JsonClient::new(url, config.request_timeout)?;
+    pub fn new(endpoint: &str, request_timeout: Duration) -> Result<Self, AppError> {
+        let url = Url::parse(endpoint).map_err(|e| AppError::DataNode(e.to_string()))?;
+        let client = JsonClient::new(url, request_timeout)?;
 
         Ok(Self { client })
     }

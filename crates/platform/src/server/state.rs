@@ -1,6 +1,7 @@
+use crate::config::Config;
 use axum::extract::State;
 use bf_api_provider::types::GenesisResponse;
-use bf_common::{config::Config, errors::BlockfrostError, types::Network};
+use bf_common::{errors::BlockfrostError, types::Network};
 use bf_data_node::client::DataNode;
 use std::sync::Arc;
 

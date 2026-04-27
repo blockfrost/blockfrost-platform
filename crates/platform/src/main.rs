@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 
-use bf_common::cli::Args;
 use bf_common::tracing::setup_tracing;
+use blockfrost_platform::cli::Args;
 use blockfrost_platform::{
     AppError, hydra_client::HydraController, icebreakers::manager::IcebreakersManager,
     server::build,
