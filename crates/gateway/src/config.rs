@@ -28,8 +28,8 @@ pub struct ServerInput {
     /// When empty, the single `url` (or the `Host:` header) is used as fallback.
     #[serde(default)]
     pub peer_urls: Vec<url::Url>,
-    /// Shared secret used to create stateless HMAC tokens that any peer gateway
-    /// can verify. Required when `peer_urls` has more than one entry.
+    /// Shared secret used to create stateless HMAC tokens that any gateway
+    /// can verify. Always required (via `peer_secret` or `peer_secret_file`).
     pub peer_secret: Option<String>,
     pub peer_secret_file: Option<String>,
 }
