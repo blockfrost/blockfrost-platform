@@ -62,6 +62,11 @@ pub async fn run_all(
     let mut hydra_kex = hydra_kex;
 
     loop {
+        if active.is_empty() {
+            info!("registering with Icebreakers API...");
+        } else {
+            info!("periodic re-registration with Icebreakers API...");
+        }
         match icebreakers_api.register().await {
             Ok(response) => {
                 let new_configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
@@ -161,9 +166,7 @@ fn reconcile_connections(
     let first_batch = active.is_empty();
     for (idx, config) in new_configs.iter().enumerate() {
         if !active.contains_key(&config.uri) {
-            if first_batch {
-                info!("connecting to gateway {}", config.uri);
-            } else {
+            if !first_batch {
                 info!("new gateway {} discovered; starting task", config.uri);
             }
             let handle = tokio::spawn(run_one_with_reconnect(
@@ -236,6 +239,7 @@ async fn run_one_with_reconnect(
         // Try to re-register to refresh the access token. If re-registration
         // fails (e.g. the registration gateway is down), keep the old token
         // and attempt the WebSocket connection anyway:
+        info!("re-registering to refresh token for {}", config.uri);
         match icebreakers_api.register().await {
             Ok(response) => {
                 let new_configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
