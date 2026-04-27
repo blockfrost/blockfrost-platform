@@ -204,11 +204,10 @@ fn validate_server_url(url: &url::Url) {
 }
 
 /// Parse a raw string into a [`url::Url`] and validate it.
-/// Used for the `BLOCKFROST_GATEWAY_SERVER_URL` environment variable override.
-fn parse_server_url(raw: &str) -> url::Url {
-    let parsed = url::Url::parse(raw).unwrap_or_else(|e| {
-        panic!("BLOCKFROST_GATEWAY_SERVER_URL is not a valid URL ({raw}): {e}")
-    });
+/// Used for environment variable overrides of server URLs.
+fn parse_server_url(raw: &str, env_var: &str) -> url::Url {
+    let parsed = url::Url::parse(raw)
+        .unwrap_or_else(|e| panic!("{env_var} is not a valid URL ({raw}): {e}"));
     validate_server_url(&parsed);
     parsed
 }
@@ -228,11 +227,15 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
 fn override_with_env(config: Config) -> Config {
     let server_url = var("BLOCKFROST_GATEWAY_SERVER_URL")
         .ok()
-        .map(|s| parse_server_url(&s))
+        .map(|s| parse_server_url(&s, "BLOCKFROST_GATEWAY_SERVER_URL"))
         .or(config.server.url);
     let peer_urls = var("BLOCKFROST_GATEWAY_SERVER_PEER_URLS")
         .ok()
-        .map(|s| s.split(',').map(|u| parse_server_url(u.trim())).collect())
+        .map(|s| {
+            s.split(',')
+                .map(|u| parse_server_url(u.trim(), "BLOCKFROST_GATEWAY_SERVER_PEER_URLS"))
+                .collect()
+        })
         .unwrap_or(config.server.peer_urls);
     let peer_secret = var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
         .ok()
