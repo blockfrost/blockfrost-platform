@@ -73,7 +73,6 @@ pallas-primitives = { git = "https://github.com/txpipe/pallas.git", rev = "ed422
 pallas-traverse = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
 pretty_assertions = "1.4.1"
 proptest = "1.10.0"
-rand = "0.8.5"
 reqwest = { version = "0.13.2", default-features = false, features = [
   "blocking",
   "http2",

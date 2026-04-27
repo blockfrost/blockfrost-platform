@@ -59,7 +59,8 @@ async fn main() -> Result<()> {
     } else {
         None
     };
-    let load_balancer = load_balancer::LoadBalancerState::new(hydras_manager).await;
+    let load_balancer =
+        load_balancer::LoadBalancerState::new(hydras_manager, config.server.peer_secret);
     let register_rate_limiter = rate_limit::new_register_rate_limiter();
 
     let base_router = Router::new()
@@ -67,6 +68,18 @@ async fn main() -> Result<()> {
         .route("/register", post(register::route))
         .route("/ws", get(load_balancer::api::websocket_route))
         .route("/stats", get(load_balancer::api::stats_route))
+        .route(
+            "/any",
+            axum::routing::any(load_balancer::api::any_route_root),
+        )
+        .route(
+            "/any/",
+            axum::routing::any(load_balancer::api::any_route_root),
+        )
+        .route(
+            "/any/{*rest}",
+            axum::routing::any(load_balancer::api::any_route),
+        )
         .route(
             "/{uuid}",
             axum::routing::any(load_balancer::api::prefix_route_root),

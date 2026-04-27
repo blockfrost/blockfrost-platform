@@ -100,7 +100,11 @@ fn resolve_log_target(
 ) -> Option<String> {
     log_target_value
         .filter(|s| !s.trim().is_empty())
-        .or_else(|| journal_stream.map(|_| "syslog".into()))
+        .or_else(|| {
+            journal_stream
+                .filter(|s| !s.is_empty())
+                .map(|_| "syslog".into())
+        })
 }
 
 pub fn setup_tracing(log_level: Level, log_target_env: &str) {
@@ -173,6 +177,7 @@ mod tests {
     #[rstest]
     #[case::both_unset(None, None, None)]
     #[case::journal_stream_only(None, s("8:12345"), Some("syslog"))]
+    #[case::empty_journal_stream_ignored(None, s(""), None)]
     #[case::explicit_journal(s("journal"), None, Some("journal"))]
     #[case::explicit_syslog(s("syslog"), None, Some("syslog"))]
     #[case::empty_treated_as_unset(s(""), None, None)]

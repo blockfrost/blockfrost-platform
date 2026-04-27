@@ -34,7 +34,7 @@ impl Network {
     pub fn default_gateway_url(&self) -> &'static str {
         match self {
             Self::Preprod | Self::Preview => "https://api-dev.icebreakers.blockfrost.io",
-            Self::Mainnet => "https://icebreakers.mainnet.core.blockfrost.io",
+            Self::Mainnet => "https://icebreakers-mainnet.blockfrost.io",
             Self::Custom => "http://localhost:3001",
         }
     }
