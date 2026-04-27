@@ -41,7 +41,7 @@ const PERIODIC_REREGISTER: std::time::Duration = std::time::Duration::from_secs(
 /// Handles the full lifecycle:
 /// 1. Registers with the gateway (retrying on failure).
 /// 2. Spawns one self-reconnecting task per gateway endpoint.
-/// 3. Periodically re-registers (every [`PERIODIC_REREGISTER`]) to detect
+/// 3. Periodically re-registers (every `PERIODIC_REREGISTER`) to detect
 ///    gateway list changes: new gateways get tasks spawned, removed gateways
 ///    have their tasks aborted, existing connections are left untouched.
 #[allow(clippy::type_complexity)]
