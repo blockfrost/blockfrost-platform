@@ -28,8 +28,9 @@ pub struct ServerInput {
     /// When empty, the single `url` (or the `Host:` header) is used as fallback.
     #[serde(default)]
     pub peer_urls: Vec<url::Url>,
-    /// Shared secret used to create stateless HMAC tokens that any gateway
-    /// can verify. Always required (via `peer_secret` or `peer_secret_file`).
+    /// Shared secret used to derive the 32-byte keyed BLAKE3 MAC key for
+    /// stateless tokens that any gateway can verify. Always required (via
+    /// `peer_secret` or `peer_secret_file`).
     pub peer_secret: Option<String>,
     pub peer_secret_file: Option<String>,
 }
@@ -64,7 +65,8 @@ pub struct Server {
     pub url: Option<url::Url>,
     /// Base URLs of all gateway peers to advertise for HA (see [`ServerInput::peer_urls`]).
     pub peer_urls: Vec<url::Url>,
-    /// Derived 32-byte key for stateless HMAC tokens (see [`ServerInput::peer_secret`]).
+    /// Derived 32-byte keyed BLAKE3 MAC key for stateless tokens (see
+    /// [`ServerInput::peer_secret`]).
     pub peer_secret: [u8; 32],
 }
 
