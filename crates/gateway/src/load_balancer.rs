@@ -208,9 +208,10 @@ impl LoadBalancerState {
 
         let (payload_b64, hash_hex) = token.split_once('.').ok_or(APIError::Unauthorized())?;
 
-        // Verify the keyed hash.
+        // Verify the keyed hash (`blake3::Hash::eq` is constant-time).
         let expected = blake3::keyed_hash(&self.peer_secret, payload_b64.as_bytes());
-        if expected.to_hex().as_str() != hash_hex {
+        let provided = blake3::Hash::from_hex(hash_hex).map_err(|_| APIError::Unauthorized())?;
+        if expected != provided {
             return Err(APIError::Unauthorized());
         }
 
