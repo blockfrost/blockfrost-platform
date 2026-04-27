@@ -3,7 +3,7 @@
 # Integration test: Platform + 2× Gateway HA (High Availability)
 #
 # Tests that a single `blockfrost-platform` instance can register with one
-# `blockfrost-gateway` and, thanks to `peer_urls` + `peer_secret,` connect via
+# `blockfrost-gateway` and, thanks to `peer_urls` + `peer_secret`, connect via
 # WebSocket to multiple Gateway peers simultaneously. Requests proxied through
 # any peer Gateway reach the same Platform instance.
 #
