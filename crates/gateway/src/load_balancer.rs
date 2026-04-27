@@ -2,7 +2,7 @@ use crate::errors::APIError;
 use crate::hydra_server_platform;
 use crate::types::AssetName;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, atomic};
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -75,7 +75,7 @@ pub enum RelayMessage {
 
 #[derive(Clone, Debug)]
 pub struct LoadBalancerState {
-    pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
+    pub active_relays: Arc<Mutex<BTreeMap<Uuid, RelayState>>>,
     pub any_relay_cursor: Arc<atomic::AtomicU64>,
     pub hydras: Option<hydra_server_platform::HydrasManager>,
     /// 32-byte key for stateless keyed-hash tokens.
@@ -116,7 +116,7 @@ impl LoadBalancerState {
         hydras: Option<hydra_server_platform::HydrasManager>,
         peer_secret: [u8; 32],
     ) -> LoadBalancerState {
-        let active_relays = Arc::new(Mutex::new(HashMap::new()));
+        let active_relays = Arc::new(Mutex::new(BTreeMap::new()));
         let any_relay_cursor = Arc::new(atomic::AtomicU64::new(0));
 
         LoadBalancerState {
@@ -150,10 +150,9 @@ impl LoadBalancerState {
         rest: &str,
     ) -> Result<(mpsc::Sender<RequestState>, AssetName), (hyper::StatusCode, String)> {
         let active_relays = self.active_relays.lock().await;
-        let mut api_prefixes: Vec<Uuid> = active_relays.keys().copied().collect();
-        api_prefixes.sort_unstable();
+        let n = active_relays.len();
 
-        if api_prefixes.is_empty() {
+        if n == 0 {
             return Err((
                 hyper::StatusCode::NOT_FOUND,
                 format!("no relays connected for request: {rest}"),
@@ -163,8 +162,14 @@ impl LoadBalancerState {
         let request_count = self
             .any_relay_cursor
             .fetch_add(1, atomic::Ordering::Relaxed);
-        let api_prefix = select_round_robin_uuid(&api_prefixes, request_count)
-            .expect("non-empty relay list must yield a relay");
+        let idx = (request_count % n as u64) as usize;
+
+        // `BTreeMap` keys are already sorted, so `nth(idx)` gives us a
+        // deterministic round-robin order:
+        let api_prefix = *active_relays
+            .keys()
+            .nth(idx)
+            .expect("non-empty relay map must yield a key");
 
         Ok(active_relays
             .get(&api_prefix)
@@ -251,15 +256,6 @@ struct KeyedTokenPayload {
     /// Expiry as seconds since the UNIX epoch.
     #[serde(rename = "e")]
     expires: u64,
-}
-
-fn select_round_robin_uuid(sorted_api_prefixes: &[Uuid], request_count: u64) -> Option<Uuid> {
-    if sorted_api_prefixes.is_empty() {
-        return None;
-    }
-
-    let next_idx = (request_count % sorted_api_prefixes.len() as u64) as usize;
-    sorted_api_prefixes.get(next_idx).copied()
 }
 
 /// The HTTP (incl. WebSocket) endpoints that the load balancer exposes.
