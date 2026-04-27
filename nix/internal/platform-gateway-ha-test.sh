@@ -103,6 +103,7 @@ platform_port=$(python3 -m portpicker)
 
 gateway_a_url="http://127.0.0.1:${gateway_a_port}"
 gateway_b_url="http://127.0.0.1:${gateway_b_port}"
+gateway_x_url="https://this.gateway.does.not.exist:12345"
 platform_url="http://127.0.0.1:${platform_port}"
 
 peer_secret="ha-test-peer-secret"
@@ -119,7 +120,7 @@ cat >gateway-a.toml <<EOF
 address = '127.0.0.1:${gateway_a_port}'
 log_level = '${log_level}'
 url = '${gateway_a_url}'
-peer_urls = ['${gateway_a_url}', '${gateway_b_url}']
+peer_urls = ['${gateway_a_url}', '${gateway_b_url}', '${gateway_x_url}']
 peer_secret = '${peer_secret}'
 
 [database]
@@ -137,7 +138,7 @@ cat >gateway-b.toml <<EOF
 address = '127.0.0.1:${gateway_b_port}'
 log_level = '${log_level}'
 url = '${gateway_b_url}'
-peer_urls = ['${gateway_a_url}', '${gateway_b_url}']
+peer_urls = ['${gateway_a_url}', '${gateway_b_url}', '${gateway_x_url}']
 peer_secret = '${peer_secret}'
 
 [database]

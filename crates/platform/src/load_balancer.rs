@@ -1,7 +1,9 @@
 use crate::hydra_client;
+use crate::icebreakers::api::IcebreakersAPI;
 use crate::server::state::ApiPrefix;
-use bf_common::errors::{AppError, BlockfrostError};
+use bf_common::errors::BlockfrostError;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, watch};
@@ -25,13 +27,25 @@ const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 const MAX_BODY_BYTES: usize = 1024 * 1024;
 
-/// Whenever a single load balancer connection breaks, we abort all of them.
-/// This logic will have to be better once we actually use more than a single
-/// connection for high availability.
-// FIXME: refactor
+/// How long to wait before retrying a failed WebSocket connection.
+const RECONNECT_DELAY: std::time::Duration = std::time::Duration::from_secs(15);
+
+/// How long to wait before retrying when initial registration fails.
+const INITIAL_REGISTER_RETRY: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How often the supervisor re-registers to detect gateway list changes.
+const PERIODIC_REREGISTER: std::time::Duration = std::time::Duration::from_secs(30 * 60);
+
+/// Supervises WebSocket connections to gateways.
+///
+/// Handles the full lifecycle:
+/// 1. Registers with the gateway (retrying on failure).
+/// 2. Spawns one self-reconnecting task per gateway endpoint.
+/// 3. Periodically re-registers (every [`PERIODIC_REREGISTER`]) to detect
+///    gateway list changes: new gateways get tasks spawned, removed gateways
+///    have their tasks aborted, existing connections are left untouched.
 #[allow(clippy::type_complexity)]
 pub async fn run_all(
-    configs: Vec<LoadBalancerConfig>,
     http_router: axum::Router,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     api_prefix: ApiPrefix,
@@ -40,54 +54,224 @@ pub async fn run_all(
         mpsc::Sender<hydra_client::KeyExchangeResponse>,
         mpsc::Sender<hydra_client::TerminateRequest>,
     )>,
+    icebreakers_api: Arc<IcebreakersAPI>,
 ) {
-    assert!(
-        !configs.is_empty(),
-        "load_balancer::run_all called with no configs - nothing to run!"
-    );
+    let mut active: HashMap<String, JoinHandle<()>> = HashMap::new();
+    // Move into a mutable binding so we can `.take()` it exactly once — the
+    // first connection in the first successful batch gets it.
+    let mut hydra_kex = hydra_kex;
 
-    let connections: Vec<JoinHandle<Result<(), String>>> = configs
-        .iter()
-        .enumerate()
-        .map(|(idx, c)| {
-            tokio::spawn(event_loop::run(
-                c.clone(),
+    loop {
+        match icebreakers_api.register().await {
+            Ok(response) => {
+                let new_configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
+
+                if new_configs.is_empty() {
+                    if active.is_empty() {
+                        warn!("registration returned no gateways; nothing to connect to");
+                    } else {
+                        info!(
+                            "periodic re-registration returned no gateways; \
+                             keeping {} existing connection(s)",
+                            active.len()
+                        );
+                    }
+                } else {
+                    reconcile_connections(
+                        &new_configs,
+                        &mut active,
+                        &mut hydra_kex,
+                        &http_router,
+                        &health_errors,
+                        &api_prefix,
+                        &icebreakers_api,
+                    );
+                }
+            },
+            Err(err) => {
+                if active.is_empty() {
+                    error!("registration failed: {}", err);
+                    *health_errors.lock().await = vec![err.into()];
+                } else {
+                    warn!(
+                        "periodic re-registration failed: {}; \
+                         keeping {} existing connection(s)",
+                        err,
+                        active.len()
+                    );
+                }
+            },
+        }
+
+        // If we have no connections yet (initial registration failed or
+        // returned empty), retry faster. Otherwise wait the full period.
+        let delay = if active.is_empty() {
+            INITIAL_REGISTER_RETRY
+        } else {
+            PERIODIC_REREGISTER
+        };
+        tokio::time::sleep(delay).await;
+    }
+}
+
+/// Diffs the current set of active connections against the new config list:
+/// aborts tasks for removed gateways, spawns tasks for new ones, and leaves
+/// existing connections untouched.
+#[allow(clippy::type_complexity)]
+fn reconcile_connections(
+    new_configs: &[LoadBalancerConfig],
+    active: &mut HashMap<String, JoinHandle<()>>,
+    hydra_kex: &mut Option<(
+        watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
+        mpsc::Sender<hydra_client::KeyExchangeResponse>,
+        mpsc::Sender<hydra_client::TerminateRequest>,
+    )>,
+    http_router: &axum::Router,
+    health_errors: &Arc<Mutex<Vec<BlockfrostError>>>,
+    api_prefix: &ApiPrefix,
+    icebreakers_api: &Arc<IcebreakersAPI>,
+) {
+    // Clean up finished tasks so stale entries don't prevent re-spawning a
+    // URI that came back.
+    active.retain(|uri, handle| {
+        if handle.is_finished() {
+            info!("connection task for {} has finished; removing", uri);
+            false
+        } else {
+            true
+        }
+    });
+
+    let new_uris: HashSet<&str> = new_configs.iter().map(|c| c.uri.as_str()).collect();
+
+    // Abort tasks for gateways no longer in the config.
+    let removed: Vec<String> = active
+        .keys()
+        .filter(|uri| !new_uris.contains(uri.as_str()))
+        .cloned()
+        .collect();
+    for uri in removed {
+        if let Some(handle) = active.remove(&uri) {
+            info!("gateway {} removed from config; stopping task", uri);
+            handle.abort();
+        }
+    }
+
+    // Spawn tasks for newly discovered gateways.
+    let first_batch = active.is_empty();
+    for (idx, config) in new_configs.iter().enumerate() {
+        if !active.contains_key(&config.uri) {
+            if first_batch {
+                info!("connecting to gateway {}", config.uri);
+            } else {
+                info!("new gateway {} discovered; starting task", config.uri);
+            }
+            let handle = tokio::spawn(run_one_with_reconnect(
+                config.clone(),
                 http_router.clone(),
                 health_errors.clone(),
                 api_prefix.clone(),
-                // FIXME: for now, we only pass the `hydra_kex` to the first Gateway (but we only run one)
-                if idx == 0 { hydra_kex.clone() } else { None },
-            ))
-        })
-        .collect();
-
-    // Now wait for the first (only?) one to finish, and abort all others, and join all.
-    let (first_res, first_idx, remaining) = futures::future::select_all(connections).await;
-
-    let maybe_error = match first_res {
-        Err(panic) => format!(" with a panic: {panic:?}"),
-        Ok(Err(err)) => format!(" with an error: {err}"),
-        Ok(Ok(())) => "".to_string(),
-    };
-
-    *health_errors.lock().await = vec![
-        AppError::LoadBalancer(format!(
-            "Load balancer connection ended unexpectedly{maybe_error}"
-        ))
-        .into(),
-    ];
-
-    error!(
-        "connection to {} finished{}",
-        configs[first_idx].uri, maybe_error
-    );
-
-    warn!("aborting the remaining {} connection(s)", remaining.len());
-    for r in remaining.iter() {
-        r.abort();
+                // FIXME: for now, only pass hydra_kex to the very first
+                // connection in the very first batch.
+                if first_batch && idx == 0 {
+                    hydra_kex.take()
+                } else {
+                    None
+                },
+                icebreakers_api.clone(),
+            ));
+            active.insert(config.uri.clone(), handle);
+        }
     }
 
-    let _ignored_failure = futures::future::join_all(remaining).await;
+    info!("{} active connection(s)", active.len());
+}
+
+/// Runs a single WebSocket connection with automatic reconnection.
+///
+/// On failure, waits [`RECONNECT_DELAY`], re-registers to refresh the access
+/// token (in case it expired), and retries — without disturbing any sibling
+/// connections managed by [`run_all`].
+///
+/// Self-terminates when re-registration returns a non-empty config list that
+/// no longer includes this connection's URI (the supervisor will clean up the
+/// finished task).
+#[allow(clippy::type_complexity)]
+async fn run_one_with_reconnect(
+    mut config: LoadBalancerConfig,
+    http_router: axum::Router,
+    health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
+    api_prefix: ApiPrefix,
+    hydra_kex: Option<(
+        watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
+        mpsc::Sender<hydra_client::KeyExchangeResponse>,
+        mpsc::Sender<hydra_client::TerminateRequest>,
+    )>,
+    icebreakers_api: Arc<IcebreakersAPI>,
+) {
+    loop {
+        let result = event_loop::run(
+            config.clone(),
+            http_router.clone(),
+            health_errors.clone(),
+            api_prefix.clone(),
+            hydra_kex.clone(),
+        )
+        .await;
+
+        match &result {
+            Ok(()) => {
+                info!("connection to {} ended cleanly", config.uri);
+            },
+            Err(err) => {
+                warn!(
+                    "connection to {} failed: {}; will retry in {:?}",
+                    config.uri, err, RECONNECT_DELAY,
+                );
+            },
+        }
+
+        tokio::time::sleep(RECONNECT_DELAY).await;
+
+        // Try to re-register to refresh the access token. If re-registration
+        // fails (e.g. the registration gateway is down), keep the old token
+        // and attempt the WebSocket connection anyway:
+        match icebreakers_api.register().await {
+            Ok(response) => {
+                let new_configs: Vec<_> = response.load_balancers.into_iter().flatten().collect();
+                if new_configs.is_empty() {
+                    // Empty response might be a transient issue; keep retrying
+                    // with the existing token.
+                    warn!(
+                        "re-registration returned no gateways; \
+                         retrying {} with existing token",
+                        config.uri,
+                    );
+                } else if let Some(new_config) =
+                    new_configs.into_iter().find(|c| c.uri == config.uri)
+                {
+                    info!("refreshed access token for {}", config.uri);
+                    config.access_token = new_config.access_token;
+                } else {
+                    // Non-empty list that doesn't include our URI — the
+                    // gateway no longer wants this connection. Stop so the
+                    // supervisor can clean up.
+                    info!(
+                        "re-registration succeeded but {} is no longer \
+                         in the config; stopping this connection",
+                        config.uri,
+                    );
+                    break;
+                }
+            },
+            Err(err) => {
+                warn!(
+                    "re-registration failed: {}; retrying {} with existing token",
+                    err, config.uri,
+                );
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
