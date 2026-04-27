@@ -21,6 +21,10 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   IMAGE: ghcr.io/blockfrost/blockfrost-platform
+  # Our self-hosted runner is a systemd service, so child processes inherit
+  # JOURNAL_STREAM. Clear it so that CI logs use the default colored format
+  # instead of syslog priority prefixes meant for journald.
+  JOURNAL_STREAM: ""
 
 jobs:
   check_action_pins:
