@@ -1,7 +1,7 @@
 use bf_common::errors::BlockfrostError;
 use pallas_hardano::display::haskell_error::as_cbor_decode_failure;
 use pallas_primitives::{alonzo::Value, babbage::GenTransactionOutput, conway::Tx};
-use tracing::warn;
+use tracing::info;
 
 /// Checks if the given transaction is a valid CBOR-encoded transaction, by trying to decode it.
 /// This function is used to validate the transaction before submitting it to the node.
@@ -11,20 +11,26 @@ pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
     match pallas_codec::minicbor::decode::<Tx>(tx) {
         Ok(decoded) => {
             if _check_multiasset_zero(decoded) {
-                Err(BlockfrostError::custom_400(
-                    as_cbor_decode_failure("MultiAsset cannot contain zeros".to_string(), 0)
-                        .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
-                ))
+                let msg = as_cbor_decode_failure("MultiAsset cannot contain zeros".to_string(), 0)
+                    .unwrap_or_else(|e| {
+                        // pallas hardano failure, never expected to happen
+                        tracing::warn!("Failed to format CBOR decode error: {e}");
+                        "transaction contains MultiAsset with zeros".to_string()
+                    });
+                Err(BlockfrostError::custom_400(msg))
             } else {
                 Ok(())
             }
         },
         Err(e) => {
-            warn!("Invalid TX CBOR: {:?}, CBOR: {}", e, hex::encode(tx));
-            Err(BlockfrostError::custom_400(
-                as_cbor_decode_failure(e.to_string(), e.position().unwrap_or(0) as u64)
-                    .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
-            ))
+            info!("Invalid TX CBOR: {:?}, CBOR: {}", e, hex::encode(tx));
+            let msg = as_cbor_decode_failure(e.to_string(), e.position().unwrap_or(0) as u64)
+                .unwrap_or_else(|fmt_err| {
+                    // pallas hardano failure, never expected to happen
+                    tracing::warn!("Failed to format CBOR decode error: {fmt_err}");
+                    "transaction CBOR decode failure".to_string()
+                });
+            Err(BlockfrostError::custom_400(msg))
         },
     }
 }

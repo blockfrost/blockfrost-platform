@@ -37,5 +37,7 @@
   "/epochs/latest/parameters",
   "/genesis",
   "/addresses/{address}/transactions",
-  "/addresses/{address}/utxos"
+  "/addresses/{address}/utxos",
+  "/utils/txs/evaluate",
+  "/utils/txs/evaluate/utxos"
 ]
