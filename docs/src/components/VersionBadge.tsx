@@ -11,7 +11,6 @@ export default function VersionBadge() {
       title={`v${packageJson.version} (${channel}) — switch to ${isNext ? "stable" : "next"}`}
     >
       <span className="version-badge-version">v{packageJson.version}</span>
-      <span className="version-badge-channel">{channel}</span>
     </a>
   );
 }
