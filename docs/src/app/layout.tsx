@@ -4,6 +4,7 @@ import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
 import "../styles.css";
 import Logo from "../components/Logo";
+import VersionBadge from "../components/VersionBadge";
 
 export const metadata = {
   metadataBase: new URL("https://platform.blockfrost.io"),
@@ -36,7 +37,9 @@ export default async function RootLayout({ children }) {
       logo={<Logo />}
       projectLink="https://github.com/blockfrost/blockfrost-platform"
       chatLink="https://discord.gg/inputoutput"
-    />
+    >
+      <VersionBadge />
+    </Navbar>
   );
 
   const pageMap = await getPageMap();
