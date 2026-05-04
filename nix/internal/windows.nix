@@ -115,7 +115,7 @@ in rec {
   in
     pkgs.fetchzip {
       name = "testgen-hs-${version}";
-      url = "https://github.com/input-output-hk/testgen-hs/releases/download/${version}/testgen-hs-${version}-${targetSystem}.zip";
+      url = "https://github.com/blockfrost/testgen-hs/releases/download/${version}/testgen-hs-${version}-${targetSystem}.zip";
       hash = "sha256-LXE1RBKgal1Twh7j2hpCfNLsBMEcqSwGHb4bj/Imd9Q=";
     };
 
