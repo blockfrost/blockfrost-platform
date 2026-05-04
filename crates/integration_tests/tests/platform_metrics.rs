@@ -12,7 +12,7 @@ use tower::ServiceExt;
 async fn test_route_metrics() {
     initialize_logging();
 
-    let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
+    let (app, _, _, _, _, _) = build_app().await.expect("Failed to build the application");
 
     // Test without trailing slash
     let response = app

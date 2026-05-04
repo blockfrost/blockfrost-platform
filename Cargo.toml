@@ -12,6 +12,7 @@ members = [
   "crates/api_provider",
   "crates/node",
   "crates/data_node",
+  "crates/tx_evaluator",
   "crates/testgen",
   "crates/error_decoder",
   "crates/gateway",
@@ -34,6 +35,7 @@ bf-build-utils = { path = "crates/build_utils", package = "blockfrost-platform-b
 bf-common = { path = "crates/common", package = "blockfrost-platform-common" }
 bf-data-node = { path = "crates/data_node", package = "blockfrost-platform-data-node" }
 bf-node = { path = "crates/node", package = "blockfrost-platform-node" }
+bf-tx-evaluator = { path = "crates/tx_evaluator", package = "blockfrost-platform-tx-evaluator" }
 bf-testgen = { path = "crates/testgen", package = "blockfrost-platform-testgen" }
 bip39 = "2.2.2"
 blockfrost = { version = "1.2.3", default-features = false, features = [
@@ -67,13 +69,16 @@ nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
 # FIXME: use a proper Pallas release after they merge <https://github.com/txpipe/pallas/pull/624>:
-pallas-addresses = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-codec = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-crypto = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-hardano = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-network = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-primitives = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
-pallas-traverse = { git = "https://github.com/txpipe/pallas.git", rev = "ed422bc0d5a09f77617d4882dd4c71089a8bcdb2" }
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d", features = [
+  "phase2",
+] }
 pretty_assertions = "1.4.1"
 proptest = "1.10.0"
 reqwest = { version = "0.13.2", default-features = false, features = [
