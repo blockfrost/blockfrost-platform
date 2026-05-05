@@ -1,7 +1,10 @@
-use crate::{api::ApiResult, server::state::AppState};
+use crate::{
+    api::ApiResult,
+    pools::{PoolData, PoolsPath},
+    server::state::AppState,
+};
 use axum::extract::{Path, State};
 use bf_api_provider::types::PoolsMetadataResponse;
-use bf_common::pools::{PoolData, PoolsPath};
 
 pub async fn route(
     State(state): State<AppState>,
