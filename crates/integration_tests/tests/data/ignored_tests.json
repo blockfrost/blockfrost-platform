@@ -319,6 +319,14 @@
     {
       "_comment": "accounts/stake_test1uzg6rdrt4nes96g63jaygvrn777gfnr5wqdr8rq3r6xxtygj4m03u/delegations?count=10&page=1, accounts/stake_test1uzg6rdrt4nes96g63jaygvrn777gfnr5wqdr8rq3r6xxtygj4m03u/delegations?count=5&page=1&order=asc",
       "id": "accounts-stake-address-queryparams-generic-stake-address-delegations_1e6bcbbea05f"
+    },
+    {
+      "_comment": "epochs/latest/parameters",
+      "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
+    },
+    {
+      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
+      "id": "pools-extended-queryparams_33c8fc92f5c2"
     }
   ]
 }
