@@ -2,7 +2,7 @@ use crate::errors::APIError;
 use crate::hydra_server_platform;
 use crate::types::AssetName;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, atomic};
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -75,10 +75,11 @@ pub enum RelayMessage {
 
 #[derive(Clone, Debug)]
 pub struct LoadBalancerState {
-    pub access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    pub active_relays: Arc<Mutex<HashMap<Uuid, RelayState>>>,
-    pub background_worker: Arc<JoinHandle<()>>,
+    pub active_relays: Arc<Mutex<BTreeMap<Uuid, RelayState>>>,
+    pub any_relay_cursor: Arc<atomic::AtomicU64>,
     pub hydras: Option<hydra_server_platform::HydrasManager>,
+    /// 32-byte key for stateless keyed-hash tokens.
+    peer_secret: [u8; 32],
 }
 
 #[derive(Debug)]
@@ -86,7 +87,6 @@ pub struct AccessTokenState {
     pub name: AssetName,
     pub reward_addr: String,
     pub api_prefix: Uuid,
-    pub expires: std::time::Instant,
 }
 
 #[derive(Clone, Debug)]
@@ -112,100 +112,150 @@ pub struct RequestState {
 }
 
 impl LoadBalancerState {
-    pub async fn new(hydras: Option<hydra_server_platform::HydrasManager>) -> LoadBalancerState {
-        let access_tokens = Arc::new(Mutex::new(HashMap::new()));
-        let active_relays = Arc::new(Mutex::new(HashMap::new()));
-        let background_worker = Arc::new(tokio::spawn(Self::clean_up_expired_tokens_periodically(
-            access_tokens.clone(),
-        )));
+    pub fn new(
+        hydras: Option<hydra_server_platform::HydrasManager>,
+        peer_secret: [u8; 32],
+    ) -> LoadBalancerState {
+        let active_relays = Arc::new(Mutex::new(BTreeMap::new()));
+        let any_relay_cursor = Arc::new(atomic::AtomicU64::new(0));
 
         LoadBalancerState {
-            access_tokens,
             active_relays,
-            background_worker,
+            any_relay_cursor,
             hydras,
+            peer_secret,
         }
     }
 
-    pub async fn new_access_token(
+    async fn relay_for_prefix(
+        &self,
+        api_prefix: Uuid,
+        rest: &str,
+    ) -> Result<(mpsc::Sender<RequestState>, AssetName), (hyper::StatusCode, String)> {
+        self.active_relays
+            .lock()
+            .await
+            .get(&api_prefix)
+            .ok_or_else(|| {
+                (
+                    hyper::StatusCode::NOT_FOUND,
+                    format!("relay {api_prefix} not found for request: {rest}"),
+                )
+            })
+            .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))
+    }
+
+    async fn relay_for_any(
+        &self,
+        rest: &str,
+    ) -> Result<(mpsc::Sender<RequestState>, AssetName), (hyper::StatusCode, String)> {
+        let active_relays = self.active_relays.lock().await;
+        let n = active_relays.len();
+
+        if n == 0 {
+            return Err((
+                hyper::StatusCode::NOT_FOUND,
+                format!("no relays connected for request: {rest}"),
+            ));
+        }
+
+        let request_count = self
+            .any_relay_cursor
+            .fetch_add(1, atomic::Ordering::Relaxed);
+        let idx = (request_count % n as u64) as usize;
+
+        // `BTreeMap` keys are already sorted, so `nth(idx)` gives us a
+        // deterministic round-robin order:
+        let api_prefix = *active_relays
+            .keys()
+            .nth(idx)
+            .expect("non-empty relay map must yield a key");
+
+        Ok(active_relays
+            .get(&api_prefix)
+            .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))
+            .expect("selected relay must exist in active_relays"))
+    }
+
+    /// Create a stateless token: `base64url(payload) + "." + hex(blake3_keyed_hash)`.
+    pub fn new_access_token(
         &self,
         name: AssetName,
         api_prefix: Uuid,
         reward_addr: &str,
     ) -> AccessToken {
-        let expires = std::time::Instant::now() + ACCESS_TOKEN_TIMEOUT;
-        let token = random_token();
-        self.access_tokens.lock().await.insert(
-            token.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: reward_addr.to_string(),
-                api_prefix,
-                expires,
-            },
-        );
-        token
+        use base64::{Engine as _, engine::general_purpose};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let expires = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before UNIX epoch")
+            .as_secs()
+            + ACCESS_TOKEN_TIMEOUT.as_secs();
+
+        let payload = KeyedTokenPayload {
+            api_prefix,
+            asset_name: name.0,
+            reward_addr: reward_addr.to_string(),
+            expires,
+        };
+        let payload_json =
+            serde_json::to_string(&payload).expect("KeyedTokenPayload is serializable");
+        let payload_b64 = general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+        let hash = blake3::keyed_hash(&self.peer_secret, payload_b64.as_bytes());
+        AccessToken(format!("{payload_b64}.{}", hash.to_hex()))
     }
 
-    pub async fn register(&self, token: &str) -> Result<AccessTokenState, APIError> {
-        let token = AccessToken(token.to_string());
-        let state = self
-            .access_tokens
-            .lock()
-            .await
-            .remove(&token)
-            .ok_or(APIError::Unauthorized())?;
-        if state.expires < std::time::Instant::now() {
-            Err(APIError::Unauthorized())?;
+    /// Verify a keyed token and reconstruct [`AccessTokenState`].
+    pub fn register(&self, token: &str) -> Result<AccessTokenState, APIError> {
+        use base64::{Engine as _, engine::general_purpose};
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let (payload_b64, hash_hex) = token.split_once('.').ok_or(APIError::Unauthorized())?;
+
+        // Verify the keyed hash (`blake3::Hash::eq` is constant-time).
+        let expected = blake3::keyed_hash(&self.peer_secret, payload_b64.as_bytes());
+        let provided = blake3::Hash::from_hex(hash_hex).map_err(|_| APIError::Unauthorized())?;
+        if expected != provided {
+            return Err(APIError::Unauthorized());
         }
-        Ok(state)
-    }
 
-    async fn clean_up_expired_tokens_periodically(
-        access_tokens: Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    ) {
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            Self::clean_up_expired_tokens(&access_tokens).await;
+        // Decode & deserialize the payload.
+        let payload_json = general_purpose::URL_SAFE_NO_PAD
+            .decode(payload_b64)
+            .map_err(|_| APIError::Unauthorized())?;
+        let payload: KeyedTokenPayload =
+            serde_json::from_slice(&payload_json).map_err(|_| APIError::Unauthorized())?;
+
+        // Check expiry.
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before UNIX epoch")
+            .as_secs();
+        if payload.expires < now {
+            return Err(APIError::Unauthorized());
         }
-    }
 
-    async fn clean_up_expired_tokens(
-        access_tokens: &Arc<Mutex<HashMap<AccessToken, AccessTokenState>>>,
-    ) {
-        let now = std::time::Instant::now();
-
-        access_tokens.lock().await.retain(|_, state| {
-            let still_valid = state.expires > now;
-            if !still_valid {
-                warn!(
-                    "{}: unused WebSocket access token expired",
-                    state.name.as_str(),
-                )
-            }
-            still_valid
-        });
+        Ok(AccessTokenState {
+            name: AssetName(payload.asset_name),
+            reward_addr: payload.reward_addr,
+            api_prefix: payload.api_prefix,
+        })
     }
 }
 
-/// Cancels its background tasks, when all clones of a particular [`LoadBalancerState`] go out of scope.
-impl Drop for LoadBalancerState {
-    fn drop(&mut self) {
-        // Abort the background task, if this is the _last_ clone of [`LoadBalancerState`]:
-        if Arc::strong_count(&self.background_worker) == 1 {
-            self.background_worker.abort();
-        }
-    }
-}
-
-/// Generates a random Base64-encoded string. Used for generating access tokens.
-pub fn random_token() -> AccessToken {
-    use base64::{Engine as _, engine::general_purpose};
-    use rand::RngCore;
-    let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    let token = general_purpose::STANDARD.encode(bytes);
-    AccessToken(token)
+/// Payload encoded inside a stateless keyed token.
+#[derive(Serialize, Deserialize)]
+struct KeyedTokenPayload {
+    #[serde(rename = "p")]
+    api_prefix: Uuid,
+    #[serde(rename = "n")]
+    asset_name: String,
+    #[serde(rename = "r")]
+    reward_addr: String,
+    /// Expiry as seconds since the UNIX epoch.
+    #[serde(rename = "e")]
+    expires: u64,
 }
 
 /// The HTTP (incl. WebSocket) endpoints that the load balancer exposes.
@@ -234,7 +284,7 @@ pub mod api {
             .and_then(|a| a.strip_prefix("Bearer "))
             .ok_or(APIError::Unauthorized())?
             .to_string();
-        let token_state = load_balancer.register(&token).await?;
+        let token_state = load_balancer.register(&token)?;
         Ok(ws.on_upgrade(|socket| event_loop::run(load_balancer, token_state, socket)))
     }
 
@@ -247,6 +297,14 @@ pub mod api {
         handle_prefix_route(load_balancer, uuid, "/".to_string(), req).await
     }
 
+    /// Axum noise, a proxy to `handle_any_route`.
+    pub async fn any_route_root(
+        Extension(load_balancer): Extension<LoadBalancerState>,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        handle_any_route(load_balancer, "/".to_string(), req).await
+    }
+
     /// Axum noise, a proxy to `handle_prefix_route`.
     pub async fn prefix_route(
         Path((uuid, rest)): Path<(String, String)>,
@@ -254,6 +312,15 @@ pub mod api {
         req: Request,
     ) -> Result<impl IntoResponse, APIError> {
         handle_prefix_route(load_balancer, uuid, format!("/{rest}"), req).await
+    }
+
+    /// Axum noise, a proxy to `handle_any_route`.
+    pub async fn any_route(
+        Path(rest): Path<String>,
+        Extension(load_balancer): Extension<LoadBalancerState>,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        handle_any_route(load_balancer, format!("/{rest}"), req).await
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -318,60 +385,10 @@ pub mod api {
                 )
             })?;
 
-            let (new_request_channel, relay_name): (mpsc::Sender<RequestState>, AssetName) =
-                load_balancer
-                    .active_relays
-                    .lock()
-                    .await
-                    .get(&api_prefix)
-                    .ok_or_else(|| {
-                        (
-                            StatusCode::NOT_FOUND,
-                            format!("relay {api_prefix} not found for request: {rest}"),
-                        )
-                    })
-                    .map(|rs| (rs.new_request_channel.clone(), rs.name.clone()))?;
+            let (new_request_channel, relay_name) =
+                load_balancer.relay_for_prefix(api_prefix, &rest).await?;
 
-            let query = req.uri().query().map(ToString::to_string);
-            let json_req = request_to_json(req, rest.clone(), query, &relay_name).await?;
-
-            let (response_tx, response_rx) = oneshot::channel::<JsonResponse>();
-
-            let new_request = RequestState {
-                expires: std::time::Instant::now() + REQUEST_TIMEOUT,
-                respond_to: response_tx,
-                underlying: json_req,
-            };
-
-            new_request_channel.send(new_request).await.map_err(|_| {
-                (
-                    StatusCode::BAD_GATEWAY,
-                    format!(
-                        "receiver {} dropped; request: {}",
-                        relay_name.as_str(),
-                        rest
-                    ),
-                )
-            })?;
-
-            match tokio::time::timeout(REQUEST_TIMEOUT, response_rx).await {
-                Ok(Ok(response)) => json_to_response(response, &relay_name).await,
-                Ok(Err(_)) => {
-                    // sender dropped
-                    Err((
-                        StatusCode::BAD_GATEWAY,
-                        format!(
-                            "relay {} dropped while awaiting response for: {}",
-                            relay_name.as_str(),
-                            rest
-                        ),
-                    ))
-                },
-                Err(_) => Err((
-                    StatusCode::GATEWAY_TIMEOUT,
-                    format!("relay {} timed out for: {}", relay_name.as_str(), rest),
-                )),
-            }
+            forward_request(new_request_channel, relay_name, rest, req).await
         }
         .await;
 
@@ -381,6 +398,78 @@ pub mod api {
                 error!("returning {}, because: {}", code, reason);
                 Ok((code, reason).into_response())
             },
+        }
+    }
+
+    /// This route handles requests directed at any active relay. The relay is
+    /// picked by sorting all connected UUIDs and selecting the next one via a
+    /// shared round-robin counter.
+    async fn handle_any_route(
+        load_balancer: LoadBalancerState,
+        rest: String,
+        req: Request,
+    ) -> Result<impl IntoResponse, APIError> {
+        let rv: Result<hyper::Response<axum::body::Body>, (StatusCode, String)> = async move {
+            let (new_request_channel, relay_name) = load_balancer.relay_for_any(&rest).await?;
+
+            forward_request(new_request_channel, relay_name, rest, req).await
+        }
+        .await;
+
+        match rv {
+            Ok(resp) => Ok(resp),
+            Err((code, reason)) => {
+                error!("returning {}, because: {}", code, reason);
+                Ok((code, reason).into_response())
+            },
+        }
+    }
+
+    async fn forward_request(
+        new_request_channel: mpsc::Sender<RequestState>,
+        relay_name: AssetName,
+        rest: String,
+        req: Request,
+    ) -> Result<hyper::Response<axum::body::Body>, (StatusCode, String)> {
+        let query = req.uri().query().map(ToString::to_string);
+        let json_req = request_to_json(req, rest.clone(), query, &relay_name).await?;
+
+        let (response_tx, response_rx) = oneshot::channel::<JsonResponse>();
+
+        let new_request = RequestState {
+            expires: std::time::Instant::now() + REQUEST_TIMEOUT,
+            respond_to: response_tx,
+            underlying: json_req,
+        };
+
+        new_request_channel.send(new_request).await.map_err(|_| {
+            (
+                StatusCode::BAD_GATEWAY,
+                format!(
+                    "receiver {} dropped; request: {}",
+                    relay_name.as_str(),
+                    rest
+                ),
+            )
+        })?;
+
+        match tokio::time::timeout(REQUEST_TIMEOUT, response_rx).await {
+            Ok(Ok(response)) => json_to_response(response, &relay_name).await,
+            Ok(Err(_)) => {
+                // sender dropped
+                Err((
+                    StatusCode::BAD_GATEWAY,
+                    format!(
+                        "relay {} dropped while awaiting response for: {}",
+                        relay_name.as_str(),
+                        rest
+                    ),
+                ))
+            },
+            Err(_) => Err((
+                StatusCode::GATEWAY_TIMEOUT,
+                format!("relay {} timed out for: {}", relay_name.as_str(), rest),
+            )),
         }
     }
 }
@@ -1217,103 +1306,126 @@ async fn json_to_response(
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_new_creates_empty_state() {
-        let lb = LoadBalancerState::new(None).await;
+    fn test_relay_state(name: &str) -> RelayState {
+        let (new_request_channel, _request_rx) = mpsc::channel(1);
+        let (do_finish, _finish_rx) = mpsc::channel(1);
 
-        let tokens = lb.access_tokens.lock().await;
-        assert!(tokens.is_empty());
+        RelayState {
+            name: AssetName(name.to_string()),
+            new_request_channel,
+            do_finish,
+            requests_in_progress: Arc::new(Mutex::new(HashMap::new())),
+            network_rtt: Arc::new(Mutex::new(None)),
+            connected_since: std::time::Instant::now(),
+            requests_sent: Arc::new(atomic::AtomicU64::new(0)),
+            responses_received: Arc::new(atomic::AtomicU64::new(0)),
+        }
+    }
 
-        let relays = lb.active_relays.lock().await;
-        assert!(relays.is_empty());
+    fn test_key() -> [u8; 32] {
+        *blake3::hash(b"test-peer-secret").as_bytes()
+    }
+
+    #[test]
+    fn test_new_creates_empty_state() {
+        let lb = LoadBalancerState::new(None, test_key());
+        // active_relays starts empty (we can't check much else now)
+        assert!(lb.active_relays.blocking_lock().is_empty());
     }
 
     #[tokio::test]
-    async fn test_new_access_token_register() {
-        let lb = LoadBalancerState::new(None).await;
+    async fn test_relay_for_any_uses_sorted_uuid_round_robin() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let first = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let second = Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let third = Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap();
+
+        lb.active_relays
+            .lock()
+            .await
+            .insert(third, test_relay_state("third"));
+        lb.active_relays
+            .lock()
+            .await
+            .insert(first, test_relay_state("first"));
+        lb.active_relays
+            .lock()
+            .await
+            .insert(second, test_relay_state("second"));
+
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "first"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "second"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "third"
+        );
+        assert_eq!(
+            lb.relay_for_any("/metrics").await.unwrap().1.as_str(),
+            "first"
+        );
+    }
+
+    #[test]
+    fn test_token_roundtrip() {
+        let lb = LoadBalancerState::new(None, test_key());
         let name = AssetName("x-asset-x".to_string());
         let prefix = Uuid::new_v4();
-        let token = lb.new_access_token(name.clone(), prefix, "addr1…").await;
-        let state = lb.register(&token.0).await.expect("should register");
+        let token = lb.new_access_token(name.clone(), prefix, "addr1…");
 
+        // Any instance with the same key can verify it.
+        let state = lb.register(&token.0).expect("should verify");
         assert_eq!(state.name, name);
         assert_eq!(state.api_prefix, prefix);
-
-        // token should be removed after register
-        let tokens = lb.access_tokens.lock().await;
-        assert!(tokens.is_empty());
+        assert_eq!(state.reward_addr, "addr1…");
     }
 
-    #[tokio::test]
-    async fn test_register_invalid_token() {
-        let lb = LoadBalancerState::new(None).await;
-        let res = lb.register("invalid").await;
+    #[test]
+    fn test_register_invalid_token() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let res = lb.register("invalid");
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
-    #[tokio::test]
-    async fn test_register_expired_token() {
-        let lb = LoadBalancerState::new(None).await;
-        let name = AssetName("x-asset-x".to_string());
-        let prefix = Uuid::new_v4();
-        let token = random_token();
-        let expires = std::time::Instant::now() - std::time::Duration::from_secs(1);
-
-        lb.access_tokens.lock().await.insert(
-            token.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires,
-            },
-        );
-        let res = lb.register(&token.0).await;
-
+    #[test]
+    fn test_wrong_key_rejected() {
+        let key_a = *blake3::hash(b"secret-a").as_bytes();
+        let key_b = *blake3::hash(b"secret-b").as_bytes();
+        let lb_a = LoadBalancerState::new(None, key_a);
+        let lb_b = LoadBalancerState::new(None, key_b);
+        let token = lb_a.new_access_token(AssetName("a".into()), Uuid::new_v4(), "addr");
+        let res = lb_b.register(&token.0);
         assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
-    #[tokio::test]
-    async fn test_clean_up_expired_tokens_logic() {
-        let lb = LoadBalancerState::new(None).await;
-        let name = AssetName("x-asset-x".to_string());
+    #[test]
+    fn test_expired_token_rejected() {
+        use base64::Engine as _;
+
+        let key = test_key();
         let prefix = Uuid::new_v4();
 
-        // insert expired token
-        let token_expired = random_token();
-        let expires_expired = std::time::Instant::now() - std::time::Duration::from_secs(1);
-        lb.access_tokens.lock().await.insert(
-            token_expired.clone(),
-            AccessTokenState {
-                name: name.clone(),
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires: expires_expired,
-            },
-        );
+        // Manually create a token that is already expired.
+        let payload = KeyedTokenPayload {
+            api_prefix: prefix,
+            asset_name: "x".to_string(),
+            reward_addr: "addr".to_string(),
+            expires: 0, // epoch 0 = expired
+        };
+        let payload_json = serde_json::to_string(&payload).unwrap();
+        let payload_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+        let hash = blake3::keyed_hash(&key, payload_b64.as_bytes());
+        let token = format!("{payload_b64}.{}", hash.to_hex());
 
-        // insert valid token
-        let token_valid = random_token();
-        let expires_valid = std::time::Instant::now() + std::time::Duration::from_secs(300);
-
-        lb.access_tokens.lock().await.insert(
-            token_valid.clone(),
-            AccessTokenState {
-                name,
-                reward_addr: "addr1…".to_string(),
-                api_prefix: prefix,
-                expires: expires_valid,
-            },
-        );
-
-        // cleanup
-        LoadBalancerState::clean_up_expired_tokens(&lb.access_tokens).await;
-        let tokens = lb.access_tokens.lock().await;
-
-        assert_eq!(tokens.len(), 1);
-
-        assert!(tokens.contains_key(&token_valid));
-        assert!(!tokens.contains_key(&token_expired));
+        let lb = LoadBalancerState::new(None, key);
+        let res = lb.register(&token);
+        assert!(matches!(res, Err(APIError::Unauthorized())));
     }
 
     #[tokio::test]

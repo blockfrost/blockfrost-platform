@@ -295,6 +295,7 @@ done
 # ---------------------------------------------------------------------------- #
 
 log_level=info
+peer_secret="hydra-bridge-test-peer-secret"
 
 gateway_port=$(python3 -m portpicker)
 bridge_port=$(python3 -m portpicker)
@@ -310,6 +311,7 @@ cat >gateway-config.toml <<EOF
 [server]
 address = '127.0.0.1:${gateway_port}'
 log_level = '${log_level}'
+peer_secret = '${peer_secret}'
 
 [database]
 connection_string = 'postgresql://not-used-with-dev-mock-db@localhost/dummy'

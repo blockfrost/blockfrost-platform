@@ -23,6 +23,16 @@ pub struct ServerInput {
     pub address: String,
     pub log_level: String,
     pub url: Option<url::Url>,
+    /// Base URLs of all gateway peers to advertise in `/register` responses.
+    /// Platforms will open a WebSocket connection to each of these for HA.
+    /// When empty, the single `url` (or the `Host:` header) is used as fallback.
+    #[serde(default)]
+    pub peer_urls: Vec<url::Url>,
+    /// Shared secret used to derive the 32-byte keyed BLAKE3 MAC key for
+    /// stateless tokens that any gateway can verify. Always required (via
+    /// `peer_secret` or `peer_secret_file`).
+    pub peer_secret: Option<String>,
+    pub peer_secret_file: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -53,6 +63,11 @@ pub struct Server {
     pub log_level: Level,
     pub network: Network,
     pub url: Option<url::Url>,
+    /// Base URLs of all gateway peers to advertise for HA (see [`ServerInput::peer_urls`]).
+    pub peer_urls: Vec<url::Url>,
+    /// Derived 32-byte keyed BLAKE3 MAC key for stateless tokens (see
+    /// [`ServerInput::peer_secret`]).
+    pub peer_secret: [u8; 32],
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -119,7 +134,7 @@ pub fn load_config(path: PathBuf) -> Config {
         None => toml_config
             .database
             .connection_string
-            .expect("connection_string must be provided"),
+            .expect("connection_string or connection_string_file must be provided"),
     };
 
     let project_id = match toml_config.blockfrost.project_id_file {
@@ -134,12 +149,31 @@ pub fn load_config(path: PathBuf) -> Config {
 
     let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
 
+    let peer_urls = toml_config.server.peer_urls;
+    for u in &peer_urls {
+        validate_server_url(u);
+    }
+
+    let peer_secret_raw = match toml_config.server.peer_secret_file {
+        Some(file_path) => read_to_string(file_path)
+            .expect("Failed to read peer secret file")
+            .trim()
+            .to_string(),
+        None => toml_config
+            .server
+            .peer_secret
+            .expect("peer_secret or peer_secret_file must be provided"),
+    };
+    let peer_secret = derive_peer_key(&peer_secret_raw);
+
     let config = Config {
         server: Server {
             address: toml_config.server.address,
             log_level,
             network,
             url: toml_config.server.url.inspect(validate_server_url),
+            peer_urls,
+            peer_secret,
         },
         database: Db { connection_string },
         blockfrost: Blockfrost {
@@ -151,6 +185,11 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     override_with_env(config)
+}
+
+/// Derive a 32-byte key from an arbitrary-length secret string using Blake3.
+fn derive_peer_key(secret: &str) -> [u8; 32] {
+    *blake3::hash(secret.as_bytes()).as_bytes()
 }
 
 /// Validate that a parsed `server.url` uses http(s) and includes a host.
@@ -167,11 +206,10 @@ fn validate_server_url(url: &url::Url) {
 }
 
 /// Parse a raw string into a [`url::Url`] and validate it.
-/// Used for the `BLOCKFROST_GATEWAY_SERVER_URL` environment variable override.
-fn parse_server_url(raw: &str) -> url::Url {
-    let parsed = url::Url::parse(raw).unwrap_or_else(|e| {
-        panic!("BLOCKFROST_GATEWAY_SERVER_URL is not a valid URL ({raw}): {e}")
-    });
+/// Used for environment variable overrides of server URLs.
+fn parse_server_url(raw: &str, env_var: &str) -> url::Url {
+    let parsed = url::Url::parse(raw)
+        .unwrap_or_else(|e| panic!("{env_var} is not a valid URL ({raw}): {e}"));
     validate_server_url(&parsed);
     parsed
 }
@@ -191,8 +229,31 @@ fn network_from_project_id(project_id: &str) -> Result<Network> {
 fn override_with_env(config: Config) -> Config {
     let server_url = var("BLOCKFROST_GATEWAY_SERVER_URL")
         .ok()
-        .map(|s| parse_server_url(&s))
+        .map(|s| parse_server_url(&s, "BLOCKFROST_GATEWAY_SERVER_URL"))
         .or(config.server.url);
+    let peer_urls = var("BLOCKFROST_GATEWAY_SERVER_PEER_URLS")
+        .ok()
+        .map(|s| {
+            s.split(',')
+                .map(|u| parse_server_url(u.trim(), "BLOCKFROST_GATEWAY_SERVER_PEER_URLS"))
+                .collect()
+        })
+        .unwrap_or(config.server.peer_urls);
+    let peer_secret = var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
+        .ok()
+        .map(|path| {
+            let raw = read_to_string(path)
+                .expect("Failed to read BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
+                .trim()
+                .to_string();
+            derive_peer_key(&raw)
+        })
+        .or_else(|| {
+            var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET")
+                .ok()
+                .map(|s| derive_peer_key(&s))
+        })
+        .unwrap_or(config.server.peer_secret);
     let server_address = var("BLOCKFROST_GATEWAY_SERVER_ADDRESS").unwrap_or(config.server.address);
     let log_level_str = var("BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL")
         .unwrap_or_else(|_| config.server.log_level.to_string());
@@ -217,6 +278,8 @@ fn override_with_env(config: Config) -> Config {
             log_level: final_log_level,
             network,
             url: server_url,
+            peer_urls,
+            peer_secret,
         },
         database: Db {
             connection_string: db_connection,

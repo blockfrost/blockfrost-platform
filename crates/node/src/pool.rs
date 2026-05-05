@@ -1,9 +1,5 @@
 use super::pool_manager::NodePoolManager;
-use bf_common::{
-    config::Config,
-    errors::AppError,
-    genesis::{GenesisRegistry, genesis},
-};
+use bf_common::errors::AppError;
 use deadpool::managed::{Object, Pool};
 
 /// This represents a pool of `NodeToClient` connections to a single `cardano-node`.
@@ -17,15 +13,17 @@ pub struct NodePool {
 
 impl NodePool {
     /// Creates a new pool of [`super::connection::NodeClient`] connections.
-    pub fn new(config: &Config) -> Result<Self, AppError> {
-        let network_magic = genesis().by_network(&config.network).network_magic as u64;
-
+    pub fn new(
+        network_magic: u64,
+        socket_path: String,
+        max_pool_connections: usize,
+    ) -> Result<Self, AppError> {
         let manager = NodePoolManager {
             network_magic,
-            socket_path: config.node_socket_path.to_string(),
+            socket_path,
         };
         let pool_manager = deadpool::managed::Pool::builder(manager)
-            .max_size(config.max_pool_connections)
+            .max_size(max_pool_connections)
             .build()
             .map_err(|err| AppError::Node(err.to_string()))?;
 

@@ -1,9 +1,12 @@
-use crate::{api::ApiResult, server::state::AppState};
+use crate::{
+    accounts::{AccountData, AccountsPath},
+    server::state::AppState,
+};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::AccountsWithdrawalsResponse;
 use bf_common::{
-    accounts::{AccountData, AccountsPath},
     pagination::{Pagination, PaginationQuery},
+    types::ApiResult,
 };
 
 pub async fn route(

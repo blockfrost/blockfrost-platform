@@ -1,4 +1,4 @@
-use crate::errors::BlockfrostError;
+use bf_common::errors::BlockfrostError;
 use serde::Deserialize;
 
 const MAX_SIGNED_INT: i64 = 2_147_483_647;
@@ -67,7 +67,7 @@ pub fn validate_block_hash(input: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::errors::BlockfrostError;
+    use bf_common::errors::BlockfrostError;
     use rstest::rstest;
 
     #[rstest]

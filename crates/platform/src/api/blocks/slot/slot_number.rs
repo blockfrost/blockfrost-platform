@@ -1,7 +1,7 @@
+use crate::blocks::BlocksSlotPath;
 use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, State};
 use bf_api_provider::types::BlocksSingleResponse;
-use bf_common::blocks::BlocksSlotPath;
 
 pub async fn route(
     State(state): State<AppState>,

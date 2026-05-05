@@ -1,5 +1,6 @@
+use crate::config::Config;
 use crate::{load_balancer::LoadBalancerConfig, server::state::ApiPrefix};
-use bf_common::{config::Config, errors::AppError};
+use bf_common::errors::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -99,9 +100,6 @@ impl IcebreakersAPI {
 
     /// Registers with the Icebreakers API
     pub async fn register(&self) -> Result<SuccessResponse, AppError> {
-        info!("Connecting to Icebreakers API...");
-        info!("Registering with icebreakers api...");
-
         let url = format!("{}/register", self.base_url);
         let body = json!({
             "secret": self.secret,
@@ -124,7 +122,7 @@ impl IcebreakersAPI {
                 AppError::Registration(format!("Failed to parse success response: {e}"))
             })?;
 
-            info!("Successfully registered with Icebreakers API.");
+            info!("successfully registered with Icebreakers API");
 
             // In case we get a URI without a protocol (http: or https: or ws: or wss:):
             let fallback_proto = if self.base_url.starts_with("https:") {

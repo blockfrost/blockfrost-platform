@@ -1,11 +1,9 @@
 use crate::{api::ApiResult, server::state::AppState};
 
+use crate::blocks::{BlockData, BlocksPath};
 use axum::extract::{Path, Query, State};
 use bf_api_provider::types::BlocksResponse;
-use bf_common::{
-    blocks::{BlockData, BlocksPath},
-    pagination::{Pagination, PaginationQuery},
-};
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     State(state): State<AppState>,

@@ -1,5 +1,5 @@
-use crate::errors::BlockfrostError;
 use bech32::{Bech32, Hrp};
+use bf_common::errors::BlockfrostError;
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone)]

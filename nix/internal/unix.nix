@@ -760,6 +760,7 @@ in
             address = '127.0.0.1:$gateway_port'
             log_level = 'info'
             url = 'http://127.0.0.1:$gateway_port'
+            peer_secret = 'blockfrost-tests-peer-secret'
 
             [database]
             connection_string = 'postgresql://unused:unused@127.0.0.1:5432/unused'
@@ -956,6 +957,24 @@ in
           };
       };
       text = builtins.readFile ./hydra-platform-gateway-test.sh;
+    };
+
+    platform-gateway-ha-test = pkgs.writeShellApplication {
+      name = "test-platform-gateway-ha";
+      meta.description = "Tests HA: one platform connecting to two gateway peers via peer_urls + peer_secret";
+      runtimeInputs = with pkgs; [
+        bash
+        coreutils
+        gnused
+        gnugrep
+        jq
+        curl
+        (python3.withPackages (ps: with ps; [portpicker]))
+        wait4x
+        blockfrost-platform
+        blockfrost-gateway--dev-mock-db
+      ];
+      text = builtins.readFile ./platform-gateway-ha-test.sh;
     };
 
     hydra-bridge-gateway-test = pkgs.writeShellApplication {

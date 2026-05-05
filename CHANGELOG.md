@@ -1,4 +1,19 @@
-## [1.0.0-rc.1] - 2026-04-xx
+## [1.0.0-rc.2] - 2026-04-28
+
+### Added
+
+- Gateway high-availability: advertise multiple peer URLs during registration, new `/any/*` round-robin route across all connected Platforms
+- Tracing: `journal` and `syslog` log targets via `*_LOG_TARGET` environment variables
+
+### Changed
+
+- Gateway environment variable overrides now require a `BLOCKFROST_GATEWAY` prefix
+
+### Fixed
+
+- Tx submission failures logged as warnings instead of errors
+
+## [1.0.0-rc.1] - 2026-04-21
 
 ### Highlights
 

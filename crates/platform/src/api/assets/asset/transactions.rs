@@ -1,10 +1,8 @@
+use crate::assets::{AssetData, AssetsPath};
 use crate::{BlockfrostError, api::ApiResult};
 use axum::extract::{Path, Query};
 use bf_api_provider::types::AssetsTransactionsResponse;
-use bf_common::{
-    assets::{AssetData, AssetsPath},
-    pagination::{Pagination, PaginationQuery},
-};
+use bf_common::pagination::{Pagination, PaginationQuery};
 
 pub async fn route(
     Path(path): Path<AssetsPath>,
