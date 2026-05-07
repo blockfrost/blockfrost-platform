@@ -38,6 +38,7 @@ jobs:
 
   check_flake_lock:
     name: Check flake.lock is up to date
+    needs: [check_action_pins]
     runs-on: [self-hosted, Linux, X64, nixos]
     steps:
       - name: Checkout repository
