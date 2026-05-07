@@ -253,10 +253,6 @@
   ],
   "preview": [
     {
-      "_comment": "epochs/4/parameters",
-      "id": "epochs-number-parameters-epoch-cost-models-plutus-v1_e61ed742ccaa"
-    },
-    {
       "_comment": "txs/64d1493be3245bc2daf2c87eabe6b19d3b95e281cd3866dac54975884b89d122",
       "id": "txs-tx-shelley-most-delegations_d508df85960a"
     },
