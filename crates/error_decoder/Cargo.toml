@@ -9,12 +9,8 @@ build = "build.rs"
 bf-common.workspace = true
 bf-testgen.workspace = true
 hex.workspace = true
-sysinfo.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
-pallas-network.workspace = true
-pallas-hardano.workspace = true
-pallas-codec.workspace = true
 
 [features]
 tarpaulin = []
@@ -24,3 +20,7 @@ bf-build-utils.workspace = true
 
 [dev-dependencies]
 bf-testgen = { workspace = true, features = ["test-utils"] }
+sysinfo.workspace = true
+pallas-network.workspace = true
+pallas-hardano.workspace = true
+pallas-codec.workspace = true

@@ -1,6 +1,3 @@
-#[cfg(not(feature = "tarpaulin"))]
-use num_cpus;
-
 use serde::Deserialize;
 use std::process::Command;
 

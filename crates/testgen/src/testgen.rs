@@ -291,13 +291,13 @@ impl Testgen {
             variant,
         );
 
-        // Make sure the child is dead before returning.
-        child
+        let _ = child
             .kill()
-            .map_err(|err| format!("couldn’t kill the child: {err:?}"))?;
-        child
+            .inspect_err(|err| warn!(err = %err, "Testgen: child pid kill failed"));
+        let _ = child
             .wait()
-            .map_err(|err| format!("couldn’t reap the child: {err:?}"))?;
+            .inspect_err(|err| warn!(err = %err, "Testgen: child pid wait failed"));
+        current_child_pid.store(u32::MAX, atomic::Ordering::Relaxed);
 
         result
     }

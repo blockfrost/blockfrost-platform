@@ -19,11 +19,11 @@
     "blockfrost-tests": {
       "flake": false,
       "locked": {
-        "lastModified": 1777465150,
-        "narHash": "sha256-6QUnCM0HQLq4b1lM++fwhMtVSEPC5bvhBjqL3I0NKsI=",
+        "lastModified": 1778511471,
+        "narHash": "sha256-1hSxxxhBGcjFPTQsKc8P1Jsl8B0QXaoBL/2wVPHqVHg=",
         "owner": "blockfrost",
         "repo": "blockfrost-tests",
-        "rev": "9626853a6b19b792ef5f7d5673001eb233d0f870",
+        "rev": "3165af39c301ef583e7f85e29b4b3b15ba80fa88",
         "type": "github"
       },
       "original": {
@@ -119,16 +119,16 @@
     "dolos": {
       "flake": false,
       "locked": {
-        "lastModified": 1775343885,
-        "narHash": "sha256-lg22uNMluP9MiXZTPsHM87x1HZJXizRSAonVHR5Sqgc=",
+        "lastModified": 1778007506,
+        "narHash": "sha256-l56yndrDPwb6DIOPwnZOeFkVLXGStCSihupyNd0rQFw=",
         "owner": "txpipe",
         "repo": "dolos",
-        "rev": "d90cd814b864b04a9cdee7a0905ff4d27cb9846a",
+        "rev": "d1d2f353f8079ae056fbc1a6a6f7a8032f13563e",
         "type": "github"
       },
       "original": {
         "owner": "txpipe",
-        "ref": "v1.0.3",
+        "ref": "v1.1.1",
         "repo": "dolos",
         "type": "github"
       }
