@@ -491,8 +491,8 @@ fn convert_protocol_param(
 ) -> Result<MultiEraProtocolParameters, BlockfrostError> {
     // Create a Conway protocol parameters struct from the ProtocolParam and GenesisConfig
     let conway_pp: ConwayProtParams = ConwayProtParams {
-        minfee_a: pp.minfee_a.required("minfee_a")? as u32,
-        minfee_b: pp.minfee_b.required("minfee_b")? as u32,
+        minfee_a: pp.minfee_a.required("minfee_a")?,
+        minfee_b: pp.minfee_b.required("minfee_b")?,
         max_block_body_size: pp.max_block_body_size.required("max_block_body_size")? as u32,
         max_transaction_size: pp.max_transaction_size.required("max_transaction_size")? as u32,
         max_block_header_size: pp.max_block_header_size.required("max_block_header_size")? as u32,

@@ -600,6 +600,7 @@ impl From<TxEvalSuccessV5> for TxEvalResult {
             units: value.units.into(),
             logs: Vec::new(),
             success: true,
+            failure_message: None,
         }
     }
 }
@@ -610,8 +611,9 @@ impl From<TxEvalFailureV5> for TxEvalResult {
             tag: value.validator.tag,
             index: value.validator.index,
             units: ExUnits { mem: 0, steps: 0 },
-            logs: vec![value.error.to_string()],
+            logs: Vec::new(),
             success: false,
+            failure_message: Some(value.error.to_string()),
         }
     }
 }
@@ -638,7 +640,11 @@ impl From<TxEvalResult> for TxEvalSuccessV5 {
 impl From<TxEvalResult> for TxEvalFailureV5 {
     fn from(value: TxEvalResult) -> Self {
         TxEvalFailureV5 {
-            error: serde_json::Value::String(value.logs.join(",")),
+            error: serde_json::Value::String(
+                value
+                    .failure_message
+                    .unwrap_or_else(|| "unknown error".to_string()),
+            ),
             validator: TxValidator {
                 tag: value.tag,
                 index: value.index,

@@ -69,14 +69,14 @@ nix = { version = "0.30", default-features = false, features = ["signal"] }
 ntest = "0.9.5"
 num_cpus = "1"
 # FIXME: use a proper Pallas release after they merge <https://github.com/txpipe/pallas/pull/624>:
-pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d" }
-pallas-validate = { git = "https://github.com/blockfrost/pallas.git", rev = "cfa0c633640f5989e44f50ed27efc38992f9ed0d", features = [
+pallas-addresses = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-codec = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-crypto = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-hardano = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-network = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-primitives = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-traverse = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0" }
+pallas-validate = { git = "https://github.com/blockfrost/pallas.git", rev = "fb3a63791baa39b0f6ce996c141443ff7bf98ae0", features = [
   "phase2",
 ] }
 pretty_assertions = "1.4.1"
