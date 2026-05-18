@@ -22,15 +22,38 @@ pub struct ChainConfigWatch {
 }
 
 impl ChainConfigWatch {
-    /// Spawn the background monitor and return immediately
+    /// Spawn the background monitor and return immediately.
     ///
     /// The watch value starts as `None` and is set to `Some(…)` once the node
-    /// is synced (tip within one epoch of expected slot)
+    /// is synced (tip within one epoch of expected slot).
+    ///
+    /// The monitor is supervised: if its task ends abnormally (e.g. a panic),
+    /// it is restarted after `RETRY_INTERVAL`.
     pub fn spawn(node_pool: NodePool) -> Self {
         let (tx, rx) = watch::channel(None);
 
         tokio::spawn(async move {
-            monitor_loop(node_pool, tx).await;
+            loop {
+                let node_pool = node_pool.clone();
+                let tx_inner = tx.clone();
+                let join = tokio::spawn(async move {
+                    monitor_loop(node_pool, tx_inner).await;
+                });
+
+                match join.await {
+                    Ok(()) => return,
+                    Err(err) => {
+                        tracing::error!(
+                            "ChainConfigWatch: monitor_loop {err}. Restarting in {}s.",
+                            RETRY_INTERVAL.as_secs()
+                        );
+                        tokio::select! {
+                            () = time::sleep(RETRY_INTERVAL) => {},
+                            () = tx.closed() => return,
+                        }
+                    },
+                }
+            }
         });
 
         Self { rx }
