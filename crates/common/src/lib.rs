@@ -1,6 +1,8 @@
 pub mod cardano_keys;
+pub mod chain_config;
 pub mod errors;
 pub mod find_libexec;
+pub mod helpers;
 pub mod hydra;
 pub mod json_client;
 pub mod pagination;

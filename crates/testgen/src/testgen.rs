@@ -30,12 +30,14 @@ struct TestgenRequest {
 #[non_exhaustive]
 pub enum Variant {
     DeserializeStream,
+    EvaluateStream,
 }
 
 impl Variant {
     fn as_arg(self) -> &'static str {
         match self {
             Self::DeserializeStream => "deserialize-stream",
+            Self::EvaluateStream => "evaluate-stream",
         }
     }
 }

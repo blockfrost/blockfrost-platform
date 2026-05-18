@@ -116,7 +116,7 @@ async fn test_ws_invalid_credentials_rejected() {
     };
     let config = test_config(Some(icebreakers_config));
 
-    let (app, _, _, icebreakers_api, api_prefix) =
+    let (app, _, _, icebreakers_api, api_prefix, _) =
         build(config).await.expect("Failed to build app");
 
     let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");

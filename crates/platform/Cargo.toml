@@ -13,6 +13,7 @@ bf-common.workspace = true
 bf-node.workspace = true
 bf-data-node.workspace = true
 bf-api-provider.workspace = true
+bf-tx-evaluator.workspace = true
 
 anyhow.workspace = true
 axum.workspace = true
@@ -52,7 +53,6 @@ uuid.workspace = true
 [dev-dependencies]
 bf-api-provider.workspace = true
 pretty_assertions.workspace = true
-proptest.workspace = true
 rstest.workspace = true
 
 [target.'cfg(unix)'.dependencies]

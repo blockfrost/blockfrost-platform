@@ -70,6 +70,12 @@ impl From<hex::FromHexError> for BlockfrostError {
     }
 }
 
+impl From<serde_json::Error> for BlockfrostError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::internal_server_error(format!("JSON error: {err}"))
+    }
+}
+
 impl From<AppError> for BlockfrostError {
     fn from(err: AppError) -> Self {
         match err {
@@ -98,12 +104,6 @@ impl From<io::Error> for AppError {
 impl From<reqwest::Error> for BlockfrostError {
     fn from(e: reqwest::Error) -> Self {
         BlockfrostError::internal_server_error(format!("HTTP error: {e}"))
-    }
-}
-
-impl From<serde_json::Error> for BlockfrostError {
-    fn from(e: serde_json::Error) -> Self {
-        BlockfrostError::internal_server_error(format!("JSON error: {e}"))
     }
 }
 
@@ -220,6 +220,15 @@ impl BlockfrostError {
         }
     }
 
+    /// Error for 503 Service Unavailable
+    pub fn service_unavailable(message: String) -> Self {
+        Self {
+            error: "Service Unavailable".to_string(),
+            message,
+            status_code: 503,
+        }
+    }
+
     /// This error is converted in middleware to internal_server_error_user
     pub fn internal_server_error(error: String) -> Self {
         Self {
@@ -261,6 +270,7 @@ impl IntoResponse for BlockfrostError {
             404 => StatusCode::NOT_FOUND,
             405 => StatusCode::METHOD_NOT_ALLOWED,
             500 => StatusCode::INTERNAL_SERVER_ERROR,
+            503 => StatusCode::SERVICE_UNAVAILABLE,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

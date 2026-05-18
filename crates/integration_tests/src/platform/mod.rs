@@ -4,7 +4,7 @@ pub mod tx_builder;
 
 use axum::Router;
 use bf_common::types::{LogLevel, Network};
-use bf_node::pool::NodePool;
+use bf_node::{chain_config_watch::ChainConfigWatch, pool::NodePool};
 use blockfrost_platform::config::{Config, DataNodeConfig, IcebreakersConfig, Mode};
 use blockfrost_platform::{
     AppError, health_monitor,
@@ -12,6 +12,14 @@ use blockfrost_platform::{
     server::{build, state::ApiPrefix},
 };
 use std::{env, sync::Arc, time::Duration};
+
+pub async fn initialize_app() -> Router {
+    crate::initialize_logging();
+    let (app, _, _, _, _, mut config_watch) =
+        build_app().await.expect("Failed to build the application");
+    config_watch.wait_ready().await;
+    app
+}
 
 pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config> {
     dotenvy::dotenv().ok();
@@ -45,6 +53,7 @@ pub async fn build_app() -> Result<
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {
@@ -62,6 +71,7 @@ pub async fn build_app_non_solitary(
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {
@@ -116,6 +126,7 @@ pub async fn build_app_with_data_node(
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
         ApiPrefix,
+        ChainConfigWatch,
     ),
     AppError,
 > {

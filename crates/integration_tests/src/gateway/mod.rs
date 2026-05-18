@@ -244,7 +244,7 @@ pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
     let gw = TestGateway::start().await;
     let gateway_url = format!("http://{}", gw.addr);
 
-    let (app, _, _, icebreakers_api, api_prefix) =
+    let (app, _, _, icebreakers_api, api_prefix, _) =
         crate::platform::build_app_non_solitary(Some(gateway_url))
             .await
             .expect("Failed to build the application");

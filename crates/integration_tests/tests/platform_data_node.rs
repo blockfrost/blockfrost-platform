@@ -34,7 +34,7 @@ async fn test_data_node_health_monitoring() {
     initialize_logging();
 
     let mock = MockDataNode::healthy().await;
-    let (app, _, _, _, _) = build_app_with_data_node(mock.url)
+    let (app, _, _, _, _, _) = build_app_with_data_node(mock.url)
         .await
         .expect("Failed to build the application");
 
@@ -59,7 +59,7 @@ async fn test_data_node_unhealthy_status() {
     initialize_logging();
 
     let mock = MockDataNode::unhealthy().await;
-    let (app, _, _, _, _) = build_app_with_data_node(mock.url)
+    let (app, _, _, _, _, _) = build_app_with_data_node(mock.url)
         .await
         .expect("Failed to build the application");
 
@@ -81,7 +81,7 @@ async fn test_data_node_unreachable() {
     initialize_logging();
 
     let mock = MockDataNode::unreachable();
-    let (app, _, _, _, _) = build_app_with_data_node(mock.url)
+    let (app, _, _, _, _, _) = build_app_with_data_node(mock.url)
         .await
         .expect("Failed to build the application");
 
