@@ -213,7 +213,7 @@ pub fn is_success_v6(results: &[TxEvalResultV6]) -> bool {
     if let Some(first_result) = results.first() {
         matches!(first_result, TxEvalResultV6::Success(_))
     } else {
-        true
+        true // no redeemers in tx: nothing to evaluate, success
     }
 }
 
