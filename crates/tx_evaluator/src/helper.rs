@@ -10,7 +10,9 @@ pub fn generate_reflection_v6() -> serde_json::Value {
 
 /// Decodes a CBOR payload from an `application/cbor` endpoint body.
 /// Matches Blockfrost API behavior:
-/// - Non-ASCII bytes (or empty) → treat as raw binary CBOR
+/// - Non-ASCII bytes → treat as raw binary CBOR
+/// - Empty input → passed through as-is; the CBOR decoder downstream
+///   would reject it with a "deserialisation failure"
 /// - ASCII text → try hex decode, then base64 decode
 /// - If neither works → error
 pub fn resolve_tx_body(body: &[u8]) -> Result<Vec<u8>, String> {
