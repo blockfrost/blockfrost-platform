@@ -45,6 +45,7 @@ hyper.workspace = true
 ntest.workspace = true
 pretty_assertions.workspace = true
 reqwest.workspace = true
+rstest.workspace = true
 tokio-tungstenite.workspace = true
 tokio-util.workspace = true
 tower.workspace = true

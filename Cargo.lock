@@ -780,6 +780,7 @@ dependencies = [
  "ntest",
  "pretty_assertions",
  "reqwest 0.13.2",
+ "rstest",
  "serde",
  "serde_json",
  "tokio",
