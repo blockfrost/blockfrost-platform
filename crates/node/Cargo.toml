@@ -26,6 +26,7 @@ bf-build-utils.workspace = true
 
 [features]
 tarpaulin = []
+test-utils = []
 
 [lints]
 workspace = true

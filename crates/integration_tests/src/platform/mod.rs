@@ -17,7 +17,10 @@ pub async fn initialize_app() -> Router {
     crate::initialize_logging();
     let (app, _, _, _, _, mut config_watch) =
         build_app().await.expect("Failed to build the application");
-    config_watch.wait_ready().await;
+    config_watch
+        .wait_ready()
+        .await
+        .expect("ChainConfigWatch closed before configuration became available");
     app
 }
 

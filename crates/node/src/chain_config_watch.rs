@@ -69,19 +69,17 @@ impl ChainConfigWatch {
         })
     }
 
-    /// Wait until the first config is available (node synced and init complete)
-    pub async fn wait_ready(&mut self) {
+    /// Wait until the first config is available (node synced and init complete).
+    #[cfg(feature = "test-utils")]
+    pub async fn wait_ready(&mut self) -> Result<(), watch::error::RecvError> {
         while self.rx.borrow().is_none() {
-            match self.rx.changed().await {
-                Ok(_) => {},
-                Err(err) => {
-                    tracing::error!(
-                        "ChainConfigWatch: watch channel closed before configuration became available: {err}"
-                    );
-                    break;
-                },
-            }
+            self.rx.changed().await.inspect_err(|err| {
+                tracing::error!(
+                    "ChainConfigWatch: watch channel closed before configuration became available: {err}"
+                );
+            })?;
         }
+        Ok(())
     }
 }
 

@@ -15,7 +15,7 @@ blockfrost-platform.workspace = true
 bf-api-provider.workspace = true
 bf-common.workspace = true
 bf-data-node.workspace = true
-bf-node.workspace = true
+bf-node = { workspace = true, features = ["test-utils"] }
 
 anyhow.workspace = true
 governor.workspace = true
