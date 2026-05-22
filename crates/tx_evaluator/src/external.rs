@@ -299,8 +299,10 @@ impl ExternalEvaluator {
         tx_cbor_binary: &[u8],
         additional_utxos: Option<AdditionalUtxoSet>,
     ) -> Result<serde_json::Value, BlockfrostError> {
-        // Pre-Alonzo tx (3-element CBOR array) cannot be evaluated.
-        if tx_cbor_binary.first() == Some(&0x83) {
+        // Only Alonzo/Babbage/Conway tx (4-element CBOR array) can be evaluated.
+        // TODO(dijkstra): Dijkstra's CDDL allows an optional 3-element transaction variant
+        // (no `is_valid` field). When adding Dijkstra support, pay attention.
+        if tx_cbor_binary.first() != Some(&0x84) {
             return Ok(wrap_as_incompatible_era_v5("Mary".to_string()));
         }
 
@@ -346,8 +348,10 @@ impl ExternalEvaluator {
         tx_cbor_binary: &[u8],
         additional_utxos: Option<Vec<AdditionalUtxoV6>>,
     ) -> Result<serde_json::Value, BlockfrostError> {
-        // Pre-Alonzo tx (3-element CBOR array) cannot be evaluated.
-        if tx_cbor_binary.first() == Some(&0x83) {
+        // Only Alonzo/Babbage/Conway tx (4-element CBOR array) can be evaluated.
+        // TODO(dijkstra): Dijkstra's CDDL allows an optional 3-element transaction variant
+        // (no `is_valid` field). When adding Dijkstra support, pay attention.
+        if tx_cbor_binary.first() != Some(&0x84) {
             return Ok(wrap_as_incompatible_era_v6("mary".to_string()));
         }
 
