@@ -59,6 +59,11 @@ impl ChainConfigWatch {
         Self { rx }
     }
 
+    /// Subscribe to config updates.
+    pub fn subscribe(&self) -> watch::Receiver<Option<Arc<ChainConfigCache>>> {
+        self.rx.clone()
+    }
+
     /// Returns the current config or a 503 if the node is not yet synced
     pub fn get(&self) -> Result<Arc<ChainConfigCache>, BlockfrostError> {
         self.rx.borrow().clone().ok_or_else(|| {

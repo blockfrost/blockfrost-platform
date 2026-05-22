@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bf_node::chain_config_watch::ChainConfigWatch;
 use bf_node::pool::NodePool;
@@ -19,7 +20,7 @@ use pallas_primitives::Bytes;
 use pallas_primitives::KeyValuePairs;
 use pallas_traverse::MultiEraTx;
 use serde::Serialize;
-use tokio::sync::Mutex;
+use tokio::sync::watch;
 
 use bf_common::{
     chain_config::{ChainConfigCache, SlotConfig},
@@ -43,20 +44,13 @@ use crate::{
     },
 };
 
-/// Evaluates transactions using the external testgen-hs Haskell binary
+/// How long the supervisor waits before retrying after a failed testgen-hs spawn.
+const RESPAWN_RETRY_DELAY: Duration = Duration::from_secs(60);
+
+/// Evaluates transactions using the external testgen-hs Haskell binary.
 #[derive(Clone)]
 pub struct ExternalEvaluator {
-    /// Source of chain configuration
-    config_watch: ChainConfigWatch,
-    /// Shared mutable state holding the current testgen-hs process
-    state: Arc<Mutex<EvaluatorState>>,
-}
-
-struct EvaluatorState {
-    /// Running testgen-hs process, if initialized
-    testgen: Option<Testgen>,
-    /// The config that was used to init the current testgen process
-    last_config: Option<Arc<ChainConfigCache>>,
+    testgen_rx: watch::Receiver<Option<Testgen>>,
 }
 
 #[derive(Serialize)]
@@ -85,42 +79,19 @@ pub enum EvalOutput {
 /// Evaluates the given tx with utxos using the external testgen exe, which is a Haskell binary.
 impl ExternalEvaluator {
     pub fn new(config_watch: ChainConfigWatch) -> Self {
-        Self {
-            config_watch,
-            state: Arc::new(Mutex::new(EvaluatorState {
-                testgen: None,
-                last_config: None,
-            })),
-        }
+        let (testgen_tx, testgen_rx) = watch::channel(None);
+        tokio::spawn(testgen_supervisor(config_watch, testgen_tx));
+        Self { testgen_rx }
     }
 
-    /// Get or init testgen, re-spawning if config changed. Returns 503 if
-    /// chain config is not yet available
-    async fn ensure_testgen(&self) -> Result<Testgen, BlockfrostError> {
-        let current_config = self.config_watch.get()?;
-
-        let mut state = self.state.lock().await;
-
-        // Config unchanged, testgen already running
-        if let (Some(last), Some(testgen)) = (&state.last_config, &state.testgen)
-            && Arc::ptr_eq(last, &current_config)
-        {
-            return Ok(testgen.clone());
-        }
-
-        tracing::info!("ExternalEvaluator: spawning testgen-hs");
-
-        let testgen = spawn_and_init_testgen(&current_config).await.map_err(|e| {
-            tracing::error!("ExternalEvaluator: failed to initialize testgen-hs: {e}");
-            BlockfrostError::internal_server_error(format!(
-                "Failed to initialize ExternalEvaluator: {e}"
-            ))
-        })?;
-
-        state.testgen = Some(testgen.clone());
-        state.last_config = Some(current_config);
-        tracing::info!("ExternalEvaluator: testgen-hs initialized successfully");
-        Ok(testgen)
+    /// Returns the current `Testgen` handle, or 503 if the supervisor hasn't
+    /// published one yet (node still syncing, or a respawn is in progress).
+    fn get_testgen(&self) -> Result<Testgen, BlockfrostError> {
+        self.testgen_rx.borrow().clone().ok_or_else(|| {
+            BlockfrostError::service_unavailable(
+                "testgen-hs is not yet ready. The Cardano node may still be syncing.".to_string(),
+            )
+        })
     }
 
     pub async fn evaluate_binary_tx(
@@ -129,7 +100,7 @@ impl ExternalEvaluator {
         tx_cbor_binary: &[u8],
         additional_utxos: Vec<(UTxO, TransactionOutput)>,
     ) -> Result<EvalOutput, BlockfrostError> {
-        let testgen = self.ensure_testgen().await?;
+        let testgen = self.get_testgen()?;
         let node = node_pool.get();
 
         let multi_era_tx = match MultiEraTx::decode(tx_cbor_binary) {
@@ -390,6 +361,64 @@ impl ExternalEvaluator {
             self.evaluate_binary_tx(node_pool, tx_cbor_binary, user_utxos)
                 .await?,
         ))
+    }
+}
+
+/// Background task that owns the testgen-hs (re)spawn loop.
+async fn testgen_supervisor(
+    config_watch: ChainConfigWatch,
+    testgen_tx: watch::Sender<Option<Testgen>>,
+) {
+    let mut config_rx = config_watch.subscribe();
+    let mut last_config: Option<Arc<ChainConfigCache>> = None;
+
+    loop {
+        // Snapshot the current config; if not ready yet, wait for the first publish.
+        let snapshot = config_rx.borrow().clone();
+        let current = match snapshot {
+            Some(c) => c,
+            None => {
+                if config_rx.changed().await.is_err() {
+                    return; // ChainConfigWatch dropped
+                }
+                continue;
+            },
+        };
+
+        let need_respawn = match &last_config {
+            Some(prev) => !Arc::ptr_eq(prev, &current),
+            None => true,
+        };
+
+        if need_respawn {
+            tracing::info!("ExternalEvaluator: (re)spawning testgen-hs");
+            match spawn_and_init_testgen(&current).await {
+                Ok(testgen) => {
+                    if testgen_tx.send(Some(testgen)).is_err() {
+                        return; // No more receivers
+                    }
+                    last_config = Some(current);
+                    tracing::info!("ExternalEvaluator: testgen-hs ready");
+                },
+                Err(e) => {
+                    tracing::error!(
+                        "ExternalEvaluator: testgen-hs spawn failed: {e}. Retrying in {}s.",
+                        RESPAWN_RETRY_DELAY.as_secs()
+                    );
+                    // Keep any previously-published Testgen usable.
+                    tokio::select! {
+                        () = tokio::time::sleep(RESPAWN_RETRY_DELAY) => {},
+                        () = testgen_tx.closed() => return,
+                    }
+                    continue;
+                },
+            }
+        }
+
+        // Wait for the next config change.
+        if config_rx.changed().await.is_err() {
+            return;
+        }
     }
 }
 
