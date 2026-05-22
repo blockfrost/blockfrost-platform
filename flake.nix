@@ -67,7 +67,6 @@
         "x86_64-linux"
         "aarch64-linux"
         "aarch64-darwin"
-        "x86_64-darwin"
       ];
       perSystem = {
         system,
@@ -102,7 +101,7 @@
             '';
           };
 
-        treefmt = {pkgs, ...}: {
+        treefmt = {
           projectRootFile = "flake.nix";
           programs = {
             alejandra.enable = true; # Nix
@@ -112,7 +111,7 @@
             rustfmt.package = internal.rustPackages.rustfmt;
             shfmt.enable = true;
             taplo.enable = true; # TOML
-            yamlfmt.enable = pkgs.stdenv.hostPlatform.system != "x86_64-darwin"; # a treefmt-nix+yamlfmt bug on Intel Macs
+            yamlfmt.enable = true;
             yamllint.enable = true;
           };
           settings.global.excludes = [
@@ -193,7 +192,6 @@
             );
             installer = {
               x86_64-windows = inputs.self.internal.x86_64-windows.installer;
-              x86_64-darwin = inputs.self.internal.x86_64-darwin.installer;
               aarch64-darwin = inputs.self.internal.aarch64-darwin.installer;
             };
             homebrew-tap = {

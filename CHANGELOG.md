@@ -1,3 +1,18 @@
+## [1.0.0] - 2026-05-15
+
+### Added
+
+- New endpoints: `/accounts/{stake_address}/withdrawals`, `/pools/{pool_id}`, and `/pools/{pool_id}/metadata`
+
+### Changed
+
+- Dropped `x86_64-darwin` support. macOS release artifacts and the Homebrew tap now target Apple Silicon only.
+
+### Fixed
+
+- Gateway now rejects `/sdk/ws` WebSocket upgrades with `404 Not Found` when Hydra is not configured
+- Hydra session capacity is now reserved during key exchange, preventing a race that could exceed the configured concurrent-session limit
+
 ## [1.0.0-rc.2] - 2026-04-28
 
 ### Added

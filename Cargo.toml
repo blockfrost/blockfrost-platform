@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.0.0-rc.2"
+version = "1.0.0"
 license = "Apache-2.0"
 edition = "2024"
 
@@ -50,7 +50,7 @@ colored = "2.1.0"
 crossbeam = "0.8"
 deadpool = "0.13.0"
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
-diesel = { version = "2.2.3", features = ["chrono", "postgres"] }
+diesel = { version = "2.3.8", features = ["chrono", "postgres"] }
 diesel_migrations = "2"
 dirs = "6.0.0"
 dotenvy = "0.15.7"

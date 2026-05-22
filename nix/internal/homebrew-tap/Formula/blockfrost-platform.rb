@@ -4,15 +4,10 @@ class BlockfrostPlatform < Formula
   license "Apache-2.0"
   version "@version@"
 
-  if OS.mac?
-    if Hardware::CPU.intel?
-      url "@url_x86_64@"
-      sha256 "@sha256_x86_64@"
-    else
-      url "@url_aarch64@"
-      sha256 "@sha256_aarch64@"
-    end
-  end
+  depends_on arch: :arm64
+
+  url "@url_aarch64@"
+  sha256 "@sha256_aarch64@"
 
   def install
     bin.install Dir["bin/*"]

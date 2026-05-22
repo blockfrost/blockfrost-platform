@@ -23,5 +23,5 @@ Then you can move on to [Configuring the platform](/configuration).
 
 ```bash
 $ ./result/bin/blockfrost-platform --version
-blockfrost-platform 1.0.0-rc.2 (<fb6cbb6a21b3351e0d35a25190bc5f911b6edb28>)
+blockfrost-platform 1.0.0 (<1134f1a3027e3cbaf81f5e5595aadd1bcfefdae7>)
 ```

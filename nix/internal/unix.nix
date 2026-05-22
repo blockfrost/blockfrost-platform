@@ -3,7 +3,7 @@
   targetSystem,
 }:
 # For now, let's keep all UNIX definitions together, until they diverge more in the future.
-assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin"]; let
+assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwin"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
@@ -328,7 +328,7 @@ in
     cardano-node-packages =
       {
         x86_64-linux = cardano-node-flake.hydraJobs.x86_64-linux.musl;
-        inherit (cardano-node-flake.packages) x86_64-darwin aarch64-darwin aarch64-linux;
+        inherit (cardano-node-flake.packages) aarch64-darwin aarch64-linux;
       }.${
         targetSystem
       };
@@ -410,7 +410,6 @@ in
           url =
             {
               "x86_64-linux" = "${baseUrl}-${release}-linux64.tar.gz";
-              "x86_64-darwin" = "${baseUrl}-${release}-macos-intel.tar.gz";
               "aarch64-darwin" = "${baseUrl}-${release}-macos-silicon.tar.gz";
             }.${
               targetSystem
@@ -418,7 +417,6 @@ in
           hash =
             {
               "x86_64-linux" = "sha256-EOe6ooqvSGylJMJnWbqDrUIVYzwTCw5Up/vU/gPK6tE=";
-              "x86_64-darwin" = "sha256-POUj3Loo8o7lBI4CniaA/Z9mTRAmWv9VWAdtcIMe27I=";
               "aarch64-darwin" = "sha256-+6bzdUXnJ+nnYdZuhLueT0+bYmXzwDXTe9JqWrWnfe4=";
             }.${
               targetSystem
@@ -475,12 +473,10 @@ in
       } ''
         sha256_x86_64_linux=$(sha256sum ${inputs.self.hydraJobs.archive.x86_64-linux}/*.tar.* | cut -d' ' -f1)
         sha256_aarch64_linux=$(sha256sum ${inputs.self.hydraJobs.archive.aarch64-linux}/*.tar.* | cut -d' ' -f1)
-        sha256_x86_64_darwin=$(sha256sum ${inputs.self.hydraJobs.archive.x86_64-darwin}/*.tar.* | cut -d' ' -f1)
         sha256_aarch64_darwin=$(sha256sum ${inputs.self.hydraJobs.archive.aarch64-darwin}/*.tar.* | cut -d' ' -f1)
 
         export sha256_x86_64_linux
         export sha256_aarch64_linux
-        export sha256_x86_64_darwin
         export sha256_aarch64_darwin
 
         mkdir -p $out

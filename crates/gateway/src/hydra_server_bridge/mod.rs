@@ -8,6 +8,8 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 use std::time::Duration;
+pub use tokio::sync::OwnedSemaphorePermit;
+use tokio::sync::Semaphore;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -28,9 +30,11 @@ const CREDIT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 #[derive(Clone, Debug)]
 pub struct HydrasManager {
     config: HydraConfig,
-    /// This is `Arc<Arc<()>>` because we want all clones of the controller to only hold a single copy.
-    #[allow(clippy::redundant_allocation)]
-    controller_counter: Arc<Arc<()>>,
+    /// Capacity semaphore: one permit per allowed concurrent Hydra session.
+    /// A permit is acquired in [`Self::initialize_key_exchange`] (before any
+    /// expensive work) and held for the lifetime of the resulting
+    /// [`HydraController`], so in-flight key exchanges count against capacity.
+    capacity: Arc<Semaphore>,
 }
 
 impl HydrasManager {
@@ -63,26 +67,27 @@ impl HydrasManager {
 
         Ok(Self {
             config: HydraConfig::load(config.clone(), network, blockfrost_project_id).await?,
-            controller_counter: Arc::new(Arc::new(())),
+            capacity: Arc::new(Semaphore::new(config.max_concurrent_hydra_nodes as usize)),
         })
     }
 
     pub async fn initialize_key_exchange(
         &self,
         req: KeyExchangeRequest,
-    ) -> Result<KeyExchangeResponse> {
+    ) -> Result<(KeyExchangeResponse, OwnedSemaphorePermit)> {
         if req.accepted_bridge_h2h_port.is_some() {
             bail!("`accepted_bridge_h2h_port` must not be set in `initialize_key_exchange`")
         }
 
-        let cur_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
-        if cur_count as u64 >= self.config.toml.max_concurrent_hydra_nodes {
-            let err = anyhow!(
-                "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
-            );
-            warn!("{err}");
-            Err(err)?
-        }
+        let permit = Arc::clone(&self.capacity)
+            .try_acquire_owned()
+            .map_err(|_| {
+                let err = anyhow!(
+                    "Too many concurrent Hydra sessions / in-flight key exchanges. You can increase the limit in config."
+                );
+                warn!("{err}");
+                err
+            })?;
 
         let have_funds: f64 = self
             .config
@@ -107,29 +112,34 @@ impl HydrasManager {
         let config_dir = mk_config_dir(&self.config.network, &req.machine_id)?;
         self.config.gen_hydra_keys(&config_dir).await?;
 
-        Ok(KeyExchangeResponse {
-            machine_id: MachineId::of_this_host(),
-            gateway_cardano_vkey: self.config.gateway_cardano_vkey.clone(),
-            gateway_hydra_vkey: read_json_file(&config_dir.join("hydra.vk"))?,
-            hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
-            protocol_parameters: self.config.protocol_parameters.clone(),
-            contestation_period: CONTESTATION_PERIOD_SECONDS,
-            proposed_bridge_h2h_port: find_free_tcp_port().await?,
-            gateway_h2h_port: find_free_tcp_port().await?,
-            kex_done: false,
-            commit_ada: self.config.toml.commit_ada,
-            lovelace_per_request: self.config.toml.lovelace_per_request,
-            requests_per_microtransaction: self.config.toml.requests_per_microtransaction,
-            microtransactions_per_fanout: self.config.toml.microtransactions_per_fanout,
-        })
+        Ok((
+            KeyExchangeResponse {
+                machine_id: MachineId::of_this_host(),
+                gateway_cardano_vkey: self.config.gateway_cardano_vkey.clone(),
+                gateway_hydra_vkey: read_json_file(&config_dir.join("hydra.vk"))?,
+                hydra_scripts_tx_id: hydra_scripts_tx_id(&self.config.network).to_string(),
+                protocol_parameters: self.config.protocol_parameters.clone(),
+                contestation_period: CONTESTATION_PERIOD_SECONDS,
+                proposed_bridge_h2h_port: find_free_tcp_port().await?,
+                gateway_h2h_port: find_free_tcp_port().await?,
+                kex_done: false,
+                commit_ada: self.config.toml.commit_ada,
+                lovelace_per_request: self.config.toml.lovelace_per_request,
+                requests_per_microtransaction: self.config.toml.requests_per_microtransaction,
+                microtransactions_per_fanout: self.config.toml.microtransactions_per_fanout,
+            },
+            permit,
+        ))
     }
 
     /// You should first call [`Self::initialize_key_exchange`], and then this
-    /// function with the initial request/response pair.
+    /// function with the initial request/response pair and the capacity permit
+    /// returned by `initialize_key_exchange`.
     pub async fn spawn_new(
         &self,
         initial: (KeyExchangeRequest, KeyExchangeResponse),
         final_req: KeyExchangeRequest,
+        capacity_permit: OwnedSemaphorePermit,
     ) -> Result<(HydraController, KeyExchangeResponse)> {
         if initial.0
             != (KeyExchangeRequest {
@@ -142,15 +152,6 @@ impl HydrasManager {
 
         if final_req.accepted_bridge_h2h_port != Some(initial.1.proposed_bridge_h2h_port) {
             bail!("The Bridge must accept the same port that was proposed to it.")
-        }
-
-        // Clone first, to prevent the nastier race condition:
-        let maybe_new = Arc::clone(self.controller_counter.as_ref());
-        let new_count = Arc::strong_count(self.controller_counter.as_ref()).saturating_sub(1);
-        if new_count as u64 > self.config.toml.max_concurrent_hydra_nodes {
-            bail!(
-                "Too many concurrent `hydra-node`s already running. You can increase the limit in config."
-            )
         }
 
         if !(matches!(
@@ -173,7 +174,7 @@ impl HydrasManager {
         let ctl = HydraController::spawn(
             self.config.clone(),
             final_req.machine_id.clone(),
-            maybe_new,
+            capacity_permit,
             final_req,
             final_resp.clone(),
         )
@@ -240,7 +241,9 @@ impl HydraConfig {
 pub struct HydraController {
     event_tx: mpsc::Sender<Event>,
     credits_available: Arc<AtomicU64>,
-    _controller_counter: Arc<()>,
+    /// Held for the lifetime of this controller, and released when the last
+    /// clone is dropped.
+    _capacity_permit: Arc<OwnedSemaphorePermit>,
 }
 
 #[derive(Debug)]
@@ -295,7 +298,7 @@ impl HydraController {
     async fn spawn(
         config: HydraConfig,
         customer_id: MachineId,
-        controller_counter: Arc<()>,
+        capacity_permit: OwnedSemaphorePermit,
         kex_req: KeyExchangeRequest,
         kex_resp: KeyExchangeResponse,
     ) -> Result<Self> {
@@ -311,7 +314,7 @@ impl HydraController {
         Ok(Self {
             event_tx,
             credits_available,
-            _controller_counter: controller_counter,
+            _capacity_permit: Arc::new(capacity_permit),
         })
     }
 

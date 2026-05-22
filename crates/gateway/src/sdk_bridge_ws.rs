@@ -1,6 +1,7 @@
 use crate::hydra_server_bridge;
 use axum::Extension;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -83,8 +84,11 @@ pub enum BridgeMessage {
 pub async fn websocket_route(
     ws: WebSocketUpgrade,
     Extension(state): Extension<SdkBridgeState>,
-) -> impl IntoResponse {
-    ws.on_upgrade(|socket| event_loop::run(state, socket))
+) -> Result<impl IntoResponse, StatusCode> {
+    if state.hydras.is_none() {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    Ok(ws.on_upgrade(|socket| event_loop::run(state, socket)))
 }
 
 /// The WebSocket event loop, passing messages between HTTP<->WebSocket, keeping
@@ -131,6 +135,7 @@ pub mod event_loop {
         let mut initial_hydra_kex: Option<(
             hydra_server_bridge::KeyExchangeRequest,
             hydra_server_bridge::KeyExchangeResponse,
+            hydra_server_bridge::OwnedSemaphorePermit,
         )> = None;
         let mut hydra_controller: Option<hydra_server_bridge::HydraController> = None;
 
@@ -182,12 +187,14 @@ pub mod event_loop {
                         },
                         // Finalize step: bridge accepted the proposed port.
                         (Some(hydras), Some(_accepted_port), true) => {
-                            let initial_kex = initial_hydra_kex.clone().unwrap();
+                            let (initial_req, initial_resp, permit) =
+                                initial_hydra_kex.take().unwrap();
                             let bridge_machine_id = req.machine_id.clone();
-                            match hydras.spawn_new(initial_kex, req).await {
+                            match hydras
+                                .spawn_new((initial_req, initial_resp), req, permit)
+                                .await
+                            {
                                 Ok((ctl, resp)) => {
-                                    // Consume the cached KEx only after spawn succeeds:
-                                    initial_hydra_kex = None;
                                     hydra_controller = Some(ctl);
 
                                     // Only start the TCP-over-WebSocket tunnels if we’re running
@@ -239,8 +246,8 @@ pub mod event_loop {
                         // Initial step: start a new key exchange.
                         (Some(hydras), None, _) => {
                             match hydras.initialize_key_exchange(req.clone()).await {
-                                Ok(resp) => {
-                                    initial_hydra_kex = Some((req, resp.clone()));
+                                Ok((resp, permit)) => {
+                                    initial_hydra_kex = Some((req, resp.clone(), permit));
                                     GatewayMessage::HydraKExResponse(resp)
                                 },
                                 Err(err) => GatewayMessage::Error {

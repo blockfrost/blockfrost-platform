@@ -38,16 +38,13 @@ jobs:
           $nixdl  result-archive-x86_64-linux      "$ref"#internal.x86_64-linux.archive
           $nixdl  result-archive-aarch64-linux     "$ref"#internal.aarch64-linux.archive
           $nixdl  result-archive-x86_64-windows    "$ref"#internal.x86_64-windows.archive
-          $nixdl  result-archive-x86_64-darwin     "$ref"#internal.x86_64-darwin.archive
           $nixdl  result-archive-aarch64-darwin    "$ref"#internal.aarch64-darwin.archive
 
           $nixdl  result-installer-x86_64-windows  "$ref"#internal.x86_64-windows.installer
-          $nixdl  result-installer-x86_64-darwin   "$ref"#internal.x86_64-darwin.installer
           $nixdl  result-installer-aarch64-darwin  "$ref"#internal.aarch64-darwin.installer
 
           $nixdl  result-archive-bridge-x86_64-linux      "$ref"#internal.x86_64-linux.archive-bridge
           $nixdl  result-archive-bridge-aarch64-linux     "$ref"#internal.aarch64-linux.archive-bridge
-          $nixdl  result-archive-bridge-x86_64-darwin     "$ref"#internal.x86_64-darwin.archive-bridge
           $nixdl  result-archive-bridge-aarch64-darwin    "$ref"#internal.aarch64-darwin.archive-bridge
 
           $nixdl  result-homebrew-tap              "$ref"#internal.aarch64-darwin.homebrew-tap
@@ -61,15 +58,12 @@ jobs:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
             result-archive-aarch64-linux/*.tar.bz2
-            result-archive-x86_64-darwin/*.tar.bz2
             result-archive-x86_64-windows/*.zip
             result-archive-aarch64-darwin/*.tar.bz2
             result-installer-x86_64-windows/*.exe
-            result-installer-x86_64-darwin/*.dmg
             result-installer-aarch64-darwin/*.dmg
             result-archive-bridge-x86_64-linux/*.tar.bz2
             result-archive-bridge-aarch64-linux/*.tar.bz2
-            result-archive-bridge-x86_64-darwin/*.tar.bz2
             result-archive-bridge-aarch64-darwin/*.tar.bz2
             result-curl-bash-install/*.sh
 

@@ -3,7 +3,7 @@
   targetSystem,
   unix,
 }:
-assert builtins.elem targetSystem ["x86_64-darwin" "aarch64-darwin"]; let
+assert builtins.elem targetSystem ["aarch64-darwin"]; let
   buildSystem = targetSystem;
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
@@ -110,14 +110,11 @@ in
     homebrew-tap =
       pkgs.runCommand "homebrew-repo" {
         inherit (unix.blockfrost-platform) version;
-        url_x86_64 = "${unix.releaseBaseUrl}/${inputs.self.internal.x86_64-darwin.archive.outFileName}";
         url_aarch64 = "${unix.releaseBaseUrl}/${inputs.self.internal.aarch64-darwin.archive.outFileName}";
       } ''
         cp -r ${./homebrew-tap} $out
         chmod -R +w $out
 
-        sha256_x86_64=$(sha256sum ${inputs.self.internal.x86_64-darwin.archive}/*.tar.bz2 | cut -d' ' -f1)
-        export sha256_x86_64
         sha256_aarch64=$(sha256sum ${inputs.self.internal.aarch64-darwin.archive}/*.tar.bz2 | cut -d' ' -f1)
         export sha256_aarch64
 
