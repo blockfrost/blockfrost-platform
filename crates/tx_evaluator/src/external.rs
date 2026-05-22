@@ -424,7 +424,7 @@ async fn testgen_supervisor(
 
 /// Spawn a fresh testgen-hs process and send the init payload
 /// TODO(testgen-hs): Currently testgen only accepts init message as the first message.
-/// Support receiving init message anytime so we won't need to kill&spawn
+/// See: https://github.com/blockfrost/blockfrost-platform/issues/573
 async fn spawn_and_init_testgen(config: &ChainConfigCache) -> Result<Testgen, AppError> {
     let system_start = to_vec(&config.genesis_config.system_start).map_err(|err| {
         AppError::Server(format!(
