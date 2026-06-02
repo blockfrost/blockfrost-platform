@@ -18,7 +18,11 @@ assert builtins.elem targetSystem ["x86_64-linux" "aarch64-linux" "aarch64-darwi
 in
   extendForTarget rec {
     rustPackages = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.stable;
-    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
+    rustToolchain = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.combine [
+      rustPackages.toolchain
+      rustPackages.llvm-tools # needed for -Cinstrument-coverage
+    ];
+    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
     src = lib.cleanSourceWith {
       src = lib.cleanSource ../../.;
@@ -61,6 +65,18 @@ in
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
+    # Coverage-instrumented builds: deps must also be built with -Cinstrument-coverage
+    # because LLVM embeds counters at compile time.
+    coverageArgs =
+      commonArgs
+      // {
+        RUSTFLAGS =
+          (commonArgs.RUSTFLAGS or "")
+          + " -Cinstrument-coverage";
+      };
+
+    coverageCargoArtifacts = craneLib.buildDepsOnly coverageArgs;
+
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
     gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
@@ -91,6 +107,27 @@ in
         };
       });
 
+    blockfrost-platform-coverage = craneLib.buildPackage (coverageArgs
+      // {
+        cargoArtifacts = coverageCargoArtifacts;
+        inherit GIT_REVISION;
+        pname = "${packageName.pname}-coverage";
+        doCheck = false;
+        postInstall = ''
+          chmod -R +w $out
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${packageName.pname} ./ ; )
+          mkdir -p $out/libexec/hydra-node/
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+          $out/bin/${packageName.pname} --version
+        '';
+        meta = {
+          mainProgram = packageName.pname;
+          description = "blockfrost-platform (coverage instrumented)";
+        };
+      });
+
     mk-blockfrost-gateway = {mockDb ? false}:
       craneLib.buildPackage (commonArgs
         // {
@@ -117,11 +154,54 @@ in
 
     blockfrost-gateway--dev-mock-db = mk-blockfrost-gateway {mockDb = true;};
 
+    mk-blockfrost-gateway-coverage = {mockDb ? false}:
+      craneLib.buildPackage (coverageArgs
+        // {
+          cargoArtifacts = coverageCargoArtifacts;
+          inherit GIT_REVISION;
+          pname = gatewayCargoToml.package.name + lib.optionalString mockDb "-dev-mock-db" + "-coverage";
+          doCheck = false;
+          meta = {
+            mainProgram = gatewayCargoToml.package.name;
+            description = "Blockfrost Gateway (coverage)" + lib.optionalString mockDb " (dev mock DB build)";
+          };
+          postInstall = ''
+            mv $out/bin $out/libexec
+            mkdir -p $out/bin
+            ( cd $out/bin && ln -s ../libexec/${gatewayCargoToml.package.name} ./ ; )
+            mkdir -p $out/libexec/hydra-node/
+            ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+            $out/bin/${gatewayCargoToml.package.name} --version
+          '';
+          cargoExtraArgs = "--package blockfrost-gateway" + lib.optionalString mockDb " --features dev_mock_db";
+        }
+        // (builtins.listToAttrs hydraScriptsEnvVars));
+
+    blockfrost-gateway--dev-mock-db-coverage = mk-blockfrost-gateway-coverage {mockDb = true;};
+
     blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
       // {
         inherit cargoArtifacts GIT_REVISION;
         pname = sdkBridgeCargoToml.package.name;
         doCheck = false; # we run tests with `cargo-nextest` below
+        meta.mainProgram = sdkBridgeCargoToml.package.name;
+        postInstall = ''
+          mv $out/bin $out/libexec
+          mkdir -p $out/bin
+          ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+          mkdir -p $out/libexec/hydra-node/
+          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+          $out/bin/${sdkBridgeCargoToml.package.name} --version
+        '';
+        cargoExtraArgs = "--package blockfrost-sdk-bridge";
+      });
+
+    blockfrost-sdk-bridge-coverage = craneLib.buildPackage (coverageArgs
+      // {
+        cargoArtifacts = coverageCargoArtifacts;
+        inherit GIT_REVISION;
+        pname = "${sdkBridgeCargoToml.package.name}-coverage";
+        doCheck = false;
         meta.mainProgram = sdkBridgeCargoToml.package.name;
         postInstall = ''
           mv $out/bin $out/libexec
@@ -669,6 +749,8 @@ in
       ignorelistOnly ? false,
     }: let
       inherit (pkgs) nodePackages;
+      platformBin = blockfrost-platform-coverage;
+      gatewayBin = blockfrost-gateway--dev-mock-db-coverage;
     in
       pkgs.writeShellApplication {
         name =
@@ -766,7 +848,7 @@ in
             nft_asset = 'unused'
             EOF
 
-            ${lib.getExe blockfrost-gateway--dev-mock-db} \
+            ${lib.getExe gatewayBin} \
               --config "$tmpdir/gateway.toml" \
               &
             gateway_pid=$!
@@ -774,7 +856,7 @@ in
             sleep 1
             wait4x http "$gateway_url/stats" --expect-status-code 200 --timeout 60s --interval 1s
 
-            ${lib.getExe blockfrost-platform} \
+            ${lib.getExe platformBin} \
               --server-address 127.0.0.1 \
               --server-port "$platform_port" \
               --log-level info \
@@ -938,8 +1020,8 @@ in
         cardano-address
         (python3.withPackages (ps: with ps; [portpicker]))
         wait4x
-        blockfrost-platform
-        blockfrost-gateway--dev-mock-db
+        blockfrost-platform-coverage
+        blockfrost-gateway--dev-mock-db-coverage
       ];
       runtimeEnv = rec {
         NETWORK = "preview";
@@ -991,8 +1073,8 @@ in
         cardano-address
         (python3.withPackages (ps: with ps; [portpicker]))
         wait4x
-        blockfrost-sdk-bridge
-        blockfrost-gateway--dev-mock-db
+        blockfrost-sdk-bridge-coverage
+        blockfrost-gateway--dev-mock-db-coverage
       ];
       runtimeEnv = rec {
         NETWORK = "preview";
@@ -1006,6 +1088,268 @@ in
           };
       };
       text = builtins.readFile ./hydra-bridge-gateway-test.sh;
+    };
+
+    mkCoverageCargoTest = {
+      cargoTestArgs,
+      profrawPrefix,
+      outputName,
+    }:
+      pkgs.writeShellApplication {
+        name = "coverage-${outputName}";
+        runtimeInputs = [
+          rustToolchain
+          pkgs.gcc
+          pkgs.pkg-config
+          pkgs.jq
+        ];
+        text = let
+          hydraExports =
+            lib.concatMapStrings
+            ({
+              name,
+              value,
+            }: "export ${name}=${lib.escapeShellArg value}\n")
+            hydraScriptsEnvVars;
+        in
+          ''
+            export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.postgresql}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+            export RUSTFLAGS="-Clink-arg=-fuse-ld=bfd -Cinstrument-coverage"
+            export TESTGEN_HS_PATH="${lib.getExe testgen-hs}"
+            export GIT_REVISION="${GIT_REVISION}"
+          ''
+          + hydraExports
+          + ''
+            export LLVM_PROFILE_FILE="$PWD/${profrawPrefix}-%p-%m.profraw"
+
+            test_ec=0
+            cargo test ${cargoTestArgs} || test_ec=$?
+
+            shopt -s nullglob
+            profraw_files=(${profrawPrefix}-*.profraw)
+            shopt -u nullglob
+
+            if [ ''${#profraw_files[@]} -gt 0 ]; then
+              llvm-profdata merge -sparse "''${profraw_files[@]}" -o ${profrawPrefix}.profdata
+
+              mapfile -t bins < <(cargo test ${cargoTestArgs} --no-run --message-format=json 2>/dev/null \
+                | jq -r 'select(.executable != null) | .executable')
+              obj_args=()
+              for bin in "''${bins[@]}"; do
+                obj_args+=("--object=$bin")
+              done
+
+              llvm-cov export \
+                --instr-profile=${profrawPrefix}.profdata \
+                --format=lcov \
+                "''${obj_args[@]}" \
+                > ${outputName}.lcov
+              echo "Coverage written to ${outputName}.lcov"
+            else
+              echo "Warning: no profraw files found with prefix '${profrawPrefix}'"
+            fi
+
+            exit "$test_ec"
+          '';
+      };
+
+    coverage-unit-tests = mkCoverageCargoTest {
+      cargoTestArgs = "--workspace --lib --verbose";
+      profrawPrefix = "unit";
+      outputName = "unit";
+    };
+
+    coverage-platform-integ-tests = mkCoverageCargoTest {
+      cargoTestArgs = "--verbose -p blockfrost-platform-integration-tests --no-fail-fast";
+      profrawPrefix = "integ";
+      outputName = "platform-integ";
+    };
+
+    mkCoverageConvert = {
+      profrawGlob,
+      objects,
+      outputName,
+    }:
+      pkgs.writeShellApplication {
+        name = "coverage-convert-${outputName}";
+        runtimeInputs = [rustToolchain];
+        text = let
+          objArrayItems =
+            lib.concatMapStringsSep " "
+            (o: "\"--object=${o.drv}/libexec/${o.binName}\"")
+            objects;
+        in ''
+          shopt -s nullglob
+          profraw_files=(${profrawGlob})
+          shopt -u nullglob
+
+          if [ ''${#profraw_files[@]} -eq 0 ]; then
+            echo "Warning: no profraw files matching '${profrawGlob}' found"
+            exit 0
+          fi
+
+          obj_args=(${objArrayItems})
+
+          llvm-profdata merge -sparse "''${profraw_files[@]}" -o ${outputName}.profdata
+          llvm-cov export \
+            --instr-profile=${outputName}.profdata \
+            --format=lcov \
+            "''${obj_args[@]}" \
+            > ${outputName}.lcov
+          echo "Coverage written to ${outputName}.lcov"
+        '';
+      };
+
+    coverage-convert-blockfrost = mkCoverageConvert {
+      profrawGlob = "blockfrost-*.profraw";
+      objects = [
+        {
+          drv = blockfrost-platform-coverage;
+          binName = "blockfrost-platform";
+        }
+        {
+          drv = blockfrost-gateway--dev-mock-db-coverage;
+          binName = "blockfrost-gateway";
+        }
+      ];
+      outputName = "blockfrost";
+    };
+
+    coverage-convert-hydra-pg = mkCoverageConvert {
+      profrawGlob = "hydra-pg-*.profraw";
+      objects = [
+        {
+          drv = blockfrost-platform-coverage;
+          binName = "blockfrost-platform";
+        }
+        {
+          drv = blockfrost-gateway--dev-mock-db-coverage;
+          binName = "blockfrost-gateway";
+        }
+      ];
+      outputName = "hydra-platform-gateway";
+    };
+
+    coverage-convert-hydra-bg = mkCoverageConvert {
+      profrawGlob = "hydra-bg-*.profraw";
+      objects = [
+        {
+          drv = blockfrost-sdk-bridge-coverage;
+          binName = "blockfrost-sdk-bridge";
+        }
+        {
+          drv = blockfrost-gateway--dev-mock-db-coverage;
+          binName = "blockfrost-gateway";
+        }
+      ];
+      outputName = "hydra-bridge-gateway";
+    };
+
+    coverage-report = pkgs.writeShellApplication {
+      name = "coverage-report";
+      runtimeInputs = with pkgs; [
+        lcov
+        git
+        bc
+        gawk
+      ];
+      text = ''
+        threshold=0
+        filter_hydra=""
+        filter_base="origin/main"
+        lcov_files=()
+
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --threshold)
+              threshold="$2"; shift 2 ;;
+            --filter-hydra)
+              filter_hydra="$2"; shift 2 ;;
+            --filter-base)
+              filter_base="$2"; shift 2 ;;
+            -*)
+              echo "Unknown option: $1" >&2; exit 1 ;;
+            *)
+              lcov_files+=("$1"); shift ;;
+          esac
+        done
+
+        if [ ''${#lcov_files[@]} -eq 0 ]; then
+          shopt -s nullglob
+          lcov_files=(*.lcov)
+          shopt -u nullglob
+        fi
+
+        if [ ''${#lcov_files[@]} -eq 0 ]; then
+          echo "Error: no LCOV files found" >&2
+          exit 1
+        fi
+
+        echo "Merging ''${#lcov_files[@]} LCOV file(s):"
+        printf '  %s\n' "''${lcov_files[@]}"
+
+        # Filter hydra LCOV if requested
+        if [[ -n "$filter_hydra" && -f "$filter_hydra" ]]; then
+          changed=$(git diff --name-only "$filter_base...HEAD" 2>/dev/null || true)
+          if [ -z "$changed" ]; then
+            echo "No files changed vs $filter_base — using full Hydra LCOV"
+            cp "$filter_hydra" hydra-filtered.lcov
+          else
+            remove_args=()
+            while IFS= read -r f; do
+              [[ -n "$f" ]] && remove_args+=("*/$f")
+            done <<< "$changed"
+            echo "Filtering ''${#remove_args[@]} modified file(s) from Hydra LCOV"
+            if [ ''${#remove_args[@]} -gt 0 ]; then
+              lcov --remove "$filter_hydra" "''${remove_args[@]}" \
+                -o hydra-filtered.lcov 2>/dev/null || cp "$filter_hydra" hydra-filtered.lcov
+            else
+              cp "$filter_hydra" hydra-filtered.lcov
+            fi
+          fi
+          # Replace original hydra file with filtered version in the merge list
+          new_files=()
+          for f in "''${lcov_files[@]}"; do
+            [[ "$f" != "$filter_hydra" ]] && new_files+=("$f")
+          done
+          new_files+=("hydra-filtered.lcov")
+          lcov_files=("''${new_files[@]}")
+        fi
+
+        merge_args=()
+        for f in "''${lcov_files[@]}"; do
+          [[ -f "$f" ]] && merge_args+=(-a "$f")
+        done
+
+        if [ ''${#merge_args[@]} -eq 0 ]; then
+          echo "Error: no valid LCOV files to merge" >&2
+          exit 1
+        fi
+
+        lcov "''${merge_args[@]}" -o combined.lcov
+
+        # Keep only this workspace's source files (matches both $PWD and Nix build paths)
+        lcov --extract combined.lcov '*/crates/*' -o combined.lcov
+        lcov --summary combined.lcov
+
+        if [ "$threshold" -gt 0 ]; then
+          pct=$(lcov --summary combined.lcov 2>&1 \
+            | awk '/lines/ { sub(/%/, "", $2); print $2 }')
+          echo "Combined line coverage: $pct%"
+          if (( $(echo "$pct < $threshold" | bc -l) )); then
+            echo "Error: Coverage $pct% is below threshold $threshold%" >&2
+            exit 1
+          fi
+        fi
+
+        genhtml combined.lcov \
+          --output-directory coverage-html \
+          --title "blockfrost-platform coverage" \
+          --legend \
+          --branch-coverage
+
+        echo "HTML report written to coverage-html/"
+      '';
     };
 
     midnight = let

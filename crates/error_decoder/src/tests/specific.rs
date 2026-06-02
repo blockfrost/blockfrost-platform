@@ -23,10 +23,6 @@ use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
 
 /// This function takes a CBOR-encoded `ApplyTxErr`, and verifies our
 /// deserializer against the Haskell one. Use it for specific cases.
-///
-/// Under `tarpaulin`, the external Haskell decoder (`testgen-hs`) is not
-/// available, so we only exercise the Rust decode + serialize path (which is
-/// what we want coverage for anyway).
 #[cfg(test)]
 pub(crate) async fn verify_one(cbor: &str) {
     use pallas_hardano::display::haskell_error::serialize_error;
@@ -36,7 +32,6 @@ pub(crate) async fn verify_one(cbor: &str) {
     let our_decoding = decode_error(&cbor);
     let our_json = serialize_error(our_decoding).expect("Failed to serialize error");
 
-    #[cfg(not(feature = "tarpaulin"))]
     {
         use crate::external::ExternalDecoder;
 
@@ -57,12 +52,6 @@ pub(crate) async fn verify_one(cbor: &str) {
 
         assert_json_eq!(reference_json, our_json);
     }
-
-    // Under tarpaulin: just assert the Rust decoder didn't panic and produced valid JSON.
-    #[cfg(feature = "tarpaulin")]
-    {
-        let _ = our_json;
-    }
 }
 #[cfg(test)]
 fn decode_error(bytes: &[u8]) -> TxValidationError {
@@ -72,7 +61,7 @@ fn decode_error(bytes: &[u8]) -> TxValidationError {
     decoder.decode().unwrap()
 }
 
-#[cfg(all(test, not(feature = "tarpaulin")))]
+#[cfg(test)]
 macro_rules! assert_json_eq {
     ($left:expr, $right:expr) => {
         if $left != $right {
@@ -90,7 +79,7 @@ macro_rules! assert_json_eq {
     };
 }
 
-#[cfg(all(test, not(feature = "tarpaulin")))]
+#[cfg(test)]
 pub(crate) use assert_json_eq; // export it
 
 #[tokio::test]
