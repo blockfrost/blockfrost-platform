@@ -39,7 +39,7 @@ bip39 = "2.2.2"
 blockfrost = { version = "1.2.3", default-features = false, features = [
   "native-tls",
 ] }
-blockfrost-openapi = "0.1.87"
+blockfrost-openapi = "0.1.88"
 bzip2 = "0.6.1"
 cardano-serialization-lib = "15.0.3"
 chrono = "0.4"

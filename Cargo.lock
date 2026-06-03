@@ -524,9 +524,9 @@ dependencies = [
 
 [[package]]
 name = "blockfrost"
-version = "1.2.3"
+version = "1.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bf7354150cdebaa1cd0a503e1db16f6939385c405e234a7ceca4052bc7ed0e2"
+checksum = "1fc7a9f62217053bd1fe59efc2adfd3df7c0b34866eddd746e442fb0d94ad9f0"
 dependencies = [
  "blockfrost-openapi",
  "futures",
@@ -581,16 +581,13 @@ dependencies = [
 
 [[package]]
 name = "blockfrost-openapi"
-version = "0.1.87"
+version = "0.1.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04869ede3a619d6eb27c3162b1060665a9b4c790dea81343dd0e30d1465dd5a5"
+checksum = "c8e57d94ea05f950ea73ff557aecaa2c11ef6efd3bcca98e64efd35415bd687d"
 dependencies = [
- "reqwest 0.13.2",
  "serde",
  "serde_json",
- "serde_repr",
  "serde_with",
- "url",
 ]
 
 [[package]]
@@ -3671,7 +3668,6 @@ dependencies = [
  "rustls-pki-types",
  "serde",
  "serde_json",
- "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-native-tls",
@@ -4114,17 +4110,6 @@ checksum = "59fab13f937fa393d08645bf3a84bdfe86e296747b506ada67bb15f10f218b2a"
 dependencies = [
  "itoa",
  "serde",
-]
-
-[[package]]
-name = "serde_repr"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "175ee3e80ae9982737ca543e96133087cbd9a485eecc3bc4de9c1a37b47ea59c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.100",
 ]
 
 [[package]]
