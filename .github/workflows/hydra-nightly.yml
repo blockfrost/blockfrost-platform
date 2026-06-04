@@ -42,8 +42,21 @@ jobs:
           CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+          LLVM_PROFILE_FILE: ${{ github.workspace }}/hydra-pg-%p-%m.profraw
         run: |
           nix run -L .#internal.x86_64-linux.hydra-platform-gateway-test
+
+      - name: Convert profraw to LCOV
+        if: always()
+        run: nix run -L .#internal.x86_64-linux.coverage-convert-hydra-pg
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-hydra-platform-gateway
+          path: hydra-platform-gateway.lcov
+          if-no-files-found: ignore
 
   hydra_bridge_gateway_tests:
     name: Hydra micropayments tests between Bridge↔Gateway
@@ -58,5 +71,52 @@ jobs:
           CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
           SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+          LLVM_PROFILE_FILE: ${{ github.workspace }}/hydra-bg-%p-%m.profraw
         run: |
           nix run -L .#internal.x86_64-linux.hydra-bridge-gateway-test
+
+      - name: Convert profraw to LCOV
+        if: always()
+        run: nix run -L .#internal.x86_64-linux.coverage-convert-hydra-bg
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-hydra-bridge-gateway
+          path: hydra-bridge-gateway.lcov
+          if-no-files-found: ignore
+
+  hydra_coverage_cache:
+    name: Cache Hydra coverage for CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - hydra_platform_gateway_tests
+      - hydra_bridge_gateway_tests
+    steps:
+      - name: Download Hydra coverage artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: coverage-hydra-*
+          merge-multiple: true
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Merge Hydra LCOVs
+        run: |
+          args=()
+          for f in hydra-*.lcov; do
+            [ -f "$f" ] && args+=(-a "$f")
+          done
+          if [ ${#args[@]} -gt 0 ]; then
+            lcov "${args[@]}" -o hydra-combined.lcov
+          fi
+
+      - name: Save to cache
+        if: hashFiles('hydra-combined.lcov') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: hydra-combined.lcov
+          key: hydra-coverage-${{ github.run_id }}

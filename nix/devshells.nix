@@ -35,7 +35,6 @@ in {
     {package = internal.hydra-node;}
     {package = internal.dolos;}
     {package = pkgs.cargo-nextest;}
-    {package = pkgs.cargo-tarpaulin;}
     {
       name = "cargo";
       package = internal.rustPackages.cargo;
