@@ -8,6 +8,8 @@
 ### Fixed
 
 - Raised the proxied body limit from 1 MiB to 10 MiB
+- `--custom-genesis-config` now actually takes effect: the network is served as `custom`, the genesis file is parsed up front, and all consumers use the merged registry
+- Stake (`stake_test`) addresses are now accepted on custom networks, fixing `/accounts/{stake_address}/*` endpoints that previously rejected every stake address as invalid
 - Restored `local_address` bind for unspecified IPs like `0.0.0.0`, fixing an IPv6 regression that broke the IPv4-forcing behavior of `--server-address 0.0.0.0`
 - Inverted the metrics answer in the `--init` config prompt
 

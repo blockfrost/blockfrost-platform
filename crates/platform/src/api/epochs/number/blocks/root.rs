@@ -9,7 +9,11 @@ pub async fn route(
     Path(epochs_path): Path<EpochsPath>,
     Query(pagination_query): Query<PaginationQuery>,
 ) -> ApiResult<Vec<String>> {
-    let epoch_data = EpochData::from_path(epochs_path.epoch_number, &state.config.network)?;
+    let epoch_data = EpochData::from_path(
+        epochs_path.epoch_number,
+        &state.config.network,
+        &state.config.genesis,
+    )?;
     let pagination = Pagination::from_query(pagination_query)?;
     let data_node = state.data_node()?;
 
