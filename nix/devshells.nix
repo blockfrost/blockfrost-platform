@@ -113,6 +113,13 @@ in {
         name = "LIBCLANG_PATH";
         value = internal.commonArgs.LIBCLANG_PATH;
       }
+      # `numtide/devshell` sets `LIBRARY_PATH` with a stray `-L` prefix on
+      # Darwin, so clang ends up with a bogus `-L-L…/lib` search path and
+      # can't find libraries living in the devshell (e.g. `-liconv`).
+      {
+        name = "LIBRARY_PATH";
+        eval = "$DEVSHELL_DIR/lib";
+      }
     ]
     ++ lib.optionals pkgs.stdenv.isLinux [
       # Embed `openssl` in `RPATH`:

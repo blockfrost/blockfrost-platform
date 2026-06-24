@@ -21,18 +21,22 @@ project_id = 'preview_BLOCKFROST_PROJECT_ID'
 #project_id_file = '/run/keys/blockfrost-gateway-project-id'
 nft_asset = '4213fc3eac8c781ac85514dd1de9aaabcd5a3a81cc2df4f413b9b295'
 
-[hydra_platform]
-max_concurrent_hydra_nodes = 2
-cardano_signing_key = "./hydra-config/preview/_our-keys/payment/payment.sk"
-commit_ada = 3.0
-lovelace_per_request = 100_000
-requests_per_microtransaction = 10
-microtransactions_per_fanout = 2
+# Hydra disabled by default in dev — both sections are optional, so leaving
+# them commented out skips the Hydra subsystem (no signing key / Blockfrost
+# needed to boot). Uncomment and fill in `cardano_signing_key` +
+# `[blockfrost].project_id` to enable.
+#[hydra_platform]
+#max_concurrent_hydra_nodes = 2
+#cardano_signing_key = "./hydra-config/preview/_our-keys/payment/payment.sk"
+#commit_ada = 3.0
+#lovelace_per_request = 100_000
+#requests_per_microtransaction = 10
+#microtransactions_per_fanout = 2
 
-[hydra_bridge]
-max_concurrent_hydra_nodes = 2
-cardano_signing_key = "./hydra-config/preview/_our-keys/payment/payment.sk"
-commit_ada = 4.0
-lovelace_per_request = 100_000
-requests_per_microtransaction = 10
-microtransactions_per_fanout = 3
+#[hydra_bridge]
+#max_concurrent_hydra_nodes = 2
+#cardano_signing_key = "./hydra-config/preview/_our-keys/payment/payment.sk"
+#commit_ada = 4.0
+#lovelace_per_request = 100_000
+#requests_per_microtransaction = 10
+#microtransactions_per_fanout = 3

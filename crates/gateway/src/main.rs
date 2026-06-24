@@ -68,6 +68,7 @@ async fn main() -> Result<()> {
         .route("/register", post(register::route))
         .route("/ws", get(load_balancer::api::websocket_route))
         .route("/stats", get(load_balancer::api::stats_route))
+        .route("/metrics", get(api::metrics::route))
         .route(
             "/any",
             axum::routing::any(load_balancer::api::any_route_root),
