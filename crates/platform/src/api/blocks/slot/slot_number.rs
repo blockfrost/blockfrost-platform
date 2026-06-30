@@ -9,7 +9,10 @@ pub async fn route(
 ) -> ApiResult<BlocksSingleResponse> {
     let data_node = state.data_node()?;
 
-    let response = data_node.blocks().by_slot(&blocks_slot_path.slot).await?;
+    let response = data_node
+        .blocks()
+        .by_slot(&blocks_slot_path.slot_number)
+        .await?;
 
     Ok(response)
 }

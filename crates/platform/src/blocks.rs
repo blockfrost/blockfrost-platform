@@ -8,8 +8,9 @@ pub struct BlocksPath {
     pub hash_or_number: String,
 }
 
+#[derive(Deserialize)]
 pub struct BlocksSlotPath {
-    pub slot: String,
+    pub slot_number: String,
 }
 
 #[derive(Debug, PartialEq)]
