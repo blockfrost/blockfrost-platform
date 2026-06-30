@@ -6,6 +6,7 @@ use axum::Router;
 use bf_common::types::{LogLevel, Network};
 use bf_node::pool::NodePool;
 use blockfrost_platform::config::{Config, DataNodeConfig, IcebreakersConfig, Mode};
+use blockfrost_platform::genesis::genesis;
 use blockfrost_platform::{
     AppError, health_monitor,
     icebreakers::api::IcebreakersAPI,
@@ -32,6 +33,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        genesis: genesis(),
         data_node: None,
         hydra: None,
     };
@@ -99,6 +101,7 @@ pub fn test_config_with_data_node(
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        genesis: genesis(),
         data_node: Some(DataNodeConfig {
             endpoint: data_node_endpoint,
             request_timeout: Duration::from_secs(30),

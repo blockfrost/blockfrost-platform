@@ -8,7 +8,11 @@ pub async fn route(
     State(state): State<AppState>,
     Path(epochs_path): Path<EpochsPath>,
 ) -> ApiResult<EpochsParamResponse> {
-    let epoch_data = EpochData::from_path(epochs_path.epoch_number, &state.config.network)?;
+    let epoch_data = EpochData::from_path(
+        epochs_path.epoch_number,
+        &state.config.network,
+        &state.config.genesis,
+    )?;
     let data_node = state.data_node()?;
 
     data_node
