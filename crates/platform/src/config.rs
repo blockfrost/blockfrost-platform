@@ -194,3 +194,133 @@ async fn detect_network(socket_path: &str) -> Result<Network, AppError> {
         "Could not detect network from '{socket_path}' is the node running?"
     )))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    const CUSTOM_MAGIC: u64 = 999_999;
+
+    /// A minimal but valid genesis payload with a distinctive network magic.
+    fn custom_genesis_json() -> String {
+        format!(
+            r#"{{
+                "active_slots_coefficient": 0.05,
+                "update_quorum": 5,
+                "max_lovelace_supply": "45000000000000000",
+                "network_magic": {CUSTOM_MAGIC},
+                "epoch_length": 432000,
+                "system_start": 1506203091,
+                "slots_per_kes_period": 129600,
+                "slot_length": 1,
+                "max_kes_evolutions": 62,
+                "security_param": 2160
+            }}"#
+        )
+    }
+
+    fn write_temp(name: &str, contents: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(name);
+        let mut file = fs::File::create(&path).expect("create temp file");
+        file.write_all(contents.as_bytes())
+            .expect("write temp file");
+        path
+    }
+
+    fn base_config(custom_genesis_config: Option<PathBuf>) -> Config {
+        Config {
+            server_address: "0.0.0.0".parse().unwrap(),
+            server_port: 3000,
+            server_concurrency_limit: 8192,
+            max_response_body_bytes: bf_common::DEFAULT_MAX_BODY_BYTES,
+            log_level: Level::INFO,
+            node_socket_path: "/tmp/socket".to_string(),
+            mode: Mode::Compact,
+            icebreakers_config: None,
+            max_pool_connections: 10,
+            no_metrics: false,
+            network: Network::Preview,
+            custom_genesis_config,
+            data_node: None,
+            hydra: None,
+        }
+    }
+
+    #[test]
+    fn with_custom_genesis_none_returns_defaults() {
+        let config = base_config(None);
+        let registry = config.with_custom_genesis().unwrap();
+
+        assert_eq!(registry.len(), genesis().len());
+        assert!(!registry.iter().any(|(n, _)| *n == Network::Custom));
+    }
+
+    #[test]
+    fn with_custom_genesis_json_is_added() {
+        let path = write_temp("bf_custom_genesis_ok.json", &custom_genesis_json());
+        let config = base_config(Some(path.clone()));
+
+        let registry = config.with_custom_genesis().unwrap();
+
+        let custom = registry.by_network(&Network::Custom);
+        assert_eq!(custom.network_magic as u64, CUSTOM_MAGIC);
+
+        fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn with_custom_genesis_toml_is_added() {
+        let toml = format!(
+            "active_slots_coefficient = 0.05\n\
+             update_quorum = 5\n\
+             max_lovelace_supply = \"45000000000000000\"\n\
+             network_magic = {CUSTOM_MAGIC}\n\
+             epoch_length = 432000\n\
+             system_start = 1506203091\n\
+             slots_per_kes_period = 129600\n\
+             slot_length = 1\n\
+             max_kes_evolutions = 62\n\
+             security_param = 2160\n"
+        );
+        let path = write_temp("bf_custom_genesis_ok.toml", &toml);
+        let config = base_config(Some(path.clone()));
+
+        let registry = config.with_custom_genesis().unwrap();
+
+        assert_eq!(
+            registry.by_network(&Network::Custom).network_magic as u64,
+            CUSTOM_MAGIC
+        );
+
+        fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn with_custom_genesis_missing_file_errors() {
+        let path = std::env::temp_dir().join("bf_custom_genesis_does_not_exist.json");
+        let config = base_config(Some(path));
+
+        let err = config.with_custom_genesis().unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("Failed to read custom genesis file"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn with_custom_genesis_invalid_content_errors() {
+        let path = write_temp("bf_custom_genesis_invalid.json", "this is not genesis");
+        let config = base_config(Some(path.clone()));
+
+        let err = config.with_custom_genesis().unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("Failed to parse custom genesis file"),
+            "unexpected error: {err}"
+        );
+
+        fs::remove_file(path).ok();
+    }
+}

@@ -4,25 +4,12 @@ use bf_common::{errors::AppError, types::LogLevel};
 use clap::{CommandFactory, Parser, ValueEnum};
 use inquire::validator::{ErrorMessage, Validation};
 use inquire::{Confirm, Select, Text};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::fs;
 use std::io::Write;
 use std::net::IpAddr;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use twelf::{Layer, config};
-
-static SHOULD_SKIP_SERIALIZNG_FIELDS: AtomicBool = AtomicBool::new(false);
-
-fn should_skip_serializng_fields<T>(_: &T) -> bool {
-    SHOULD_SKIP_SERIALIZNG_FIELDS.load(Ordering::SeqCst)
-}
-
-#[derive(Parser, Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DataNodeArgs {
-    pub endpoint: Option<String>,
-    pub request_timeout: u64,
-}
 
 #[derive(Parser, Debug, Serialize, Clone)]
 #[command(author,
@@ -54,13 +41,14 @@ pub struct Args {
     #[arg(long, default_value = "compact")]
     pub mode: Mode,
 
+    // `init` and `config` are runtime-only flags and are never written to the
+    // generated config file (hence `skip_serializing`).
     #[arg(long, help = "Initialize a new configuration file")]
-    #[serde(skip_serializing_if = "should_skip_serializng_fields")]
-    #[serde(default)]
+    #[serde(skip_serializing, default)]
     init: bool,
 
     #[arg(long, help = "Path to an existing configuration file")]
-    #[serde(skip_serializing_if = "should_skip_serializng_fields")]
+    #[serde(skip_serializing, default)]
     config: Option<PathBuf>,
 
     /// Whether to run in solitary mode, without registering with the Icebreakers API
@@ -137,8 +125,6 @@ impl Args {
         let config_path = initial_args.config.unwrap_or(get_config_path());
 
         let arguments = Args::parse_args(config_path)?;
-
-        SHOULD_SKIP_SERIALIZNG_FIELDS.store(true, Ordering::SeqCst);
 
         if arguments.init {
             Args::generate_config().map_err(|e| AppError::Server(e.to_string()))?;
@@ -241,14 +227,11 @@ impl Args {
             })
             .prompt()?;
 
-        let data_node = {
+        let (data_node, data_node_timeout) = {
             let data_node_url = Text::new("Data node URL (empty to skip):").prompt()?;
 
             if data_node_url.is_empty() {
-                DataNodeArgs {
-                    endpoint: None,
-                    request_timeout: 0,
-                }
+                (None, None)
             } else {
                 let data_node_timeout = Text::new("Data node timeout (s):")
                     .with_default("30")
@@ -261,35 +244,13 @@ impl Args {
                     .prompt()?
                     .parse()?;
 
-                DataNodeArgs {
-                    endpoint: Some(data_node_url),
-                    request_timeout: data_node_timeout,
-                }
+                (Some(data_node_url), Some(data_node_timeout))
             }
         };
 
-        let mut app_config = Args {
-            init: false,
-            config: None,
-            solitary: is_solitary,
-            no_metrics,
-            mode,
-            log_level,
-            server_address,
-            server_port,
-            node_socket_path: Some(node_socket_path),
-            reward_address: None,
-            secret: None,
-            custom_genesis_config: None,
-            data_node: data_node.endpoint,
-            data_node_timeout: Some(data_node.request_timeout),
-            server_concurrency_limit: 8192,
-            max_response_body_bytes: bf_common::DEFAULT_MAX_BODY_BYTES,
-            gateway_url: None,
-            hydra_cardano_signing_key: None,
-        };
-
-        if !is_solitary {
+        let (reward_address, secret) = if is_solitary {
+            (None, None)
+        } else {
             let reward_address = Text::new("Enter the reward address:")
                 .with_validator(|input: &str| {
                     if input.is_empty() {
@@ -313,19 +274,77 @@ impl Args {
                     }
                 })
                 .prompt()?;
-            app_config.reward_address = Some(reward_address);
-            app_config.secret = Some(secret);
-        }
+
+            (Some(reward_address), Some(secret))
+        };
+
+        let answers = ConfigAnswers {
+            solitary: is_solitary,
+            no_metrics,
+            mode,
+            log_level,
+            server_address,
+            server_port,
+            node_socket_path,
+            data_node,
+            data_node_timeout,
+            reward_address,
+            secret,
+        };
 
         let config_path = get_config_path();
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
 
-        app_config.to_file(&config_path)?;
+        answers.into_args().to_file(&config_path)?;
         println!("\nConfig has been written to {config_path:?}");
 
         std::process::exit(0);
+    }
+}
+
+/// The answers collected interactively by `--init`. Kept separate from the
+/// prompting itself so that the (pure) mapping to [`Args`] can be unit-tested
+/// without going through `inquire`.
+#[derive(Debug, Clone)]
+struct ConfigAnswers {
+    solitary: bool,
+    no_metrics: bool,
+    mode: Mode,
+    log_level: LogLevel,
+    server_address: IpAddr,
+    server_port: u16,
+    node_socket_path: String,
+    data_node: Option<String>,
+    data_node_timeout: Option<u64>,
+    reward_address: Option<String>,
+    secret: Option<String>,
+}
+
+impl ConfigAnswers {
+    /// Defaults for the fields `--init` doesn't prompt for.
+    fn into_args(self) -> Args {
+        Args {
+            init: false,
+            config: None,
+            solitary: self.solitary,
+            no_metrics: self.no_metrics,
+            mode: self.mode,
+            log_level: self.log_level,
+            server_address: self.server_address,
+            server_port: self.server_port,
+            node_socket_path: Some(self.node_socket_path),
+            reward_address: self.reward_address,
+            secret: self.secret,
+            custom_genesis_config: None,
+            data_node: self.data_node,
+            data_node_timeout: self.data_node_timeout,
+            server_concurrency_limit: 8192,
+            max_response_body_bytes: bf_common::DEFAULT_MAX_BODY_BYTES,
+            gateway_url: None,
+            hydra_cardano_signing_key: None,
+        }
     }
 }
 
@@ -357,6 +376,9 @@ mod tests {
         no_metrics: bool,
         data_node: Option<String>,
         data_node_timeout_sec: Option<String>,
+        gateway_url: Option<String>,
+        hydra_cardano_signing_key: Option<String>,
+        max_response_body_bytes: Option<usize>,
     }
 
     impl TestArgsBuilder {
@@ -424,6 +446,21 @@ mod tests {
             self
         }
 
+        fn gateway_url(mut self, url: &str) -> Self {
+            self.gateway_url = Some(url.to_string());
+            self
+        }
+
+        fn hydra_cardano_signing_key(mut self, path: &str) -> Self {
+            self.hydra_cardano_signing_key = Some(path.to_string());
+            self
+        }
+
+        fn max_response_body_bytes(mut self, bytes: usize) -> Self {
+            self.max_response_body_bytes = Some(bytes);
+            self
+        }
+
         fn build_args_vec(&self) -> Vec<String> {
             let mut args = vec!["testing".to_string()];
 
@@ -449,6 +486,15 @@ mod tests {
             push_opt(
                 "--data-node-timeout-sec",
                 self.data_node_timeout_sec.clone(),
+            );
+            push_opt("--gateway-url", self.gateway_url.clone());
+            push_opt(
+                "--hydra-cardano-signing-key",
+                self.hydra_cardano_signing_key.clone(),
+            );
+            push_opt(
+                "--max-response-body-bytes",
+                self.max_response_body_bytes.map(|b| b.to_string()),
             );
 
             // optional parameters
@@ -714,5 +760,180 @@ mod tests {
             .unwrap();
 
         assert_eq!(config.server_concurrency_limit, 512);
+    }
+
+    #[tokio::test]
+    async fn test_max_response_body_bytes_default() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            config.max_response_body_bytes,
+            bf_common::DEFAULT_MAX_BODY_BYTES
+        );
+    }
+
+    #[tokio::test]
+    async fn test_max_response_body_bytes_custom() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .max_response_body_bytes(1234)
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        assert_eq!(config.max_response_body_bytes, 1234);
+    }
+
+    #[tokio::test]
+    async fn test_gateway_url_maps_into_icebreakers_config() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .reward_address("test-reward-address")
+            .secret("test-secret")
+            .gateway_url("https://gateway.example")
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        let icebreakers = config
+            .icebreakers_config
+            .expect("icebreakers_config should be Some in non-solitary mode");
+        assert_eq!(
+            icebreakers.gateway_url.as_deref(),
+            Some("https://gateway.example")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_gateway_url_absent_is_none() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .reward_address("test-reward-address")
+            .secret("test-secret")
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        let icebreakers = config.icebreakers_config.expect("should be Some");
+        assert!(icebreakers.gateway_url.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_hydra_signing_key_maps_to_hydra_config() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .hydra_cardano_signing_key("/path/to/key.skey")
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        let hydra = config.hydra.expect("hydra config should be Some");
+        assert_eq!(
+            hydra.cardano_signing_key,
+            std::path::PathBuf::from("/path/to/key.skey")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_hydra_absent_is_none() {
+        let args = TestArgsBuilder::new()
+            .node_socket_path("/path/to/socket")
+            .solitary()
+            .parse()
+            .unwrap();
+
+        let config = Config::from_args_with_detector(args, mock_detector)
+            .await
+            .unwrap();
+
+        assert!(config.hydra.is_none());
+    }
+
+    #[test]
+    fn test_config_answers_into_args_solitary() {
+        let answers = ConfigAnswers {
+            solitary: true,
+            no_metrics: true,
+            mode: Mode::Full,
+            log_level: LogLevel::Debug,
+            server_address: "127.0.0.1".parse().unwrap(),
+            server_port: 4321,
+            node_socket_path: "/sock".to_string(),
+            data_node: Some("http://localhost:3010".to_string()),
+            data_node_timeout: Some(45),
+            reward_address: None,
+            secret: None,
+        };
+
+        let args = answers.into_args();
+
+        // prompted values are carried over
+        assert!(args.solitary);
+        assert!(args.no_metrics);
+        assert_eq!(args.mode, Mode::Full);
+        assert_eq!(args.server_address.to_string(), "127.0.0.1");
+        assert_eq!(args.server_port, 4321);
+        assert_eq!(args.node_socket_path.as_deref(), Some("/sock"));
+        assert_eq!(args.data_node.as_deref(), Some("http://localhost:3010"));
+        assert_eq!(args.data_node_timeout, Some(45));
+        assert!(args.reward_address.is_none());
+        assert!(args.secret.is_none());
+
+        // non-interactive defaults are applied
+        assert_eq!(args.server_concurrency_limit, 8192);
+        assert_eq!(
+            args.max_response_body_bytes,
+            bf_common::DEFAULT_MAX_BODY_BYTES
+        );
+        assert!(args.gateway_url.is_none());
+        assert!(args.hydra_cardano_signing_key.is_none());
+        assert!(args.custom_genesis_config.is_none());
+    }
+
+    #[test]
+    fn test_config_answers_into_args_no_data_node() {
+        let answers = ConfigAnswers {
+            solitary: false,
+            no_metrics: false,
+            mode: Mode::Compact,
+            log_level: LogLevel::Info,
+            server_address: "0.0.0.0".parse().unwrap(),
+            server_port: 3000,
+            node_socket_path: "/sock".to_string(),
+            data_node: None,
+            data_node_timeout: None,
+            reward_address: Some("addr".to_string()),
+            secret: Some("sec".to_string()),
+        };
+
+        let args = answers.into_args();
+
+        assert!(args.data_node.is_none());
+        // no sentinel timeout is emitted when there is no data node
+        assert!(args.data_node_timeout.is_none());
+        assert_eq!(args.reward_address.as_deref(), Some("addr"));
+        assert_eq!(args.secret.as_deref(), Some("sec"));
     }
 }
