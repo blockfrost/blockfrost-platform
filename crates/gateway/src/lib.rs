@@ -6,6 +6,7 @@ pub mod errors;
 pub mod hydra_server_bridge;
 pub mod hydra_server_platform;
 pub mod load_balancer;
+pub mod middlewares;
 pub mod models;
 pub mod payload;
 pub mod rate_limit;

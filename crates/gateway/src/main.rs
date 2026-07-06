@@ -2,17 +2,19 @@ use anyhow::Result;
 use api::{register, root};
 use axum::{
     Extension, Router,
+    middleware::from_fn,
     routing::{get, post},
 };
 use bf_common::tracing::setup_tracing;
 use blockfrost_gateway::{
     api, blockfrost, config, db, hydra_server_bridge, hydra_server_platform, load_balancer,
-    rate_limit, sdk_bridge_ws,
+    middlewares, rate_limit, sdk_bridge_ws,
 };
 use clap::Parser;
 use colored::Colorize;
 use config::{Args, Config};
 use db::DB;
+use middlewares::metrics::track_http_metrics;
 use std::net::SocketAddr;
 
 #[tokio::main]
@@ -102,6 +104,7 @@ async fn main() -> Result<()> {
 
     let app = base_router
         .route("/sdk/ws", get(sdk_bridge_ws::websocket_route))
+        .route_layer(from_fn(track_http_metrics))
         .layer(Extension(sdk_state));
 
     let listener = tokio::net::TcpListener::bind(&config.server.address)

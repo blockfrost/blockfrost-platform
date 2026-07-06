@@ -4,6 +4,7 @@
 
 - New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/addresses/{address}`, and `/blocks/slot/{slot_number}`
 - `--max-response-body-bytes` to configure the maximum proxied response body size (default 10 MiB)
+- Gateway Prometheus counter `blockfrost_gateway_http_requests_total` with `method`, `route`, and `status_code` labels for API requests
 
 ### Fixed
 

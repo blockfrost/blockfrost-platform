@@ -557,6 +557,7 @@ dependencies = [
  "governor",
  "hex",
  "hyper",
+ "metrics",
  "nix",
  "reqwest 0.13.2",
  "rstest",
