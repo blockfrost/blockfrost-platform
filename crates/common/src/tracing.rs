@@ -153,10 +153,14 @@ pub fn setup_tracing(log_level: Level, log_target_env: &str) {
 }
 
 fn setup_default(log_level: Level) {
+    // Human-readable local time instead of the default
+    let timer = tracing_subscriber::fmt::time::ChronoLocal::new("%Y-%m-%d %H:%M:%S%.3f".to_owned());
+
     tracing_subscriber::fmt()
         .with_max_level(log_level)
         .event_format(
             Format::default()
+                .with_timer(timer)
                 .with_ansi(true)
                 .with_level(true)
                 .with_target(true)

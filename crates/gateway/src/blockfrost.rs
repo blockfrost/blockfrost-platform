@@ -38,7 +38,18 @@ impl BlockfrostAPI {
                 )
             })?
             .map(|_| ())
-            .map_err(|e| format!("Blockfrost API error: {e}"))
+            .map_err(|e| {
+                // The SDK’s error messages span multiple lines; flatten them
+                // so that they log (and serialize) as a single line.
+                let flat = e
+                    .to_string()
+                    .lines()
+                    .map(str::trim)
+                    .filter(|l| !l.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("Blockfrost API error: {flat}")
+            })
     }
 
     // Parse asset from the unit

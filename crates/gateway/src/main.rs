@@ -48,8 +48,8 @@ async fn main() -> Result<()> {
     // Fail fast on startup problems
     let initial_health = health_monitor.current_status().await;
     if !initial_health.healthy {
-        eprintln!(
-            "Error: refusing to start unhealthy: {}",
+        tracing::error!(
+            "Refusing to start unhealthy: {}",
             initial_health.errors.join("; ")
         );
         std::process::exit(1);

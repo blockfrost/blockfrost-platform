@@ -45,7 +45,9 @@ impl HealthMonitor {
         let first_check_done_ = first_check_done.clone();
 
         tokio::spawn(async move {
-            let mut previously_healthy = true;
+            // `None` until the first check completes, so that we only log
+            // actual transitions (startup failures are handled by `main`).
+            let mut previously_healthy: Option<bool> = None;
             let mut blockfrost_error: Option<String> = None;
             let mut last_blockfrost_check: Option<Instant> = None;
             loop {
@@ -67,13 +69,13 @@ impl HealthMonitor {
                     .collect();
                 let healthy = errors.is_empty();
 
-                if previously_healthy && !healthy {
+                if previously_healthy == Some(true) && !healthy {
                     tracing::warn!("Gateway became unhealthy: {}", errors.join("; "));
-                } else if !previously_healthy && healthy {
+                } else if previously_healthy == Some(false) && healthy {
                     tracing::warn!("Gateway became healthy again.");
                 }
 
-                previously_healthy = healthy;
+                previously_healthy = Some(healthy);
 
                 *status.lock().await = HealthStatus { healthy, errors };
 
