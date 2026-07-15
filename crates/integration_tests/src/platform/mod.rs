@@ -109,6 +109,20 @@ pub fn test_config_with_data_node(
     Arc::new(config)
 }
 
+/// Serves the app on a random local port and returns its base URL.
+pub async fn spawn_app(app: Router) -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    format!("http://{addr}")
+}
+
 pub async fn build_app_with_data_node(
     data_node_endpoint: String,
 ) -> Result<

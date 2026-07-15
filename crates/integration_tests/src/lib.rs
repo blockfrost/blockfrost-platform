@@ -24,3 +24,14 @@ pub fn get_blockfrost_client() -> BlockfrostAPI {
 
     BlockfrostAPI::new(&blockfrost_preview_project_id(), settings)
 }
+
+pub fn get_platform_client(base_url: &str) -> BlockfrostAPI {
+    let mut settings = BlockFrostSettings::new();
+    settings.base_url = Some(base_url.to_string());
+
+    BlockfrostAPI::new("platform-integration-tests", settings)
+}
+
+pub fn dolos_endpoint() -> String {
+    std::env::var("DOLOS_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:3010".to_string())
+}
