@@ -10,6 +10,7 @@
 ### Fixed
 
 - Gateway: `GET /` no longer always reports `healthy: true` — it now reflects periodic health checks of PostgreSQL connectivity and the Blockfrost API
+- Gateway: refuses to start when the initial health check fails (e.g. an invalid Blockfrost project token)
 - Raised the proxied body limit from 1 MiB to 10 MiB
 - Restored `local_address` bind for unspecified IPs like `0.0.0.0`, fixing an IPv6 regression that broke the IPv4-forcing behavior of `--server-address 0.0.0.0`
 - Inverted the metrics answer in the `--init` config prompt

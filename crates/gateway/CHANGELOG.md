@@ -14,6 +14,7 @@
 ### Fixed
 
 - `GET /` no longer always reports `healthy: true` — it now reflects periodic health checks of PostgreSQL connectivity and the Blockfrost API
+- The Gateway now refuses to start when the initial health check fails (e.g. an invalid Blockfrost project token)
 - The underlying Blockfrost API error (e.g. rate limiting) is now logged when the license NFT check fails during registration
 
 ### Removed

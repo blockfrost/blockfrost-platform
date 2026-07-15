@@ -44,6 +44,17 @@ async fn main() -> Result<()> {
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
     let health_monitor =
         health_monitor::HealthMonitor::spawn(pool.clone(), blockfrost_api.clone()).await;
+
+    // Fail fast on startup problems
+    let initial_health = health_monitor.current_status().await;
+    if !initial_health.healthy {
+        eprintln!(
+            "Error: refusing to start unhealthy: {}",
+            initial_health.errors.join("; ")
+        );
+        std::process::exit(1);
+    }
+
     let hydras_manager = if let Some(hydra_platform_config) = &config.hydra_platform {
         Some(
             hydra_server_platform::HydrasManager::new(
