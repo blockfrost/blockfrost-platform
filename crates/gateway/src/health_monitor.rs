@@ -5,9 +5,27 @@ use tokio::sync::{Mutex, Notify};
 use tokio::time::{self, Duration, Instant};
 
 #[derive(Clone)]
+pub struct HealthError {
+    /// Stable machine-readable code, safe to expose in `GET /`.
+    pub code: &'static str,
+    /// Detailed reason; only logged server-side, never exposed over HTTP.
+    pub detail: String,
+}
+
+#[derive(Clone)]
 pub struct HealthStatus {
     pub healthy: bool,
-    pub errors: Vec<String>,
+    pub errors: Vec<HealthError>,
+}
+
+impl HealthStatus {
+    pub fn details(&self) -> String {
+        self.errors
+            .iter()
+            .map(|e| e.detail.as_str())
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
 }
 
 #[derive(Clone)]
@@ -46,8 +64,8 @@ impl HealthMonitor {
 
         tokio::spawn(async move {
             // `None` until the first check completes, so that we only log
-            // actual transitions (startup failures are handled by `main`).
-            let mut previously_healthy: Option<bool> = None;
+            // actual changes (startup failures are handled by `main`).
+            let mut previous_codes: Option<Vec<&'static str>> = None;
             let mut blockfrost_error: Option<String> = None;
             let mut last_blockfrost_check: Option<Instant> = None;
             loop {
@@ -63,21 +81,35 @@ impl HealthMonitor {
                     last_blockfrost_check = Some(Instant::now());
                 }
 
-                let errors: Vec<String> = [db_error, blockfrost_error.clone()]
-                    .into_iter()
-                    .flatten()
-                    .collect();
+                let errors: Vec<HealthError> = [
+                    db_error.map(|detail| HealthError {
+                        code: "database_unreachable",
+                        detail,
+                    }),
+                    blockfrost_error.clone().map(|detail| HealthError {
+                        code: "blockfrost_api_unreachable",
+                        detail,
+                    }),
+                ]
+                .into_iter()
+                .flatten()
+                .collect();
                 let healthy = errors.is_empty();
 
-                if previously_healthy == Some(true) && !healthy {
-                    tracing::warn!("Gateway became unhealthy: {}", errors.join("; "));
-                } else if previously_healthy == Some(false) && healthy {
-                    tracing::warn!("Gateway became healthy again.");
+                let codes: Vec<&'static str> = errors.iter().map(|e| e.code).collect();
+                let status_ = HealthStatus { healthy, errors };
+
+                if previous_codes.is_some() && previous_codes.as_ref() != Some(&codes) {
+                    if healthy {
+                        tracing::warn!("Gateway became healthy again.");
+                    } else {
+                        tracing::warn!("Gateway unhealthy: {}", status_.details());
+                    }
                 }
 
-                previously_healthy = Some(healthy);
+                previous_codes = Some(codes);
 
-                *status.lock().await = HealthStatus { healthy, errors };
+                *status.lock().await = status_;
 
                 first_check_done_.notify_one();
 
