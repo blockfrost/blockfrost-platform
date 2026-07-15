@@ -118,7 +118,7 @@ pub async fn spawn_app(app: Router) -> String {
         axum::serve(listener, app).await.unwrap();
     });
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
 
     format!("http://{addr}")
 }
