@@ -46,6 +46,36 @@ impl DB {
         Self { pool }
     }
 
+    /// Verifies database connectivity by running a trivial query through the connection pool
+    pub async fn ping(&self, timeout: std::time::Duration) -> Result<(), String> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(());
+        }
+
+        let check = async {
+            let connection = self
+                .pool
+                .get()
+                .await
+                .map_err(|e| format!("database pool error: {e}"))?;
+            connection
+                .interact(|c| diesel::sql_query("SELECT 1").execute(c))
+                .await
+                .map_err(|e| format!("database interaction error: {e}"))?
+                .map_err(|e| format!("database query error: {e}"))?;
+            Ok(())
+        };
+
+        tokio::time::timeout(timeout, check)
+            .await
+            .unwrap_or_else(|_| {
+                Err(format!(
+                    "database health check timed out after {}s (pool exhausted or database unreachable)",
+                    timeout.as_secs()
+                ))
+            })
+    }
+
     pub fn pool_status(&self) -> PoolStatus {
         let status = self.pool.status();
         PoolStatus {

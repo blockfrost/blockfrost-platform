@@ -3,6 +3,7 @@
 ### Added
 
 - Per-relay `blockfrost_gateway_relay_healthy`, `blockfrost_gateway_relay_data_node_up`, and `blockfrost_gateway_relay_info` metrics in `GET /metrics` (and the same data points in `GET /stats`)
+- `blockfrost_gateway_healthy` metric in `GET /metrics`, mirroring the `healthy` field of `GET /`
 - Prometheus metrics endpoint `GET /metrics` exposing per-relay stats (connection status, WebSocket RTT, connected-since timestamp, request/response counters) and PostgreSQL connection-pool gauges (max size, open, available, waiting)
 - Prometheus counter `blockfrost_gateway_http_requests_total` with `method`, `route`, and `status_code` labels for Gateway API requests
 - `blockfrost_gateway_build_info` metric exposing the Gateway version and git revision
@@ -12,6 +13,7 @@
 
 ### Fixed
 
+- `GET /` no longer always reports `healthy: true` — it now reflects periodic health checks of PostgreSQL connectivity and the Blockfrost API
 - The underlying Blockfrost API error (e.g. rate limiting) is now logged when the license NFT check fails during registration
 
 ### Removed
