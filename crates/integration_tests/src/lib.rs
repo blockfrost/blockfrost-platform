@@ -32,6 +32,6 @@ pub fn get_platform_client(base_url: &str) -> BlockfrostAPI {
     BlockfrostAPI::new("platform-integration-tests", settings)
 }
 
-pub fn dolos_endpoint() -> String {
-    std::env::var("DOLOS_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:3010".to_string())
+pub fn data_node_endpoint() -> String {
+    std::env::var("DATA_NODE_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:3010".to_string())
 }
