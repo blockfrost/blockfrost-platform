@@ -254,11 +254,9 @@ See the [configuration](/configuration) documentation for more details.
 
 ### I see warnings about old UUID paths after restarting my Icebreaker. Should I be concerned?
 
-No, these warnings are typically not a concern.
-Each restart generates a new random UUID path, and the Blockfrost servers may briefly attempt to contact the old path.
-Unless the warnings persist, they can be safely ignored.
-This is expected behavior and should not cause concern unless persistent issues occur.
-If so, check your logs for errors.
+No.
+Current versions serve the API directly at `/`, without the random UUID path prefix, so these warnings no longer appear.
+On older versions they were harmless: each restart generated a new random UUID path, and the Blockfrost servers could briefly attempt to contact the old one.
 
 ## Maintenance and advanced topics
 

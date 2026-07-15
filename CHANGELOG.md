@@ -17,6 +17,7 @@
 ### Removed
 
 - Gateway no longer performs a public port reachability check during registration. Relays connect outbound to the load balancers over WebSocket, so they no longer need a publicly routable inbound port.
+- The platform no longer serves its API under a random UUID path prefix; all routes are now available directly at `/`.
 
 ## [1.0.0] - 2026-05-15
 
