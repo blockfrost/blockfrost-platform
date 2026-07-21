@@ -1,6 +1,6 @@
 services:
   init-node:
-    image: ghcr.io/input-output-hk/mithril-client:2506.0-2627f17
+    image: ghcr.io/intersectmbo/mithril-client:2617.0-2478748
     entrypoint: /app/bin/entrypoint.sh
     user: "${UID}:${GID}"
     environment:
