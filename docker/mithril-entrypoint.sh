@@ -37,10 +37,10 @@ apt install jq curl -y
 
 # ---------------------------------------------------------------------------- #
 
-snapshotDigest=$(/app/bin/mithril-client cardano-db snapshot list --json | jq -r ".[0].digest")
+snapshotDigest=$(/app/bin/mithril-client cardano-db snapshot list --json | jq -r ".[0].hash")
 export snapshotDigest
 
-GENESIS_VERIFICATION_KEY=$(curl -fsSL "https://raw.githubusercontent.com/input-output-hk/mithril/refs/heads/main/mithril-infra/configuration/${MITHRIL_NETWORK}/genesis.vkey")
+GENESIS_VERIFICATION_KEY=$(curl -fsSL "https://raw.githubusercontent.com/IntersectMBO/mithril/refs/heads/main/mithril-infra/configuration/${MITHRIL_NETWORK}/genesis.vkey")
 export GENESIS_VERIFICATION_KEY
 
 /app/bin/mithril-client cardano-db download "$snapshotDigest" --download-dir "$UNPACK_DIR" --json
