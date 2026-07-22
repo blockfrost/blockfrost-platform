@@ -18,7 +18,8 @@ use blockfrost_openapi::models::{
     asset_addresses_inner::AssetAddressesInner, asset_history_inner::AssetHistoryInner,
     asset_policy_inner::AssetPolicyInner, asset_transactions_inner::AssetTransactionsInner,
     assets_inner::AssetsInner, block_content::BlockContent,
-    block_content_addresses_inner::BlockContentAddressesInner, drep::Drep,
+    block_content_addresses_inner::BlockContentAddressesInner,
+    block_content_txs_cbor_inner::BlockContentTxsCborInner, drep::Drep,
     drep_delegators_inner::DrepDelegatorsInner, drep_metadata::DrepMetadata,
     drep_updates_inner::DrepUpdatesInner, drep_votes_inner::DrepVotesInner,
     epoch_content::EpochContent, epoch_param_content::EpochParamContent,
@@ -87,6 +88,7 @@ pub type BlocksSingleResponse = BlockContent;
 pub type BlocksResponse = Vec<BlockContent>;
 pub type BlocksAddressesExtendedResponse = Vec<AddressContentExtended>;
 pub type BlocksAddressesContentResponse = BlockContentAddressesInner;
+pub type BlocksTxsCborResponse = Vec<BlockContentTxsCborInner>;
 
 // epochs
 pub type EpochsParamResponse = EpochParamContent;
