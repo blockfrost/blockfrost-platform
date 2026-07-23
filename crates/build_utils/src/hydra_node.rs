@@ -164,6 +164,11 @@ pub fn ensure() {
         panic!("Archive does not contain {}", executable.display());
     }
 
+    // Rerun if these outputs disappear (e.g. the extracted tree is deleted
+    // while the crate's own inputs stay unchanged), so we re-provision them.
+    println!("cargo:rerun-if-changed={}", executable.display());
+    println!("cargo:rerun-if-changed={}", version_file.display());
+
     // A cross-compiled target binary cannot run on the build host.
     let host = env::var("HOST").expect("Unable to find build host");
     let target_triple = env::var("TARGET").expect("Unable to find build target");
