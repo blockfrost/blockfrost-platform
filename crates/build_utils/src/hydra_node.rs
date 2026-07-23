@@ -234,14 +234,16 @@ fn extract_zip(archive_path: &Path, extract_dir: &Path) {
             let mut outfile = File::create(&outpath).expect("Unable to create file");
             std::io::copy(&mut entry, &mut outfile).expect("Unable to write file");
 
-            // Preserve the executable bit (zip stores Unix mode bits).
+            // Preserve the executable bit from the zip's Unix mode bits,
+            // falling back to `0o755` if the entry carries none (otherwise the
+            // extracted `hydra-node` would default to non-executable and fail
+            // to run).
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                if let Some(mode) = entry.unix_mode() {
-                    std::fs::set_permissions(&outpath, std::fs::Permissions::from_mode(mode))
-                        .expect("Unable to set file permissions");
-                }
+                let mode = entry.unix_mode().unwrap_or(0o755) & 0o777;
+                std::fs::set_permissions(&outpath, std::fs::Permissions::from_mode(mode))
+                    .expect("Unable to set file permissions");
             }
         }
     }
