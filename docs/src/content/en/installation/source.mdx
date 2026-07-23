@@ -54,7 +54,8 @@ Error: No valid `hydra-node` binary found in [...]
 
 When building `main`, the build downloads a matching `hydra-node` automatically
 for the supported targets (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`),
-placing it next to the compiled binary. Set `HYDRA_NODE_PATH` to skip the
+extracting it into a `hydra-node/` subdirectory next to the compiled binary
+(e.g. `target/release/hydra-node/hydra-node`). Set `HYDRA_NODE_PATH` to skip the
 download and use your own binary instead. On other targets you have to provide
 it yourself.
 
@@ -79,10 +80,12 @@ unpack it, and make it executable. Then point `blockfrost-platform` at it in one
 
   </Tabs.Tab>
   <Tabs.Tab>
-    Copy the `hydra-node` binary into the same directory as `blockfrost-platform`:
+    Copy the `hydra-node` binary into a `hydra-node/` subdirectory next to
+    `blockfrost-platform`:
 
     ```shell
-    cp /path/to/hydra-node ./target/release/
+    mkdir -p ./target/release/hydra-node
+    cp /path/to/hydra-node ./target/release/hydra-node/
     ./target/release/blockfrost-platform --version
     ```
 
