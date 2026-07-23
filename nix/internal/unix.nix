@@ -44,6 +44,7 @@ in
           pkgs.pkg-config
         ];
         TESTGEN_HS_PATH = lib.getExe testgen-hs; # Don’t try to download it in `build.rs`.
+        HYDRA_NODE_PATH = lib.getExe hydra-node; # Don’t try to download it in `build.rs`.
         buildInputs =
           [pkgs.postgresql]
           ++ lib.optionals pkgs.stdenv.isLinux [

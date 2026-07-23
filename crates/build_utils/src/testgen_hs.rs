@@ -1,22 +1,27 @@
 use bzip2::read::BzDecoder;
+use fs2::FileExt;
 use std::{
     env,
-    fs::{File, create_dir_all, write as fs_write},
-    path::{Path, PathBuf},
+    fs::{
+        File, OpenOptions, create_dir_all, read_to_string, remove_dir_all, rename,
+        write as fs_write,
+    },
+    path::Path,
     process::Command,
 };
 use tar::Archive;
 use zip::ZipArchive;
 
 const TESTGEN_HS_PATH: &str = "TESTGEN_HS_PATH";
+const TESTGEN_HS_VERSION: &str = "11.0.1.0";
 
 pub fn ensure() {
+    println!("cargo:rerun-if-env-changed={TESTGEN_HS_PATH}");
+
     if env::var(TESTGEN_HS_PATH).is_ok() {
         println!("Environment variable {TESTGEN_HS_PATH} is set. Skipping the download.");
         return;
     }
-
-    let testgen_lib_version = "11.0.1.0";
 
     let target_os = super::target::os();
     let arch = super::target::arch();
@@ -27,23 +32,30 @@ pub fn ensure() {
         ".tar.bz2"
     };
 
-    let file_name = format!("testgen-hs-{testgen_lib_version}-{arch}-{target_os}");
+    let file_name = format!("testgen-hs-{TESTGEN_HS_VERSION}-{arch}-{target_os}");
     let download_url = format!(
-        "https://github.com/blockfrost/testgen-hs/releases/download/{testgen_lib_version}/{file_name}{suffix}"
+        "https://github.com/blockfrost/testgen-hs/releases/download/{TESTGEN_HS_VERSION}/{file_name}{suffix}"
     );
 
     println!("Looking for {file_name}");
 
-    // Use the project’s target directory instead of a system cache location.
-    let cargo_manifest_dir =
-        env::var("CARGO_MANIFEST_DIR").expect("Unable to find CARGO_MANIFEST_DIR");
-
-    let cargo_target_dir = PathBuf::from(&cargo_manifest_dir)
-        .join(env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into()));
-
-    let download_dir = cargo_target_dir.join("testgen-hs");
-
+    let profile_dir = super::target::profile_dir();
+    let download_dir = profile_dir
+        .parent()
+        .expect("profile dir has no parent")
+        .join("testgen-hs");
     create_dir_all(&download_dir).expect("Unable to create testgen directory");
+
+    // Platform, node, and error-decoder build scripts can run concurrently and
+    // share both the archive and extraction directories.
+    let lock_file = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(download_dir.join(".lock"))
+        .expect("Unable to open testgen-hs build lock");
+    FileExt::lock_exclusive(&lock_file).expect("Unable to lock testgen-hs build directory");
 
     let archive_name = if target_os == "windows" {
         format!("{file_name}.zip")
@@ -54,76 +66,84 @@ pub fn ensure() {
     let archive_path = download_dir.join(&archive_name);
 
     // Download the artifact if not already in the target directory.
-    if !archive_path.exists() {
+    if archive_path.exists() {
+        println!("Using existing archive at: {}", archive_path.display());
+    } else {
         println!("Downloading from: {download_url}");
 
         let response = reqwest::blocking::get(&download_url)
             .expect("Failed to download archive")
+            .error_for_status()
+            .expect("Download returned an error status")
             .bytes()
             .expect("Failed to read archive");
 
-        fs_write(&archive_path, &response).expect("Failed to write archive to disk");
+        let partial_path = download_dir.join(format!(".{file_name}.download"));
+        fs_write(&partial_path, &response).expect("Failed to write archive to disk");
+        rename(&partial_path, &archive_path).expect("Failed to install downloaded archive");
 
         println!("Downloaded to: {}", archive_path.display());
-    } else {
-        println!("Using existing archive at: {}", archive_path.display());
     }
 
-    // Either `debug` or `release`:
-    let cargo_profile = env::var("PROFILE").expect("Could not read PROFILE");
-
-    // Extraction path inside the target directory.
-    let extract_dir = cargo_target_dir.join(cargo_profile);
-    create_dir_all(&extract_dir).expect("Unable to create extraction directory");
-
-    let testgen_hs_dir = extract_dir.join("testgen-hs");
-
-    // Extract the artifact if not already extracted.
-    if !testgen_hs_dir.exists() {
-        println!("Extracting archive...");
-        if target_os == "windows" {
-            extract_zip(&archive_path, &extract_dir);
-        } else {
-            extract_tar_bz2(&archive_path, &extract_dir);
-        }
-    } else {
-        println!("Already extracted at: {}", extract_dir.display());
-    }
-
-    // Path to the testgen-hs executable.
+    let testgen_hs_dir = profile_dir.join("testgen-hs");
     let executable = if target_os == "windows" {
         testgen_hs_dir.join("testgen-hs.exe")
     } else {
         testgen_hs_dir.join("testgen-hs")
     };
+    let version_file = testgen_hs_dir.join(".version");
+    let is_current = executable.exists()
+        && read_to_string(&version_file).is_ok_and(|version| version.trim() == TESTGEN_HS_VERSION);
 
-    // Verify version by running --version.
-    println!("Verifying testgen-hs version...");
-    println!("Executing: {executable:?}");
-
-    let output = Command::new(&executable)
-        .arg("--version")
-        .output()
-        .expect("Failed to execute testgen-hs");
-
-    if !output.status.success() {
-        panic!(
-            "testgen-hs exited with status {}",
-            output.status.code().unwrap_or(-1)
-        );
+    // Extract the artifact if this profile doesn't have the current version.
+    if is_current {
+        println!("Already extracted at: {}", testgen_hs_dir.display());
+    } else {
+        println!("Extracting archive...");
+        if testgen_hs_dir.exists() {
+            remove_dir_all(&testgen_hs_dir).expect("Unable to remove old extraction directory");
+        }
+        create_dir_all(&profile_dir).expect("Unable to create extraction directory");
+        if target_os == "windows" {
+            extract_zip(&archive_path, &profile_dir);
+        } else {
+            extract_tar_bz2(&archive_path, &profile_dir);
+        }
+        fs_write(&version_file, TESTGEN_HS_VERSION)
+            .expect("Unable to write testgen-hs version file");
     }
 
-    let version_output = String::from_utf8_lossy(&output.stdout);
-    println!("testgen-hs version: {}", version_output.trim());
+    if !executable.is_file() {
+        panic!("Archive does not contain {}", executable.display());
+    }
 
-    let testgen_lib_version = format!("testgen-hs {testgen_lib_version}");
+    // A cross-compiled target binary cannot run on the build host.
+    let host = env::var("HOST").expect("Unable to find build host");
+    let target_triple = env::var("TARGET").expect("Unable to find build target");
+    if host == target_triple {
+        println!("Verifying testgen-hs version...");
+        println!("Executing: {executable:?}");
 
-    if version_output.trim() != testgen_lib_version {
-        panic!(
-            "Expected testgen-hs version {} but got {}",
-            version_output.trim(),
-            testgen_lib_version
-        );
+        let output = Command::new(&executable)
+            .arg("--version")
+            .output()
+            .expect("Failed to execute testgen-hs");
+
+        if !output.status.success() {
+            panic!(
+                "testgen-hs exited with status {}",
+                output.status.code().unwrap_or(-1)
+            );
+        }
+
+        let version_output = String::from_utf8_lossy(&output.stdout);
+        let reported = version_output.trim();
+        let expected = format!("testgen-hs {TESTGEN_HS_VERSION}");
+        println!("testgen-hs version: {reported}");
+
+        if reported != expected {
+            panic!("Expected testgen-hs version {expected} but got {reported}");
+        }
     }
 
     // Set environment variable for downstream build steps.
@@ -132,9 +152,11 @@ pub fn ensure() {
         TESTGEN_HS_PATH,
         executable.to_string_lossy()
     );
+
+    FileExt::unlock(&lock_file).expect("Unable to unlock testgen-hs build directory");
 }
 
-fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
+fn extract_tar_bz2(archive_path: &Path, extract_dir: &Path) {
     let tar_bz2 = File::open(archive_path).expect("Failed to open .tar.bz2 archive");
     let tar = BzDecoder::new(tar_bz2);
     let mut archive = Archive::new(tar);
@@ -144,7 +166,7 @@ fn extract_tar_bz2(archive_path: &PathBuf, extract_dir: &PathBuf) {
         .expect("Failed to extract .tar.bz2 archive");
 }
 
-fn extract_zip(archive_path: &PathBuf, extract_dir: &Path) {
+fn extract_zip(archive_path: &Path, extract_dir: &Path) {
     let file = File::open(archive_path).expect("Failed to open .zip archive");
     let mut archive = ZipArchive::new(file).expect("Failed to read .zip archive");
 

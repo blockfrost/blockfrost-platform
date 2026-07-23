@@ -20,6 +20,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
   ls -l ; cargo chef prepare --recipe-path recipe.json
 
 FROM base AS builder
+ENV HYDRA_NODE_PATH=unused
 COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
