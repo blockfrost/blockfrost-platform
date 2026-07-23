@@ -27,7 +27,7 @@
       url = "github:blockfrost/blockfrost-tests";
       flake = false;
     };
-    mithril.url = "github:input-output-hk/mithril/2617.0";
+    mithril.url = "github:IntersectMBO/mithril/2617.0";
     testgen-hs = {
       url = "github:blockfrost/testgen-hs/11.0.1.0"; # make sure it follows cardano-node
       flake = false; # otherwise, +2k dependencies we don’t really use
