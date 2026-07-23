@@ -55,10 +55,14 @@ impl Target {
                 asset: format!("hydra-x86_64-linux-{HYDRA_VERSION}"),
                 kind: ArchiveKind::Zip,
             }),
+            // The official cardano-scaling/hydra macOS archive ships bare
+            // executables that load dylibs from the build machine's /nix/store,
+            // so it cannot run on a normal host. We publish a relocatable bundle
+            // (libraries repointed to `@executable_path/lib`) instead.
             ("aarch64", "darwin") => Some(Self {
-                repo: "cardano-scaling/hydra",
+                repo: "blockfrost/hydra-aarch64-linux",
                 asset: format!("hydra-aarch64-darwin-{HYDRA_VERSION}"),
-                kind: ArchiveKind::Zip,
+                kind: ArchiveKind::TarBz2,
             }),
             ("aarch64", "linux") => Some(Self {
                 repo: "blockfrost/hydra-aarch64-linux",
@@ -89,7 +93,7 @@ pub fn ensure() {
 
     let Some(target) = Target::detect() else {
         println!(
-            "No prebuilt `hydra-node` for this target; skipping the download. \
+            "No supported prebuilt `hydra-node` for this target; skipping the download. \
              Provide one via {HYDRA_NODE_PATH} if needed."
         );
         return;
