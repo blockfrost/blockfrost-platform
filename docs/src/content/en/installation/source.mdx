@@ -41,7 +41,47 @@ git checkout 1.0.0
 
 # Build the project
 cargo build --release
+```
 
+## Providing `hydra-node`
+
+A source build does **not** download the `hydra-node` binary (only the Nix and Docker
+builds do). You have to provide your own `hydra-node` 1.0.0 binary, or
+`blockfrost-platform` will refuse to start with:
+
+```
+Error: No valid `hydra-node` binary found in [...]
+```
+
+Download the 1.0.0 release for your platform from
+[cardano-scaling/hydra](https://github.com/cardano-scaling/hydra/releases/tag/1.0.0)
+(for `aarch64-linux`, use
+[blockfrost/hydra-aarch64-linux](https://github.com/blockfrost/hydra-aarch64-linux/releases/tag/1.0.0)),
+unpack it, and make it executable. Then point `blockfrost-platform` at it in one of two ways:
+
+<Tabs items={['HYDRA_NODE_PATH','Next to the binary']}>
+  <Tabs.Tab>
+    Set the `HYDRA_NODE_PATH` environment variable to the full path of the `hydra-node`
+    binary:
+
+    ```shell
+    export HYDRA_NODE_PATH=/path/to/hydra-node
+    ./target/release/blockfrost-platform --version
+    ```
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Copy the `hydra-node` binary into the same directory as `blockfrost-platform`:
+
+    ```shell
+    cp /path/to/hydra-node ./target/release/
+    ./target/release/blockfrost-platform --version
+    ```
+
+  </Tabs.Tab>
+</Tabs>
+
+```shell
 # Run the binary
 ./target/release/blockfrost-platform  --version
 blockfrost-platform 1.0.0 (<1134f1a3027e3cbaf81f5e5595aadd1bcfefdae7>)
