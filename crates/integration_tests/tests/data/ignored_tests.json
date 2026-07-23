@@ -319,10 +319,6 @@
     {
       "_comment": "pools/pool1p73yrd7vzwkkjd2rff4g683smhlm3jkg45f2hwm79cke6uxxwq9 (= pools/0fa241b7cc13ad6935434a6a8d1e30ddffb8cac8ad12abbb7e2e2d9d) -- live_size is dynamic and fell below the fixture's configured range",
       "id": "pools-pool-id-multiple-times-deregistered-pool_bf237a8f6b25"
-    },
-    {
-      "_comment": "pools/pool1407hpuvtp9ww8s5mt53ear7062j463mvwhnypurlcask7djg3ae/metadata (= pools/abfd70f18b095ce3c29b5d239e8fcfd2a55d476c75e640f07fc7616f/metadata) -- the off-chain metadata URL serves content that does not match its on-chain hash, so Dolos returns HASH_MISMATCH while the fixture expects cached metadata",
-      "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update-upstr_cdf918758069"
     }
   ]
 }
