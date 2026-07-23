@@ -1,4 +1,5 @@
 use crate::db::{DB, PoolStatus};
+use crate::health_monitor::HealthMonitor;
 use crate::load_balancer::LoadBalancerState;
 use axum::{Extension, http::StatusCode, response::IntoResponse};
 use metrics::{describe_counter, describe_gauge, gauge};
@@ -122,6 +123,7 @@ const RELAY_METRICS: &[RelayMetric] = &[
 pub(crate) async fn render_prometheus(
     load_balancer: &LoadBalancerState,
     db_pool: &PoolStatus,
+    healthy: bool,
 ) -> Result<String, std::fmt::Error> {
     let now_chrono = chrono::Utc::now();
     let now_instant = std::time::Instant::now();
@@ -159,6 +161,13 @@ pub(crate) async fn render_prometheus(
     }
 
     let mut out = String::new();
+
+    writeln!(
+        out,
+        "# HELP blockfrost_gateway_healthy Whether the Gateway is healthy, i.e. its periodic health checks (PostgreSQL connectivity, Blockfrost API) succeeded. Mirrors the `healthy` field of `GET /`."
+    )?;
+    writeln!(out, "# TYPE blockfrost_gateway_healthy gauge")?;
+    writeln!(out, "blockfrost_gateway_healthy {}", u8::from(healthy))?;
 
     writeln!(
         out,
@@ -231,11 +240,13 @@ pub(crate) async fn render_prometheus(
 pub async fn route(
     Extension(load_balancer): Extension<LoadBalancerState>,
     Extension(db): Extension<DB>,
+    Extension(health_monitor): Extension<HealthMonitor>,
     Extension(prometheus_handle): Extension<PrometheusHandle>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let healthy = health_monitor.current_status().await.healthy;
     let mut body = prometheus_handle.render();
     body.push_str(
-        &render_prometheus(&load_balancer, &db.pool_status())
+        &render_prometheus(&load_balancer, &db.pool_status(), healthy)
             .await
             .map_err(|e| {
                 error!("failed to render gateway metrics: {e}");
@@ -304,10 +315,12 @@ mod tests {
         });
         lb.active_relays.lock().await.insert(uuid, relay);
 
-        let out = render_prometheus(&lb, &test_pool_status())
+        let out = render_prometheus(&lb, &test_pool_status(), true)
             .await
             .expect("render metrics");
 
+        assert!(out.contains("# TYPE blockfrost_gateway_healthy gauge"));
+        assert!(out.contains("\nblockfrost_gateway_healthy 1\n"));
         assert!(out.contains("# TYPE blockfrost_gateway_connected_relays gauge"));
         assert!(out.contains("\nblockfrost_gateway_connected_relays 1\n"));
         assert!(out.contains("# TYPE blockfrost_gateway_db_pool_max_size gauge"));
@@ -348,7 +361,7 @@ mod tests {
             .await
             .insert(uuid, test_relay_state("Icebreaker2"));
 
-        let out = render_prometheus(&lb, &test_pool_status())
+        let out = render_prometheus(&lb, &test_pool_status(), true)
             .await
             .expect("render metrics");
 
@@ -370,10 +383,19 @@ mod tests {
     #[tokio::test]
     async fn reports_zero_when_no_relays() {
         let lb = LoadBalancerState::new(None, test_key());
-        let out = render_prometheus(&lb, &test_pool_status())
+        let out = render_prometheus(&lb, &test_pool_status(), true)
             .await
             .expect("render metrics");
         assert!(out.contains("\nblockfrost_gateway_connected_relays 0\n"));
+    }
+
+    #[tokio::test]
+    async fn reports_unhealthy_gateway() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let out = render_prometheus(&lb, &test_pool_status(), false)
+            .await
+            .expect("render metrics");
+        assert!(out.contains("\nblockfrost_gateway_healthy 0\n"));
     }
 
     #[tokio::test]
@@ -385,7 +407,7 @@ mod tests {
             .await
             .insert(uuid, test_relay_state("we\"ird\\name"));
 
-        let out = render_prometheus(&lb, &test_pool_status())
+        let out = render_prometheus(&lb, &test_pool_status(), true)
             .await
             .expect("render metrics");
         assert!(out.contains("relay=\"we\\\"ird\\\\name\""));

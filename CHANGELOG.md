@@ -3,11 +3,14 @@
 ### Added
 
 - Gateway: per-relay `blockfrost_gateway_relay_healthy`, `blockfrost_gateway_relay_data_node_up`, and `blockfrost_gateway_relay_info` metrics in `GET /metrics` (and the same data points in `GET /stats`)
+- Gateway: `blockfrost_gateway_healthy` metric in `GET /metrics`, mirroring the `healthy` field of `GET /`
 - New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/addresses/{address}`, and `/blocks/slot/{slot_number}`
 - `--max-response-body-bytes` to configure the maximum proxied response body size (default 10 MiB)
 
 ### Fixed
 
+- Gateway: `GET /` no longer always reports `healthy: true` — it now reflects periodic health checks of PostgreSQL connectivity and the Blockfrost API
+- Gateway: refuses to start when the initial health check fails (e.g. an invalid Blockfrost project token)
 - Raised the proxied body limit from 1 MiB to 10 MiB
 - `--custom-genesis-config` now actually takes effect: the network is served as `custom`, the genesis file is parsed up front, and all consumers use the merged registry
 - Stake (`stake_test`) addresses are now accepted on custom networks, fixing `/accounts/{stake_address}/*` endpoints that previously rejected every stake address as invalid
