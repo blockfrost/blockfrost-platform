@@ -1,6 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm build",
+  "redirects": [
+    {
+      "source": "/:path(budget|configuration|data-node|faq|get-started|icebreakers|options|roadmap|usecases|verification)",
+      "destination": "/en/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:section(installation|usage)/:page*",
+      "destination": "/en/:section/:page*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/next",
