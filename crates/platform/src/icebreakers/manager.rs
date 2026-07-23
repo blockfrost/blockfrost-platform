@@ -1,5 +1,4 @@
 use crate::icebreakers::api::IcebreakersAPI;
-use crate::server::state::ApiPrefix;
 use crate::{hydra_client, load_balancer};
 use axum::Router;
 use bf_common::errors::BlockfrostError;
@@ -10,7 +9,6 @@ pub struct IcebreakersManager {
     icebreakers_api: Arc<IcebreakersAPI>,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     app: Router,
-    api_prefix: ApiPrefix,
     max_response_body_bytes: usize,
 }
 
@@ -19,14 +17,12 @@ impl IcebreakersManager {
         icebreakers_api: Arc<IcebreakersAPI>,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         app: Router,
-        api_prefix: ApiPrefix,
         max_response_body_bytes: usize,
     ) -> Self {
         Self {
             icebreakers_api,
             health_errors,
             app,
-            api_prefix,
             max_response_body_bytes,
         }
     }
@@ -57,7 +53,6 @@ impl IcebreakersManager {
         tokio::spawn(load_balancer::run_all(
             self.app,
             self.health_errors,
-            self.api_prefix,
             Some(mutable_hydra_kex),
             self.icebreakers_api,
             self.max_response_body_bytes,

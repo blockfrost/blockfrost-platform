@@ -8,9 +8,7 @@ use bf_node::pool::NodePool;
 use blockfrost_platform::config::{Config, DataNodeConfig, IcebreakersConfig, Mode};
 use blockfrost_platform::genesis::genesis;
 use blockfrost_platform::{
-    AppError, health_monitor,
-    icebreakers::api::IcebreakersAPI,
-    server::{build, state::ApiPrefix},
+    AppError, health_monitor, icebreakers::api::IcebreakersAPI, server::build,
 };
 use std::{env, sync::Arc, time::Duration};
 
@@ -47,7 +45,6 @@ pub async fn build_app() -> Result<
         NodePool,
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        ApiPrefix,
     ),
     AppError,
 > {
@@ -64,7 +61,6 @@ pub async fn build_app_non_solitary(
         NodePool,
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        ApiPrefix,
     ),
     AppError,
 > {
@@ -120,7 +116,6 @@ pub async fn build_app_with_data_node(
         NodePool,
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        ApiPrefix,
     ),
     AppError,
 > {
