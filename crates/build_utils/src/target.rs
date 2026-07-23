@@ -40,12 +40,14 @@ pub fn profile_dir() -> PathBuf {
         .to_path_buf()
 }
 
-/// Ensures every directory under `root` (inclusive) is writable by the owner.
+/// Like [`std::fs::remove_dir_all`], but on Unix first makes all directories
+/// writable so read-only extraction trees can be removed.
 ///
 /// Archives extracted from the Nix store keep read-only (`0500`) directory
 /// modes. Without a writable bit on a directory, its entries can't be removed,
-/// which breaks re-extraction on a subsequent build.
-fn make_dirs_writable(root: &Path) -> std::io::Result<()> {
+/// which breaks re-extraction on a subsequent build. Windows has no such
+/// notion, so removal happens directly there.
+pub fn remove_dir_all_writable(root: &Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::{fs::set_permissions, os::unix::fs::PermissionsExt};
@@ -59,20 +61,12 @@ fn make_dirs_writable(root: &Path) -> std::io::Result<()> {
             }
         }
     }
-    #[cfg(not(unix))]
-    let _ = root;
-    Ok(())
-}
-
-/// Like [`std::fs::remove_dir_all`], but first makes all directories writable so
-/// read-only extraction trees (see [`make_dirs_writable`]) can be removed.
-pub fn remove_dir_all_writable(root: &Path) -> std::io::Result<()> {
-    make_dirs_writable(root)?;
     std::fs::remove_dir_all(root)
 }
 
 /// Collects `root` and all of its descendant directories so that a caller may
 /// adjust their permissions.
+#[cfg(unix)]
 fn walk_dirs(root: &Path) -> std::io::Result<Vec<PathBuf>> {
     let mut dirs = vec![root.to_path_buf()];
     let mut i = 0;
