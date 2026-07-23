@@ -715,12 +715,12 @@ in
           ''
             set -euo pipefail
 
-            if [[ -z ''${DOLOS_ENDPOINT+x} ]]; then
-              export DOLOS_ENDPOINT="http://127.0.0.1:3010"
-              echo >&2 "warning: DOLOS_ENDPOINT is unset; assuming $DOLOS_ENDPOINT"
+            if [[ -z ''${DATA_NODE_ENDPOINT+x} ]]; then
+              export DATA_NODE_ENDPOINT="http://127.0.0.1:3010"
+              echo >&2 "warning: DATA_NODE_ENDPOINT is unset; assuming $DATA_NODE_ENDPOINT"
             fi
 
-            curl -fsSL "''${DOLOS_ENDPOINT}" | jq -r '"Running Dolos " + .version + " (" + .revision + ")"'
+            curl -fsSL "''${DATA_NODE_ENDPOINT}" | jq -r '"Running data node " + .version + " (" + .revision + ")"'
 
             err() { printf "error: %s\n" "$1" >&2; }
 
@@ -804,7 +804,7 @@ in
               --secret 'unused-unused' \
               --reward-address "$reward_address" \
               --gateway-url "$gateway_url" \
-              --data-node "''${DOLOS_ENDPOINT}" \
+              --data-node "''${DATA_NODE_ENDPOINT}" \
               --data-node-timeout-sec 30 \
               &
             platform_pid=$!
