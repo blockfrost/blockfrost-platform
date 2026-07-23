@@ -107,6 +107,10 @@ in {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
       }
+      {
+        name = "HYDRA_NODE_PATH";
+        value = lib.getExe internal.hydra-node;
+      }
     ]
     ++ lib.optionals pkgs.stdenv.isDarwin [
       {
