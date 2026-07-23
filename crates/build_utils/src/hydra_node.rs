@@ -2,10 +2,7 @@ use bzip2::read::BzDecoder;
 use fs2::FileExt;
 use std::{
     env,
-    fs::{
-        File, OpenOptions, create_dir_all, read_to_string, remove_dir_all, rename,
-        write as fs_write,
-    },
+    fs::{File, OpenOptions, create_dir_all, read_to_string, rename, write as fs_write},
     path::Path,
     process::Command,
 };
@@ -155,7 +152,8 @@ pub fn ensure() {
     } else {
         println!("Extracting archive...");
         if hydra_node_dir.exists() {
-            remove_dir_all(&hydra_node_dir).expect("Unable to remove old extraction directory");
+            super::target::remove_dir_all_writable(&hydra_node_dir)
+                .expect("Unable to remove old extraction directory");
         }
         create_dir_all(&hydra_node_dir).expect("Unable to create extraction directory");
         target.kind.extract(&archive_path, &hydra_node_dir);
