@@ -299,6 +299,15 @@ in rec {
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
 
+    # Dolos v1.4.0 still has trailing semicolons in tail-position macro calls
+    # (e.g. `bail!(…)` in `src/bin/dolos/data/stats.rs`), which recent Rust
+    # rejects as a hard error
+    # (<https://github.com/rust-lang/rust/issues/79813>). Temporarily downgrade
+    # it back to a warning so this third-party source keeps compiling.
+    #
+    # FIXME: remove after Dolos v1.5.0
+    RUSTFLAGS = "--allow=semicolon_in_expressions_from_macros";
+
     depsBuildBuild = [
       pkgsCross.stdenv.cc
       pthreads

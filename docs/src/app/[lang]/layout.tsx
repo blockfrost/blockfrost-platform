@@ -36,7 +36,7 @@ export default async function LangLayout({ children, params }) {
     <Navbar
       logo={<Logo />}
       projectLink="https://github.com/blockfrost/blockfrost-platform"
-      chatLink="https://discord.gg/inputoutput"
+      chatLink="https://discord.gg/YfGKvqpt2d"
     >
       <VersionBadge />
       <LocaleSwitch lite />

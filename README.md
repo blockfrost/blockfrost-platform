@@ -20,8 +20,9 @@ earning rewards.
 ## Getting started
 
 For detailed instructions on using the platform, visit our [end-user documentation
-site](https://platform.blockfrost.io/). To begin, check out our [quickstart
-guide](https://platform.blockfrost.io/get-started).
+site](https://platform.blockfrost.io/en), also available in
+[日本語](https://platform.blockfrost.io/ja). To begin, check out our [quickstart
+guide](https://platform.blockfrost.io/en/get-started).
 
 ## Roadmap
 
@@ -29,4 +30,4 @@ Explore the upcoming steps on our [roadmap](https://github.com/orgs/blockfrost/p
 
 ## Join our community
 
-[Join us on Discord](https://discord.gg/inputoutput).
+[Join us on Discord](https://discord.gg/YfGKvqpt2d).

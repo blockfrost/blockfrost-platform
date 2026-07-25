@@ -227,6 +227,10 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
+    },
+    {
+      "_comment": "pools/pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy (= pools/0f292fcaa02b8b2f9b3c8f9fd8e0bb21abedb692a6d5058df3ef2735) -- live_pledge is dynamic and fell below the fixture's configured range",
+      "id": "pools-pool-id-best-pool_ed86d68945e0"
     }
   ],
   "preprod": [
@@ -277,6 +281,14 @@
     {
       "_comment": "pools/pool1rccstu3l9ty3k0a5cd06fl3szsss9r34dcg5j38fqgq9kvng0tg/history?page=5&count=1 (= pools/1e3105f23f2ac91b3fb4c35fa4fe301421028e356e114944e902005b/history?page=5&count=1&order=asc) -- Dolos pool history differs from the real Blockfrost API (delegators_count / margin-cost update differences)",
       "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_d0b3a9122929"
+    },
+    {
+      "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
+      "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
+    },
+    {
+      "_comment": "txs/6aa2246eed20d1384c43c11913003a28a2b1d688358ea6f6c317277483286cd2/cbor -- Dolos returns the full on-chain CBOR with its witness set, while the fixture expects an empty witness map",
+      "id": "txs-tx-cbor-generic-tx_4100a96a6665"
     }
   ],
   "preview": [
@@ -295,6 +307,22 @@
     {
       "_comment": "addresses/addr_vkh12ux0cq59haf8ydty5577ztxzh9qcvhjn7xxaj4xr55esx49uztj/txs?order=asc&page=12800&count=1 -- Dolos returns HTTP 400 (pagination scan limit: page*count=12800 > max_scan_items=3000) while the real Blockfrost API returns the full array",
       "id": "addresses-address-txs-generic-payment-cred-2_ba6a4f5de054"
+    },
+    {
+      "_comment": "assets/60d9cf867f96f4395a10730c327903f6fac297ef6c10138df438eb07/addresses -- the asset moved to a new address while the fixture pins its previous holder",
+      "id": "assets-addresses_eb5b8fb1e458"
+    },
+    {
+      "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
+      "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
+    },
+    {
+      "_comment": "pools/pool1p73yrd7vzwkkjd2rff4g683smhlm3jkg45f2hwm79cke6uxxwq9 (= pools/0fa241b7cc13ad6935434a6a8d1e30ddffb8cac8ad12abbb7e2e2d9d) -- live_size is dynamic and fell below the fixture's configured range",
+      "id": "pools-pool-id-multiple-times-deregistered-pool_bf237a8f6b25"
+    },
+    {
+      "_comment": "pools/pool1407hpuvtp9ww8s5mt53ear7062j463mvwhnypurlcask7djg3ae/metadata (= pools/abfd70f18b095ce3c29b5d239e8fcfd2a55d476c75e640f07fc7616f/metadata) -- the off-chain metadata URL serves content that does not match its on-chain hash, so Dolos returns HASH_MISMATCH while the fixture expects cached metadata",
+      "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update-upstr_cdf918758069"
     }
   ]
 }
