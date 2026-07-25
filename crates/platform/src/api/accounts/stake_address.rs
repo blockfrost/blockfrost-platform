@@ -5,5 +5,6 @@ pub mod mirs;
 pub mod registrations;
 pub mod rewards;
 pub mod root;
+pub mod transactions;
 pub mod utxos;
 pub mod withdrawals;

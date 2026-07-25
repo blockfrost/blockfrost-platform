@@ -9,6 +9,7 @@ use blockfrost_openapi::models::{
     account_mir_content_inner::AccountMirContentInner,
     account_registration_content_inner::AccountRegistrationContentInner,
     account_reward_content_inner::AccountRewardContentInner,
+    account_transactions_content_inner::AccountTransactionsContentInner,
     account_utxo_content_inner::AccountUtxoContentInner,
     account_withdrawal_content_inner::AccountWithdrawalContentInner,
     address_content::AddressContent, address_content_extended::AddressContentExtended,
@@ -66,6 +67,7 @@ pub type AccountsHistoryResponse = Vec<AccountHistoryContentInner>;
 pub type AccountsMirResponse = Vec<AccountMirContentInner>;
 pub type AccountsUtxosResponse = Vec<AccountUtxoContentInner>;
 pub type AccountsWithdrawalsResponse = Vec<AccountWithdrawalContentInner>;
+pub type AccountsTransactionsResponse = Vec<AccountTransactionsContentInner>;
 
 // addresses
 pub type AddressesResponse = AddressContent;

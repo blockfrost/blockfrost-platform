@@ -72,19 +72,24 @@ impl fmt::Display for AddressType {
 }
 
 pub fn is_stake_address_valid(input: &str, network: &Network) -> Result<bool, BlockfrostError> {
-    let (hrp, _) = bech32::decode(input).map_err(|_| BlockfrostError::invalid_stake_address())?;
-    let prefix_str = match hrp.as_str() {
-        "stake" => Ok("stake"),
-        "stake_test" => Ok("stake_test"),
-        _ => Err(BlockfrostError::invalid_stake_address()),
-    }?;
+    let (hrp, data) =
+        bech32::decode(input).map_err(|_| BlockfrostError::invalid_stake_address())?;
 
-    match network {
-        Network::Mainnet if prefix_str == "stake" => Ok(true),
-        Network::Preprod | Network::Preview | Network::Custom if prefix_str == "stake_test" => {
-            Ok(true)
-        },
-        _ => Ok(false),
+    match hrp.as_str() {
+        // Canonical stake addresses carry the network in their header, so they
+        // must match the configured network.
+        "stake" => Ok(*network == Network::Mainnet),
+        "stake_test" => Ok(matches!(
+            network,
+            Network::Preprod | Network::Preview | Network::Custom
+        )),
+        // CIP-19 stake credentials (verification key, key hash or script hash)
+        // are network-agnostic; the data node resolves them against its own
+        // network. `stake_vkh` and `script` are 28-byte credentials, while
+        // `stake_vk` is a 32-byte Ed25519 verification key.
+        "stake_vkh" | "script" => Ok(data.len() == 28),
+        "stake_vk" => Ok(data.len() == 32),
+        _ => Err(BlockfrostError::invalid_stake_address()),
     }
 }
 
@@ -249,6 +254,24 @@ mod tests {
         "stake1uxmdw34s0rkc26d9x9aax69pcua8eukm2tytlx3szg75mcg5z5nss",
         Network::Custom,
         false
+    )]
+    #[case(
+        "CIP-19 stake_vkh credential is network-agnostic",
+        "stake_vkh18ncsfsl5ngpn0u3edp30mym5e0c795msf37yrhlm03hkjdcyt7g",
+        Network::Preview,
+        true
+    )]
+    #[case(
+        "CIP-19 stake_vk verification key is network-agnostic",
+        "stake_vk1px4j0r2fk7ux5p23shz8f3y5y2qam7s954rgf3lg5merqcj6aetsft99wu",
+        Network::Mainnet,
+        true
+    )]
+    #[case(
+        "CIP-19 script credential is network-agnostic",
+        "script1prjh5fpchv23u4ufyy7gs27tjjmqp0dtz2vwhkxvmvay6ehj87m",
+        Network::Preview,
+        true
     )]
     fn test_validate_stake_address(
         #[case] description: &str,

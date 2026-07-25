@@ -25,6 +25,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/accounts/{stake_address}/addresses/assets", get(accounts::stake_address::addresses::assets::route))
         .route("/accounts/{stake_address}/addresses/total", get(accounts::stake_address::addresses::total::route))
         .route("/accounts/{stake_address}/utxos", get(accounts::stake_address::utxos::route))
+        .route("/accounts/{stake_address}/transactions", get(accounts::stake_address::transactions::route))
 
         // addresses
         .route("/addresses/{address}", get(addresses::address::root::route))
