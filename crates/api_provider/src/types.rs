@@ -130,6 +130,7 @@ pub type ScriptsRedeemersInnerResponse = Vec<ScriptRedeemersInner>;
 
 // pools
 pub type PoolsSingleResponse = Pool;
+pub type PoolsListResponse = Vec<String>;
 pub type PoolsListExtendedResponse = Vec<PoolListExtendedInner>;
 pub type PoolsDelegatorsResponse = Vec<PoolDelegatorsInner>;
 pub type PoolsRetiresResponse = Vec<PoolListRetireInner>;

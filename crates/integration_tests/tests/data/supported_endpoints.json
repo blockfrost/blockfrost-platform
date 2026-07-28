@@ -19,6 +19,7 @@
   "/accounts/{stake_address}/transactions",
   "/accounts/{stake_address}",
   "/assets/{asset}",
+  "/pools",
   "/pools/extended",
   "/pools/retiring",
   "/pools/{pool_id}",

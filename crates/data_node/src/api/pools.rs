@@ -1,6 +1,6 @@
 use crate::client::DataNode;
 use bf_api_provider::types::{
-    PoolsDelegatorsResponse, PoolsHistoryResponse, PoolsListExtendedResponse,
+    PoolsDelegatorsResponse, PoolsHistoryResponse, PoolsListExtendedResponse, PoolsListResponse,
     PoolsMetadataResponse, PoolsRelaysResponse, PoolsRetiresResponse, PoolsSingleResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
@@ -16,6 +16,10 @@ impl DataNode {
 }
 
 impl DataNodePools<'_> {
+    pub async fn all(&self, pagination: &Pagination) -> ApiResult<PoolsListResponse> {
+        self.inner.client.get("pools", Some(pagination)).await
+    }
+
     pub async fn extended(&self, pagination: &Pagination) -> ApiResult<PoolsListExtendedResponse> {
         self.inner
             .client
