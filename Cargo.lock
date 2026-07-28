@@ -542,6 +542,7 @@ dependencies = [
  "base64",
  "blake3",
  "blockfrost",
+ "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "cardano-serialization-lib",
  "chrono",
@@ -649,6 +650,7 @@ name = "blockfrost-platform-build-utils"
 version = "1.0.0"
 dependencies = [
  "bzip2",
+ "fs2",
  "reqwest 0.13.2",
  "tar",
  "zip",
@@ -794,6 +796,7 @@ dependencies = [
  "axum",
  "base64",
  "blockfrost",
+ "blockfrost-platform-build-utils",
  "blockfrost-platform-common",
  "cardano-serialization-lib",
  "clap",
@@ -1694,6 +1697,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]

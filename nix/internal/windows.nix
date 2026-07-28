@@ -48,6 +48,7 @@ in rec {
     TARGET_CC = "${pkgsCross.stdenv.cc}/bin/${pkgsCross.stdenv.cc.targetPrefix}cc";
 
     TESTGEN_HS_PATH = "unused"; # Don’t try to download it in `build.rs`.
+    HYDRA_NODE_PATH = "unused"; # Don’t try to download it in `build.rs`.
 
     OPENSSL_DIR = "${pkgs.openssl.dev}";
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";

@@ -41,7 +41,58 @@ git checkout 1.0.0
 
 # Build the project
 cargo build --release
+```
 
+## Providing `hydra-node`
+
+`blockfrost-platform` needs a `hydra-node` 1.0.0 binary at runtime, or it will
+refuse to start with:
+
+```
+Error: No valid `hydra-node` binary found in [...]
+```
+
+When building `main`, the build downloads a matching `hydra-node` automatically
+for the supported targets (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`),
+extracting it into a `hydra-node/` subdirectory next to the compiled binary
+(e.g. `target/release/hydra-node/hydra-node`). Set `HYDRA_NODE_PATH` to skip the
+download and use your own binary instead. On other targets you have to provide
+it yourself.
+
+The `1.0.0` release does **not** download `hydra-node`; you always have to
+provide your own binary.
+
+To provide `hydra-node` manually, download the 1.0.0 release for your platform from
+[cardano-scaling/hydra](https://github.com/cardano-scaling/hydra/releases/tag/1.0.0)
+(for `aarch64-linux` and `aarch64-darwin`, use
+[blockfrost/hydra-aarch64-linux](https://github.com/blockfrost/hydra-aarch64-linux/releases/tag/1.0.0)),
+unpack it, and make it executable. Then point `blockfrost-platform` at it in one of two ways:
+
+<Tabs items={['HYDRA_NODE_PATH','Next to the binary']}>
+  <Tabs.Tab>
+    Set the `HYDRA_NODE_PATH` environment variable to the full path of the `hydra-node`
+    binary:
+
+    ```shell
+    export HYDRA_NODE_PATH=/path/to/hydra-node
+    ./target/release/blockfrost-platform --version
+    ```
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Copy the `hydra-node` binary into a `hydra-node/` subdirectory next to
+    `blockfrost-platform`:
+
+    ```shell
+    mkdir -p ./target/release/hydra-node
+    cp /path/to/hydra-node ./target/release/hydra-node/
+    ./target/release/blockfrost-platform --version
+    ```
+
+  </Tabs.Tab>
+</Tabs>
+
+```shell
 # Run the binary
 ./target/release/blockfrost-platform  --version
 blockfrost-platform 1.0.0 (<1134f1a3027e3cbaf81f5e5595aadd1bcfefdae7>)
