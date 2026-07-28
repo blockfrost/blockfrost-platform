@@ -13,15 +13,31 @@ async fn spawn_platform_with_data_node() -> BlockfrostAPI {
     get_platform_client(&spawn_app(app).await)
 }
 
+/// How far below the chain tip the anchor block sits.
+const ANCHOR_DEPTH: i32 = 5;
+
 /// Hash of an already-settled block, so no compared field is racing the chain
 /// tip.
-async fn anchor_block_hash(platform: &BlockfrostAPI) -> String {
-    platform
+///
+/// Picked from the Blockfrost API, since that is the reference the data node is
+/// compared against.
+async fn anchor_block_hash() -> String {
+    let blockfrost = get_blockfrost_client();
+
+    let tip_height = blockfrost
         .blocks_latest()
         .await
-        .expect("Request to /blocks/latest failed")
-        .previous_block
-        .expect("Latest block has no previous block")
+        .expect("Blockfrost request to /blocks/latest failed")
+        .height
+        .expect("Latest block has no height");
+
+    let anchor_height = tip_height - ANCHOR_DEPTH;
+
+    blockfrost
+        .blocks_by_id(&anchor_height.to_string())
+        .await
+        .unwrap_or_else(|e| panic!("Blockfrost request for block {anchor_height} failed: {e}"))
+        .hash
 }
 
 // Test: `/blocks/latest` served from the data node has the same
@@ -63,7 +79,7 @@ async fn test_data_node_blocks_by_id_matches_blockfrost() {
     initialize_logging();
 
     let platform = spawn_platform_with_data_node().await;
-    let anchor = anchor_block_hash(&platform).await;
+    let anchor = anchor_block_hash().await;
 
     let mut local_block = platform
         .blocks_by_id(&anchor)
@@ -90,7 +106,7 @@ async fn test_data_node_blocks_txs_match_blockfrost() {
     initialize_logging();
 
     let platform = spawn_platform_with_data_node().await;
-    let anchor = anchor_block_hash(&platform).await;
+    let anchor = anchor_block_hash().await;
 
     let local_txs = platform
         .blocks_txs(&anchor, Pagination::default())
