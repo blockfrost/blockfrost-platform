@@ -47,6 +47,7 @@
   "/addresses/{address}/transactions",
   "/addresses/{address}/txs",
   "/addresses/{address}/utxos",
+  "/addresses/{address}/total",
   "/addresses/{address}",
   "/assets/{asset}/addresses",
   "/assets/{asset}/transactions",
