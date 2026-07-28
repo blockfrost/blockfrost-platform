@@ -227,10 +227,6 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
-    },
-    {
-      "_comment": "pools/pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy (= pools/0f292fcaa02b8b2f9b3c8f9fd8e0bb21abedb692a6d5058df3ef2735) -- live_pledge is dynamic and fell below the fixture's configured range",
-      "id": "pools-pool-id-best-pool_ed86d68945e0"
     }
   ],
   "preprod": [
