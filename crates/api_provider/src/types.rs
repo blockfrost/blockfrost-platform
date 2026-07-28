@@ -135,6 +135,7 @@ pub type PoolsDelegatorsResponse = Vec<PoolDelegatorsInner>;
 pub type PoolsRetiresResponse = Vec<PoolListRetireInner>;
 pub type PoolsHistoryResponse = Vec<PoolHistoryInner>;
 pub type PoolsMetadataResponse = PoolMetadata;
+pub type PoolsRelaysResponse = Vec<TxContentPoolCertsInnerRelaysInner>;
 pub type PoolsUpdatesResponse = Vec<PoolUpdatesInner>;
 pub type PoolsProposalVotesResponse = Vec<ProposalVotesInner>;
 

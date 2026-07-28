@@ -23,6 +23,7 @@
   "/pools/retiring",
   "/pools/{pool_id}",
   "/pools/{pool_id}/metadata",
+  "/pools/{pool_id}/relays",
   "/pools/{pool_id}/delegators",
   "/addresses/{address}/utxos/{asset}",
   "/txs/{hash}",
