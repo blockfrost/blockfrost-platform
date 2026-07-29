@@ -1,5 +1,5 @@
 use crate::client::DataNode;
-use bf_api_provider::types::{BlocksResponse, BlocksSingleResponse};
+use bf_api_provider::types::{BlocksResponse, BlocksSingleResponse, BlocksTxsCborResponse};
 use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DataNodeBlocks<'a> {
@@ -21,6 +21,16 @@ impl DataNodeBlocks<'_> {
         self.inner.client.get("blocks/latest/txs", None).await
     }
 
+    pub async fn latest_txs_cbor(
+        &self,
+        pagination: &Pagination,
+    ) -> ApiResult<BlocksTxsCborResponse> {
+        self.inner
+            .client
+            .get("blocks/latest/txs/cbor", Some(pagination))
+            .await
+    }
+
     pub async fn by(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
         let path = format!("blocks/{hash_or_number}");
 
@@ -33,6 +43,16 @@ impl DataNodeBlocks<'_> {
         pagination: &Pagination,
     ) -> ApiResult<Vec<String>> {
         let path = format!("blocks/{hash_or_number}/txs");
+
+        self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn txs_cbor(
+        &self,
+        hash_or_number: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<BlocksTxsCborResponse> {
+        let path = format!("blocks/{hash_or_number}/txs/cbor");
 
         self.inner.client.get(&path, Some(pagination)).await
     }

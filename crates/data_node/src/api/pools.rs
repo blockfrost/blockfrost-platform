@@ -1,7 +1,7 @@
 use crate::client::DataNode;
 use bf_api_provider::types::{
-    PoolsDelegatorsResponse, PoolsHistoryResponse, PoolsListExtendedResponse,
-    PoolsMetadataResponse, PoolsSingleResponse,
+    PoolsDelegatorsResponse, PoolsHistoryResponse, PoolsListExtendedResponse, PoolsListResponse,
+    PoolsMetadataResponse, PoolsRelaysResponse, PoolsRetiresResponse, PoolsSingleResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
@@ -16,10 +16,21 @@ impl DataNode {
 }
 
 impl DataNodePools<'_> {
+    pub async fn all(&self, pagination: &Pagination) -> ApiResult<PoolsListResponse> {
+        self.inner.client.get("pools", Some(pagination)).await
+    }
+
     pub async fn extended(&self, pagination: &Pagination) -> ApiResult<PoolsListExtendedResponse> {
         self.inner
             .client
             .get("pools/extended", Some(pagination))
+            .await
+    }
+
+    pub async fn retiring(&self, pagination: &Pagination) -> ApiResult<PoolsRetiresResponse> {
+        self.inner
+            .client
+            .get("pools/retiring", Some(pagination))
             .await
     }
 
@@ -41,6 +52,12 @@ impl DataNodePools<'_> {
 
     pub async fn metadata(&self, pool_id: &str) -> ApiResult<PoolsMetadataResponse> {
         let path = format!("pools/{pool_id}/metadata");
+
+        self.inner.client.get(&path, None).await
+    }
+
+    pub async fn relays(&self, pool_id: &str) -> ApiResult<PoolsRelaysResponse> {
+        let path = format!("pools/{pool_id}/relays");
 
         self.inner.client.get(&path, None).await
     }

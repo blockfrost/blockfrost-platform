@@ -9,6 +9,7 @@ use blockfrost_openapi::models::{
     account_mir_content_inner::AccountMirContentInner,
     account_registration_content_inner::AccountRegistrationContentInner,
     account_reward_content_inner::AccountRewardContentInner,
+    account_transactions_content_inner::AccountTransactionsContentInner,
     account_utxo_content_inner::AccountUtxoContentInner,
     account_withdrawal_content_inner::AccountWithdrawalContentInner,
     address_content::AddressContent, address_content_extended::AddressContentExtended,
@@ -18,7 +19,8 @@ use blockfrost_openapi::models::{
     asset_addresses_inner::AssetAddressesInner, asset_history_inner::AssetHistoryInner,
     asset_policy_inner::AssetPolicyInner, asset_transactions_inner::AssetTransactionsInner,
     assets_inner::AssetsInner, block_content::BlockContent,
-    block_content_addresses_inner::BlockContentAddressesInner, drep::Drep,
+    block_content_addresses_inner::BlockContentAddressesInner,
+    block_content_txs_cbor_inner::BlockContentTxsCborInner, drep::Drep,
     drep_delegators_inner::DrepDelegatorsInner, drep_metadata::DrepMetadata,
     drep_updates_inner::DrepUpdatesInner, drep_votes_inner::DrepVotesInner,
     epoch_content::EpochContent, epoch_param_content::EpochParamContent,
@@ -65,6 +67,7 @@ pub type AccountsHistoryResponse = Vec<AccountHistoryContentInner>;
 pub type AccountsMirResponse = Vec<AccountMirContentInner>;
 pub type AccountsUtxosResponse = Vec<AccountUtxoContentInner>;
 pub type AccountsWithdrawalsResponse = Vec<AccountWithdrawalContentInner>;
+pub type AccountsTransactionsResponse = Vec<AccountTransactionsContentInner>;
 
 // addresses
 pub type AddressesResponse = AddressContent;
@@ -87,6 +90,7 @@ pub type BlocksSingleResponse = BlockContent;
 pub type BlocksResponse = Vec<BlockContent>;
 pub type BlocksAddressesExtendedResponse = Vec<AddressContentExtended>;
 pub type BlocksAddressesContentResponse = BlockContentAddressesInner;
+pub type BlocksTxsCborResponse = Vec<BlockContentTxsCborInner>;
 
 // epochs
 pub type EpochsParamResponse = EpochParamContent;
@@ -126,11 +130,13 @@ pub type ScriptsRedeemersInnerResponse = Vec<ScriptRedeemersInner>;
 
 // pools
 pub type PoolsSingleResponse = Pool;
+pub type PoolsListResponse = Vec<String>;
 pub type PoolsListExtendedResponse = Vec<PoolListExtendedInner>;
 pub type PoolsDelegatorsResponse = Vec<PoolDelegatorsInner>;
 pub type PoolsRetiresResponse = Vec<PoolListRetireInner>;
 pub type PoolsHistoryResponse = Vec<PoolHistoryInner>;
 pub type PoolsMetadataResponse = PoolMetadata;
+pub type PoolsRelaysResponse = Vec<TxContentPoolCertsInnerRelaysInner>;
 pub type PoolsUpdatesResponse = Vec<PoolUpdatesInner>;
 pub type PoolsProposalVotesResponse = Vec<ProposalVotesInner>;
 

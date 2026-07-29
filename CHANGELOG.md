@@ -3,7 +3,8 @@
 ### Added
 
 - Gateway: per-relay `blockfrost_gateway_relay_healthy`, `blockfrost_gateway_relay_data_node_up`, and `blockfrost_gateway_relay_info` metrics in `GET /metrics` (and the same data points in `GET /stats`)
-- New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/addresses/{address}`, and `/blocks/slot/{slot_number}`
+- New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/accounts/{stake_address}/transactions`, `/addresses/{address}`, `/addresses/{address}/total`, `/blocks/slot/{slot_number}`, `/pools`, `/pools/retiring`, `/pools/{pool_id}/relays`, `/blocks/{hash_or_number}/txs/cbor`, and `/blocks/latest/txs/cbor`
+- `/accounts/{stake_address}/*` endpoints now accept the CIP-19 credential forms (`stake_vk`, `stake_vkh`, `script`) in place of a canonical stake address, resolving them via the data node
 - `--max-response-body-bytes` to configure the maximum proxied response body size (default 10 MiB)
 
 ### Fixed

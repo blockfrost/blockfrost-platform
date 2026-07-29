@@ -1,5 +1,14 @@
-use crate::{BlockfrostError, api::ApiResult};
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::{Query, State};
+use bf_api_provider::types::PoolsListResponse;
+use bf_common::pagination::{Pagination, PaginationQuery};
 
-pub async fn route() -> ApiResult<Vec<String>> {
-    Err(BlockfrostError::not_found())
+pub async fn route(
+    State(state): State<AppState>,
+    Query(pagination_query): Query<PaginationQuery>,
+) -> ApiResult<PoolsListResponse> {
+    let data_node = state.data_node()?;
+    let pagination = Pagination::from_query(pagination_query)?;
+
+    data_node.pools().all(&pagination).await
 }

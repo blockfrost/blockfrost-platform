@@ -25,6 +25,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/accounts/{stake_address}/addresses/assets", get(accounts::stake_address::addresses::assets::route))
         .route("/accounts/{stake_address}/addresses/total", get(accounts::stake_address::addresses::total::route))
         .route("/accounts/{stake_address}/utxos", get(accounts::stake_address::utxos::route))
+        .route("/accounts/{stake_address}/transactions", get(accounts::stake_address::transactions::route))
 
         // addresses
         .route("/addresses/{address}", get(addresses::address::root::route))
@@ -47,12 +48,14 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/blocks/epoch/{epoch_number}/slot/{slot_number}", get(blocks::epoch::epoch_number::slot::slot_number::route))
         .route("/blocks/slot/{slot_number}", get(blocks::slot::slot_number::route))
         .route("/blocks/latest", get(blocks::latest::root::route))
-        .route("/blocks/latest/txs", get(blocks::latest::txs::route))
+        .route("/blocks/latest/txs", get(blocks::latest::txs::root::route))
+        .route("/blocks/latest/txs/cbor", get(blocks::latest::txs::cbor::route))
         .route("/blocks/{hash_or_number}", get(blocks::hash_or_number::root::route))
         .route("/blocks/{hash_or_number}/addresses", get(blocks::hash_or_number::addresses::route))
         .route("/blocks/{hash_or_number}/next", get(blocks::hash_or_number::next::route))
         .route("/blocks/{hash_or_number}/previous", get(blocks::hash_or_number::previous::route))
-        .route("/blocks/{hash_or_number}/txs", get(blocks::hash_or_number::txs::route))
+        .route("/blocks/{hash_or_number}/txs", get(blocks::hash_or_number::txs::root::route))
+        .route("/blocks/{hash_or_number}/txs/cbor", get(blocks::hash_or_number::txs::cbor::route))
 
         // epochs
         .route("/epochs/latest", get(epochs::latest::root::route))

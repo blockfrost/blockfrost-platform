@@ -1,7 +1,7 @@
 use crate::client::DataNode;
 use bf_api_provider::types::{
-    AddressesResponse, AddressesTransactionsResponse, AddressesUtxosAssetResponse,
-    AddressesUtxosResponse,
+    AddressesContentTotalResponse, AddressesResponse, AddressesTransactionsResponse,
+    AddressesUtxosAssetResponse, AddressesUtxosResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
@@ -57,5 +57,11 @@ impl DataNodeAddresses<'_> {
         let path = format!("addresses/{address}/txs");
 
         self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn total(&self, address: &str) -> ApiResult<AddressesContentTotalResponse> {
+        let path = format!("addresses/{address}/total");
+
+        self.inner.client.get(&path, None).await
     }
 }
