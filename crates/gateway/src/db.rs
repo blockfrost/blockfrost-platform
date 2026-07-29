@@ -8,6 +8,7 @@ use diesel::prelude::*;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use schema::users::dsl::*;
 use std::num::NonZeroUsize;
+use tracing::warn;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 
@@ -24,9 +25,45 @@ pub struct PoolStatus {
     pub waiting: usize,
 }
 
+/// The PostgreSQL `application_name` used for all of this gateway's DB
+/// connections, so they're identifiable in `pg_stat_activity` and server logs.
+fn application_name() -> String {
+    let host = hostname::get()
+        .ok()
+        .and_then(|h| h.into_string().ok())
+        .unwrap_or_else(|| "unknown".to_string());
+    format!("blockfrost-gateway@{host}")
+}
+
+/// Force-set `application_name` on a PostgreSQL connection URL, overriding any
+/// value already present, so every gateway connection reports a consistent name.
+/// Non-URL connection strings (e.g. a libpq keyword/value DSN) are returned
+/// unchanged, since we can't safely rewrite them.
+fn with_application_name(database_url: &str) -> String {
+    let Ok(mut url) = url::Url::parse(database_url) else {
+        warn!("could not set the DB `application_name`: connection string is not a parseable URL");
+        return database_url.to_string();
+    };
+
+    let app_name = application_name();
+    let preserved: Vec<(String, String)> = url
+        .query_pairs()
+        .filter(|(key, _)| key != "application_name")
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+
+    url.query_pairs_mut()
+        .clear()
+        .extend_pairs(preserved)
+        .append_pair("application_name", &app_name);
+
+    url.to_string()
+}
+
 impl DB {
     pub async fn new(database_url: &str, pool_max_size: NonZeroUsize) -> Self {
-        let manager = Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
+        let database_url = with_application_name(database_url);
+        let manager = Manager::new(&database_url, deadpool_diesel::Runtime::Tokio1);
         let pool = Pool::builder(manager)
             .max_size(pool_max_size.get())
             .build()

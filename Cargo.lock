@@ -557,6 +557,7 @@ dependencies = [
  "futures-util",
  "governor",
  "hex",
+ "hostname",
  "hyper",
  "metrics",
  "metrics-exporter-prometheus",
