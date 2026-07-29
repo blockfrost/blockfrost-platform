@@ -227,10 +227,6 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
-    },
-    {
-      "_comment": "pools/pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy (= pools/0f292fcaa02b8b2f9b3c8f9fd8e0bb21abedb692a6d5058df3ef2735) -- live_pledge is dynamic and fell below the fixture's configured range",
-      "id": "pools-pool-id-best-pool_ed86d68945e0"
     }
   ],
   "preprod": [
@@ -315,10 +311,6 @@
     {
       "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
       "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
-    },
-    {
-      "_comment": "pools/pool1p73yrd7vzwkkjd2rff4g683smhlm3jkg45f2hwm79cke6uxxwq9 (= pools/0fa241b7cc13ad6935434a6a8d1e30ddffb8cac8ad12abbb7e2e2d9d) -- live_size is dynamic and fell below the fixture's configured range",
-      "id": "pools-pool-id-multiple-times-deregistered-pool_bf237a8f6b25"
     }
   ]
 }
