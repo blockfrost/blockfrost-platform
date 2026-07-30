@@ -69,6 +69,8 @@ impl HealthMonitor {
             let mut blockfrost_error: Option<String> = None;
             let mut last_blockfrost_check: Option<Instant> = None;
             loop {
+                let started_at = Instant::now();
+
                 let db_error = db.ping(Self::DB_PING_TIMEOUT).await.err();
 
                 if last_blockfrost_check
@@ -101,7 +103,7 @@ impl HealthMonitor {
 
                 if previous_codes.is_some() && previous_codes.as_ref() != Some(&codes) {
                     if healthy {
-                        tracing::warn!("Gateway became healthy again.");
+                        tracing::info!("Gateway became healthy again.");
                     } else {
                         tracing::warn!("Gateway unhealthy: {}", status_.details());
                     }
@@ -113,13 +115,13 @@ impl HealthMonitor {
 
                 first_check_done_.notify_one();
 
-                let delay = if healthy {
+                let interval = if healthy {
                     Self::HEALTHY_CHECK_INTERVAL
                 } else {
                     Self::UNHEALTHY_CHECK_INTERVAL
                 };
 
-                time::sleep(delay).await;
+                time::sleep_until(started_at + interval).await;
             }
         });
 
