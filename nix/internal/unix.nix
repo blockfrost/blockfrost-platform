@@ -490,35 +490,7 @@ in
         shellcheck $out/*.sh
       '';
 
-    # Upstream `mithril` commit 8c715446 moved `mithril-client-cli` out of the
-    # common (glibc) packages section into the `pkgsMusl != null` section, which
-    # is only non-null for `x86_64-linux`. That left `mithril-client-cli`
-    # undefined on `aarch64-linux` and Darwin, breaking our devshell there. We
-    # patch the flake source to re-add the original glibc definition. On
-    # `x86_64-linux` we keep the upstream (musl, static) build untouched.
-    patchedMithrilFlake = let
-      unpatched = inputs.mithril;
-    in
-      (import inputs.flake-compat {
-        src =
-          if targetSystem == "x86_64-linux"
-          then unpatched
-          else {
-            outPath = toString (pkgs.runCommand "mithril-src-patched" {} ''
-              cp -r ${unpatched} $out
-              chmod -R +w $out
-              cd $out
-              if ! grep -q 'mithril-end-to-end = buildPackage' flake.nix ; then
-                echo 'error: anchor for the mithril-client-cli patch not found in flake.nix' >&2
-                exit 1
-              fi
-              sed -i 's|\( *\)mithril-end-to-end = buildPackage|\1mithril-client-cli = buildPackage ./mithril-client-cli/Cargo.toml mithril.cargoArtifacts { pname = "mithril-client"; };\n\1mithril-end-to-end = buildPackage|' flake.nix
-            '');
-            inherit (unpatched) rev shortRev lastModified lastModifiedDate;
-          };
-      }).defaultNix;
-
-    mithril-client = patchedMithrilFlake.packages.${targetSystem}.mithril-client-cli;
+    mithril-client = inputs.mithril.packages.${targetSystem}.mithril-client-cli;
 
     mithrilGenesisVerificationKeys = {
       preview = builtins.readFile (inputs.mithril + "/mithril-infra/configuration/pre-release-preview/genesis.vkey");

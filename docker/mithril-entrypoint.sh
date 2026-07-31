@@ -12,6 +12,11 @@ if [[ -z ${UNPACK_DIR:-} ]]; then
   exit 1
 fi
 
+# Mithril distribution tag; keep in sync with the `mithril-client` image tag in
+# `docker-compose.yml`. Used to pin the verification keys below to this exact
+# release instead of tracking `main` (the client binary doesn't expose it).
+MITHRIL_TAG="2630.0"
+
 if [ -d "$UNPACK_DIR/db" ]; then
   echo "Directory $UNPACK_DIR/db exists, nothing to do. If you are having issues with your cardano node database please remove the volume and restart"
   exit 0
@@ -33,14 +38,23 @@ export AGGREGATOR_ENDPOINT="https://aggregator.${MITHRIL_NETWORK}.api.mithril.ne
 # ---------------------------------------------------------------------------- #
 
 apt update
-apt install jq curl -y
+apt install curl -y
 
 # ---------------------------------------------------------------------------- #
 
-snapshotDigest=$(/app/bin/mithril-client cardano-db snapshot list --json | jq -r ".[0].hash")
-export snapshotDigest
+vkey_base="https://raw.githubusercontent.com/IntersectMBO/mithril/${MITHRIL_TAG}/mithril-infra/configuration/${MITHRIL_NETWORK}"
 
-GENESIS_VERIFICATION_KEY=$(curl -fsSL "https://raw.githubusercontent.com/IntersectMBO/mithril/refs/heads/main/mithril-infra/configuration/${MITHRIL_NETWORK}/genesis.vkey")
+GENESIS_VERIFICATION_KEY=$(curl -fsSL "${vkey_base}/genesis.vkey")
 export GENESIS_VERIFICATION_KEY
 
-/app/bin/mithril-client cardano-db download "$snapshotDigest" --download-dir "$UNPACK_DIR" --json
+ANCILLARY_VERIFICATION_KEY=$(curl -fsSL "${vkey_base}/ancillary.vkey")
+export ANCILLARY_VERIFICATION_KEY
+
+# The Cardano database v1 backend was dropped in Mithril distribution 2630.0, so
+# we use the v2 backend (now the default). Ancillary files carry the ledger
+# state that lets `cardano-node` start without re-syncing from genesis, so we
+# include them; that in turn requires the ancillary verification key.
+/app/bin/mithril-client cardano-db download latest \
+  --include-ancillary \
+  --download-dir "$UNPACK_DIR" \
+  --json
