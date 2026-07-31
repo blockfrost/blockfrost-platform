@@ -13,6 +13,7 @@
 - Stake (`stake_test`) addresses are now accepted on custom networks, fixing `/accounts/{stake_address}/*` endpoints that previously rejected every stake address as invalid
 - Restored `local_address` bind for unspecified IPs like `0.0.0.0`, fixing an IPv6 regression that broke the IPv4-forcing behavior of `--server-address 0.0.0.0`
 - Inverted the metrics answer in the `--init` config prompt
+- Source builds now download `hydra-node` during `cargo build` for supported targets (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`) unless `HYDRA_NODE_PATH` is set, so `blockfrost-platform` runs without manually providing the binary
 
 ### Removed
 
