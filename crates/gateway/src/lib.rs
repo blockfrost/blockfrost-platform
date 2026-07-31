@@ -3,6 +3,7 @@ pub mod blockfrost;
 pub mod config;
 pub mod db;
 pub mod errors;
+pub mod health_monitor;
 pub mod hydra_server_bridge;
 pub mod hydra_server_platform;
 pub mod load_balancer;

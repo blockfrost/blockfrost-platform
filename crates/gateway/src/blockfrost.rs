@@ -23,6 +23,35 @@ impl BlockfrostAPI {
         }
     }
 
+    /// Verifies Blockfrost API connectivity
+    pub async fn ping(&self, timeout: std::time::Duration) -> Result<(), String> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(());
+        }
+
+        tokio::time::timeout(timeout, self.api.blocks_latest())
+            .await
+            .map_err(|_| {
+                format!(
+                    "Blockfrost API health check timed out after {}s",
+                    timeout.as_secs()
+                )
+            })?
+            .map(|_| ())
+            .map_err(|e| {
+                // The SDK’s error messages span multiple lines; flatten them
+                // so that they log (and serialize) as a single line.
+                let flat = e
+                    .to_string()
+                    .lines()
+                    .map(str::trim)
+                    .filter(|l| !l.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("Blockfrost API error: {flat}")
+            })
+    }
+
     // Parse asset from the unit
     async fn parse_asset(&self, unit: &str) -> Result<Asset, APIError> {
         if unit.len() < self.policy_id_size {
