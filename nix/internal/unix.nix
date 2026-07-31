@@ -905,6 +905,7 @@ in
 
     hydra-node = lib.recursiveUpdate hydra-flake.packages.${targetSystem}.hydra-node {
       meta.description = "Layer 2 scalability solution for Cardano";
+      meta.mainProgram = "hydra-node";
     };
 
     hydra-test = pkgs.writeShellApplication {
