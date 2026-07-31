@@ -6,13 +6,18 @@ assert builtins.elem targetSystem ["x86_64-windows"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
-  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars;
+  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars rustChannel;
 in rec {
-  toolchain = with inputs.fenix.packages.${buildSystem};
-    combine [
-      minimal.rustc
-      minimal.cargo
-      targets.x86_64-pc-windows-gnu.latest.rust-std
+  # Pin to the same Rust version as the rest of the project (see `rustChannel`
+  # in `unix.nix`). Using fenix’s `latest` nightly here occasionally pulls in a
+  # broken toolchain that ICEs while cross-compiling `tokio` for Windows.
+  toolchain = let
+    fenix = inputs.fenix.packages.${buildSystem};
+  in
+    fenix.combine [
+      (fenix.toolchainOf rustChannel).rustc
+      (fenix.toolchainOf rustChannel).cargo
+      (fenix.targets.x86_64-pc-windows-gnu.toolchainOf rustChannel).rust-std
     ];
 
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
