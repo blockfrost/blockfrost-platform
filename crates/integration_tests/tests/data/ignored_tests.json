@@ -283,8 +283,8 @@
       "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
     },
     {
-      "_comment": "txs/6aa2246eed20d1384c43c11913003a28a2b1d688358ea6f6c317277483286cd2/cbor -- Dolos returns the full on-chain CBOR with its witness set, while the fixture expects an empty witness map",
-      "id": "txs-tx-cbor-generic-tx_4100a96a6665"
+      "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
+      "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
     }
   ],
   "preview": [
@@ -305,12 +305,12 @@
       "id": "addresses-address-txs-generic-payment-cred-2_ba6a4f5de054"
     },
     {
-      "_comment": "assets/60d9cf867f96f4395a10730c327903f6fac297ef6c10138df438eb07/addresses -- the asset moved to a new address while the fixture pins its previous holder",
-      "id": "assets-addresses_eb5b8fb1e458"
-    },
-    {
       "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
       "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
+    },
+    {
+      "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
+      "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
     }
   ]
 }
