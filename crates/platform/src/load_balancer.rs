@@ -1,6 +1,5 @@
 use crate::hydra_client;
 use crate::icebreakers::api::IcebreakersAPI;
-use crate::server::state::ApiPrefix;
 use bf_common::errors::BlockfrostError;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -38,7 +37,6 @@ const PERIODIC_REREGISTER: std::time::Duration = std::time::Duration::from_secs(
 struct ConnContext {
     http_router: axum::Router,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
-    api_prefix: ApiPrefix,
     icebreakers_api: Arc<IcebreakersAPI>,
     max_response_body_bytes: usize,
 }
@@ -55,7 +53,6 @@ struct ConnContext {
 pub async fn run_all(
     http_router: axum::Router,
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
-    api_prefix: ApiPrefix,
     hydra_kex: Option<(
         watch::Sender<Option<mpsc::Sender<hydra_client::KeyExchangeRequest>>>,
         mpsc::Sender<hydra_client::KeyExchangeResponse>,
@@ -67,7 +64,6 @@ pub async fn run_all(
     let ctx = ConnContext {
         http_router,
         health_errors,
-        api_prefix,
         icebreakers_api,
         max_response_body_bytes,
     };
@@ -338,8 +334,6 @@ enum RelayMessage {
 }
 
 mod event_loop {
-    use crate::server::state::ApiPrefix;
-
     use super::*;
     use tungstenite::protocol::Message;
 
@@ -495,11 +489,9 @@ mod event_loop {
                 LBEvent::NewLoadBalancerMessage(LoadBalancerMessage::Request(request)) => {
                     let router = ctx.http_router.clone(); // cheap, and Axum also does it for each request
                     let event_tx = event_tx.clone();
-                    let api_prefix = ctx.api_prefix.clone();
                     let max_response_body_bytes = ctx.max_response_body_bytes;
                     tokio::spawn(async move {
-                        let response =
-                            handle_one(router, request, api_prefix, max_response_body_bytes).await;
+                        let response = handle_one(router, request, max_response_body_bytes).await;
                         let _ignored_failure: Result<_, _> =
                             event_tx.send(LBEvent::NewResponse(response)).await;
                     });
@@ -724,7 +716,6 @@ mod event_loop {
     async fn handle_one(
         http_router: axum::Router,
         request: JsonRequest,
-        api_prefix: ApiPrefix,
         max_response_body_bytes: usize,
     ) -> JsonResponse {
         use axum::body::Body;
@@ -736,7 +727,7 @@ mod event_loop {
         let request_id_ = request.id.clone();
 
         let rv: Result<JsonResponse, (StatusCode, String)> = async {
-            let req: Request<Body> = json_to_request(request, api_prefix)?;
+            let req: Request<Body> = json_to_request(request)?;
 
             let response: Response<Body> =
                 tokio::time::timeout(REQUEST_TIMEOUT, http_router.into_service().oneshot(req))
@@ -771,7 +762,6 @@ mod event_loop {
 
 fn json_to_request(
     json: JsonRequest,
-    api_prefix: ApiPrefix,
 ) -> Result<hyper::Request<axum::body::Body>, (hyper::StatusCode, String)> {
     use axum::body::Body;
     use hyper::Request;
@@ -796,8 +786,8 @@ fn json_to_request(
     };
 
     let uri = match json.query {
-        Some(query) => format!("{}{}?{}", api_prefix, json.path, query),
-        None => format!("{}{}", api_prefix, json.path),
+        Some(query) => format!("{}?{}", json.path, query),
+        None => json.path,
     };
 
     let mut rv = Request::builder().method(json.method.as_str()).uri(uri);
@@ -859,7 +849,6 @@ async fn response_to_json(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::server::state::ApiPrefix;
 
     #[test]
     fn test_json_to_request_reconstructs_query() {
@@ -872,12 +861,11 @@ mod tests {
             body_base64: String::new(),
         };
 
-        let prefix = Uuid::nil();
-        let request = json_to_request(request, ApiPrefix(Some(prefix))).unwrap();
+        let request = json_to_request(request).unwrap();
 
         assert_eq!(
             request.uri().path_and_query().unwrap().as_str(),
-            "/00000000-0000-0000-0000-000000000000/accounts/rewards?count=3&page=2&order=asc"
+            "/accounts/rewards?count=3&page=2&order=asc"
         );
     }
 }

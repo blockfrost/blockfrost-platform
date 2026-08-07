@@ -10,9 +10,7 @@ use blockfrost_gateway::{
     rate_limit::{self, RegisterRateLimiter},
     types::AssetName,
 };
-use blockfrost_platform::{
-    hydra_client, icebreakers::manager::IcebreakersManager, server::state::ApiPrefix,
-};
+use blockfrost_platform::{hydra_client, icebreakers::manager::IcebreakersManager};
 use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::json;
@@ -238,25 +236,24 @@ pub async fn wait_for_ready(client: &Client, url: &str, timeout: Duration) -> Re
 /// Common setup: start a `TestGateway` + Platform, wire through `IcebreakersManager`.
 ///
 /// Returns `(gateway, client, base_url_with_prefix)` for making requests.
-pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
+pub async fn setup() -> (TestGateway, Client, String, uuid::Uuid) {
     crate::initialize_logging();
 
     let gw = TestGateway::start().await;
     let gateway_url = format!("http://{}", gw.addr);
 
-    let (app, _, _, icebreakers_api, api_prefix) =
-        crate::platform::build_app_non_solitary(Some(gateway_url))
-            .await
-            .expect("Failed to build the application");
+    let (app, _, _, icebreakers_api) = crate::platform::build_app_non_solitary(Some(gateway_url))
+        .await
+        .expect("Failed to build the application");
 
     let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
+    let api_prefix = icebreakers_api.api_prefix();
     let health_errors = Arc::new(Mutex::new(vec![]));
 
     let manager = IcebreakersManager::new(
         icebreakers_api,
         health_errors,
         app,
-        api_prefix.clone(),
         bf_common::DEFAULT_MAX_BODY_BYTES,
     );
 
@@ -270,7 +267,7 @@ pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
     manager.run((kex_req_rx, kex_resp_tx, terminate_tx)).await;
 
     let client = Client::new();
-    let base = format!("http://{}{}", gw.addr, api_prefix);
+    let base = format!("http://{}/{}", gw.addr, api_prefix);
 
     // Wait for the relay to be ready and for the Platform root to return 200.
     wait_for_ready(&client, &format!("{base}/"), Duration::from_secs(30)).await;
