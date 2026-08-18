@@ -227,6 +227,14 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/cb177a185ab0629134ebcd0b0c94ee876f0afc0397a2a915b9fa8b1b14757d97/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_cdc10ffe51fb"
+    },
+    {
+      "_comment": "txs/014d5b9ce70b0156f823d350a5a87ba9caf98386393f5ce9deb61f1a8d383d24/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_c522b7f519c0"
     }
   ],
   "preprod": [
@@ -285,6 +293,14 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/7b1fa6b65f0e175114cdecb011f34ed7a9bce875007db2b934e7a47d0435642f/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_f9025f07bec2"
+    },
+    {
+      "_comment": "txs/0ba048a6022a2ec3771d02e546433a29ed86a343dffa26f0994c5d6f5418f597/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_4409b3ff775f"
     }
   ],
   "preview": [
@@ -311,6 +327,14 @@
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/c1c026a093dd36419da14ae6f2c022df919c37c1ce8a0814181b75e7ebb12915/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_2b548197982d"
+    },
+    {
+      "_comment": "txs/a048ea3491dc7e354219358003225b4a1ef83632d207582a85ef2ba14009b6e4/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_94d6da36fec1"
     }
   ]
 }
