@@ -235,6 +235,10 @@
     {
       "_comment": "txs/014d5b9ce70b0156f823d350a5a87ba9caf98386393f5ce9deb61f1a8d383d24/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
       "id": "txs-tx-redeemers-reward-purpose_c522b7f519c0"
+    },
+    {
+      "_comment": "txs/51f495aa23f4b3b3aa90afde4a0e67823bb7ac4ac65f5ffbb138373b863f2f74/redeemers -- Dolos returns HTTP 500 (empty response body) for propose-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-propose-purpose_c48e858a027e"
     }
   ],
   "preprod": [
@@ -335,6 +339,18 @@
     {
       "_comment": "txs/a048ea3491dc7e354219358003225b4a1ef83632d207582a85ef2ba14009b6e4/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
       "id": "txs-tx-redeemers-reward-purpose_94d6da36fec1"
+    },
+    {
+      "_comment": "txs/a1b750a957946629b17b730c933bf2d8b087c0ffef73ab7a0c0f886a15ce80c8/redeemers -- Dolos returns HTTP 500 (empty response body) for vote-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-vote-purpose_b3d8eb460d05"
+    },
+    {
+      "_comment": "txs/f6cb185a1fe988dad1011eb239d9a281e8abd3557417918cffd7ef9e7afcf599/redeemers -- Dolos returns HTTP 500 (empty response body) for propose-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-propose-purpose_48f827aadeaa"
+    },
+    {
+      "_comment": "accounts/stake_test1uq70zpxr7jdqxdlj895x9lvnwn9lrcknwpx8cswlld7x76gtzvrjp/addresses?order=desc -- Dolos returns the addresses in a different (reversed) order than the real Blockfrost API for order=desc",
+      "id": "accounts-stake-address-addresses-bf-stake-address-with-many-addresses-desc-order_8522e17f36c6"
     }
   ]
 }
