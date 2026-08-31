@@ -263,6 +263,10 @@
       "id": "accounts-stake-address-generic-stake-address-with-zero-addresses_4261465085d4"
     },
     {
+      "_comment": "accounts/stake_test1uqcvsan32r2a6hwc5jy7tmtynr5yat9jhvtq63gnynwlungj0dxs3/rewards?count=1&page=2, accounts/stake_test1uqcvsan32r2a6hwc5jy7tmtynr5yat9jhvtq63gnynwlungj0dxs3/rewards?count=1&page=2&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 132, while the real Blockfrost API reports it in epoch 134",
+      "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_a1ac561f2177"
+    },
+    {
       "_comment": "addresses/addr_test1wrrgep77m0v8uv5unauluwgyr7pmdr2827wgye3sx5aw7yg7z2dsu/txs?page=1011&count=6 (= addr_vkh1c6xg0hkmmplr98yl08lrjpqlswmg636hnjpxvvp48th3zsq296f) -- Dolos HTTP 400 (scan limit: page*count=6066 > max_scan_items=3000); real Blockfrost returns the full array",
       "id": "addresses-address-txs-generic-dormant-shelley-address_c9a9236e94d8"
     },
@@ -351,6 +355,10 @@
     {
       "_comment": "accounts/stake_test1uq70zpxr7jdqxdlj895x9lvnwn9lrcknwpx8cswlld7x76gtzvrjp/addresses?order=desc -- Dolos returns the addresses in a different (reversed) order than the real Blockfrost API for order=desc",
       "id": "accounts-stake-address-addresses-bf-stake-address-with-many-addresses-desc-order_8522e17f36c6"
+    },
+    {
+      "_comment": "accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1, accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 1347, while the real Blockfrost API reports it in epoch 1349",
+      "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_9d78f78ded98"
     }
   ]
 }
