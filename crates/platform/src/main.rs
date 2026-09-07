@@ -35,8 +35,7 @@ async fn main() -> Result<(), AppError> {
         env!("GIT_REVISION")
     );
 
-    let (app, _, health_monitor, icebreakers_api, api_prefix) =
-        build(config.clone().into()).await?;
+    let (app, _, health_monitor, icebreakers_api) = build(config.clone().into()).await?;
 
     let address = std::net::SocketAddr::new(config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(address).await?;
@@ -64,7 +63,7 @@ async fn main() -> Result<(), AppError> {
 
     notify_server_ready.notified().await;
 
-    info!("Server is listening on http://{}{}", address, api_prefix);
+    info!("Server is listening on http://{}/", address);
 
     // Icebreakers registration and the load balancer task.
     //
@@ -87,7 +86,6 @@ async fn main() -> Result<(), AppError> {
             icebreakers_api,
             health_errors,
             app,
-            api_prefix,
             config.max_response_body_bytes,
         );
 

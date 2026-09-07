@@ -1,11 +1,12 @@
 use crate::config::Config;
-use crate::{load_balancer::LoadBalancerConfig, server::state::ApiPrefix};
+use crate::load_balancer::LoadBalancerConfig;
 use bf_common::errors::AppError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 use tracing::{info, warn};
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct IcebreakersAPI {
@@ -15,7 +16,8 @@ pub struct IcebreakersAPI {
     mode: String,
     port: u16,
     reward_address: String,
-    api_prefix: ApiPrefix,
+    /// A random identifier sent during registration. The gateway uses it to identify this relay
+    api_prefix: Uuid,
 }
 
 #[derive(Deserialize)]
@@ -43,10 +45,7 @@ pub struct SuccessResponse {
 
 impl IcebreakersAPI {
     /// Creates a new `IcebreakersAPI` instance or logs a warning if not configured
-    pub async fn new(
-        config: &Config,
-        api_prefix: ApiPrefix,
-    ) -> Result<Option<Arc<Self>>, AppError> {
+    pub async fn new(config: &Config) -> Result<Option<Arc<Self>>, AppError> {
         match &config.icebreakers_config {
             Some(icebreakers_config) => {
                 let api_url = icebreakers_config
@@ -75,7 +74,7 @@ impl IcebreakersAPI {
                     mode: config.mode.to_string(),
                     port: config.server_port,
                     reward_address: icebreakers_config.reward_address.clone(),
-                    api_prefix,
+                    api_prefix: Uuid::new_v4(),
                 };
 
                 let icebreakers_api = Arc::new(icebreakers_api);
@@ -100,6 +99,10 @@ impl IcebreakersAPI {
         }
     }
 
+    pub fn api_prefix(&self) -> Uuid {
+        self.api_prefix
+    }
+
     /// Registers with the Icebreakers API
     pub async fn register(&self) -> Result<SuccessResponse, AppError> {
         let url = format!("{}/register", self.base_url);
@@ -108,7 +111,7 @@ impl IcebreakersAPI {
             "mode": self.mode,
             "port": self.port,
             "reward_address": self.reward_address,
-            "api_prefix": self.api_prefix.0.unwrap_or_default(),
+            "api_prefix": self.api_prefix,
         });
 
         let response = self
@@ -124,7 +127,10 @@ impl IcebreakersAPI {
                 AppError::Registration(format!("Failed to parse success response: {e}"))
             })?;
 
-            info!("successfully registered with Icebreakers API");
+            info!(
+                "successfully registered with Icebreakers API (route: {})",
+                success_response.route
+            );
 
             // In case we get a URI without a protocol (http: or https: or ws: or wss:):
             let fallback_proto = if self.base_url.starts_with("https:") {
