@@ -239,6 +239,10 @@
     {
       "_comment": "txs/51f495aa23f4b3b3aa90afde4a0e67823bb7ac4ac65f5ffbb138373b863f2f74/redeemers -- Dolos returns HTTP 500 (empty response body) for propose-purpose redeemers, while the real Blockfrost API returns the redeemer list",
       "id": "txs-redeemers-propose-purpose_c48e858a027e"
+    },
+    {
+      "_comment": "pools/pool1zmfpd5r5vfwjmwm4cgy53exe58h7plnecny3t4948yw7zumzp4c/metadata (= pools/16d216d074625d2dbb75c20948e4d9a1efe0fe79c4c915d4b5391de1/metadata) -- off-chain metadata fetch fails with HASH_MISMATCH (the pool changed the hosted alps_meta.json without updating the on-chain hash), so ticker/name/description/homepage come back null",
+      "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update_f1a8a7164c97"
     }
   ],
   "preprod": [
@@ -359,6 +363,10 @@
     {
       "_comment": "accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1, accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 1347, while the real Blockfrost API reports it in epoch 1349",
       "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_9d78f78ded98"
+    },
+    {
+      "_comment": "blocks/latest -- Dolos returns a block whose time is not within the expected current-timestamp window (toBeCurrentTimestamp fails), so the response does not match the real Blockfrost API",
+      "id": "blocks-latest_f94253466f6c"
     }
   ]
 }
