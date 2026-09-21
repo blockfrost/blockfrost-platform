@@ -205,10 +205,6 @@
       "id": "assets-4fd0d998dc0700ca6ef89fafff05fbf523a3a25c1fc8314bf7e4d1c247726f777468-transactions-precached-response_8a76d2a65dff"
     },
     {
-      "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
-      "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
-    },
-    {
       "_comment": "epochs/123/blocks?count=2 -- Dolos omits the Byron epoch boundary block (EBB) from the block list, yielding different hashes than the real Blockfrost API",
       "id": "epochs-number-blocks-queryparams-first-blocks-generic-byron-epoch_38950d09cab0"
     },
@@ -299,10 +295,6 @@
       "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_d0b3a9122929"
     },
     {
-      "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
-      "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
-    },
-    {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
     },
@@ -333,10 +325,6 @@
       "id": "addresses-address-txs-generic-payment-cred-2_ba6a4f5de054"
     },
     {
-      "_comment": "assets/ddd01d9531fcc25e3ca4b6429318c2cc374dbdbcf5e99c1c1e5da1ff444f4e545350414d/addresses -- Dolos returns an empty array [] for a valid asset that was never minted on-chain, while the real Blockfrost API returns HTTP 404 Not Found",
-      "id": "assets-addresses-valid-not-on-chain-asset_3ad55423382f"
-    },
-    {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
     },
@@ -363,10 +351,6 @@
     {
       "_comment": "accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1, accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 1347, while the real Blockfrost API reports it in epoch 1349",
       "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_9d78f78ded98"
-    },
-    {
-      "_comment": "blocks/latest -- Dolos returns a block whose time is not within the expected current-timestamp window (toBeCurrentTimestamp fails), so the response does not match the real Blockfrost API",
-      "id": "blocks-latest_f94253466f6c"
     }
   ]
 }
