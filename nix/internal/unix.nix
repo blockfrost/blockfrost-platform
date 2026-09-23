@@ -24,6 +24,14 @@ in
     ];
     craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+    # Fenix keeps `llvm-tools` under `lib/rustlib/<target>/bin`, not on `PATH`:
+    rustLlvmTools = pkgs.runCommand "rust-llvm-tools" {} ''
+      mkdir -p $out/bin
+      for tool in llvm-profdata llvm-cov; do
+        ln -s ${rustToolchain}/lib/rustlib/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/bin/$tool $out/bin/
+      done
+    '';
+
     src = lib.cleanSourceWith {
       src = lib.cleanSource ../../.;
       filter = path: type:
@@ -1090,6 +1098,29 @@ in
       text = builtins.readFile ./hydra-bridge-gateway-test.sh;
     };
 
+    # Rewrites absolute workspace paths in an LCOV file to repo-relative ones
+    # (`crates/…`). Otherwise `cargo test` in the CI checkout and binaries built
+    # in the Nix sandbox describe the same source file under different paths,
+    # `lcov` counts it twice, and `genhtml` can’t find the sandbox sources.
+    #
+    # The workspace root is inferred as the most frequent prefix of
+    # `…/crates/<name>/src/…` (dependencies live elsewhere).
+    coverage-normalize-lcov = pkgs.writeShellApplication {
+      name = "coverage-normalize-lcov";
+      runtimeInputs = with pkgs; [gnused coreutils gawk];
+      text = ''
+        lcov_file="$1"
+        ws_root=$(sed -n 's|^SF:\(/.*\)/crates/[^/]*/src/.*|\1|p' "$lcov_file" \
+          | sort | uniq -c | sort -rn | awk 'NR == 1 { print $2 }')
+        if [ -n "$ws_root" ]; then
+          echo "Making paths under $ws_root/ repo-relative in $lcov_file"
+          sed -i "s|^SF:$ws_root/|SF:|" "$lcov_file"
+        else
+          echo "No absolute workspace paths in $lcov_file, leaving it as is"
+        fi
+      '';
+    };
+
     mkCoverageCargoTest = {
       cargoTestArgs,
       profrawPrefix,
@@ -1099,6 +1130,7 @@ in
         name = "coverage-${outputName}";
         runtimeInputs = [
           rustToolchain
+          rustLlvmTools
           pkgs.gcc
           pkgs.pkg-config
           pkgs.jq
@@ -1144,6 +1176,7 @@ in
                 --format=lcov \
                 "''${obj_args[@]}" \
                 > ${outputName}.lcov
+              ${lib.getExe coverage-normalize-lcov} ${outputName}.lcov
               echo "Coverage written to ${outputName}.lcov"
             else
               echo "Warning: no profraw files found with prefix '${profrawPrefix}'"
@@ -1172,7 +1205,7 @@ in
     }:
       pkgs.writeShellApplication {
         name = "coverage-convert-${outputName}";
-        runtimeInputs = [rustToolchain];
+        runtimeInputs = [rustLlvmTools];
         text = let
           objArrayItems =
             lib.concatMapStringsSep " "
@@ -1196,6 +1229,7 @@ in
             --format=lcov \
             "''${obj_args[@]}" \
             > ${outputName}.lcov
+          ${lib.getExe coverage-normalize-lcov} ${outputName}.lcov
           echo "Coverage written to ${outputName}.lcov"
         '';
       };
@@ -1252,6 +1286,7 @@ in
         git
         bc
         gawk
+        gnugrep
       ];
       text = ''
         threshold=0
@@ -1297,12 +1332,14 @@ in
           else
             remove_args=()
             while IFS= read -r f; do
-              [[ -n "$f" ]] && remove_args+=("*/$f")
+              [[ -n "$f" ]] && remove_args+=("$f")
             done <<< "$changed"
             echo "Filtering ''${#remove_args[@]} modified file(s) from Hydra LCOV"
             if [ ''${#remove_args[@]} -gt 0 ]; then
-              lcov --remove "$filter_hydra" "''${remove_args[@]}" \
-                -o hydra-filtered.lcov 2>/dev/null || cp "$filter_hydra" hydra-filtered.lcov
+              # Most changed files (CI configs, docs, …) aren't in the LCOV at all,
+              # and all of it may be filtered out – lcov 2.x errors on both:
+              lcov --ignore-errors unused,empty --remove "$filter_hydra" "''${remove_args[@]}" \
+                -o hydra-filtered.lcov
             else
               cp "$filter_hydra" hydra-filtered.lcov
             fi
@@ -1312,7 +1349,11 @@ in
           for f in "''${lcov_files[@]}"; do
             [[ "$f" != "$filter_hydra" ]] && new_files+=("$f")
           done
-          new_files+=("hydra-filtered.lcov")
+          if grep -q '^SF:' hydra-filtered.lcov 2>/dev/null; then
+            new_files+=("hydra-filtered.lcov")
+          else
+            echo "Nothing left in the Hydra LCOV after filtering"
+          fi
           lcov_files=("''${new_files[@]}")
         fi
 
@@ -1328,8 +1369,9 @@ in
 
         lcov "''${merge_args[@]}" -o combined.lcov
 
-        # Keep only this workspace's source files (matches both $PWD and Nix build paths)
-        lcov --extract combined.lcov '*/crates/*' -o combined.lcov
+        # Keep only this workspace's source files (`coverage-normalize-lcov` made
+        # them repo-relative; dependencies keep their absolute paths)
+        lcov --extract combined.lcov 'crates/*' -o combined.lcov
         lcov --summary combined.lcov
 
         if [ "$threshold" -gt 0 ]; then
@@ -1345,8 +1387,7 @@ in
         genhtml combined.lcov \
           --output-directory coverage-html \
           --title "blockfrost-platform coverage" \
-          --legend \
-          --branch-coverage
+          --legend
 
         echo "HTML report written to coverage-html/"
       '';

@@ -85,7 +85,7 @@ jobs:
           fi
 
   build:
-    name: Build
+    name: Build and Test
     needs: [check_action_pins, static_checks]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -133,6 +133,12 @@ jobs:
 
       - name: Build
         run: cargo build --workspace --release --verbose
+
+      # On Linux, unit tests run with coverage in the `unit_tests` job
+      - name: Test
+        if: runner.os != 'Linux'
+        timeout-minutes: 10
+        run: cargo test --workspace --lib --verbose
 
       - name: Package binaries
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'

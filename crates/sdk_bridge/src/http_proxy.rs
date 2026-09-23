@@ -20,7 +20,9 @@ pub async fn serve(addr: SocketAddr, bridge: BridgeHandle) -> anyhow::Result<()>
         .layer(Extension(ProxyState { bridge }));
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(bf_common::shutdown::signal())
+        .await?;
     Ok(())
 }
 
