@@ -1145,14 +1145,18 @@ in
             hydraScriptsEnvVars;
         in
           ''
-            export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig:${pkgs.postgresql}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-            export RUSTFLAGS="-Clink-arg=-fuse-ld=bfd -Cinstrument-coverage"
+            # Like the devshell: find `libpq` & `openssl` at link time, and embed them in `RPATH`.
+            export PKG_CONFIG_PATH="${lib.getDev pkgs.openssl}/lib/pkgconfig:${lib.getDev pkgs.postgresql}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+            export PQ_LIB_DIR="${lib.getLib pkgs.postgresql}/lib"
+            export RUSTFLAGS="-Clink-arg=-fuse-ld=bfd -Clink-arg=-Wl,-rpath,${lib.getLib pkgs.openssl}/lib:${lib.getLib pkgs.postgresql}/lib -Cinstrument-coverage"
             export TESTGEN_HS_PATH="${lib.getExe testgen-hs}"
             export GIT_REVISION="${GIT_REVISION}"
           ''
           + hydraExports
           + ''
             export LLVM_PROFILE_FILE="$PWD/${profrawPrefix}-%p-%m.profraw"
+            # Self-hosted runners keep ignored files between runs:
+            rm -f ${profrawPrefix}-*.profraw ${profrawPrefix}.profdata
 
             test_ec=0
             cargo test ${cargoTestArgs} || test_ec=$?
