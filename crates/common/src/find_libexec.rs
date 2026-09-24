@@ -88,7 +88,6 @@ pub fn find_libexec(exe_name: &str, env_name: &str, test_args: &[&str]) -> Resul
     }
 
     Err(format!(
-        "No valid `{}` binary found in {:?}.",
-        exe_name_ext, &search_path
+        "No valid `{exe_name_ext}` binary found in {search_path:?}."
     ))
 }

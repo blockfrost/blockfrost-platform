@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use tracing::{info, warn};
+use tracing::info;
 
 /// How long graceful shutdown may take before we force-exit.
 pub const GRACE_PERIOD: Duration = Duration::from_secs(10);
@@ -19,6 +19,7 @@ pub async fn signal() {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{SignalKind, signal};
+        use tracing::warn;
 
         match signal(SignalKind::terminate()) {
             Ok(mut sigterm) => {

@@ -126,7 +126,7 @@ impl TestGateway {
         // FIXME: we should better simulate Gateway getting killed.
         {
             let relays = self.lb.active_relays.lock().await;
-            for (_, relay) in relays.iter() {
+            for relay in relays.values() {
                 let _ = relay.do_finish.send("test gateway stopping".into()).await;
             }
         }

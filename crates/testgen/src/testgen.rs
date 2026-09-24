@@ -252,7 +252,7 @@ impl Testgen {
 
         Err(format!(
             "No valid `{}` binary found in {:?}.",
-            exe_name, &search_paths
+            exe_name, search_paths
         ))
     }
 

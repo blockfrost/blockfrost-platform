@@ -39,8 +39,8 @@ fn _check_multiasset_zero(tx: Tx) -> bool {
         if let GenTransactionOutput::Legacy(o) = output
             && let Value::Multiasset(_, kv) = &o.amount
         {
-            for (_, assets) in kv.iter() {
-                for (_, amount) in assets.iter() {
+            for assets in kv.values() {
+                for amount in assets.values() {
                     if *amount == 0 {
                         return true;
                     }

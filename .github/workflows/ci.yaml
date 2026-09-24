@@ -352,7 +352,9 @@ jobs:
   coverage_report:
     name: Coverage Report
     runs-on: [self-hosted, Linux, X64, nixos]
-    if: always()
+    # Report even if some tests failed, but not when they didn't run at all
+    # (e.g. after a failed `static_checks`) – there'd be no LCOVs to merge.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'skipped') }}
     needs:
       - unit_tests
       - platform_integration_tests
