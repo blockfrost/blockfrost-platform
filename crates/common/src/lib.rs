@@ -4,6 +4,7 @@ pub mod find_libexec;
 pub mod hydra;
 pub mod json_client;
 pub mod pagination;
+pub mod shutdown;
 pub mod tcp_mux_tunnel;
 pub mod tracing;
 pub mod types;

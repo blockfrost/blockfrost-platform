@@ -54,13 +54,13 @@ impl ExternalDecoder {
     }
 
     /// A single global [`ExternalDecoder`] that you can cheaply use in tests.
-    #[cfg(all(test, not(feature = "tarpaulin")))]
+    #[cfg(test)]
     pub fn instance() -> Self {
         GLOBAL_INSTANCE.clone()
     }
 }
 
-#[cfg(all(test, not(feature = "tarpaulin")))]
+#[cfg(test)]
 static GLOBAL_INSTANCE: std::sync::LazyLock<ExternalDecoder> =
     std::sync::LazyLock::new(|| ExternalDecoder::spawn().expect("Failed to spawn ExternalDecoder"));
 
@@ -70,12 +70,10 @@ mod tests {
     // which already cross-validates the Rust (pallas-hardano) implementation against the
     // Haskell (testgen-hs) external decoder. This module only contains tests that are
     // unique to the external decoder itself (e.g. crash-recovery behaviour).
-    #[cfg(not(feature = "tarpaulin"))]
     use super::*;
 
     #[tokio::test]
     //#[tracing_test::traced_test]
-    #[cfg(not(feature = "tarpaulin"))]
     async fn test_sanity() {
         let decoder = ExternalDecoder::spawn().unwrap();
 

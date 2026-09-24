@@ -144,6 +144,7 @@ async fn main() -> Result<()> {
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .with_graceful_shutdown(bf_common::shutdown::signal())
     .await
     .unwrap_or_else(|e| {
         eprintln!("Server error: {e}");

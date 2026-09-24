@@ -12,9 +12,6 @@ hex.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 
-[features]
-tarpaulin = []
-
 [build-dependencies]
 bf-build-utils.workspace = true
 

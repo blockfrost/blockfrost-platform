@@ -52,8 +52,7 @@ result-*
 
 *.log
 
-# Ignore coverage files
-build_rs_cov.profraw
-cobertura.xml
-tarpaulin-report.html
-coverage
+# Coverage artifacts (LLVM source-based coverage)
+*.profraw
+*.profdata
+coverage-html/
