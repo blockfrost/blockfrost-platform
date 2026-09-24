@@ -40,3 +40,6 @@ jspm_packages
 install-state.gz
 out
 _pagefind
+
+# TypeScript incremental build cache
+*.tsbuildinfo

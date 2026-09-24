@@ -1,6 +1,7 @@
 use crate::errors::APIError;
 use crate::types::AssetName;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI as bf_sdk};
+use tracing::error;
 
 #[derive(Clone)]
 pub struct BlockfrostAPI {
@@ -20,6 +21,35 @@ impl BlockfrostAPI {
             api,
             policy_id_size: 56,
         }
+    }
+
+    /// Verifies Blockfrost API connectivity
+    pub async fn ping(&self, timeout: std::time::Duration) -> Result<(), String> {
+        if cfg!(feature = "dev_mock_db") {
+            return Ok(());
+        }
+
+        tokio::time::timeout(timeout, self.api.blocks_latest())
+            .await
+            .map_err(|_| {
+                format!(
+                    "Blockfrost API health check timed out after {}s",
+                    timeout.as_secs()
+                )
+            })?
+            .map(|_| ())
+            .map_err(|e| {
+                // The SDK’s error messages span multiple lines; flatten them
+                // so that they log (and serialize) as a single line.
+                let flat = e
+                    .to_string()
+                    .lines()
+                    .map(str::trim)
+                    .filter(|l| !l.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("Blockfrost API error: {flat}")
+            })
     }
 
     // Parse asset from the unit
@@ -47,11 +77,10 @@ impl BlockfrostAPI {
             });
         }
 
-        let bf_result = self
-            .api
-            .addresses(address)
-            .await
-            .map_err(|err| APIError::License(err.to_string()))?;
+        let bf_result = self.api.addresses(address).await.map_err(|err| {
+            error!("Blockfrost API error while checking the license of {address}: {err}");
+            APIError::License(err.to_string())
+        })?;
 
         let found_asset = bf_result
             .amount

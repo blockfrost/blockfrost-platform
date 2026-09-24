@@ -1,7 +1,7 @@
 use crate::client::DataNode;
 use bf_api_provider::types::{
     AccountsAddressesResponse, AccountsDelegationsResponse, AccountsRegistrationsResponse,
-    AccountsResponse, AccountsRewardsResponse, AccountsWithdrawalsResponse,
+    AccountsResponse, AccountsRewardsResponse, AccountsUtxosResponse, AccountsWithdrawalsResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
@@ -68,6 +68,16 @@ impl DataNodeAccounts<'_> {
         pagination: &Pagination,
     ) -> ApiResult<AccountsWithdrawalsResponse> {
         let path = format!("accounts/{stake_address}/withdrawals");
+
+        self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn utxos(
+        &self,
+        stake_address: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<AccountsUtxosResponse> {
+        let path = format!("accounts/{stake_address}/utxos");
 
         self.inner.client.get(&path, Some(pagination)).await
     }

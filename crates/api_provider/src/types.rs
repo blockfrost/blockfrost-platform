@@ -31,7 +31,7 @@ use blockfrost_openapi::models::{
     proposal_parameters_parameters::ProposalParametersParameters,
     proposal_votes_inner::ProposalVotesInner, proposal_withdrawals_inner::ProposalWithdrawalsInner,
     proposals_inner::ProposalsInner, script::Script, script_cbor::ScriptCbor,
-    script_datum_cbor::ScriptDatumCbor, script_json::ScriptJson,
+    script_datum::ScriptDatum, script_datum_cbor::ScriptDatumCbor, script_json::ScriptJson,
     script_redeemers_inner::ScriptRedeemersInner, scripts_inner::ScriptsInner,
     tx_content::TxContent, tx_content_cbor::TxContentCbor,
     tx_content_delegations_inner::TxContentDelegationsInner,
@@ -117,10 +117,11 @@ pub type MetadataLabelCborResponse = Vec<TxMetadataLabelCborInner>;
 
 // scripts
 pub type ScriptsSingleResponse = Script;
-pub type ScriptsDatumCborResponse = Vec<ScriptDatumCbor>;
+pub type ScriptsDatumResponse = ScriptDatum;
+pub type ScriptsDatumCborResponse = ScriptDatumCbor;
 pub type ScriptsInnerResponse = Vec<ScriptsInner>;
-pub type ScriptsCborResponse = Vec<ScriptCbor>;
-pub type ScriptsJsonResponse = Vec<ScriptJson>;
+pub type ScriptsCborResponse = ScriptCbor;
+pub type ScriptsJsonResponse = ScriptJson;
 pub type ScriptsRedeemersInnerResponse = Vec<ScriptRedeemersInner>;
 
 // pools

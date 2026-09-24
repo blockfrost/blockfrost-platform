@@ -1,6 +1,8 @@
 use crate::client::DataNode;
-use bf_api_provider::types::AssetsSingleResponse;
-use bf_common::types::ApiResult;
+use bf_api_provider::types::{
+    AssetsAddressesResponse, AssetsSingleResponse, AssetsTransactionsResponse,
+};
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DataNodeAssets<'a> {
     pub(crate) inner: &'a DataNode,
@@ -17,5 +19,25 @@ impl DataNodeAssets<'_> {
         let path = format!("assets/{asset_id}");
 
         self.inner.client.get(&path, None).await
+    }
+
+    pub async fn addresses(
+        &self,
+        asset_id: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<AssetsAddressesResponse> {
+        let path = format!("assets/{asset_id}/addresses");
+
+        self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn transactions(
+        &self,
+        asset_id: &str,
+        pagination: &Pagination,
+    ) -> ApiResult<AssetsTransactionsResponse> {
+        let path = format!("assets/{asset_id}/transactions");
+
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }

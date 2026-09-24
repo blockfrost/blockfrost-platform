@@ -19,10 +19,12 @@ docker run -it --init --rm \
   /home/user/my_node.socket:/var/run/node.socket`.
 </Callout>
 <Callout>
-  If you don't specify an IP address (i.e., `-p 3000:3000` instead of `-p
-  127.0.0.1:3000:3000`) when publishing a container's ports, Docker publishes
-  the port on all interfaces (address `0.0.0.0`) by default. These ports are
-  externally accessible.
+  The node reaches Blockfrost through an outbound WebSocket connection, so port
+  `3000` does not need to be exposed to the public Internet. You only need to
+  publish it if you want to reach the local API or Prometheus metrics endpoint
+  yourself. If you do publish it, prefer binding to localhost (`-p
+  127.0.0.1:3000:3000`); using `-p 3000:3000` publishes on all interfaces
+  (address `0.0.0.0`), making the port externally accessible.
 </Callout>
 
 ## Running the entire cluster using Docker compose

@@ -1,6 +1,6 @@
 use crate::client::DataNode;
 use bf_api_provider::types::EpochsParamResponse;
-use bf_common::types::ApiResult;
+use bf_common::{pagination::Pagination, types::ApiResult};
 
 pub struct DataNodeEpochs<'a> {
     pub(crate) inner: &'a DataNode,
@@ -24,5 +24,11 @@ impl DataNodeEpochs<'_> {
             .client
             .get("epochs/latest/parameters", None)
             .await
+    }
+
+    pub async fn blocks(&self, number: &i32, pagination: &Pagination) -> ApiResult<Vec<String>> {
+        let path = format!("epochs/{number}/blocks");
+
+        self.inner.client.get(&path, Some(pagination)).await
     }
 }

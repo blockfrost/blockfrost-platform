@@ -122,7 +122,13 @@ async fn test_ws_invalid_credentials_rejected() {
     let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
     let health_errors = Arc::new(Mutex::new(vec![]));
 
-    let manager = IcebreakersManager::new(icebreakers_api, health_errors.clone(), app, api_prefix);
+    let manager = IcebreakersManager::new(
+        icebreakers_api,
+        health_errors.clone(),
+        app,
+        api_prefix,
+        bf_common::DEFAULT_MAX_BODY_BYTES,
+    );
 
     let (kex_req_tx, kex_req_rx) =
         tokio::sync::mpsc::channel::<hydra_client::KeyExchangeRequest>(1);

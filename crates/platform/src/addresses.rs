@@ -81,7 +81,9 @@ pub fn is_stake_address_valid(input: &str, network: &Network) -> Result<bool, Bl
 
     match network {
         Network::Mainnet if prefix_str == "stake" => Ok(true),
-        Network::Preprod | Network::Preview if prefix_str == "stake_test" => Ok(true),
+        Network::Preprod | Network::Preview | Network::Custom if prefix_str == "stake_test" => {
+            Ok(true)
+        },
         _ => Ok(false),
     }
 }
@@ -234,6 +236,18 @@ mod tests {
         "TESTNET: Non valid/malformed stake address",
         "stake_stonks_testnet",
         Network::Preprod,
+        false
+    )]
+    #[case(
+        "CUSTOM: valid stake address (testnet prefix)",
+        "stake_test1urtemlwr6hmw6q5mc5p0q6z06g4f3v33czec67yf688w4wsw6rnpq",
+        Network::Custom,
+        true
+    )]
+    #[case(
+        "CUSTOM: mainnet-prefixed stake address is invalid",
+        "stake1uxmdw34s0rkc26d9x9aax69pcua8eukm2tytlx3szg75mcg5z5nss",
+        Network::Custom,
         false
     )]
     fn test_validate_stake_address(

@@ -33,6 +33,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
         .route("/addresses/{address}/utxos", get(addresses::address::utxos::root::route))
         .route("/addresses/{address}/utxos/{asset}", get(addresses::address::utxos::asset::route))
         .route("/addresses/{address}/transactions", get(addresses::address::transactions::route))
+        .route("/addresses/{address}/txs", get(addresses::address::txs::route))
 
         // assets
         .route("/assets", get(assets::root::route))
@@ -44,6 +45,7 @@ pub fn get_hidden_api_routes(enable_metrics: bool) -> Router<AppState> {
 
         // blocks
         .route("/blocks/epoch/{epoch_number}/slot/{slot_number}", get(blocks::epoch::epoch_number::slot::slot_number::route))
+        .route("/blocks/slot/{slot_number}", get(blocks::slot::slot_number::route))
         .route("/blocks/latest", get(blocks::latest::root::route))
         .route("/blocks/latest/txs", get(blocks::latest::txs::route))
         .route("/blocks/{hash_or_number}", get(blocks::hash_or_number::root::route))

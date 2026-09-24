@@ -1,9 +1,33 @@
 ## [Unreleased]
 
+### Added
+
+- Gateway: per-relay `blockfrost_gateway_relay_healthy`, `blockfrost_gateway_relay_data_node_up`, and `blockfrost_gateway_relay_info` metrics in `GET /metrics` (and the same data points in `GET /stats`)
+- Gateway: `blockfrost_gateway_healthy` metric in `GET /metrics`, mirroring the `healthy` field of `GET /`
+- Gateway: Prometheus metrics endpoint `GET /metrics` exposing per-relay stats (connection status, WebSocket RTT, connected-since timestamp, request/response counters) and PostgreSQL connection-pool gauges (max size, open, available, waiting)
+- Gateway: Prometheus counter `blockfrost_gateway_http_requests_total` with `method`, `route`, and `status_code` labels for Gateway API requests
+- Gateway: `blockfrost_gateway_build_info` metric exposing the Gateway version and git revision
+- Gateway: use a WebSocket load balancer to allow connections from behind NAT(s)
+- Gateway: `project_id` and `connection_string` can also be fetched from a file
+- Gateway: required `database.pool_max_size` config value (overridable via `BLOCKFROST_GATEWAY_DB_POOL_MAX_SIZE`) that caps the PostgreSQL connection pool per gateway instance
+- New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/addresses/{address}`, and `/blocks/slot/{slot_number}`
+- `--max-response-body-bytes` to configure the maximum proxied response body size (default 10 MiB)
+
 ### Fixed
 
+- Gateway: `GET /` no longer always reports `healthy: true` — it now reflects periodic health checks of PostgreSQL connectivity and the Blockfrost API
+- Gateway: refuses to start when the initial health check fails (e.g. an invalid Blockfrost project token)
+- Gateway: the underlying Blockfrost API error (e.g. rate limiting) is now logged when the license NFT check fails during registration
+- Raised the proxied body limit from 1 MiB to 10 MiB
+- `--custom-genesis-config` now actually takes effect: the network is served as `custom`, the genesis file is parsed up front, and all consumers use the merged registry
+- Stake (`stake_test`) addresses are now accepted on custom networks, fixing `/accounts/{stake_address}/*` endpoints that previously rejected every stake address as invalid
 - Restored `local_address` bind for unspecified IPs like `0.0.0.0`, fixing an IPv6 regression that broke the IPv4-forcing behavior of `--server-address 0.0.0.0`
 - Inverted the metrics answer in the `--init` config prompt
+- Source builds now download `hydra-node` during `cargo build` for supported targets (`x86_64-linux`, `aarch64-linux`, `aarch64-darwin`) unless `HYDRA_NODE_PATH` is set, so `blockfrost-platform` runs without manually providing the binary
+
+### Removed
+
+- Gateway no longer performs a public port reachability check during registration. Relays connect outbound to the load balancers over WebSocket, so they no longer need a publicly routable inbound port.
 
 ## [1.0.0] - 2026-05-15
 
@@ -203,6 +227,10 @@ This release introduces two major integrations:
 ### Changed
 
 - Enable metrics endpoint by default
+- Gateway: fetch `api_prefix` from blockfrost-platform
+- Gateway: improved IP address validation and handling, including localhost scenarios
+- Gateway: Nix devshell, checks, and package definition
+- Gateway: config can be overridden by environment variables `SERVER_ADDRESS`, `SERVER_LOG_LEVEL`, `DB_CONNECTION_STRING`, `BLOCKFROST_PROJECT_ID`, `BLOCKFROST_NFT_ASSET`
 
 ### Added
 
@@ -210,15 +238,32 @@ This release introduces two major integrations:
 - Add more logs and finer details to `NodeClient::submit_transaction`
 - Header `blockfrost-platform-response` in `tx_submit` endpoint
 - Add `aarch64-linux` builds to release artifacts and installers.
+- Gateway: check network and address mismatch
+- Gateway: additional logging in registration
+- Gateway: additional logging when checking IP addresses
+- Gateway: `asset_name` column in the `requests` table that contains the asset name of the NFT
+- Gateway: check if the server is accessible
 
 ### Fixed
 
 - Node connections are now invalidated on unexpected transaction submission errors.
 - Node connection metrics inconsistency caused by an initialization timing issue.
 - Configure local IP address to bind to with `std::net` types.
+- Gateway: `project_id` env override
+- Gateway: URL in root route
+- Gateway: better IPv6 support
+- Gateway: Digital Ocean IP address header
+- Gateway: internal IP address → external IP address
+- Gateway: NFT checking
+
+### Removed
+
+- Gateway: unused code
 
 ## [0.0.1] - 2025-02-13
 
 ### Added
 
 - Initial release
+- Gateway: initial release
+- Gateway: pass route params on success response

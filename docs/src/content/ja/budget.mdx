@@ -1,0 +1,139 @@
+# Blockfrost Platform コミュニティ予算提案
+
+Blockfrost は、Cardano ブロックチェーンとその機能に誰でもアクセスできるようにする、強力な API プラットフォームです。独自にノードを運用する必要はありません。
+
+私たちの API は開発者を念頭に置いて設計されており、直接的なノード操作の複雑さを取り除くツールを提供します。これにより、誰もが Cardano 上で開発を開始し、手頃で安定したユーザーフレンドリーなフレームワーク上でプロジェクトを立ち上げることができます。
+
+Blockfrost はもともと Five Binaries によって開発され、現在は IOG の傘下で保守されています。
+
+## Blockfrost の分散化
+
+開発を支える信頼性の高いインフラストラクチャとツールへの需要が、Blockfrost を生み出しました。Cardano ブロックチェーンを操作したことがあるなら、その背後で Blockfrost と関わっていた可能性が高いです。
+
+しかし、この採用レベルにはいくつかのトレードオフがありました。ピーク時には、Blockfrost が Cardano 上のオンチェーントランザクションの 50% 以上を処理していました。私たちはこの集中度がブロックチェーンの分散的な性質と相容れないものと認識しており、Cardano コミュニティのために Blockfrost を分散化する取り組みを積極的に進めてきました。
+
+ステークプールオペレーター (SPO) や他のノードオペレーターとともに、Icebreakers 時代と呼ぶ最初のフェーズを開始しました。これは Cardano データへのアクセスを分散化し、素晴らしいノードオペレーターコミュニティに報いるインセンティブ付きプログラムです。
+
+### Icebreakers
+
+Icebreakers は、開発者が単一の集中型ソースに依存することなく、信頼性の高いノードオペレーターのセットを通じて Cardano データにアクセスできるようにする、分散型エンドポイントのネットワークです。
+
+Icebreaker プログラムに参加することで、SPO や他の Cardano ノードオペレーターは Blockfrost ネットワークの一部として API リクエストを処理し、既存のインフラストラクチャを収益化できます。
+
+## 成果物
+
+透明性を確保しベンダーロックインを防ぐため、私たちは成果物のすべてのコンポーネントをオープンソース化します。これにはインフラストラクチャ、ライブラリ、ドキュメントが含まれます。
+
+主に 2 つの重要なプロジェクトに注力します: Blockfrost Platform と Blockfrost Gateway。いずれも Icebreaker ネットワークの能力拡張を目的としています。
+
+### Blockfrost Platform
+
+Blockfrost プラットフォームは、既存の SPO リレーで実行することを想定した次世代バックエンドです。既存のリソースを活用し、既存顧客への提供を通じてオペレーターに Blockfrost の現在の収益の一部を配分することで報酬を提供します。
+
+### Blockfrost Gateway
+
+Blockfrost ゲートウェイは、Blockfrost プラットフォームを運用する個々の SPO へのエントリーポイントです。ゲートウェイを通じて、SPO は Blockfrost ユーザーからのリクエストを受け取ることができます。これらを処理する対価として、収益の一部を獲得します。
+
+Blockfrost Gateway を使えば、誰でも独自の Blockfrost インスタンスを独自のプラットフォーム上で運用できます。Hydra を用いて当事者間でマイクロペイメントチャネルを開き、サービスの対価として ADA や他のトークンを交換できるようにする予定です。
+
+ソリタリーモードも開発中です。これは環境を完全に所有する必要があるチーム向けに設計されています。開発者やエンタープライズ顧客は、インフラストラクチャ、稼働時間、セキュリティを完全にコントロールできるカスタマイズ済み・独立した Blockfrost インスタンスをデプロイできます。
+
+## KPI
+
+私たちの提案は、以下のロードマップに記載されたマイルストーンに従います。さらに、以下の KPI を約束します。
+
+- 2025 年末までに少なくとも 100 名のアクティブな Icebreakers を確保
+- 2025 年末までに、Blockfrost を通じて送信される 100% のトランザクションが Icebreakers によって処理される
+- SPO コールで四半期ごとのアップデートを提供
+- 月次のコミュニティ開発コール
+
+## ロードマップとタイムライン
+
+Blockfrost の [ロードマップ](https://github.com/orgs/blockfrost/projects/17/views/1) ([roadmap view](https://github.com/orgs/blockfrost/projects/17/views/2)) は GitHub 上で公開されており、明確な時代区分に分けて構成されています。
+
+[ロードマップの解説動画](https://www.youtube.com/watch?v=5RedwIYmAgc) もご覧いただけます。
+
+すべてのマイルストーンは説明責任と透明性を高めるため、私たちの GitHub ロードマップで明確に文書化・追跡されています。
+
+#### Icebreakers 時代
+
+- [Icebreakers: Blockfrost platform initial release](https://github.com/blockfrost/blockfrost-platform/issues/305)
+- [Icebreakers: Transaction submission endpoint](https://github.com/blockfrost/blockfrost-platform/issues/274)
+- [Icebreakers: Platform gateway](https://github.com/blockfrost/blockfrost-platform/issues/276)
+- [Icebreakers: Onboarding](https://github.com/blockfrost/blockfrost-platform/issues/284)
+- [Icebreakers: Live ledger endpoints](https://github.com/blockfrost/blockfrost-platform/issues/275)
+- [Icebreakers: Infrastructure deployment](https://github.com/blockfrost/blockfrost-platform/issues/281)
+- [Icebreakers: Data nodes support](https://github.com/blockfrost/blockfrost-platform/issues/279)
+- [Icebreakers: Conformance testing](https://github.com/blockfrost/blockfrost-platform/issues/304)
+- [Icebreakers: Caching and invalidation](https://github.com/blockfrost/blockfrost-platform/issues/280)
+
+#### Hopper 時代
+
+- [Hopper: Research into payments channels between the platform and the consumer](https://github.com/blockfrost/blockfrost-platform/issues/287)
+- [Hopper: Hydra payment channels between platform and gateway](https://github.com/blockfrost/blockfrost-platform/issues/277)
+- [Hopper: Hydra payment channel between gateway and consumer](https://github.com/blockfrost/blockfrost-platform/issues/278)
+
+## 2025 年の Cardano ビジョン・ロードマップとの整合
+
+3 月、DRep の大多数が戦略的文書 [Cardano Vision and Roadmap for 2025](https://adastat.net/governances/56f39054758f1a3cedc1de9225d66bf270b62dfdbfbc5399f1d6d43aceffc63600) の採択に投票しました。
+
+私たちの提案は、その文書の以下の項目に直接寄与します。
+
+「データ API サービスを分散化し、集中型プロバイダーへの依存を低減し、SPO に力を与える。」
+
+私たちは Blockfrost API を分散化すると同時に、SPO へのインセンティブも増やしています。
+
+## 提案予算
+
+予算の大部分は開発者の給与に充てます。1 名のフルタイム従業員 (FTE) を支援するため、年間 12 万ドルを要求します。
+
+トレジャリーへの総資金要求額は 65 万ドルで、これは現行レート 1 ADA = 0.50 USD で約 130 万 ADA に相当します。
+
+### チーム
+
+成果物に取り組んでいるチームは以下のとおりです。
+
+- [Marek](https://github.com/mmahut): プロジェクトリード (パートタイム)
+- [Beatrice](https://github.com/opacular): コミュニティエンゲージメントリードおよびオンボーディング (パートタイム)
+- [Vladimir](https://github.com/vladimirvolek): ゲートウェイリード
+- [Michal](https://github.com/michalrus): プラットフォームリード
+- [Sefa](https://github.com/ginnun): キャッシングリード
+- [Bart](https://github.com/bslabiak): 適合性テストリード
+
+合計で 5 FTE です。
+
+### 監査
+
+Icebreaker および Hopper 時代の完了後、信頼できる第三者による開発コードのセキュリティ監査を実施する予定です。この監査の費用は 5 万ドルと見積もっています。
+
+## コミュニティへの関与
+
+予算プロセスの一環として、この提案について DRep やその他のコミュニティメンバーと議論するため、複数の録画コミュニティコールを開催する予定です。
+
+これらの記録は以下に投稿されます。
+
+FAQ にない、またこの文書でカバーされていない質問がある場合は、サポートチャネルを通じてチームへお気軽にお問い合わせください。
+
+- Discord: [IOG の技術 Discord](https://discord.gg/3dHCe6X88f)
+- メール: support@blockfrost.io
+- Twitter/X: [@Blockfrost_io](https://x.com/Blockfrost_io)
+
+## FAQ
+
+コミュニティから寄せられた質問をまとめました。
+
+- 私もこれらの取り組みに貢献できますか？
+  - もちろんです。すべての成果物はオープンソースであり、貢献を希望するすべての方が GitHub で issue を起票することを歓迎します。
+- IOG はすでに予算を提出していませんか？ なぜそこに含めないのですか？
+  - IOE (Input Output Engineering) は Blockfrost とは別の組織であるため、私たち独自の予算を提案しています。
+- この提案と過去の Catalyst 提案に依存関係や重複はありますか？
+  - この提案と他の Blockfrost 提案の間に依存関係や重複はありません。ただし、私たちが利用している依存関係の中には過去に Catalyst によって資金提供を受けたものがあります。Pallas は私が知る限り過去に資金提供を受けた Rust ライブラリです。また、Dolos などの Cardano データノードも、過去に資金提供を受けたものを利用する予定です。私たちは巨人の肩の上に立っており、これらの成熟したツールなしには何も実現できません。
+- この提案完了後、成果物の保守に関連するトレジャリーや Catalyst への追加要求はありますか？それともこのサービスは提案完了後に自立可能になりますか？
+  - 現時点では分かりません。すべてのソフトウェアと同様、Blockfrost プラットフォームも保守にリソースを必要とします。とはいえ、私たちは初期段階にあり、他の資金源の可能性を模索中です。SPO へ徐々に収益を引き渡していくなかで、おそらく「Blockfrost トレジャリー」へ手数料の一部を充当する DAO モデルで将来的にこれを支援できるのではないかと考えています。完全に開示すると、この DAO を支えるために潜在的なトークンローンチについても議論しています。ただし、これはまだ初期段階であり、コミュニティとの議論が必要です。
+  - これは素晴らしい質問であり、コミュニティの他のビルダーから知見を集めるアイデアが好きです。これが最適なアプローチかは断言できませんが、Twitter で意見募集を投稿しており、このトピックに関する貴重なフィードバックを得られることを期待しています。議論は [このスレッド](https://x.com/blockfrost_io/status/1913567785659023740) で行われています。
+- 誰でも Icebreaker を運用できるのですか？それとも Blockfrost の承認が必要ですか？ Icebreaker の数に上限はありますか？
+  - 現時点では NFT ライセンス (無料提供で、どの SPO がどのノードを運用しているかの連絡先情報を持ちたいだけで、フォームに記入するだけで取得できます) によって制限されています。ベータテスト中だからです。ベータテストが終了すれば、SPO だけでなくフルウォレットユーザーも含め、誰でもクラスタに参加できるようになります。さらに重要な点として、誰でも独自の Blockfrost ゲートウェイクラスタと「自分の」Icebreakers を運用できるようになります。SPO のグループが集まって独自の価格、SLA、エンドポイントなどを持つクラスタを開始し、競争し始めるイメージです。また、Icebreakers がサービスを提供する分散型 P2P マーケットプレイスをどのように構築できるかも研究中です (例えば自身の Icebreaker でリクエストあたりの価格を設定し、起動するだけでクラスタを選択せずに接続される、というもの) — ただし、これは今年のスコープ外でさらに多くの研究が必要です。
+- Icebreakers の収益分配モデルはどのように構成されますか？特に、参加するノードオペレーターへの Blockfrost 収益の分配と計算方法を詳しく教えてください。
+  - 価格はリクエスト単位です。当社サイトで顧客が 100 万リクエストに対して支払う価格はおよそ 4 ADA です。現在、トラフィックがまだ小さく (20 USD 未満) なため、Icebreakers には最低でも月 20 USD 相当の ADA で報酬を出しています。今後トラフィックが増えるにつれて、提供量に応じて支払われます。将来、トラフィックが完全に分散的に処理されるようになった時点で税率パラメータを導入し、全収益の一部を Blockfrost ゲートウェイに割り当て、運用のためのインフラ・管理費を賄います。人々は税率を下げて Icebreakers を惹きつける新しいゲートウェイを立ち上げるかたちで競争すると考えています。この件についても DAO の可能性を調査していますが、まだ研究中であり 2025 年提案のスコープ外です。
+
+_この文書は生きた文書であり、変更される可能性があります。_

@@ -1,6 +1,6 @@
 services:
   init-node:
-    image: ghcr.io/input-output-hk/mithril-client:2506.0-2627f17
+    image: ghcr.io/intersectmbo/mithril-client:2630.0-23e124d
     entrypoint: /app/bin/entrypoint.sh
     user: "${UID}:${GID}"
     environment:
@@ -21,7 +21,7 @@ services:
       init-node:
         condition: service_completed_successfully
   dolos:
-    image: ghcr.io/txpipe/dolos:v1.0.3
+    image: ghcr.io/txpipe/dolos:v1.4.0
     entrypoint: /entrypoint.sh
     environment:
       NETWORK: $NETWORK

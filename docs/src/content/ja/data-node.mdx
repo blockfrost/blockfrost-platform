@@ -1,0 +1,131 @@
+import { Callout } from "nextra/components";
+
+# データノード
+
+プラットフォームは [Dolos](https://github.com/txpipe/dolos) データノードに接続することで、ブロック、トランザクション、アカウント、アドレス、アセット、プールなどのブロックチェーンクエリエンドポイントを提供できます。データノードが設定されていない場合、これらのエンドポイントは利用できません。
+
+<Callout>
+  Dolos はインデックス済みのブロックチェーンデータを HTTP 経由で提供します。
+  cardano-node はノードの同期とヘルスモニタリングのために引き続き必要です。
+</Callout>
+
+## 設定
+
+Dolos インスタンスに接続するには、`--data-node` フラグを使用します。
+
+```
+blockfrost-platform --node-socket-path /path/to/node.socket \
+                    --data-node http://localhost:3010
+```
+
+データノードリクエストのカスタムタイムアウトを設定することもできます (デフォルトは 30 秒)。
+
+```
+blockfrost-platform --node-socket-path /path/to/node.socket \
+                    --data-node http://localhost:3010 \
+                    --data-node-timeout-sec 60
+```
+
+`--init` ウィザードでも、設定ファイル生成時にデータノードの URL を尋ねられます。
+
+## サポートされているエンドポイント
+
+{/* prettier-ignore */}
+<Callout>
+  以下のエンドポイントはデータノードなしで動作します。
+  - `GET /` — ルートヘルスエンドポイント
+  - `GET /metrics` — Prometheus メトリクス (`--no-metrics` で無効化されていない場合)
+  - `GET /health` — ヘルスチェック
+  - `GET /health/clock` — サーバー時刻
+  - `POST /tx/submit` — トランザクション送信
+  - `GET /genesis` — ネットワークの genesis パラメータ
+</Callout>
+
+データノードが接続されると、以下のエンドポイントが利用可能になります。
+
+### アカウント
+
+- `GET /accounts/{stake_address}`
+- `GET /accounts/{stake_address}/rewards`
+- `GET /accounts/{stake_address}/delegations`
+- `GET /accounts/{stake_address}/registrations`
+- `GET /accounts/{stake_address}/addresses`
+- `GET /accounts/{stake_address}/withdrawals`
+
+### アドレス
+
+- `GET /addresses/{address}/utxos`
+- `GET /addresses/{address}/utxos/{asset}`
+- `GET /addresses/{address}/transactions`
+
+### アセット
+
+- `GET /assets/{asset}`
+
+### ブロック
+
+- `GET /blocks/latest`
+- `GET /blocks/latest/txs`
+- `GET /blocks/{hash_or_number}`
+- `GET /blocks/{hash_or_number}/next`
+- `GET /blocks/{hash_or_number}/previous`
+- `GET /blocks/{hash_or_number}/txs`
+- `GET /blocks/slot/{slot_number}`
+
+### エポック
+
+- `GET /epochs/latest/parameters`
+- `GET /epochs/{epoch_number}/parameters`
+
+### メタデータ
+
+- `GET /metadata/txs/labels`
+- `GET /metadata/txs/labels/{label}`
+- `GET /metadata/txs/labels/{label}/cbor`
+
+### ネットワーク
+
+- `GET /network`
+- `GET /network/eras`
+
+### プール
+
+- `GET /pools/extended`
+- `GET /pools/{pool_id}`
+- `GET /pools/{pool_id}/metadata`
+- `GET /pools/{pool_id}/delegators`
+
+### ガバナンス
+
+- `GET /governance/dreps/{drep_id}`
+
+### トランザクション
+
+- `GET /txs/{hash}`
+- `GET /txs/{hash}/utxos`
+- `GET /txs/{hash}/stakes`
+- `GET /txs/{hash}/delegations`
+- `GET /txs/{hash}/withdrawals`
+- `GET /txs/{hash}/mirs`
+- `GET /txs/{hash}/pool_updates`
+- `GET /txs/{hash}/pool_retires`
+- `GET /txs/{hash}/metadata`
+- `GET /txs/{hash}/metadata/cbor`
+- `GET /txs/{hash}/redeemers`
+- `GET /txs/{hash}/cbor`
+
+## Docker Compose
+
+Docker Compose を使用する場合、プラットフォームは自動的に Dolos コンテナに接続します。
+
+```yaml
+dolos:
+  image: ghcr.io/txpipe/dolos
+  ports:
+    - 3010:3010
+
+blockfrost-platform:
+  command:
+    - --data-node
+    - http://dolos:3010
+```

@@ -12,7 +12,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
-const MAX_BODY_BYTES: usize = 1024 * 1024;
+const MAX_BODY_BYTES: usize = bf_common::DEFAULT_MAX_BODY_BYTES;
 const WS_PING_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Clone)]

@@ -12,9 +12,6 @@ use axum::http::HeaderMap;
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
-use std::time::Duration;
-use tokio::net::TcpStream;
-use tokio::time::timeout;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -112,45 +109,6 @@ pub async fn route(
     // check if user has correct secret
     let authorized_user = db.authorize_user(payload.secret).await?;
 
-    let skip_port_check_secret = std::env::var("SKIP_PORT_CHECK_SECRET").ok();
-
-    // Allow bypassing check for open port via header X-SKIP-PORT-CHECK = env SKIP_PORT_CHECK_SECRET
-    let skip_port_check = headers
-        .get("X-SKIP-PORT-CHECK")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|header_val| {
-            skip_port_check_secret
-                .as_ref()
-                .map(|secret| header_val.eq_ignore_ascii_case(secret))
-        })
-        .unwrap_or(false);
-    if skip_port_check {
-        info!("Skipping port check. Client passed X-SKIP-PORT-CHECK header.");
-    } else {
-        info!(
-            "The server will now check if the IP address {} is reachable on port {}",
-            ip_address, payload.port
-        );
-
-        let socket_addr = SocketAddr::new(ip_address, payload.port as u16);
-
-        if !is_port_open(socket_addr).await {
-            info!(
-                "Failed to connect to IP {} on port {}",
-                ip_address, payload.port
-            );
-            return Err(APIError::NotAccessible {
-                ip: socket_addr,
-                port: socket_addr.port(),
-            });
-        }
-
-        info!(
-            "Successfully checked that IP {} is reachable on port {}",
-            ip_address, payload.port
-        );
-    }
-
     // check if NFT is at the address
     let asset = blockfrost_api
         .nft_exists(&payload.reward_address, &config.blockfrost.nft_asset)
@@ -190,15 +148,6 @@ pub async fn route(
     db.insert_request(new_item_request).await?;
 
     Ok(Json(success_response))
-}
-
-async fn is_port_open(ip: SocketAddr) -> bool {
-    let connection_future = TcpStream::connect(ip);
-
-    matches!(
-        timeout(Duration::from_secs(10), connection_future).await,
-        Ok(Ok(_))
-    )
 }
 
 /// Convert an `http(s)://` URL to the corresponding `ws(s)://…/ws` URI string.

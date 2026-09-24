@@ -1,6 +1,7 @@
 use crate::client::DataNode;
 use bf_api_provider::types::{
-    AddressesTransactionsResponse, AddressesUtxosAssetResponse, AddressesUtxosResponse,
+    AddressesResponse, AddressesTransactionsResponse, AddressesUtxosAssetResponse,
+    AddressesUtxosResponse,
 };
 use bf_common::{pagination::Pagination, types::ApiResult};
 
@@ -15,6 +16,12 @@ impl DataNode {
 }
 
 impl DataNodeAddresses<'_> {
+    pub async fn address(&self, address: &str) -> ApiResult<AddressesResponse> {
+        let path = format!("addresses/{address}");
+
+        self.inner.client.get(&path, None).await
+    }
+
     pub async fn utxos(
         &self,
         address: &str,
@@ -42,6 +49,12 @@ impl DataNodeAddresses<'_> {
         pagination: &Pagination,
     ) -> ApiResult<AddressesTransactionsResponse> {
         let path = format!("addresses/{address}/transactions");
+
+        self.inner.client.get(&path, Some(pagination)).await
+    }
+
+    pub async fn txs(&self, address: &str, pagination: &Pagination) -> ApiResult<Vec<String>> {
+        let path = format!("addresses/{address}/txs");
 
         self.inner.client.get(&path, Some(pagination)).await
     }

@@ -2,12 +2,13 @@ use anyhow::Result;
 use api::{register, root};
 use axum::{
     Extension, Router,
+    middleware::from_fn,
     routing::{get, post},
 };
 use bf_common::tracing::setup_tracing;
 use blockfrost_gateway::{
-    api, blockfrost, config, db, hydra_server_bridge, hydra_server_platform, load_balancer,
-    rate_limit, sdk_bridge_ws,
+    api, blockfrost, config, db, health_monitor, hydra_server_bridge, hydra_server_platform,
+    load_balancer, middlewares, rate_limit, sdk_bridge_ws,
 };
 use clap::Parser;
 use colored::Colorize;
@@ -33,8 +34,24 @@ async fn main() -> Result<()> {
 
     setup_tracing(config.server.log_level, "BLOCKFROST_GATEWAY_LOG_TARGET");
 
-    let pool = DB::new(&config.database.connection_string).await;
+    let prometheus_handle = api::metrics::setup_metrics_recorder();
+
+    let pool = DB::new(
+        &config.database.connection_string,
+        config.database.pool_max_size,
+    )
+    .await;
     let blockfrost_api = blockfrost::BlockfrostAPI::new(&config.blockfrost.project_id);
+    let health_monitor =
+        health_monitor::HealthMonitor::spawn(pool.clone(), blockfrost_api.clone()).await;
+
+    // Fail fast on startup problems
+    let initial_health = health_monitor.current_status().await;
+    if !initial_health.healthy {
+        tracing::error!("Refusing to start unhealthy: {}", initial_health.details());
+        std::process::exit(1);
+    }
+
     let hydras_manager = if let Some(hydra_platform_config) = &config.hydra_platform {
         Some(
             hydra_server_platform::HydrasManager::new(
@@ -68,6 +85,7 @@ async fn main() -> Result<()> {
         .route("/register", post(register::route))
         .route("/ws", get(load_balancer::api::websocket_route))
         .route("/stats", get(load_balancer::api::stats_route))
+        .route("/metrics", get(api::metrics::route))
         .route(
             "/any",
             axum::routing::any(load_balancer::api::any_route_root),
@@ -95,13 +113,16 @@ async fn main() -> Result<()> {
         .layer(Extension(load_balancer))
         .layer(Extension(config.clone()))
         .layer(Extension(pool))
+        .layer(Extension(health_monitor))
         .layer(Extension(blockfrost_api))
-        .layer(Extension(register_rate_limiter));
+        .layer(Extension(register_rate_limiter))
+        .layer(Extension(prometheus_handle));
 
     let sdk_state = sdk_bridge_ws::SdkBridgeState::new(base_router.clone(), hydras_bridge_manager);
 
     let app = base_router
         .route("/sdk/ws", get(sdk_bridge_ws::websocket_route))
+        .route_layer(from_fn(middlewares::metrics::track_http_metrics))
         .layer(Extension(sdk_state));
 
     let listener = tokio::net::TcpListener::bind(&config.server.address)

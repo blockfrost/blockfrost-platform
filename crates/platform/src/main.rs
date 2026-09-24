@@ -3,8 +3,8 @@
 use bf_common::tracing::setup_tracing;
 use blockfrost_platform::cli::Args;
 use blockfrost_platform::{
-    AppError, hydra_client::HydraController, icebreakers::manager::IcebreakersManager,
-    server::build,
+    AppError, genesis::GenesisRegistry, hydra_client::HydraController,
+    icebreakers::manager::IcebreakersManager, server::build,
 };
 use dotenvy::dotenv;
 use std::sync::Arc;
@@ -61,7 +61,7 @@ async fn main() -> Result<(), AppError> {
 
     info!("Server is listening on http://{}{}", address, api_prefix);
 
-    // IceBreakers registration and the load balancer task.
+    // Icebreakers registration and the load balancer task.
     //
     // Whenever a single load balancer connection breaks, we drop all of them,
     // and re-register to get a new set of access tokens. It’s complicated by
@@ -78,7 +78,13 @@ async fn main() -> Result<(), AppError> {
             .register_error_source(health_errors.clone())
             .await;
 
-        let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix);
+        let manager = IcebreakersManager::new(
+            icebreakers_api,
+            health_errors,
+            app,
+            api_prefix,
+            config.max_response_body_bytes,
+        );
 
         manager
             .run((kex_req_rx, kex_resp_tx, terminate_req_tx))
@@ -92,9 +98,12 @@ async fn main() -> Result<(), AppError> {
                 .register_error_source(health_errors.clone())
                 .await;
 
+            let hydra_genesis = config.genesis.by_network(&config.network);
+
             let _controller = HydraController::spawn(
                 hydra_config,
                 config.network,
+                hydra_genesis,
                 config.node_socket_path,
                 icebreakers_config.reward_address,
                 health_errors,
@@ -104,7 +113,7 @@ async fn main() -> Result<(), AppError> {
             )
             .await?;
         } else {
-            warn!("Hydra micropayments won’t run without a valid IceBreakers config.");
+            warn!("Hydra micropayments won’t run without a valid Icebreakers config.");
         }
     }
 

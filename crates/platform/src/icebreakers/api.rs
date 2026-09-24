@@ -37,7 +37,7 @@ pub struct SuccessResponse {
     /// observe this experiment.
     ///
     /// It has to temporarily be an option, to keep compatibility with the older
-    /// IceBreakers API.
+    /// Icebreakers API.
     pub load_balancers: Option<Vec<LoadBalancerConfig>>,
 }
 

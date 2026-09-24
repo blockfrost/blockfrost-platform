@@ -11,6 +11,7 @@ pub struct IcebreakersManager {
     health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
     app: Router,
     api_prefix: ApiPrefix,
+    max_response_body_bytes: usize,
 }
 
 impl IcebreakersManager {
@@ -19,12 +20,14 @@ impl IcebreakersManager {
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
         app: Router,
         api_prefix: ApiPrefix,
+        max_response_body_bytes: usize,
     ) -> Self {
         Self {
             icebreakers_api,
             health_errors,
             app,
             api_prefix,
+            max_response_body_bytes,
         }
     }
 
@@ -57,6 +60,7 @@ impl IcebreakersManager {
             self.api_prefix,
             Some(mutable_hydra_kex),
             self.icebreakers_api,
+            self.max_response_body_bytes,
         ));
     }
 }

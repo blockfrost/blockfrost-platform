@@ -1,0 +1,69 @@
+import { Tabs, Tab } from "nextra/components";
+
+# Blockfrost プラットフォーム公式インストーラー
+
+<Tabs items={['Linux','macOS','Windows']}>
+  <Tabs.Tab>
+
+    Linux の場合、シェルプロンプトに以下を貼り付けてください。
+
+    ```shell
+    curl -fsSL \
+         https://github.com/blockfrost/blockfrost-platform/releases/latest/download/curl-bash-install.sh \
+         | bash
+    ```
+
+    このスクリプトは Blockfrost プラットフォームの最新版をダウンロードしてインストールします。
+
+    ## 手動インストール
+
+    プリビルドのバイナリは [GitHub リリースページ](https://github.com/blockfrost/blockfrost-platform/releases/latest) から直接ダウンロードすることもできます。
+
+    ダウンロード後、`chmod +x blockfrost-platform` で実行可能にし、お好みの場所に移動してください。
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+
+    macOS の場合、macOS ターミナルに以下を貼り付けてください。
+
+    ```shell
+    curl -fsSL \
+         https://github.com/blockfrost/blockfrost-platform/releases/latest/download/curl-bash-install.sh \
+         | bash
+    ```
+
+    ## Apple ディスクイメージを使ったインストール
+
+    [GitHub リリースページ](https://github.com/blockfrost/blockfrost-platform/releases/latest) から DMG イメージをダウンロードし、アプリケーションフォルダにドラッグしてインストールします。
+
+    ![DMG](/dmg.png)
+
+    ## Homebrew を使ったインストール
+
+    macOS (または Linux) で [Homebrew](https://brew.sh/) を使っている場合は、次を実行するだけです。
+
+    ```shell
+    brew install blockfrost/tap/blockfrost-platform
+    ```
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+
+    Windows インストーラー (`.exe` ファイル) を [GitHub リリースページ](https://github.com/blockfrost/blockfrost-platform/releases/latest) からダウンロードしてください。
+
+    ## インストーラーの使用
+
+    `.exe` ファイルをダウンロードしたらダブルクリックし、画面の指示に従ってインストールを完了させてください。
+    インストーラーがセットアップ手順をガイドします。
+
+    ## 手動インストール
+
+    手動インストールを希望する場合は:
+
+    1. GitHub リリースページから `.zip` ファイルをダウンロードします。
+    2. 内容をお好みの場所に展開します。
+    3. 展開したフォルダに `.exe` ファイルがあります。
+    4. ダブルクリックして画面の指示に従ってください。
+
+  </Tabs.Tab>
+</Tabs>

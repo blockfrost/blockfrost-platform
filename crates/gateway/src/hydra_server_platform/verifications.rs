@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow, bail};
-use blockfrost::Pagination;
+use blockfrost::{Pagination, blockfrost_openapi::models::EpochParamContent};
 use cardano_serialization_lib::{
     Address, BigNum, FixedTransaction, LinearFee, TransactionBuilder, TransactionBuilderConfig,
     TransactionBuilderConfigBuilder, TransactionHash, TransactionInput, TransactionOutput,
@@ -126,8 +126,7 @@ impl super::HydraConfig {
 
         // Fetch protocol parameters for fee calculation
         let params = self.blockfrost_api.epochs_latest_parameters().await?;
-        let params_json = serde_json::to_value(&params)?;
-        let builder_config = tx_builder_config_from_params(&params_json)?;
+        let builder_config = tx_builder_config_from_params(&params)?;
 
         // Fetch current slot for TTL
         let latest_block = self.blockfrost_api.blocks_latest().await?;
@@ -561,32 +560,26 @@ impl super::HydraConfig {
     }
 }
 
-// FIXME: The `blockfrost` SDK crate (v1.2.1) does not re-export `EpochParamContent`
-// from its public API, so we work with `serde_json::Value` here. Once the crate
-// properly exports the type, this function should accept `&blockfrost::EpochParamContent`
-// directly instead.
-fn tx_builder_config_from_params(params: &serde_json::Value) -> Result<TransactionBuilderConfig> {
-    let get_str = |key: &str| -> Result<String> {
-        params
-            .get(key)
-            .ok_or_else(|| anyhow!("missing field {key}"))
-            .and_then(|v| match v {
-                serde_json::Value::String(s) => Ok(s.clone()),
-                serde_json::Value::Number(n) => Ok(n.to_string()),
-                _ => bail!("unexpected type for {key}"),
-            })
-    };
+fn tx_builder_config_from_params(params: &EpochParamContent) -> Result<TransactionBuilderConfig> {
+    let coins_per_utxo_size = params
+        .coins_per_utxo_size
+        .as_deref()
+        .ok_or_else(|| anyhow!("missing field coins_per_utxo_size"))?;
+    let max_val_size = params
+        .max_val_size
+        .as_deref()
+        .ok_or_else(|| anyhow!("missing field max_val_size"))?;
 
     let config = TransactionBuilderConfigBuilder::new()
         .fee_algo(&LinearFee::new(
-            &BigNum::from_str(&get_str("min_fee_a")?)?,
-            &BigNum::from_str(&get_str("min_fee_b")?)?,
+            &BigNum::from_str(&params.min_fee_a.to_string())?,
+            &BigNum::from_str(&params.min_fee_b.to_string())?,
         ))
-        .pool_deposit(&BigNum::from_str(&get_str("pool_deposit")?)?)
-        .key_deposit(&BigNum::from_str(&get_str("key_deposit")?)?)
-        .coins_per_utxo_byte(&BigNum::from_str(&get_str("coins_per_utxo_size")?)?)
-        .max_value_size(get_str("max_val_size")?.parse::<u32>()?)
-        .max_tx_size(get_str("max_tx_size")?.parse::<u32>()?)
+        .pool_deposit(&BigNum::from_str(&params.pool_deposit)?)
+        .key_deposit(&BigNum::from_str(&params.key_deposit)?)
+        .coins_per_utxo_byte(&BigNum::from_str(coins_per_utxo_size)?)
+        .max_value_size(max_val_size.parse::<u32>()?)
+        .max_tx_size(params.max_tx_size.try_into()?)
         .build()?;
     Ok(config)
 }

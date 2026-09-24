@@ -125,6 +125,7 @@ peer_secret = '${peer_secret}'
 
 [database]
 connection_string = 'postgresql://not-used-with-dev-mock-db@localhost/dummy'
+pool_max_size = 6
 
 [blockfrost]
 project_id = 'preview00000000000000000000000000'
@@ -143,6 +144,7 @@ peer_secret = '${peer_secret}'
 
 [database]
 connection_string = 'postgresql://not-used-with-dev-mock-db@localhost/dummy'
+pool_max_size = 6
 
 [blockfrost]
 project_id = 'preview00000000000000000000000000'

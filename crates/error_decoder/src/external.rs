@@ -97,7 +97,7 @@ mod tests {
                  {"contents":
                   {"contents":
                    {"era": "ShelleyBasedEraConway", "error":
-                    ["ConwayTreasuryValueMismatch (Mismatch {mismatchSupplied = Coin 734700, mismatchExpected = Coin 796507})"],
+                    ["ConwayTreasuryValueMismatch Mismatch (RelEQ) {supplied: Coin 734700, expected: Coin 796507}"],
                     "kind": "ShelleyTxValidationError"
                     },
                     "tag": "TxValidationErrorInCardanoMode"

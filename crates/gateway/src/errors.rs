@@ -2,7 +2,6 @@ use axum::response::{IntoResponse, Response};
 use axum::{Json, http};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use thiserror::Error;
 use tracing::{error, warn};
 
@@ -20,9 +19,6 @@ pub enum APIError {
 
     #[error("License error: {0}")]
     License(String),
-
-    #[error("Not accessible: {ip}:{port}")]
-    NotAccessible { ip: SocketAddr, port: u16 },
 
     #[error("Unauthorized registration access")]
     Unauthorized(),
@@ -57,18 +53,6 @@ impl IntoResponse for APIError {
                     status: "failed".to_string(),
                     reason: "no_license".to_string(),
                     details: format!("Address: {address} does not contain the license."),
-                },
-            ),
-            APIError::NotAccessible { ip, port } => (
-                StatusCode::FORBIDDEN,
-                ApiError {
-                    status: "failed".to_string(),
-                    reason: "not_accessible".to_string(),
-                    details: format!(
-                        "The server at {}:{} is not publicly accessible.",
-                        ip.ip(),
-                        port
-                    ),
                 },
             ),
             APIError::Unauthorized() => (

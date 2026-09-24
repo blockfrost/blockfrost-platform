@@ -43,8 +43,6 @@ impl MockDataNode {
             axum::serve(listener, mock_app).await.unwrap();
         });
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-
         Self { url }
     }
 

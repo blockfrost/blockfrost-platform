@@ -81,12 +81,164 @@
       "id": "addresses-address-transactions-generic-payment-cred-3-page-with-self-tx_7649bcb6fa85"
     },
     {
-      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc",
-      "id": "pools-extended-queryparams_33c8fc92f5c2"
-    },
-    {
       "_comment": "txs/f1aee024a482d5d21ed552d15eefbb664e98095cdabde75a9ff9c78c0812e6fb/pool_updates",
       "id": "txs-tx-generic-shelley-with-multiple-delegation-stake-certs-and-pool-updates_474556906a6a"
+    },
+    {
+      "_comment": "addresses/addr_vkh15ew2tzjwn364l2pszu7j5h9w63v2crrnl97m074w9elrk6zy2tc/txs?order=asc&page=42000 -- Dolos HTTP 400 (scan limit: page*count=4200000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-1_ada2582fd6c1"
+    },
+    {
+      "_comment": "addresses/addr_vkh15ew2tzjwn364l2pszu7j5h9w63v2crrnl97m074w9elrk6zy2tc/txs?order=asc&page=69000&count=1 -- Dolos HTTP 400 (scan limit: page*count=69000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-2_32870c25a11c"
+    },
+    {
+      "_comment": "addresses/addr_vkh15ew2tzjwn364l2pszu7j5h9w63v2crrnl97m074w9elrk6zy2tc/txs?page=16884 (and ?page=16884&count=100, ?order=asc&page=16884) -- Dolos HTTP 400 (scan limit: page*count=1688400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-3-page-with-self-tx-in-the-same-block-and-index-same-pc-different-addresses_0d3b9c63b44e"
+    },
+    {
+      "_comment": "assets/a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235484f534b59/transactions?page=42420 (HOSKY) -- Dolos HTTP 400 (scan limit: page*count=4242000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235484f534b59-transactions-hosky-precached-response_0faa4380de39"
+    },
+    {
+      "_comment": "assets/d894897411707efa755a76deb66d26dfd50593f2e70863e1661e98a07370616365636f696e73/transactions?count=3&page=10000 -- Dolos HTTP 400 (scan limit: page*count=30000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-asset-transactions-queryparams-spacecoin-many-transactions_8722d3782835"
+    },
+    {
+      "_comment": "assets/d894897411707efa755a76deb66d26dfd50593f2e70863e1661e98a07370616365636f696e73/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-d894897411707efa755a76deb66d26dfd50593f2e70863e1661e98a07370616365636f696e73-transactions-precached-response_e7ca9da59175"
+    },
+    {
+      "_comment": "assets/4247d5091db82330100904963ab8d0850976c80d3f1b927e052e07bd546f6b68756e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-4247d5091db82330100904963ab8d0850976c80d3f1b927e052e07bd546f6b68756e-transactions-precached-response_225b895a298d"
+    },
+    {
+      "_comment": "assets/8654e8b350e298c80d2451beb5ed80fc9eee9f38ce6b039fb8706bc34c4f4253544552/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-8654e8b350e298c80d2451beb5ed80fc9eee9f38ce6b039fb8706bc34c4f4253544552-transactions-precached-response_bfbd77884ad8"
+    },
+    {
+      "_comment": "assets/9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d7753554e444145/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-9a9693a9a37912a5097918f97918d15240c92ab729a0b7c4aa144d7753554e444145-transactions-precached-response_cf792faf6054"
+    },
+    {
+      "_comment": "assets/5ad8deb64bfec21ad2d96e1270b5873d0c4d0f231b928b4c39eb243561646f736961/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-5ad8deb64bfec21ad2d96e1270b5873d0c4d0f231b928b4c39eb243561646f736961-transactions-precached-response_f02d9beb28f7"
+    },
+    {
+      "_comment": "assets/29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c64d494e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c64d494e-transactions-precached-response_32bdd7dd07ae"
+    },
+    {
+      "_comment": "assets/afc910d7a306d20c12903979d4935ae4307241d03245743548e767834153484942/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-afc910d7a306d20c12903979d4935ae4307241d03245743548e767834153484942-transactions-precached-response_9f2e460c147c"
+    },
+    {
+      "_comment": "assets/b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d/transactions?page=324 (Cornucopias) -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-b6a7467ea1deb012808ef4e87b5ff371e85f7142d7b356a40d9b42a0436f726e75636f70696173205b76696120436861696e506f72742e696f5d-transactions-precached-response_f8bb635683ce"
+    },
+    {
+      "_comment": "assets/b788fbee71a32d2efc5ee7d151f3917d99160f78fb1e41a1bbf80d8f4c454146544f4b454e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-b788fbee71a32d2efc5ee7d151f3917d99160f78fb1e41a1bbf80d8f4c454146544f4b454e-transactions-precached-response_bbee8993b3a1"
+    },
+    {
+      "_comment": "assets/6954264b15bc92d6d592febeac84f14645e1ed46ca5ebb9acdb5c15f5354524950/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-6954264b15bc92d6d592febeac84f14645e1ed46ca5ebb9acdb5c15f5354524950-transactions-precached-response_475951e2b18c"
+    },
+    {
+      "_comment": "assets/d030b626219d81673bd32932d2245e0c71ae5193281f971022b23a78436172646f67656f/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-d030b626219d81673bd32932d2245e0c71ae5193281f971022b23a78436172646f67656f-transactions-precached-response_ab352857d975"
+    },
+    {
+      "_comment": "assets/a4da8764a57e66a0085b5bfcde96c89b798d92ee83a75f59237e375b46495245/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-a4da8764a57e66a0085b5bfcde96c89b798d92ee83a75f59237e375b46495245-transactions-precached-response_a0ea7b114e06"
+    },
+    {
+      "_comment": "assets/2d7444cf9e317a12e3eb72bf424fd2a0c8fbafedf10e20bfdb4ad8ab434845444441/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-2d7444cf9e317a12e3eb72bf424fd2a0c8fbafedf10e20bfdb4ad8ab434845444441-transactions-precached-response_6465ed1c1942"
+    },
+    {
+      "_comment": "assets/2afb448ef716bfbed1dcb676102194c3009bee5399e93b90def9db6a4249534f4e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-2afb448ef716bfbed1dcb676102194c3009bee5399e93b90def9db6a4249534f4e-transactions-precached-response_dbf9e8243238"
+    },
+    {
+      "_comment": "assets/544571c086d0e5c5022aca9717dd0f438e21190abb48f37b3ae129f047524f57/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-544571c086d0e5c5022aca9717dd0f438e21190abb48f37b3ae129f047524f57-transactions-precached-response_a19a3a940280"
+    },
+    {
+      "_comment": "assets/1a71dc14baa0b4fcfb34464adc6656d0e562571e2ac1bc990c9ce5f6574f4c46/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-1a71dc14baa0b4fcfb34464adc6656d0e562571e2ac1bc990c9ce5f6574f4c46-transactions-precached-response_a17efca1749d"
+    },
+    {
+      "_comment": "assets/1d7f33bd23d85e1a25d87d86fac4f199c3197a2f7afeb662a0f34e1e776f726c646d6f62696c65746f6b656e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-1d7f33bd23d85e1a25d87d86fac4f199c3197a2f7afeb662a0f34e1e776f726c646d6f62696c65746f6b656e-transactions-precached-response_60f1cc9aed39"
+    },
+    {
+      "_comment": "assets/884892bcdc360bcef87d6b3f806e7f9cd5ac30d999d49970e7a903ae5041564941/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-884892bcdc360bcef87d6b3f806e7f9cd5ac30d999d49970e7a903ae5041564941-transactions-precached-response_448355cab1f4"
+    },
+    {
+      "_comment": "assets/b7c783f6304eddbdf8f0dece4715d63cb9f453be89d97c8fba155d5752455349/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-b7c783f6304eddbdf8f0dece4715d63cb9f453be89d97c8fba155d5752455349-transactions-precached-response_4c3fbb68a240"
+    },
+    {
+      "_comment": "assets/d1333653aa3ac24adfa9c6d09c1a2cc8e2b7b86ad334c17f2acb864742696f546f6b656e/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-d1333653aa3ac24adfa9c6d09c1a2cc8e2b7b86ad334c17f2acb864742696f546f6b656e-transactions-precached-response_21480def6ab7"
+    },
+    {
+      "_comment": "assets/f28f457472e539dc75e1598a2beddf49ce5a717998c708f05f5de61044454653/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-f28f457472e539dc75e1598a2beddf49ce5a717998c708f05f5de61044454653-transactions-precached-response_ec57702306e4"
+    },
+    {
+      "_comment": "assets/ff97c85de383ebf0b047667ef23c697967719def58d380caf7f04b64534f554c/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-ff97c85de383ebf0b047667ef23c697967719def58d380caf7f04b64534f554c-transactions-precached-response_2cf10ffcc87d"
+    },
+    {
+      "_comment": "assets/6ac8ef33b510ec004fe11585f7c5a9f0c07f0c23428ab4f29c1d7d104d454c44/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-6ac8ef33b510ec004fe11585f7c5a9f0c07f0c23428ab4f29c1d7d104d454c44-transactions-precached-response_8eef660e9383"
+    },
+    {
+      "_comment": "assets/641f0571d02b45b868ac1c479fc8118c5be6744ec3d2c5e13bd888b65a4f4d424945/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-641f0571d02b45b868ac1c479fc8118c5be6744ec3d2c5e13bd888b65a4f4d424945-transactions-precached-response_976b23bf49da"
+    },
+    {
+      "_comment": "assets/4fd0d998dc0700ca6ef89fafff05fbf523a3a25c1fc8314bf7e4d1c247726f777468/transactions?page=324 -- Dolos HTTP 400 (scan limit: page*count=32400 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-4fd0d998dc0700ca6ef89fafff05fbf523a3a25c1fc8314bf7e4d1c247726f777468-transactions-precached-response_8a76d2a65dff"
+    },
+    {
+      "_comment": "epochs/123/blocks?count=2 -- Dolos omits the Byron epoch boundary block (EBB) from the block list, yielding different hashes than the real Blockfrost API",
+      "id": "epochs-number-blocks-queryparams-first-blocks-generic-byron-epoch_38950d09cab0"
+    },
+    {
+      "_comment": "epochs/123/blocks?count=2&order=desc -- Dolos omits the Byron epoch boundary block (EBB) from the block list, yielding different hashes than the real Blockfrost API",
+      "id": "epochs-number-blocks-queryparams-last-blocks-generic-byron-epoch_b7676ba66e29"
+    },
+    {
+      "_comment": "pools/pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy/history?count=10 (= pools/0f292fcaa02b8b2f9b3c8f9fd8e0bb21abedb692a6d5058df3ef2735/history?count=10) -- Dolos pool history differs from the real Blockfrost API (missing the pool's initial registration epoch; f64 active_size precision and reward/fee rounding differences)",
+      "id": "pools-pool-id-history-best-pool-history_c4f95a045f23"
+    },
+    {
+      "_comment": "pools/pool1r8lmsrdure385hz647kl2qjhyyxkdle4au5krjcsqed4x8227k3/history?page=2 -- Dolos pool history differs from the real Blockfrost API (f64 active_size precision / missing epochs)",
+      "id": "pools-pool-id-history-problematic-pool-history-dbsync-issue-missing-some-epochs_912a978ee4cf"
+    },
+    {
+      "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
+      "id": "epochs-latest-parameters_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/cb177a185ab0629134ebcd0b0c94ee876f0afc0397a2a915b9fa8b1b14757d97/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_cdc10ffe51fb"
+    },
+    {
+      "_comment": "txs/014d5b9ce70b0156f823d350a5a87ba9caf98386393f5ce9deb61f1a8d383d24/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_c522b7f519c0"
+    },
+    {
+      "_comment": "txs/51f495aa23f4b3b3aa90afde4a0e67823bb7ac4ac65f5ffbb138373b863f2f74/redeemers -- Dolos returns HTTP 500 (empty response body) for propose-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-propose-purpose_c48e858a027e"
+    },
+    {
+      "_comment": "pools/pool1zmfpd5r5vfwjmwm4cgy53exe58h7plnecny3t4948yw7zumzp4c/metadata (= pools/16d216d074625d2dbb75c20948e4d9a1efe0fe79c4c915d4b5391de1/metadata) -- off-chain metadata fetch fails with HASH_MISMATCH (the pool changed the hosted alps_meta.json without updating the on-chain hash), so ticker/name/description/homepage come back null",
+      "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update_f1a8a7164c97"
     }
   ],
   "preprod": [
@@ -109,6 +261,50 @@
     {
       "_comment": "accounts/stake_test1uzkdwx64sjkt6xxtzye00y3k2m9wn5zultsguadaf4ggmssadyunp/addresses",
       "id": "accounts-stake-address-generic-stake-address-with-zero-addresses_4261465085d4"
+    },
+    {
+      "_comment": "accounts/stake_test1uqcvsan32r2a6hwc5jy7tmtynr5yat9jhvtq63gnynwlungj0dxs3/rewards?count=1&page=2, accounts/stake_test1uqcvsan32r2a6hwc5jy7tmtynr5yat9jhvtq63gnynwlungj0dxs3/rewards?count=1&page=2&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 132, while the real Blockfrost API reports it in epoch 134",
+      "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_a1ac561f2177"
+    },
+    {
+      "_comment": "addresses/addr_test1wrrgep77m0v8uv5unauluwgyr7pmdr2827wgye3sx5aw7yg7z2dsu/txs?page=1011&count=6 (= addr_vkh1c6xg0hkmmplr98yl08lrjpqlswmg636hnjpxvvp48th3zsq296f) -- Dolos HTTP 400 (scan limit: page*count=6066 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-dormant-shelley-address_c9a9236e94d8"
+    },
+    {
+      "_comment": "addresses/addr_test1wrrgep77m0v8uv5unauluwgyr7pmdr2827wgye3sx5aw7yg7z2dsu/txs?page=1011&count=99&order=desc (= addr_vkh1c6xg0hkmmplr98yl08lrjpqlswmg636hnjpxvvp48th3zsq296f) -- Dolos HTTP 400 (scan limit: page*count=100089 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-dormant-shelley-address-desc_9af6dc662686"
+    },
+    {
+      "_comment": "addresses/addr_vkh1pjggm5nyjkll8amnrsh4hvjz6zsdvr9knmnlsgtgczls7x9qy3y/txs?order=asc&page=420 -- Dolos HTTP 400 (scan limit: page*count=42000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-1_957944637cb5"
+    },
+    {
+      "_comment": "addresses/addr_vkh1pjggm5nyjkll8amnrsh4hvjz6zsdvr9knmnlsgtgczls7x9qy3y/txs?order=asc&page=42000&count=1 -- Dolos HTTP 400 (scan limit: page*count=42000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-2_209c6157eb4b"
+    },
+    {
+      "_comment": "assets/e68f1cea19752d1292b4be71b7f5d2b3219a15859c028f7454f66cdf74544555524f/transactions?page=50 (tEURO) -- Dolos HTTP 400 (scan limit: page*count=5000 > max_scan_items=3000); real Blockfrost returns the full array",
+      "id": "assets-e68f1cea19752d1292b4be71b7f5d2b3219a15859c028f7454f66cdf74544555524f-transactions-t-teuro-precached-response_18a9a530c7f7"
+    },
+    {
+      "_comment": "pools/pool13m26ky08vz205232k20u8ft5nrg8u68klhn0xfsk9m4gsqsc44v/history?count=10 (= pools/8ed5ab11e76094fa2a2ab29fc3a57498d07e68f6fde6f326162eea88/history?count=10) -- Dolos pool history differs from the real Blockfrost API (delegators_count differences)",
+      "id": "pools-pool-id-history-best-pool-history_df31300e4408"
+    },
+    {
+      "_comment": "pools/pool1rccstu3l9ty3k0a5cd06fl3szsss9r34dcg5j38fqgq9kvng0tg/history?page=5&count=1 (= pools/1e3105f23f2ac91b3fb4c35fa4fe301421028e356e114944e902005b/history?page=5&count=1&order=asc) -- Dolos pool history differs from the real Blockfrost API (delegators_count / margin-cost update differences)",
+      "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_d0b3a9122929"
+    },
+    {
+      "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
+      "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/7b1fa6b65f0e175114cdecb011f34ed7a9bce875007db2b934e7a47d0435642f/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_f9025f07bec2"
+    },
+    {
+      "_comment": "txs/0ba048a6022a2ec3771d02e546433a29ed86a343dffa26f0994c5d6f5418f597/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_4409b3ff775f"
     }
   ],
   "preview": [
@@ -119,6 +315,42 @@
     {
       "_comment": "blocks/0",
       "id": "blocks-hash-or-number-first-blocks-0-4_8a1bd8d1903e"
+    },
+    {
+      "_comment": "addresses/addr_vkh12ux0cq59haf8ydty5577ztxzh9qcvhjn7xxaj4xr55esx49uztj/txs?order=asc&page=128, addresses/addr_vkh12ux0cq59haf8ydty5577ztxzh9qcvhjn7xxaj4xr55esx49uztj/txs?page=128 -- Dolos returns HTTP 400 (pagination scan limit: page*count=12800 > max_scan_items=3000) while the real Blockfrost API returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-1_a8e5c9c0ea73"
+    },
+    {
+      "_comment": "addresses/addr_vkh12ux0cq59haf8ydty5577ztxzh9qcvhjn7xxaj4xr55esx49uztj/txs?order=asc&page=12800&count=1 -- Dolos returns HTTP 400 (pagination scan limit: page*count=12800 > max_scan_items=3000) while the real Blockfrost API returns the full array",
+      "id": "addresses-address-txs-generic-payment-cred-2_ba6a4f5de054"
+    },
+    {
+      "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
+      "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
+    },
+    {
+      "_comment": "txs/c1c026a093dd36419da14ae6f2c022df919c37c1ce8a0814181b75e7ebb12915/redeemers -- Dolos returns an empty script_hash for cert-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-cert-purpose_2b548197982d"
+    },
+    {
+      "_comment": "txs/a048ea3491dc7e354219358003225b4a1ef83632d207582a85ef2ba14009b6e4/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
+      "id": "txs-tx-redeemers-reward-purpose_94d6da36fec1"
+    },
+    {
+      "_comment": "txs/a1b750a957946629b17b730c933bf2d8b087c0ffef73ab7a0c0f886a15ce80c8/redeemers -- Dolos returns HTTP 500 (empty response body) for vote-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-vote-purpose_b3d8eb460d05"
+    },
+    {
+      "_comment": "txs/f6cb185a1fe988dad1011eb239d9a281e8abd3557417918cffd7ef9e7afcf599/redeemers -- Dolos returns HTTP 500 (empty response body) for propose-purpose redeemers, while the real Blockfrost API returns the redeemer list",
+      "id": "txs-redeemers-propose-purpose_48f827aadeaa"
+    },
+    {
+      "_comment": "accounts/stake_test1uq70zpxr7jdqxdlj895x9lvnwn9lrcknwpx8cswlld7x76gtzvrjp/addresses?order=desc -- Dolos returns the addresses in a different (reversed) order than the real Blockfrost API for order=desc",
+      "id": "accounts-stake-address-addresses-bf-stake-address-with-many-addresses-desc-order_8522e17f36c6"
+    },
+    {
+      "_comment": "accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1, accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 1347, while the real Blockfrost API reports it in epoch 1349",
+      "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_9d78f78ded98"
     }
   ]
 }

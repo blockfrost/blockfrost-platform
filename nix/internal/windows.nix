@@ -6,13 +6,18 @@ assert builtins.elem targetSystem ["x86_64-windows"]; let
   buildSystem = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${buildSystem};
   inherit (pkgs) lib;
-  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars;
+  inherit (inputs.self.internal.${buildSystem}) hydraScriptsEnvVars rustChannel;
 in rec {
-  toolchain = with inputs.fenix.packages.${buildSystem};
-    combine [
-      minimal.rustc
-      minimal.cargo
-      targets.x86_64-pc-windows-gnu.latest.rust-std
+  # Pin to the same Rust version as the rest of the project (see `rustChannel`
+  # in `unix.nix`). Using fenix’s `latest` nightly here occasionally pulls in a
+  # broken toolchain that ICEs while cross-compiling `tokio` for Windows.
+  toolchain = let
+    fenix = inputs.fenix.packages.${buildSystem};
+  in
+    fenix.combine [
+      (fenix.toolchainOf rustChannel).rustc
+      (fenix.toolchainOf rustChannel).cargo
+      (fenix.targets.x86_64-pc-windows-gnu.toolchainOf rustChannel).rust-std
     ];
 
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
@@ -48,6 +53,7 @@ in rec {
     TARGET_CC = "${pkgsCross.stdenv.cc}/bin/${pkgsCross.stdenv.cc.targetPrefix}cc";
 
     TESTGEN_HS_PATH = "unused"; # Don’t try to download it in `build.rs`.
+    HYDRA_NODE_PATH = "unused"; # Don’t try to download it in `build.rs`.
 
     OPENSSL_DIR = "${pkgs.openssl.dev}";
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
@@ -233,7 +239,8 @@ in rec {
   # depends on the `unix` package, see <https://github.com/cardano-scaling/hydra/issues/2360>.
   bundle =
     pkgs.runCommand "bundle" {
-      buildInputs = [pkgs.wine64];
+      # `wineWow64Packages` runs both 32- and 64-bit executables.
+      buildInputs = [pkgs.wineWow64Packages.stable];
       WINEDEBUG = "-all";
       WINEDLLOVERRIDES = "mscoree,mshtml="; # don't ask about Mono or Gecko
     } ''
@@ -242,7 +249,7 @@ in rec {
       mkdir -p $out
       cp -r ${packageWithIcon}/. $out/.
       cp -r ${dolos}/bin/. $out/.
-      wine64 $out/${packageName.pname}.exe --version
+      wine $out/${packageName.pname}.exe --version
     '';
 
   archive =
@@ -284,18 +291,8 @@ in rec {
     stripRoot = false;
   };
 
-  # FIXME: Dolos v1.0.0-rc.12 depends on a fjall branch that was deleted after merge:
-  # https://github.com/fjall-rs/fjall/pull/259
-  # Patch the source to use the pinned commit rev instead of the defunct branch name.
-  dolosSrc = pkgs.runCommand "dolos-src-patched" {} ''
-    cp -r ${inputs.dolos} $out
-    chmod -R +w $out
-    sed -i 's|branch = "recovery/change-flush-queueing"|rev = "2443c7bcf6f53920efef836518d76e865974c4ca"|' $out/Cargo.toml
-    sed -i 's|branch=recovery%2Fchange-flush-queueing|rev=2443c7bcf6f53920efef836518d76e865974c4ca|g' $out/Cargo.lock
-  '';
-
   dolos = craneLib.buildPackage {
-    src = dolosSrc;
+    src = inputs.dolos;
     GIT_REVISION = inputs.dolos.rev;
     strictDeps = true;
 
@@ -307,6 +304,15 @@ in rec {
     OPENSSL_DIR = "${pkgs.openssl.dev}";
     OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
     OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include/";
+
+    # Dolos v1.4.0 still has trailing semicolons in tail-position macro calls
+    # (e.g. `bail!(…)` in `src/bin/dolos/data/stats.rs`), which recent Rust
+    # rejects as a hard error
+    # (<https://github.com/rust-lang/rust/issues/79813>). Temporarily downgrade
+    # it back to a warning so this third-party source keeps compiling.
+    #
+    # FIXME: remove after Dolos v1.5.0
+    RUSTFLAGS = "--allow=semicolon_in_expressions_from_macros";
 
     depsBuildBuild = [
       pkgsCross.stdenv.cc

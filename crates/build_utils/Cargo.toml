@@ -6,9 +6,10 @@ edition.workspace = true
 
 [dependencies]
 bzip2.workspace = true
+fs2.workspace = true
+reqwest.workspace = true
 tar.workspace = true
 zip.workspace = true
-reqwest.workspace = true
 
 [lints]
 workspace = true

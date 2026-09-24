@@ -1,6 +1,7 @@
 fn main() {
     git_revision::set();
     hydra_scripts_id::set();
+    bf_build_utils::hydra_node::ensure();
 }
 
 mod git_revision {

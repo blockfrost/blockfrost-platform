@@ -252,7 +252,13 @@ pub async fn setup() -> (TestGateway, Client, String, ApiPrefix) {
     let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
     let health_errors = Arc::new(Mutex::new(vec![]));
 
-    let manager = IcebreakersManager::new(icebreakers_api, health_errors, app, api_prefix.clone());
+    let manager = IcebreakersManager::new(
+        icebreakers_api,
+        health_errors,
+        app,
+        api_prefix.clone(),
+        bf_common::DEFAULT_MAX_BODY_BYTES,
+    );
 
     let (kex_req_tx, kex_req_rx) =
         tokio::sync::mpsc::channel::<hydra_client::KeyExchangeRequest>(1);

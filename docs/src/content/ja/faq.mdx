@@ -1,0 +1,334 @@
+import { Callout } from "nextra/components";
+
+# よくある質問
+
+<Callout type="default" emoji="📣">
+  ここに掲載されておらず、ドキュメントにも記載のない質問がある場合は、
+  [Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost`
+  チャンネルでコミュニティにご参加ください。
+</Callout>
+
+## FAQ セクション
+
+- [スタートガイド](#getting-started)
+- [インストールとセットアップ](#installation-and-setup)
+- [運用とモニタリング](#operation-and-monitoring)
+- [トラブルシューティング](#troubleshooting)
+- [メンテナンスと高度なトピック](#maintenance-and-advanced-topics)
+
+## スタートガイド
+
+### Icebreaker NFT はどうすればもらえますか？
+
+Icebreaker NFT を受け取るには:
+
+1. [Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost` チャンネルで Icebreaker NFT の受領について連絡してください。チームメンバーが対応します。
+
+2. 申請内容が確認・承認されると、Blockfrost チームから確認メールが届き、お客様のウォレットアドレスへ NFT がミントされます。この NFT は Icebreakers プログラムへの参加ライセンスとして機能します。
+
+### Icebreaker シークレットはどうやって取得しますか？
+
+Icebreaker シークレットは Icebreaker NFT と紐付いており、関連するシークレットはメールでお送りします。
+
+### メールは受け取ったが NFT を受け取っていない場合は？
+
+確認メールは届いたが NFT が届いていない場合は:
+
+1. 検証のためのウォレットアドレスを含めて、確認メールに直接ご返信ください。
+
+2. サポートチーム support@blockfrost.io までご連絡ください。
+
+3. [Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost` チャンネルでお問い合わせください。チームメンバーが対応します。
+
+Blockfrost チームはメールと Discord の両方を常時モニタリングしており、問題を迅速に解決します。
+
+### Icebreaker ドキュメントのプライベートチャンネルへのアクセス方法は？
+
+Icebreaker NFT を受け取った後:
+
+- [Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost` チャンネルで、NFT を受領したことを Blockfrost チームに通知してください
+- チームメンバーがあなたを Icebreakers 専用の Discord チャンネルに追加します
+- Icebreakers チャンネルで言及されている総合ドキュメントとは、現在ご覧いただいているこのドキュメントサイトのことです
+- [スタートガイド](get-started) から始まるセットアップ手順に従ってください
+
+NFT は受け取ったがチャンネルへのアクセスがまだの場合は、[Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost` チャンネルにメッセージを投稿してサポートを受けてください。
+
+### NFT を受け取った後、進める前に確認が必要ですか？
+
+いいえ、NFT 受領後に追加の確認は必要ありません。
+NFT がウォレットに入ったら、インストールとセットアップに進むことができます。
+ただし、Icebreakers 専用 Discord チャンネルへの追加のため、NFT を受け取ったことを Blockfrost チームに通知することをおすすめします。そこでは他の参加者やプラットフォームチームと交流し、サポートを受けることができます。
+
+### Icebreaker NFT を別のウォレットアドレスに移すことはできますか？
+
+はい、以下の手順で Icebreaker NFT を別のウォレットアドレスに移すことができます。
+
+1. NFT を新しいアドレスへ移動する
+2. プラットフォーム設定を新しいアドレスに合わせて更新する
+3. support@blockfrost.io にメールで Blockfrost チームへ変更を通知する
+
+## インストールとセットアップ
+
+### NFT を受領した後の Icebreaker プラットフォームのセットアップ手順は？
+
+NFT を受領したら、以下の手順で Icebreaker プラットフォームをセットアップします。
+
+- お好みの方法で [Blockfrost プラットフォームをインストール](/installation/installers) する
+- NFT アドレスとシークレットキーを使って [プラットフォームを設定](/configuration) する
+- 直接、またはサービスとして [プラットフォームを実行](/usage/cli) する
+- [インストールが正しく動作しているか確認](/verification) する
+
+各ステップの詳細な手順は上記のリンクをご参照ください。
+
+### Icebreaker ノードのためにファイアウォールで開く必要があるエンドポイントは？
+
+Icebreaker ノードは Blockfrost のロードバランサーへ WebSocket で**アウトバウンド**接続し、その接続経由で API リクエストを処理するため、パブリックなインターネットに対して着信ポートを開放する必要はありません。
+
+ファイアウォールで必要なのは以下だけです。
+
+- Blockfrost のロードバランサー (および Cardano ノード / データノード) への**アウトバウンド**接続。
+- 必要に応じて、スクレイピング元からローカルの Prometheus メトリクスエンドポイント (`3000/tcp` またはカスタムポート) へのアクセス。これは Prometheus でノードを監視する場合にのみ必要で、メトリクスは完全に無効化することも可能です。
+
+API トラフィックはアウトバウンドの WebSocket 接続経由で届くため、ポート `3000` をインターネットに公開したり、Blockfrost 向けの着信ファイアウォールルールを設定したりする必要はありません。
+
+### `blockfrost-platform` をソースからビルドするには？
+
+ソースからビルドする詳細な手順は [インストール手順](/installation/source) をご参照ください。
+プリビルドバイナリで問題が発生する場合、ソースからのビルドが推奨されることが多いです。
+
+### Icebreaker ノードには静的なパブリック IP アドレスが必要ですか？
+
+いいえ。ノードは Blockfrost のロードバランサーへ WebSocket でアウトバウンド接続するため、ファイアウォール、NAT、ダブル NAT、CGNAT の背後でも動作し、静的なパブリック IP や着信ポートは一切必要ありません。
+
+安定したアウトバウンドのインターネット接続さえあれば十分です。動的なパブリック IP でも問題ありません。
+
+### パブリック IP アドレスが頻繁に変わる場合はどうすればよいですか？
+
+パブリック IP が変わっても問題ありません。ノード自身が Blockfrost のロードバランサーへアウトバウンドの WebSocket で接続を確立するため、接続が切れても現在の IP アドレスに関係なく自動的に再登録し、再接続します。
+
+### blockfrost-platform を IPv4 のみで実行するには？
+
+専用の `-4` CLI スイッチは現在ありませんが、`/etc/hosts` に Blockfrost サーバーのアドレスを IPv4 にマッピングするエントリを追加することで IPv6 の問題を回避できます。
+
+## 運用とモニタリング
+
+### Icebreaker ノードが正しく動作しているかをモニタリング・確認するには？
+
+[稼働状況の確認](/verification) ガイドをご参照ください。
+
+### Icebreaker ノードがアクティブかどうかを確認する方法は？
+
+Icebreaker ノードがアクティブかどうかを確認する方法をいくつかご紹介します。
+
+- Icebreaker ダッシュボード [https://icebreakers.blockfrost.io/](https://icebreakers.blockfrost.io/) でノードのステータスを確認
+- コマンドラインで登録成功メッセージのログを確認:
+  ```bash
+  blockfrost-platform --config /etc/cardano/mainnet/config.toml
+  ```
+  "Successfully registered with Icebreakers API." というメッセージを探してください
+
+### Icebreaker ダッシュボードで自分のノードを識別するには？
+
+ご自身のノードは [Icebreaker ダッシュボード](https://icebreakers.blockfrost.io/) 上で 'Icebreaker X' として表示されます。ここで 'X' は割り当てられた Icebreaker 番号です。
+この番号は Icebreaker NFT のメタデータに含まれており、NFT がウォレットにミントされた後、[Pool.pm](https://pool.pm/) などの Cardano ブロックチェーンエクスプローラで確認できます。
+
+### Icebreaker ダッシュボードはどこで見られますか？システムメトリクスは？
+
+Icebreaker ダッシュボード ([https://icebreakers.blockfrost.io/](https://icebreakers.blockfrost.io/)) は Icebreaker ネットワークに関するリアルタイムな情報を提供します。
+
+- ミントされた Icebreaker NFT の総数
+- 現在アクティブな Icebreaker ノード数
+- 総スロットに対するアクティブノードの割合
+- 使用されている `blockfrost-platform` バージョンの分布
+- ステータス別 Icebreakers: 最新のヘルスチェックに基づく 'Up' / 'Down' 状態のノード数
+- ステータスチェック所要時間: 最新のステータスチェック ping にノードが応答するまでのミリ秒
+- 平均合計応答時間: 各ノードへの API リクエストの過去 10 分間における平均応答時間
+- 受信/送信バイト数: 各ノードのネットワーク通信量。全体的なアクティビティレベルを示します
+
+このダッシュボードは Icebreaker 関連のすべてのメトリクスを集約する中心的なモニタリング拠点であり、ノードがネットワークに参加・離脱するたびに更新されます。
+
+これらの指標を使って、ノードの可用性・性能・トラフィック量を他のノードと比較してモニタリングできます。
+ツールチップで各指標の説明が表示されます。
+
+### Blockfrost プラットフォームで現在サポートされているエンドポイントは？
+
+一部のエンドポイント (`/`、`/metrics`、`/health`、`/tx/submit`、`/genesis` など) は追加設定なしで動作します。[データノード (Dolos)](/data-node) が接続されると、ブロック、トランザクション、アカウント、アドレス、アセット、プール、エポック、メタデータ、ネットワーク情報などのブロックチェーンクエリエンドポイントも提供されます。完全なリストは [データノードのページ](/data-node#supported-endpoints) をご参照ください。
+
+### Icebreaker ノードの詳細なメトリクスやログを取得するには？
+
+`blockfrost-platform` プロセスは、デフォルトで `http://localhost:3000/metrics` に Prometheus メトリクスエンドポイントを公開しており、運用上の詳細統計を確認できます。
+
+以下のメトリクスが利用可能です。
+
+- `health_errors_total` — 現在のヘルスエラー数のゲージ
+- `http_requests_total` — メソッド、パス、ステータスコード別のリクエスト数カウンタ
+- `cardano_node_connections` — 開いているノード接続数のゲージ
+- `cardano_node_connections_initiated` — 開始した接続数のカウンタ
+- `cardano_node_connections_failed` — 失敗した接続数のカウンタ
+- `tx_submit_success` — 成功したトランザクション送信のカウンタ
+- `tx_submit_failure` — 失敗したトランザクション送信のカウンタ
+
+より豊富なメトリクスを取得するには:
+
+1. ポート `3000` にアクセス可能であることを確認する
+2. [Prometheus](https://prometheus.io/docs/introduction/overview/) をインストール・設定し、メトリクスエンドポイントをスクレイプする
+3. [Grafana](https://grafana.com/docs/grafana/latest/getting-started/) などのビジュアライゼーションツールでデータをグラフ化・分析する
+
+詳細なロギングについては、`blockfrost-platform` プロセスの `stdout` を、サービスとして動作している場合は `systemd` のログをご確認ください。
+
+加えて、メトリクスが無効化されていないことを確認してください。
+CLI に `--no-metrics` を渡したり、ウィザードで無効化を選択すると、メトリクスエンドポイントとメトリクス収集が無効になります。
+
+### Icebreaker ノードの帯域消費量は？
+
+帯域消費量はネットワーク全体のアクティビティとノードが処理するリクエスト数に依存します。
+
+初期テストに基づくノード 1 台あたりの概算は次のとおりです。
+
+- アイドル時のベースライン: 10〜50 MB/日
+- 軽負荷: 100〜500 MB/日
+- 中負荷: 1〜5 GB/日
+- 高負荷: 10 GB/日以上
+
+また、トランザクション送信やネットワーク同期のために短時間の帯域バーストも必要です。
+
+現時点ではノード 1 台あたり 5〜10 Mbps の容量で十分ですが、プラットフォームの利用拡大に応じて段階的に拡張できる構成が望ましいです。
+
+実際の使用量を把握するため、ノードのネットワークメトリクスをモニタリングしてください。
+ダッシュボードの `Incoming / Outgoing bytes` グラフが役立ちます。
+
+## トラブルシューティング
+
+### Icebreaker プラットフォームでよくあるセットアップ問題は？
+
+よくある問題:
+
+1. `config.toml` の設定誤り
+2. プラットフォームの古いバージョンを使用している
+3. Icebreakers API やロードバランサーへのアウトバウンド接続がブロックされている
+4. ネットワーク接続の問題 (特に IPv6)
+
+<Callout type="warning" emoji="⚠️">
+  Blockfrost プラットフォームは IPv6 をサポートしていません。
+</Callout>
+
+### Blockfrost プラットフォームまたはインストーラの問題を解決するには？
+
+`blockfrost-platform` バイナリやインストーラで問題が発生した場合:
+
+1. `main` ブランチの最新ソースコードからのビルドを検討してください。プリビルドバイナリに問題があるとき、これが最も信頼性の高い方法であることが多いです。[公式インストーラー](/installation/installers) ページのコンパイル手順に従ってください。
+
+2. main ブランチの最新版を使っている場合、[Icebreaker ダッシュボード](https://blockfrost.grafana.net/public-dashboards/8d618eda298d472a996ca3473ab36177) でバージョン分布を確認し、他のユーザーも同様の問題を抱えていないかチェックしてください。
+
+3. 解消されないバグは、環境情報と具体的なエラーメッセージを添えて [Blockfrost プラットフォームの GitHub issues ページ](https://github.com/blockfrost/blockfrost-platform/issues) に報告してください。
+
+4. まだ Icebreakers のプライベート Discord チャンネルに参加していない場合は、[Discord](https://discord.gg/YfGKvqpt2d) の `#ask-blockfrost` チャンネルにメッセージを投稿してサポートを受けてください。他の参加者が同様の問題への解決策を見つけていることがあります。
+
+### Icebreaker ノードの登録がうまくいきません。何を確認すべきですか？
+
+- **シークレットキーとリワードアドレス**: 設定ファイル内の `--secret` と `--reward-address` が正しいことを確認してください。
+- **ファイアウォール**: ファイアウォールが Icebreakers API およびロードバランサーへのアウトバウンド接続を許可していることを確認してください。
+- **IPv6 接続**: サーバーが IPv6 経由で Icebreakers API に到達できるか確認してください。`curl -v http://[IPv6-address]:[port]/` で診断できます。回避策として `/etc/hosts` に Blockfrost サーバーアドレスを IPv4 へ解決するエントリを追加することも検討してください。
+- **ネットワークネームスペース**: IPv6 が問題の原因なら、IPv6 を無効化したネットワークネームスペース内で `blockfrost-platform` を実行することも検討してください。
+- **既知の Issue**: [GitHub Issues](https://github.com/blockfrost/blockfrost-platform/issues) で既知の問題と解決策を確認してください。
+
+### プラットフォーム起動時に "failed to register to the Icebreakers API" エラーが発生する場合は？
+
+このエラーは通常、ノードが Icebreakers API に到達できないか、認証情報が誤っていることを示します。
+解決手順:
+
+1. `--secret` と `--reward-address` が正しいことを確認する
+2. ノードが Icebreakers API へ**アウトバウンド**接続できることを確認する (送信トラフィックのファイアウォール/プロキシ設定を確認)
+3. ノードから `curl -v https://icebreakers-api.blockfrost.io/` を実行してアウトバウンド接続を確認する
+4. IPv6 を使っている場合は一時的に無効化するか、設定内で明示的に IPv4 アドレスを指定する
+
+詳細は [設定](/configuration) ドキュメントをご参照ください。
+
+### IPv6 接続の問題はどう扱えばよいですか？
+
+<Callout type="warning" emoji="⚠️">
+  Blockfrost プラットフォームは IPv6 をサポートしていません。
+</Callout>
+
+### Icebreaker を再起動した後に古い UUID パスに関する警告が出ます。心配すべきですか？
+
+いいえ、通常これらの警告は心配する必要はありません。
+再起動のたびに新しいランダム UUID パスが生成されるため、Blockfrost サーバーが古いパスに対して短時間アクセスを試みることがあります。
+警告が継続しない限り、安全に無視できます。
+これは想定された動作であり、継続的に発生しない限り問題ありません。
+発生し続ける場合はログにエラーがないか確認してください。
+
+## メンテナンスと高度なトピック
+
+### Blockfrost プラットフォームの新バージョンへの更新手順は？
+
+新バージョンがリリースされた場合:
+
+1. Icebreakers 専用 Discord チャンネルでの更新案内を確認する
+2. 現在動作中の `blockfrost-platform` プロセスを停止する
+3. 最初に使用したのと同じ [インストール方法](installation/installers) でプラットフォームを更新する
+4. `blockfrost-platform --version` で新バージョンが入ったことを確認する
+5. `blockfrost-platform` プロセスを再起動する
+6. `curl -sSL http://localhost:3000/ | jq .version` で新バージョンが動作していることを確認する
+7. ログとダッシュボードを監視し、ノードが正常に再接続できたか確認する
+
+互換性の維持と新機能の利用のため、迅速な更新をおすすめします。
+更新手順はリリースごとに多少異なる場合があるため、必ず公式リリースノートをご確認ください。
+
+### Icebreaker のシークレットキーを共有する際のルールは？
+
+Icebreaker のシークレットキーは、ノードのパスワードと同等のものです。
+機密として扱い、決して公開しないでください。
+このシークレットキーは Icebreakers プラットフォームへの参加を承認するものです。
+
+具体的なガイドライン:
+
+1. シークレットキーを公開ウェブサイト、フォーラム、SNS に投稿しないでください
+2. 信頼できない第三者に共有しないでください
+3. ご自身が管理・信頼するサーバーにのみ保管してください
+4. Icebreaker ノードごとに固有のシークレットキーを使用してください
+5. キーが漏洩した可能性がある場合は、新しいキーを生成してノードを更新してください
+
+Blockfrost チームがシークレットキーをお尋ねすることはありません。
+フィッシングにご注意ください。
+
+キーを紛失した場合は、Discord でチームに連絡し、新しいキーの生成についてご相談ください。
+
+### Icebreaker ノードのセキュリティを向上させるには？
+
+Icebreaker ノードのセキュリティを高めるには:
+
+- 専用のファイアウォールを設定し、ノードへのトラフィックを制限する
+- ノードへの暗号化接続のために VPN を構築する
+- 脆弱性を最小化するため、セキュリティパッチを定期的に適用する
+- 可能な限り鍵ベースの認証を導入し、より強固なセキュリティを実現する
+- システムログ内の異常なアクセスパターンを検知するモニタリングを設定する
+
+<Callout type="info">
+  ノードは Blockfrost のロードバランサーへアウトバウンドの WebSocket
+  で接続し、パブリックなインターネットに対して着信ポートを一切公開しません。これにより、複雑なネットワーク環境
+  (ファイアウォール、ダブル NAT、CGNAT) でも静的なパブリック IP
+  なしで利用できます。
+</Callout>
+
+### Blockfrost プラットフォームの改善に貢献するには？
+
+次のような形で貢献できます。
+
+1. [Blockfrost プラットフォームの GitHub リポジトリ](https://github.com/blockfrost/blockfrost-platform) でバグ報告や機能提案を行う
+2. Discord でのコミュニティ議論に参加してフィードバックやアイデアを共有する
+
+### ドキュメントの誤字や誤りを見つけました。どこに報告すればよいですか？
+
+誤字、誤り、その他ドキュメントに関する問題は [Blockfrost プラットフォームの GitHub リポジトリ](https://github.com/blockfrost/blockfrost-platform/issues) でご報告ください。
+PR の作成も歓迎します。
+
+### Blockfrost プラットフォームのバグ報告手順は？
+
+バグは [Blockfrost プラットフォームの GitHub リポジトリ](https://github.com/blockfrost/blockfrost-platform) で issue を作成して報告してください。
+
+1. GitHub リポジトリページで **Issues** をクリックします。リポジトリの [Issues ページ](https://github.com/blockfrost/blockfrost-platform) が表示されます。
+2. **New issue** をクリックすると、新規 issue 作成フォームが開きます。
+3. タイトルを記入します。
+4. 説明を記入します。バグの詳細情報と再現手順を提供してください。
+5. **Create** をクリックします。

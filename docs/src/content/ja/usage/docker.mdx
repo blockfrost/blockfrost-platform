@@ -1,0 +1,53 @@
+import { Callout, Table } from "nextra/components";
+
+# Docker を使ってプラットフォームを実行する
+
+前のインストールセクションで Docker イメージを取得したら、以下のように実行できます。
+
+```bash
+docker run -it --init --rm \
+           -p 3000:3000 \
+           -v /home/user/my_node.socket:/var/run/node.socket \
+              blockfrost-platform --node-socket-path /var/run/node.socket \
+                                  --secret my_secret \
+                                  --reward-address my_reward_address
+```
+
+<Callout>
+  Cardano
+  ノードソケットがボリュームとしてアタッチされていることを確認してください。例:
+  `-v /home/user/my_node.socket:/var/run/node.socket`。
+</Callout>
+<Callout>
+  ノードはアウトバウンドの WebSocket 接続で Blockfrost に到達するため、ポート
+  `3000` をパブリックなインターネットに公開する必要はありません。ローカルの API
+  や Prometheus
+  メトリクスエンドポイントに自分でアクセスしたい場合にのみ公開してください。公開する場合は
+  localhost へのバインド (`-p 127.0.0.1:3000:3000`) を推奨します。`-p 3000:3000`
+  を使うとすべてのインターフェイス (アドレス `0.0.0.0`)
+  で公開され、ポートが外部からアクセス可能になります。
+</Callout>
+
+## Docker Compose でクラスタ全体を実行する
+
+以下のコマンドは Docker Compose を使って Cardano ノードと併せて `blockfrost-platform` バイナリをビルド・実行します。
+
+リポジトリのルートフォルダで:
+
+```bash
+# ソリタリーモードの場合:
+NETWORK=mainnet docker compose -p mainnet --profile solitary up --build -d
+
+# Blockfrost クラスタに参加する場合:
+NETWORK=mainnet SECRET=my-secret REWARD_ADDRESS=my-reward-address docker compose -p mainnet up --build -d
+
+# ビルドを監視
+docker compose watch
+```
+
+注意事項:
+
+- バックグラウンドで実行したくない場合は `-d` フラグを省略してください。
+- ビルドをスキップしたい場合は `--build` フラグを省略してください。
+- `-p mainnet` を希望するネットワークに合わせて設定することで、ノードの DB を混ぜることなく異なるネットワーク上で実行できます。常に同じネットワークでしか実行しない予定なら省略可能です。
+- `docker-compose.yml` 内部で処理されるため、`--node-socket-path` を指定する必要はありません。

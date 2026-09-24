@@ -1,0 +1,22 @@
+import { Callout, Table } from "nextra/components";
+
+# コマンドラインからプラットフォームを実行する
+
+設定ウィザードで設定ファイルを作成済みであれば、バイナリを実行するだけです。
+
+```console
+blockfrost-platform
+```
+
+設定ファイルを使用しない場合は、次のように実行します。
+
+```console
+blockfrost-platform [OPTIONS] --node-socket-path <CARDANO_NODE_SOCKET_PATH> \
+                              --secret <SECRET> \
+                              --reward-address <REWARD_ADDRESS>
+```
+
+<Callout>
+  コマンドラインオプションの全リストは `blockfrost-platform --help`
+  で確認できます。
+</Callout>

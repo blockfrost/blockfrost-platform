@@ -106,11 +106,22 @@ in {
         name = "TESTGEN_HS_PATH";
         value = lib.getExe internal.testgen-hs;
       }
+      {
+        name = "HYDRA_NODE_PATH";
+        value = lib.getExe internal.hydra-node;
+      }
     ]
     ++ lib.optionals pkgs.stdenv.isDarwin [
       {
         name = "LIBCLANG_PATH";
         value = internal.commonArgs.LIBCLANG_PATH;
+      }
+      # `numtide/devshell` sets `LIBRARY_PATH` with a stray `-L` prefix on
+      # Darwin, so clang ends up with a bogus `-L-L…/lib` search path and
+      # can't find libraries living in the devshell (e.g. `-liconv`).
+      {
+        name = "LIBRARY_PATH";
+        eval = "$DEVSHELL_DIR/lib";
       }
     ]
     ++ lib.optionals pkgs.stdenv.isLinux [
@@ -154,6 +165,53 @@ in {
       done
 
       ln -sfn ${internal.generated-dir} "$PRJ_ROOT/generated"
+    '';
+
+    startup.install-git-hooks.text = let
+      gitHooks = pkgs.runCommand "blockfrost-platform-git-hooks" {} ''
+        mkdir -p "$out"
+        ln -s ${
+          pkgs.writeShellScript "pre-commit" ''
+            set -euo pipefail
+
+            if [ -n "''${SKIP_TREEFMT+x}" ]; then
+              exit 0
+            fi
+
+            if "${lib.getExe inputs.self.formatter.${pkgs.stdenv.hostPlatform.system}}" --fail-on-change; then
+              exit 0
+            else
+              status=$?
+              echo >&2 'error: treefmt detected (and corrected) unformatted code'
+              echo >&2 'hint: set SKIP_TREEFMT=1 to skip treefmt in pre-commit'
+              exit "$status"
+            fi
+          ''
+        } "$out/pre-commit"
+      '';
+    in ''
+      if [[ -e "$PRJ_ROOT/.git" ]] ; then
+        # Only manage `core.hooksPath` when it's unset or still points at a
+        # (possibly older) version of our own hooks; never clobber a
+        # contributor's own setup or hooks installed by other tooling.
+        installed=
+        current="$(git -C "$PRJ_ROOT" config --get core.hooksPath 2>/dev/null || true)"
+        if [[ "$current" == "${gitHooks}" ]] ; then
+          installed=1
+        elif [[ -z "$current" || "$current" == /nix/store/*-blockfrost-platform-git-hooks ]] ; then
+          if git -C "$PRJ_ROOT" config --local core.hooksPath ${gitHooks} ; then
+            installed=1
+          else
+            echo >&2 "note: couldn't set git core.hooksPath (is .git read-only?)"
+          fi
+        else
+          echo >&2 "note: leaving your existing git core.hooksPath ($current) untouched"
+        fi
+        if [[ -z "$installed" ]] ; then
+          echo >&2 "hint: the blockfrost-platform pre-commit (treefmt) hook was not installed"
+        fi
+        unset installed current
+      fi
     '';
   };
 }

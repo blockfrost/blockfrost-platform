@@ -6,7 +6,7 @@ Before verifying your Blockfrost platform operation, make sure that these critic
 
 ### A running Cardano node
 
-A running mainnet (production) instance of cardano-node with a public IP address.
+A running mainnet (production) instance of cardano-node reachable by the platform via a local Unix socket.
 
 ### NFT address configuration
 
@@ -22,18 +22,19 @@ Your wallet likely contains multiple addresses.
 The platform requires specifically the address where the NFT resides.
 Check your wallet to identify which address holds the Icebreaker NFT.
 
-### Network port configuration
+### Network connectivity
 
-Make sure that your required ports are properly opened.
-The default Blockfrost platform port is `3000`.
+The platform connects **outbound** to the Blockfrost load balancers over WebSocket, so no inbound port needs to be opened for Blockfrost.
+Make sure outbound Internet connectivity is allowed.
+The default local Blockfrost platform port is `3000`; you only need to reach it if you scrape the Prometheus metrics endpoint yourself.
 
 #### For cloud hosting
 
-- Azure: Create a new outbound rule allowing port 3000 traffic
+- Azure: Ensure outbound rules permit HTTPS/WebSocket traffic to the Internet
 
-- AWS: Configure security groups to permit port 3000 traffic
+- AWS: Ensure security groups permit outbound HTTPS/WebSocket traffic
 
-- Other providers: Update firewall settings accordingly.
+- Other providers: Confirm firewall settings allow outbound connections.
 
 ## Basic service verification
 

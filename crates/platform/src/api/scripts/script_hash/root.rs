@@ -1,6 +1,12 @@
-use crate::{BlockfrostError, api::ApiResult};
+use crate::{api::ApiResult, server::state::AppState};
+use axum::extract::{Path, State};
 use bf_api_provider::types::ScriptsSingleResponse;
 
-pub async fn route() -> ApiResult<ScriptsSingleResponse> {
-    Err(BlockfrostError::not_found())
+pub async fn route(
+    State(state): State<AppState>,
+    Path(script_hash): Path<String>,
+) -> ApiResult<ScriptsSingleResponse> {
+    let data_node = state.data_node()?;
+
+    data_node.scripts().by(&script_hash).await
 }

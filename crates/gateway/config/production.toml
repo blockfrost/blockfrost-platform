@@ -15,7 +15,12 @@ peer_secret = 'change-me-to-a-long-random-string'
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'
 #connection_string_file = '/run/keys/blockfrost-gateway-db-connection-string'
+# Maximum PostgreSQL connections held by this gateway. The sum across all
+# gateway instances must stay below the database connection limit (minus any
+# slots reserved for superusers).
+pool_max_size = 6
 
 [blockfrost]
 project_id = 'BLOCKFROST_PROJECT_ID'
+#project_id_file = '/run/keys/blockfrost-gateway-project-id'
 nft_asset = '1152c0d2a6105237fd60ef5e59be916da926aa15bdd959c5a7a69c27'

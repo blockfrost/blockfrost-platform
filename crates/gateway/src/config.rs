@@ -4,6 +4,7 @@ use clap::Parser;
 use serde::{Deserialize, Deserializer};
 use std::env::var;
 use std::fs::read_to_string;
+use std::num::NonZeroUsize;
 use std::str::FromStr;
 use std::{fs, path::PathBuf};
 use tracing::Level;
@@ -39,6 +40,7 @@ pub struct ServerInput {
 pub struct DbInput {
     pub connection_string: Option<String>,
     pub connection_string_file: Option<String>,
+    pub pool_max_size: NonZeroUsize,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -73,6 +75,7 @@ pub struct Server {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Db {
     pub connection_string: String,
+    pub pool_max_size: NonZeroUsize,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -128,9 +131,7 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     let connection_string = match toml_config.database.connection_string_file {
-        Some(file_path) => read_to_string(file_path)
-            .expect("Failed to read connection string file")
-            .to_string(),
+        Some(file_path) => read_secret_file(&file_path, "connection string"),
         None => toml_config
             .database
             .connection_string
@@ -138,13 +139,11 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     let project_id = match toml_config.blockfrost.project_id_file {
-        Some(file_path) => read_to_string(file_path)
-            .expect("Failed to read project ID file")
-            .to_string(),
+        Some(file_path) => read_secret_file(&file_path, "project ID"),
         None => toml_config
             .blockfrost
             .project_id
-            .expect("project_id must be provided"),
+            .expect("project_id or project_id_file must be provided"),
     };
 
     let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
@@ -155,10 +154,7 @@ pub fn load_config(path: PathBuf) -> Config {
     }
 
     let peer_secret_raw = match toml_config.server.peer_secret_file {
-        Some(file_path) => read_to_string(file_path)
-            .expect("Failed to read peer secret file")
-            .trim()
-            .to_string(),
+        Some(file_path) => read_secret_file(&file_path, "peer secret"),
         None => toml_config
             .server
             .peer_secret
@@ -175,7 +171,10 @@ pub fn load_config(path: PathBuf) -> Config {
             peer_urls,
             peer_secret,
         },
-        database: Db { connection_string },
+        database: Db {
+            connection_string,
+            pool_max_size: toml_config.database.pool_max_size,
+        },
         blockfrost: Blockfrost {
             project_id,
             nft_asset: toml_config.blockfrost.nft_asset,
@@ -185,6 +184,13 @@ pub fn load_config(path: PathBuf) -> Config {
     };
 
     override_with_env(config)
+}
+
+fn read_secret_file(path: &str, what: &str) -> String {
+    read_to_string(path)
+        .unwrap_or_else(|e| panic!("Failed to read {what} file '{path}': {e}"))
+        .trim()
+        .to_string()
 }
 
 /// Derive a 32-byte key from an arbitrary-length secret string using Blake3.
@@ -241,13 +247,7 @@ fn override_with_env(config: Config) -> Config {
         .unwrap_or(config.server.peer_urls);
     let peer_secret = var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
         .ok()
-        .map(|path| {
-            let raw = read_to_string(path)
-                .expect("Failed to read BLOCKFROST_GATEWAY_SERVER_PEER_SECRET_FILE")
-                .trim()
-                .to_string();
-            derive_peer_key(&raw)
-        })
+        .map(|path| derive_peer_key(&read_secret_file(&path, "peer secret")))
         .or_else(|| {
             var("BLOCKFROST_GATEWAY_SERVER_PEER_SECRET")
                 .ok()
@@ -259,6 +259,12 @@ fn override_with_env(config: Config) -> Config {
         .unwrap_or_else(|_| config.server.log_level.to_string());
     let db_connection =
         var("BLOCKFROST_GATEWAY_DB_CONNECTION_STRING").unwrap_or(config.database.connection_string);
+    let pool_max_size = var("BLOCKFROST_GATEWAY_DB_POOL_MAX_SIZE")
+        .map(|s| {
+            s.parse::<NonZeroUsize>()
+                .expect("BLOCKFROST_GATEWAY_DB_POOL_MAX_SIZE must be an integer greater than 0")
+        })
+        .unwrap_or(config.database.pool_max_size);
     let project_id = var("BLOCKFROST_GATEWAY_PROJECT_ID").unwrap_or(config.blockfrost.project_id);
     let nft_asset = var("BLOCKFROST_GATEWAY_NFT_ASSET").unwrap_or(config.blockfrost.nft_asset);
     let network = network_from_project_id(&project_id).expect("invalid Blockfrost project_id");
@@ -283,6 +289,7 @@ fn override_with_env(config: Config) -> Config {
         },
         database: Db {
             connection_string: db_connection,
+            pool_max_size,
         },
         blockfrost: Blockfrost {
             project_id,
@@ -290,5 +297,61 @@ fn override_with_env(config: Config) -> Config {
         },
         hydra_platform: config.hydra_platform,
         hydra_bridge: config.hydra_bridge,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::write;
+
+    #[test]
+    fn read_secret_file_trims_surrounding_whitespace() {
+        let path = std::env::temp_dir().join(format!(
+            "blockfrost_gateway_secret_test_{}.txt",
+            std::process::id()
+        ));
+        write(&path, "  mainnetSomeProjectId\n").expect("write temp secret");
+
+        let value = read_secret_file(&path.to_string_lossy(), "test secret");
+        assert_eq!(value, "mainnetSomeProjectId");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to read test secret file")]
+    fn read_secret_file_panics_on_missing_file() {
+        let path = std::env::temp_dir().join(format!(
+            "blockfrost_gateway_missing_secret_{}.txt",
+            std::process::id()
+        ));
+        std::fs::remove_file(&path).ok();
+
+        read_secret_file(&path.to_string_lossy(), "test secret");
+    }
+
+    #[test]
+    fn pool_max_size_rejects_zero() {
+        let toml = r#"
+            connection_string = 'postgresql://user:pass@host:port/db'
+            pool_max_size = 0
+        "#;
+        let err = toml::from_str::<DbInput>(toml)
+            .expect_err("pool_max_size = 0 must be rejected at config-load time");
+        assert!(
+            err.to_string().contains("pool_max_size"),
+            "error should mention the offending field, got: {err}"
+        );
+    }
+
+    #[test]
+    fn pool_max_size_accepts_positive() {
+        let toml = r#"
+            connection_string = 'postgresql://user:pass@host:port/db'
+            pool_max_size = 6
+        "#;
+        let db: DbInput = toml::from_str(toml).expect("valid pool_max_size must parse");
+        assert_eq!(db.pool_max_size.get(), 6);
     }
 }

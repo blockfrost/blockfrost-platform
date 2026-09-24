@@ -11,9 +11,11 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 const ACCESS_TOKEN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
-const MAX_BODY_BYTES: usize = 1024 * 1024;
+const MAX_BODY_BYTES: usize = bf_common::DEFAULT_MAX_BODY_BYTES;
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 const WS_PING_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const HEALTH_CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
+const HEALTH_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccessToken(pub String);
@@ -102,13 +104,34 @@ pub struct RelayState {
     pub connected_since: std::time::Instant,
     pub requests_sent: Arc<atomic::AtomicU64>,
     pub responses_received: Arc<atomic::AtomicU64>,
+    /// Result of the latest periodic `GET /` check of this relay’s Platform,
+    /// `None` until the first check completes.
+    pub platform_health: Arc<Mutex<Option<PlatformHealth>>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PlatformHealth {
+    pub healthy: bool,
+    pub version: Option<String>,
+    pub has_data_node: Option<bool>,
+}
+
+impl PlatformHealth {
+    fn unreachable() -> Self {
+        PlatformHealth {
+            healthy: false,
+            version: None,
+            has_data_node: None,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct RequestState {
     respond_to: oneshot::Sender<JsonResponse>,
-    expires: std::time::Instant, // never read, do we need it?
+    expires: std::time::Instant,
     underlying: JsonRequest,
+    is_health_check: bool,
 }
 
 impl LoadBalancerState {
@@ -331,6 +354,10 @@ pub mod api {
         requests_sent: u64,
         responses_received: u64,
         requests_in_progress: u64,
+        /// `None` until the first periodic health check of the Platform completes.
+        healthy: Option<bool>,
+        version: Option<String>,
+        has_data_node: Option<bool>,
     }
 
     /// This route shows some stats about all relays connected with a WebSocket,
@@ -342,7 +369,16 @@ pub mod api {
         let now_chrono = chrono::Utc::now();
         let now_instant = std::time::Instant::now();
 
-        for (api_prefix, relay_state) in load_balancer.active_relays.lock().await.iter() {
+        let snapshot: Vec<(Uuid, RelayState)> = load_balancer
+            .active_relays
+            .lock()
+            .await
+            .iter()
+            .map(|(api_prefix, relay_state)| (*api_prefix, relay_state.clone()))
+            .collect();
+
+        for (api_prefix, relay_state) in &snapshot {
+            let platform_health = relay_state.platform_health.lock().await.clone();
             rv.insert(
                 relay_state.name.clone(),
                 RelayStats {
@@ -359,6 +395,9 @@ pub mod api {
                         .load(atomic::Ordering::SeqCst),
                     requests_in_progress: relay_state.requests_in_progress.lock().await.len()
                         as u64,
+                    healthy: platform_health.as_ref().map(|h| h.healthy),
+                    version: platform_health.as_ref().and_then(|h| h.version.clone()),
+                    has_data_node: platform_health.and_then(|h| h.has_data_node),
                 },
             );
         }
@@ -440,6 +479,7 @@ pub mod api {
             expires: std::time::Instant::now() + REQUEST_TIMEOUT,
             respond_to: response_tx,
             underlying: json_req,
+            is_health_check: false,
         };
 
         new_request_channel.send(new_request).await.map_err(|_| {
@@ -519,10 +559,16 @@ pub mod event_loop {
             connected_since: std::time::Instant::now(),
             requests_sent: Arc::new(atomic::AtomicU64::new(0)),
             responses_received: Arc::new(atomic::AtomicU64::new(0)),
+            platform_health: Arc::new(Mutex::new(None)),
         };
 
         let clean_up_task = tokio::spawn(clean_up_expired_requests_periodically(
             relay_state.requests_in_progress.clone(),
+        ));
+
+        let health_check_task = tokio::spawn(check_platform_health_periodically(
+            relay_state.new_request_channel.clone(),
+            relay_state.platform_health.clone(),
         ));
 
         load_balancer
@@ -713,12 +759,18 @@ pub mod event_loop {
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Response(response)) => {
+                    let code = response.code;
+                    let is_health_check =
+                        pass_on_response(response, &relay_state, asset_name).await;
+                    // Only bill known user requests to Hydra micropayments —
+                    // neither our own health checks, nor unknown (e.g. already
+                    // expired and cleaned-up) requests:
                     if let Some(ctl) = &hydra_controller
-                        && (200..500).contains(&response.code)
+                        && (200..500).contains(&code)
+                        && is_health_check == Some(false)
                     {
                         ctl.account_one_request().await;
                     }
-                    pass_on_response(response, &relay_state, asset_name).await;
                 },
 
                 LBEvent::NewRelayMessage(RelayMessage::Ping(ping_id)) => {
@@ -845,6 +897,7 @@ pub mod event_loop {
             response_task,
             arbitrary_msg_task,
             clean_up_task,
+            health_check_task,
         ];
         children.iter().for_each(|t| t.abort());
         futures::future::join_all(children).await;
@@ -1071,12 +1124,14 @@ pub mod event_loop {
         }
     }
 
-    /// Passes a WebSocket response on to the original HTTP requester.
+    /// Passes a WebSocket response on to the original HTTP requester. Returns
+    /// the matched request’s `is_health_check` flag, or `None` when the
+    /// request is unknown (e.g. it already timed out, and was cleaned up).
     async fn pass_on_response(
         response: JsonResponse,
         relay_state: &RelayState,
         asset_name: &AssetName,
-    ) {
+    ) -> Option<bool> {
         let request_id = response.id.clone();
 
         match relay_state
@@ -1086,6 +1141,7 @@ pub mod event_loop {
             .remove(&request_id)
         {
             Some(request_state) => {
+                let is_health_check = request_state.is_health_check;
                 relay_state
                     .responses_received
                     .fetch_add(1, atomic::Ordering::SeqCst);
@@ -1097,12 +1153,16 @@ pub mod event_loop {
                         request_id.0,
                     ),
                 }
+                Some(is_health_check)
             },
-            None => warn!(
-                "{}: received supposed response for non-existent request: {}",
-                asset_name.as_str(),
-                response.id.0,
-            ),
+            None => {
+                warn!(
+                    "{}: received supposed response for non-existent request: {}",
+                    asset_name.as_str(),
+                    response.id.0,
+                );
+                None
+            },
         }
     }
 
@@ -1183,6 +1243,74 @@ pub mod event_loop {
                     request_id.0,
                 )
             });
+    }
+}
+
+#[derive(Deserialize)]
+struct PlatformRootResponse {
+    version: Option<String>,
+    data_node: Option<serde::de::IgnoredAny>,
+}
+
+/// A background task to periodically check the relay’s platform over the
+/// regular websocket
+async fn check_platform_health_periodically(
+    new_request_channel: mpsc::Sender<RequestState>,
+    platform_health: Arc<Mutex<Option<PlatformHealth>>>,
+) {
+    let mut interval = tokio::time::interval(HEALTH_CHECK_INTERVAL);
+    loop {
+        interval.tick().await;
+        let health = check_platform_health(&new_request_channel).await;
+        *platform_health.lock().await = Some(health);
+    }
+}
+
+/// Sends a single `GET /` to the relay’s platform, exactly like a regular
+/// proxied HTTP request, i.e. without changing the WebSocket protocol.
+async fn check_platform_health(new_request_channel: &mpsc::Sender<RequestState>) -> PlatformHealth {
+    tokio::time::timeout(HEALTH_CHECK_TIMEOUT, async {
+        let (response_tx, response_rx) = oneshot::channel();
+
+        let request = RequestState {
+            respond_to: response_tx,
+            expires: std::time::Instant::now() + HEALTH_CHECK_TIMEOUT,
+            underlying: JsonRequest {
+                id: RequestId(Uuid::new_v4()),
+                method: JsonRequestMethod::GET,
+                path: "/".to_string(),
+                query: None,
+                header: vec![],
+                body_base64: String::new(),
+            },
+            is_health_check: true,
+        };
+
+        if new_request_channel.send(request).await.is_err() {
+            return PlatformHealth::unreachable();
+        }
+
+        match response_rx.await {
+            Ok(response) => interpret_health_response(&response),
+            Err(_) => PlatformHealth::unreachable(),
+        }
+    })
+    .await
+    .unwrap_or_else(|_timed_out| PlatformHealth::unreachable())
+}
+
+fn interpret_health_response(response: &JsonResponse) -> PlatformHealth {
+    use base64::{Engine as _, engine::general_purpose};
+
+    let body: Option<PlatformRootResponse> = general_purpose::STANDARD
+        .decode(&response.body_base64)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+
+    PlatformHealth {
+        healthy: response.code == 200,
+        version: body.as_ref().and_then(|b| b.version.clone()),
+        has_data_node: body.as_ref().map(|b| b.data_node.is_some()),
     }
 }
 
@@ -1319,11 +1447,26 @@ mod tests {
             connected_since: std::time::Instant::now(),
             requests_sent: Arc::new(atomic::AtomicU64::new(0)),
             responses_received: Arc::new(atomic::AtomicU64::new(0)),
+            platform_health: Arc::new(Mutex::new(None)),
         }
     }
 
     fn test_key() -> [u8; 32] {
         *blake3::hash(b"test-peer-secret").as_bytes()
+    }
+
+    fn encode_health_body(body: serde_json::Value) -> String {
+        use base64::{Engine as _, engine::general_purpose};
+        general_purpose::STANDARD.encode(body.to_string())
+    }
+
+    fn health_response(code: u16, body_base64: String) -> JsonResponse {
+        JsonResponse {
+            id: RequestId(Uuid::new_v4()),
+            code,
+            header: vec![],
+            body_base64,
+        }
     }
 
     #[test]
@@ -1426,6 +1569,103 @@ mod tests {
         let lb = LoadBalancerState::new(None, key);
         let res = lb.register(&token);
         assert!(matches!(res, Err(APIError::Unauthorized())));
+    }
+
+    #[test]
+    fn test_health_response_healthy_with_data_node() {
+        let health = interpret_health_response(&health_response(
+            200,
+            encode_health_body(serde_json::json!({
+                "name": "blockfrost-platform",
+                "version": "1.0.0",
+                "revision": "aaaaaaaa",
+                "healthy": true,
+                "node_info": null,
+                "data_node": { "available": true },
+                "errors": [],
+            })),
+        ));
+
+        assert!(health.healthy);
+        assert_eq!(health.version.as_deref(), Some("1.0.0"));
+        assert_eq!(health.has_data_node, Some(true));
+    }
+
+    #[test]
+    fn test_health_response_unhealthy_keeps_version() {
+        let health = interpret_health_response(&health_response(
+            503,
+            encode_health_body(serde_json::json!({
+                "name": "blockfrost-platform",
+                "version": "1.0.0",
+                "revision": "aaaaaaaa",
+                "healthy": false,
+                "node_info": null,
+                "errors": ["node connection lost"],
+            })),
+        ));
+
+        assert!(!health.healthy);
+        assert_eq!(health.version.as_deref(), Some("1.0.0"));
+        assert_eq!(health.has_data_node, Some(false));
+    }
+
+    #[test]
+    fn test_health_response_unparsable_body() {
+        let health = interpret_health_response(&health_response(200, "!!!".to_string()));
+
+        assert!(health.healthy);
+        assert_eq!(health.version, None);
+        assert_eq!(health.has_data_node, None);
+    }
+
+    #[tokio::test]
+    async fn test_health_check_round_trip() {
+        let (tx, mut rx) = mpsc::channel(1);
+
+        let responder = tokio::spawn(async move {
+            let request: RequestState = rx.recv().await.expect("a health-check request");
+            assert!(request.is_health_check);
+            assert_eq!(request.underlying.path, "/");
+            assert!(matches!(request.underlying.method, JsonRequestMethod::GET));
+
+            let response = JsonResponse {
+                id: request.underlying.id.clone(),
+                code: 503,
+                header: vec![],
+                body_base64: encode_health_body(serde_json::json!({
+                    "name": "blockfrost-platform",
+                    "version": "9.9.9",
+                    "revision": "aaaaaaaa",
+                    "healthy": false,
+                    "node_info": null,
+                    "errors": ["node connection lost"],
+                })),
+            };
+            request
+                .respond_to
+                .send(response)
+                .expect("health check awaits the response");
+        });
+
+        let health = check_platform_health(&tx).await;
+        responder.await.unwrap();
+
+        assert!(!health.healthy);
+        assert_eq!(health.version.as_deref(), Some("9.9.9"));
+        assert_eq!(health.has_data_node, Some(false));
+    }
+
+    #[tokio::test]
+    async fn test_health_check_unreachable_when_disconnected() {
+        let (tx, rx) = mpsc::channel(1);
+        drop(rx);
+
+        let health = check_platform_health(&tx).await;
+
+        assert!(!health.healthy);
+        assert_eq!(health.version, None);
+        assert_eq!(health.has_data_node, None);
     }
 
     #[tokio::test]

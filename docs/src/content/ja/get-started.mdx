@@ -1,0 +1,27 @@
+import { Callout, Table } from "nextra/components";
+
+# スタートガイド
+
+始める前に、いくつかの前提条件があります。
+
+- ✅ アウトバウンドのインターネット接続を持つ、稼働中のメインネット (本番) cardano-node インスタンス。
+  - SPO の方は、Blockfrost プラットフォームをいずれかのリレーで実行することをおすすめします。
+  - その他の方は、インスタンスのインストールと実行について [Cardano ノードの公式ドキュメント](https://developers.cardano.org/docs/get-started/cardano-node/installing-cardano-node) をご参照ください。
+  - 代替として、[Daedalus フルノードウォレット](https://daedaluswallet.io/) をインストールして実行することもできます。
+- ✅ Icebreaker NFT ライセンスを保有するリワードアドレス (プログラムへの参加が承認されると Blockfrost チームから提供されます)。
+- ✅ Icebreaker アカウントのシークレット (こちらも Blockfrost チームから提供されます)。
+
+<Callout>
+  独自インスタンスとしてバックエンドを実行したい場合は、ソリタリーモード
+  (`--solitary` コマンドラインオプション) を使って Blockfrost
+  クラスタへの参加を回避してください。
+</Callout>
+
+<Callout>
+  ブロックチェーンクエリエンドポイント
+  (ブロック、トランザクション、アカウントなど) を提供するには、稼働中の
+  [Dolos](https://github.com/txpipe/dolos) データノードも必要です。詳細は
+  [データノード](/data-node) セクションをご覧ください。
+</Callout>
+
+準備はできましたか？ それではインストールに進みましょう。

@@ -1,0 +1,70 @@
+# インスタンス用に `systemd` サービスをセットアップする
+
+コマンドラインからの実行は新しいバイナリをテストするのに適していますが、再起動を跨いでインスタンスを稼働させたい場合は `systemd` サービスとしてセットアップすることをおすすめします。
+
+まず、Blockfrost プラットフォームの起動スクリプトとなる bash スクリプトファイルを作成します。
+例えば `start-blockfrost-platform.sh` という名前で、次のような内容にできます。
+
+これはあくまで一例であり、あなたの環境に合わせて変更が必要です。
+そのままコピー&ペーストしても動作しません。
+
+```bash
+#!/usr/bin/env bash
+# 自分の環境に合わせてこれらの変数を変更してください
+SECRET=my_icebreaker_secret_i_have_received_from_the_blockfrost_team
+REWARD_ADDR=addr1_rest_of_my_reward_address_that_holds_my_nft_license_provided_by_the_blockfrost_team
+CARDANO_NODE_SOCKET_PATH=/path/to/my/cardano-node/socket
+
+/usr/local/bin/blockfrost-platform --node-socket-path $CARDANO_NODE_SOCKET_PATH \
+                                   --secret $SECRET \
+                                   --reward-address $REWARD_ADDR
+```
+
+新しく `blockfrost-platform.service` ファイルを作成し、以下の内容を追加します (`$USER` と `$HOME` は実際のユーザー名とホームディレクトリのパスに置き換えてください)。
+
+```systemd
+[Unit]
+Description       = Blockfrost Platform
+Wants             = network-online.target
+After             = network-online.target
+
+[Service]
+User              = $USER
+Type              = simple
+WorkingDirectory  = $HOME/blockfrost-platform
+ExecStart         = /bin/bash -c '$HOME/blockfrost-platform/start-blockfrost-platform.sh'
+ExecReload        = pkill -HUP blockfrost-platform
+KillSignal        = SIGINT
+RestartKillSignal = SIGINT
+TimeoutStopSec    = 300
+LimitNOFILE       = 32768
+Restart           = always
+RestartSec        = 5
+SyslogIdentifier  = blockfrost-platform
+
+[Install]
+WantedBy          = multi-user.target
+```
+
+次に systemd フォルダに移動し、適切な権限を設定します。
+
+```bash
+mv blockfrost-platform.service /etc/systemd/system/
+sudo chmod 644 /etc/systemd/system/blockfrost-platform.service
+```
+
+その後、サービスを有効化します。
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable blockfrost-platform.service
+```
+
+サービスを再起動し、動作するか確認しましょう。
+
+```bash
+sudo systemctl restart blockfrost-platform.service
+journalctl -f -u blockfrost-platform
+```
+
+これで Blockfrost プラットフォームが `systemd` 配下で有効化され、再起動後も自動的に起動するようになりました。ただし、必ず動作確認を行ってください。

@@ -1,5 +1,5 @@
 use crate::addresses::{AddressInfo, AddressesPath};
-use crate::{BlockfrostError, api::ApiResult, server::state::AppState};
+use crate::{api::ApiResult, server::state::AppState};
 use axum::extract::{Path, State};
 use bf_api_provider::types::AddressesResponse;
 
@@ -8,7 +8,8 @@ pub async fn route(
     State(state): State<AppState>,
 ) -> ApiResult<AddressesResponse> {
     let AddressesPath { address, asset: _ } = address_path;
-    let _ = AddressInfo::from_address(&address, state.config.network.clone())?;
+    let address_info = AddressInfo::from_address(&address, state.config.network.clone())?;
+    let data_node = state.data_node()?;
 
-    Err(BlockfrostError::not_found())
+    data_node.addresses().address(&address_info.address).await
 }

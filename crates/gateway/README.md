@@ -4,12 +4,12 @@ The Blockfrost Gateway provides a root endpoint to check the status and version 
 
 ### Registration Process
 
-When registering via the `/register` endpoint, the Blockfrost Gateway performs the following checks:
+When registering via the `/register` endpoint, the Blockfrost Gateway performs the following steps:
 
 - **Secret Verification:** Confirms that the provided secret is registered with Blockfrost.io.
 - **NFT License Validation:** Ensures that the reward address contains an NFT issued by Blockfrost.io, which serves as a license.
-- **Platform Accessibility Check:** Verifies that the platform is listening on the specified port and is publicly accessible.
 - **User Data Storage:** Upon successful registration, the user's data is saved in the database.
+- **Access Token Issuance:** The response includes one WebSocket URI per configured `peer_urls` entry (falling back to `server.url` or the request `Host`), each paired with a signed, expiring access token. The token is stateless: it carries the asset name, reward address, api prefix, and expiry, authenticated with a BLAKE3 keyed hash using the shared peer secret. The `blockfrost-platform` is expected to connect to every returned URI over WebSocket, presenting the token, instead of exposing a publicly routable port.
 
 ### Configuration
 
@@ -20,6 +20,7 @@ log_level = 'info'
 
 [database]
 connection_string = 'postgresql://user:pass@host:port/db'
+pool_max_size = 6
 
 [blockfrost]
 project_id = 'BLOCKFROST_PROJECT_ID'
@@ -35,6 +36,7 @@ The following environment variables can be used to override config file:
 - `BLOCKFROST_GATEWAY_SERVER_ADDRESS` — The server address (e.g., `0.0.0.0:3000`)
 - `BLOCKFROST_GATEWAY_SERVER_LOG_LEVEL` — The log level (e.g., `info`, `debug`, `warn`)
 - `BLOCKFROST_GATEWAY_DB_CONNECTION_STRING` — The database connection string (PostgreSQL supported)
+- `BLOCKFROST_GATEWAY_DB_POOL_MAX_SIZE` — Maximum PostgreSQL connections held by this gateway
 - `BLOCKFROST_GATEWAY_PROJECT_ID` — The Blockfrost project ID
 - `BLOCKFROST_GATEWAY_NFT_ASSET` — Hex of the NFT asset used for validating license
 

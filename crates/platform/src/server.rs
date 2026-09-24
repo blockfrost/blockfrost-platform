@@ -2,10 +2,7 @@ pub mod metrics;
 pub mod routes;
 pub mod state;
 use crate::{
-    config::Config,
-    genesis::{GenesisRegistry, genesis},
-    health_monitor,
-    icebreakers::api::IcebreakersAPI,
+    config::Config, genesis::GenesisRegistry, health_monitor, icebreakers::api::IcebreakersAPI,
     middlewares::errors::error_middleware,
 };
 use axum::{Extension, Router, middleware::from_fn};
@@ -47,7 +44,8 @@ pub async fn build(
 
     // Create node pool
     let node_conn_pool = {
-        let network_magic = genesis().by_network(&config.network).network_magic as u64;
+        let network_magic = config.genesis.by_network(&config.network).network_magic as u64;
+
         NodePool::new(
             network_magic,
             config.node_socket_path.to_string(),
@@ -79,12 +77,9 @@ pub async fn build(
     // Nest under the UUID prefix
     let api_routes = nest_routes(&api_prefix, regular_api_routes, hidden_api_routes);
 
-    let genesis = Arc::new(config.with_custom_genesis()?);
-
     // Initialize the app state
     let app_state = AppState {
         config: config.clone(),
-        genesis,
         data_node,
     };
 

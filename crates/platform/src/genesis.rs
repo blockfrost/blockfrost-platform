@@ -1,9 +1,5 @@
-use axum::Extension;
 use bf_api_provider::types::GenesisResponse;
 use bf_common::types::Network;
-use std::sync::Arc;
-
-pub type GenesisExtension = Extension<Arc<Vec<(Network, GenesisResponse)>>>;
 
 pub trait GenesisRegistry {
     /// Get a network config by its `Network` enum variant.
@@ -17,12 +13,14 @@ pub trait GenesisRegistry {
 
     /// Map a magic number back to its `Network`.
     fn network_by_magic(&self, magic: u64) -> &Network;
+}
 
-    /// Insert or replace the `GenesisContent` for `network` at the front.
+pub trait GenesisRegistryMut {
+    /// Insert or replace the `GenesisResponse` for `network`.
     fn add(&mut self, network: Network, genesis: GenesisResponse);
 }
 
-impl GenesisRegistry for Vec<(Network, GenesisResponse)> {
+impl GenesisRegistry for [(Network, GenesisResponse)] {
     fn by_network(&self, network: &Network) -> GenesisResponse {
         self.iter()
             .find(|(n, _)| n == network)
@@ -47,7 +45,9 @@ impl GenesisRegistry for Vec<(Network, GenesisResponse)> {
             .map(|(n, _)| n)
             .expect("Missing Network for known magic")
     }
+}
 
+impl GenesisRegistryMut for Vec<(Network, GenesisResponse)> {
     fn add(&mut self, network: Network, genesis: GenesisResponse) {
         // If the network already exists, replace its GenesisContent;
         // otherwise, insert this (network, genesis) tuple at index 0.

@@ -1,4 +1,28 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/next/:path*", "destination": "/:path*" }]
+  "buildCommand": "pnpm build",
+  "redirects": [
+    {
+      "source": "/:path(budget|configuration|data-node|faq|get-started|icebreakers|options|roadmap|usecases|verification)",
+      "destination": "/en/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:section(installation|usage)/:page*",
+      "destination": "/en/:section/:page*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/next",
+      "has": [{ "type": "host", "value": "platform.blockfrost.io" }],
+      "destination": "https://blockfrost-platform-docs-next.vercel.app/next"
+    },
+    {
+      "source": "/next/:path+",
+      "has": [{ "type": "host", "value": "platform.blockfrost.io" }],
+      "destination": "https://blockfrost-platform-docs-next.vercel.app/next/:path+"
+    }
+  ]
 }

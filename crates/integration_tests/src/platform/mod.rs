@@ -6,6 +6,7 @@ use axum::Router;
 use bf_common::types::{LogLevel, Network};
 use bf_node::pool::NodePool;
 use blockfrost_platform::config::{Config, DataNodeConfig, IcebreakersConfig, Mode};
+use blockfrost_platform::genesis::genesis;
 use blockfrost_platform::{
     AppError, health_monitor,
     icebreakers::api::IcebreakersAPI,
@@ -23,6 +24,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         server_address: "0.0.0.0".parse().unwrap(),
         server_port: 3000,
         server_concurrency_limit: 2048,
+        max_response_body_bytes: bf_common::DEFAULT_MAX_BODY_BYTES,
         log_level: LogLevel::Info.into(),
         mode: Mode::Compact,
         node_socket_path: node_socket_path_env,
@@ -31,6 +33,7 @@ pub fn test_config(icebreakers_config: Option<IcebreakersConfig>) -> Arc<Config>
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        genesis: genesis(),
         data_node: None,
         hydra: None,
     };
@@ -89,6 +92,7 @@ pub fn test_config_with_data_node(
         server_address: "0.0.0.0".parse().unwrap(),
         server_port: 3000,
         server_concurrency_limit: 2048,
+        max_response_body_bytes: bf_common::DEFAULT_MAX_BODY_BYTES,
         log_level: LogLevel::Info.into(),
         mode: Mode::Compact,
         node_socket_path: node_socket_path_env,
@@ -97,6 +101,7 @@ pub fn test_config_with_data_node(
         network: Network::Preview,
         no_metrics: false,
         custom_genesis_config: None,
+        genesis: genesis(),
         data_node: Some(DataNodeConfig {
             endpoint: data_node_endpoint,
             request_timeout: Duration::from_secs(30),
@@ -105,6 +110,18 @@ pub fn test_config_with_data_node(
     };
 
     Arc::new(config)
+}
+
+/// Serves the app on a random local port and returns its base URL.
+pub async fn spawn_app(app: Router) -> String {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    format!("http://{addr}")
 }
 
 pub async fn build_app_with_data_node(

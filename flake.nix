@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -16,20 +16,20 @@
       flake = false;
     };
     cardano-node = {
-      url = "github:IntersectMBO/cardano-node/10.6.3";
+      url = "github:IntersectMBO/cardano-node/11.0.1";
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     dolos = {
-      url = "github:txpipe/dolos/v1.1.1";
+      url = "github:txpipe/dolos/v1.4.0";
       flake = false;
     };
     blockfrost-tests = {
       url = "github:blockfrost/blockfrost-tests";
       flake = false;
     };
-    mithril.url = "github:input-output-hk/mithril/2524.0";
+    mithril.url = "github:IntersectMBO/mithril/2630.0";
     testgen-hs = {
-      url = "github:blockfrost/testgen-hs/10.6.3.1"; # make sure it follows cardano-node
+      url = "github:blockfrost/testgen-hs/11.0.1.0"; # make sure it follows cardano-node
       flake = false; # otherwise, +2k dependencies we don’t really use
     };
     hydra = {
@@ -41,7 +41,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cardano-playground = {
-      url = "github:input-output-hk/cardano-playground/419fcc2150552930944624e7a19aad6420539df0";
+      url = "github:input-output-hk/cardano-playground/cf68b1e5747564fa25d5ea945b49fa900b4f7824";
       flake = false; # otherwise, +9k dependencies in flake.lock…
     };
     advisory-db = {

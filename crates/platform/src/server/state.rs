@@ -1,14 +1,12 @@
 use crate::config::Config;
 use axum::extract::State;
-use bf_api_provider::types::GenesisResponse;
-use bf_common::{errors::BlockfrostError, types::Network};
+use bf_common::errors::BlockfrostError;
 use bf_data_node::client::DataNode;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub genesis: Arc<Vec<(Network, GenesisResponse)>>,
     pub data_node: Option<DataNode>,
 }
 

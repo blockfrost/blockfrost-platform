@@ -1,0 +1,25 @@
+use crate::addresses::{AddressInfo, AddressesPath};
+use crate::server::state::AppState;
+use axum::extract::{Path, Query, State};
+use bf_common::{
+    pagination::{Pagination, PaginationQuery},
+    types::ApiResult,
+};
+
+/// `/addresses/{address}/txs` returns a bare list of transaction hashes (as
+/// opposed to `/addresses/{address}/transactions`, which returns objects).
+pub async fn route(
+    State(state): State<AppState>,
+    Path(address_path): Path<AddressesPath>,
+    Query(pagination_query): Query<PaginationQuery>,
+) -> ApiResult<Vec<String>> {
+    let AddressesPath { address, asset: _ } = address_path;
+    let pagination = Pagination::from_query(pagination_query)?;
+    let address_info = AddressInfo::from_address(&address, state.config.network.clone())?;
+    let data_node = state.data_node()?;
+
+    data_node
+        .addresses()
+        .txs(&address_info.address, &pagination)
+        .await
+}

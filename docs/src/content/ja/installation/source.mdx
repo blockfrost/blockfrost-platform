@@ -1,0 +1,48 @@
+import { Tabs, Tab } from "nextra/components";
+
+# ソースコードからバイナリをビルドする
+
+ソースコードから `blockfrost-platform` をビルドするのは最も簡単な方法ではありませんが、実行するバイナリがプロジェクトのソースコードから直接生成されたものであることを保証できます。
+
+まず、システムに依存関係をインストールする必要があります。
+
+<Tabs items={['Fedora','Ubuntu']}>
+  <Tabs.Tab>
+    ```shell
+    dnf install git cargo openssl-devel
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    ```shell
+    apt install git rustup libssl-dev pkg-config
+    ```
+
+`rustup` をインストールした後、最新の安定版 Rust に切り替える必要があります。
+
+```shell
+rustup default stable
+```
+
+  </Tabs.Tab>
+</Tabs>
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/blockfrost/blockfrost-platform
+
+# プロジェクトディレクトリへ移動
+cd blockfrost-platform
+
+# 最新の main 版 (実験的) をビルドする場合
+git checkout main
+
+# リリース版 (推奨) をビルドする場合
+git checkout 1.0.0
+
+# プロジェクトをビルド
+cargo build --release
+
+# バイナリを実行
+./target/release/blockfrost-platform  --version
+blockfrost-platform 1.0.0 (<1134f1a3027e3cbaf81f5e5595aadd1bcfefdae7>)
+```

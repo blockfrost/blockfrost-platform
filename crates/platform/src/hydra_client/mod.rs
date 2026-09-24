@@ -52,6 +52,7 @@ impl HydraController {
     pub async fn spawn(
         config: crate::config::HydraConfig,
         network: bf_common::types::Network,
+        genesis: bf_api_provider::types::GenesisResponse,
         node_socket_path: String,
         reward_address: String,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
@@ -62,6 +63,7 @@ impl HydraController {
         let event_tx = State::spawn(
             config,
             network,
+            genesis,
             node_socket_path,
             reward_address,
             health_errors,
@@ -122,6 +124,7 @@ impl State {
     async fn spawn(
         config: crate::config::HydraConfig,
         network: bf_common::types::Network,
+        genesis: bf_api_provider::types::GenesisResponse,
         node_socket_path: String,
         reward_address: String,
         health_errors: Arc<Mutex<Vec<BlockfrostError>>>,
@@ -146,11 +149,6 @@ impl State {
             .join("hydra")
             .join(network.as_str())
             .join(gateway_prefix);
-
-        let genesis = {
-            use crate::genesis::*;
-            genesis().by_network(&network)
-        };
 
         let (event_tx, mut event_rx) = mpsc::channel::<Event>(32);
 

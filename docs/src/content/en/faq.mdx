@@ -4,9 +4,8 @@ import { Callout } from "nextra/components";
 
 <Callout type="default" emoji="📣">
   Cannot find your question listed here and it is missing from the
-  documentation? Join our community on
-  [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost`
-  channel.
+  documentation? Join our community on [Discord](https://discord.gg/YfGKvqpt2d)
+  in the `#ask-blockfrost` channel.
 </Callout>
 
 ## FAQ sections
@@ -23,7 +22,7 @@ import { Callout } from "nextra/components";
 
 To receive an Icebreaker NFT:
 
-1. Connect with us on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel to ask about receiving an Icebreaker NFT and a team member will assist you.
+1. Connect with us on [Discord](https://discord.gg/YfGKvqpt2d) in the `#ask-blockfrost` channel to ask about receiving an Icebreaker NFT and a team member will assist you.
 
 2. After reviewing and approving your request, the Blockfrost team will email you confirmation and mint the NFT to your wallet address. This NFT serves as your license to participate in the Icebreakers program.
 
@@ -40,7 +39,7 @@ If you've received the confirmation email but haven't received your NFT:
 
 2. Contact our support team at support@blockfrost.io.
 
-3. Reach out on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel where a team member will assist you.
+3. Reach out on [Discord](https://discord.gg/YfGKvqpt2d) in the `#ask-blockfrost` channel where a team member will assist you.
 
 The Blockfrost team actively monitors both email and Discord communications and will help resolve any issues promptly.
 
@@ -48,12 +47,12 @@ The Blockfrost team actively monitors both email and Discord communications and 
 
 After receiving your Icebreaker NFT:
 
-- Notify the Blockfrost team via [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel that you've received your NFT
+- Notify the Blockfrost team via [Discord](https://discord.gg/YfGKvqpt2d) in the `#ask-blockfrost` channel that you've received your NFT
 - A team member will add you to the private Icebreakers Discord channel
 - The comprehensive documentation mentioned in the Icebreakers channel is this documentation site you are reading now.
 - Follow the setup instructions beginning with the [getting started](get-started) section.
 
-If you've received your NFT but don't have channel access yet, post a message on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel for assistance.
+If you've received your NFT but don't have channel access yet, post a message on [Discord](https://discord.gg/YfGKvqpt2d) in the `#ask-blockfrost` channel for assistance.
 
 ### Do I need confirmation after receiving the NFT to proceed?
 
@@ -84,28 +83,14 @@ For detailed instructions on each step, follow the links above.
 
 ### What endpoints do I need to open in my firewall for the Icebreaker node?
 
-To function properly, your Icebreaker node requires the following ports to be open in your firewall:
+The Icebreaker node connects **outbound** to the Blockfrost load balancers over WebSocket and serves API requests over those connections, so it no longer needs any inbound port open to the public Internet.
 
-- `3000/tcp` (or custom port): For incoming API requests from Blockfrost and Prometheus metrics endpoint for monitoring. Metrics can be disabled altogether if you prefer.
+Your firewall only needs to allow:
 
-Ensure these ports allow incoming connections from the Blockfrost server IPs.
+- **Outbound** connections to the Blockfrost load balancers (and to your Cardano node / data node).
+- Optionally, access to the local Prometheus metrics endpoint on `3000/tcp` (or your custom port) from wherever you scrape it. This is only required if you monitor the node with Prometheus; metrics can be disabled altogether if you prefer.
 
-**Example for Ubuntu with ufw**
-
-You can make ports accessible using:
-
-```bash
-sudo ufw allow 3000/tcp
-```
-
-**Example using a computer outside of the server network**
-
-You can verify port accessibility from the external world by using another computer outside of the server network:
-
-```bash
-telnet YOUR_PUBLIC_IP 3000
-curl -v http://YOUR_PUBLIC_IP:3000/
-```
+Because API traffic now arrives over the outbound WebSocket connection, you do not need to expose port `3000` to the Internet or configure inbound firewall rules for Blockfrost.
 
 ### How do I build `blockfrost-platform` from source?
 
@@ -114,39 +99,13 @@ This is often recommended over using pre-built installers if you encounter issue
 
 ### Do I need a static public IP address for my Icebreaker node?
 
-Yes, a static public IP is strongly recommended for reliably running an Icebreaker node.
+No. The node connects outbound to the Blockfrost load balancers over WebSocket, so it works from behind firewalls, NAT, double NAT, or CGNAT, and does not require a static public IP or any inbound port.
 
-The Blockfrost platform currently identifies and monitors nodes based on their consistent public IP.
-Without a static IP, you risk connection issues and flapping.
-
-<Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using
-  WebSockets that will enable IP address filtering directly in the Blockfrost
-  platform. This feature will simplify security in complex network environments
-  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
-  Monitor updates on [GitHub issue
-  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
-  handling improvements.
-</Callout>
-
-In the interim, using a static IP is best.
-If not possible, a dynamic DNS service or VPN may help provide a stable hostname to IP mapping.
+A stable outbound Internet connection is all that is needed. Dynamic public IPs are fine.
 
 ### What should I do if my public IP address changes frequently?
 
-Frequent public IP address changes can disrupt the connection between your Icebreaker and the Blockfrost servers.
-A future update will address this by allowing connections from behind NATs (see [this GitHub Issue](https://github.com/blockfrost/blockfrost-platform/issues/178)).
-In the meantime, consider using a static IP address or a dynamic DNS service.
-
-<Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using
-  WebSockets that will enable IP address filtering directly in the Blockfrost
-  platform. This feature will simplify security in complex network environments
-  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
-  Monitor updates on [GitHub issue
-  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
-  handling improvements.
-</Callout>
+A changing public IP is not a problem. Because the node establishes the connection to the Blockfrost load balancers itself, over an outbound WebSocket, it re-registers automatically whenever the connection drops and reconnects regardless of your current IP address.
 
 ### How do I run blockfrost-platform with only IPv4?
 
@@ -247,7 +206,7 @@ Common issues include:
 
 1. Incorrect configuration of the `config.toml` file
 2. Using outdated versions of the platform
-3. External IP and port accessibility problems.
+3. Blocked outbound connectivity to the Icebreakers API or load balancers.
 4. Network connectivity problems, especially with IPv6
 
 <Callout type="warning" emoji="⚠️">
@@ -264,24 +223,24 @@ If you encounter issues with the `blockfrost-platform` binary or installer:
 
 3. Report any persistent bugs on the [Blockfrost platform GitHub issues page](https://github.com/blockfrost/blockfrost-platform/issues) with details about your environment and the specific error messages you're encountering.
 
-4. If you are not already in the Icebreakers private Discord channel, post a message on [Discord](https://discord.com/invite/inputoutput) in the `#ask-blockfrost` channel for assistance, as other participants may have found solutions to similar problems.
+4. If you are not already in the Icebreakers private Discord channel, post a message on [Discord](https://discord.gg/YfGKvqpt2d) in the `#ask-blockfrost` channel for assistance, as other participants may have found solutions to similar problems.
 
 ### I'm having trouble registering my Icebreaker node. What should I check?
 
 - **Secret Key and Reward Address:** Ensure your `--secret` and `--reward-address` in the configuration file are correct.
-- **Firewall:** Ensure your firewall allows outgoing connections on port 3000.
-- **IPv6 Connectivity:** Check if your server can reach the IceBreakers API via IPv6. A simple `curl -v http://[IPv6-address]:[port]/` can help diagnose this. Consider adding an entry to your `/etc/hosts` file to resolve the Blockfrost server address to its IPv4 address as a workaround.
+- **Firewall:** Ensure your firewall allows outbound connections to the Icebreakers API and load balancers.
+- **IPv6 Connectivity:** Check if your server can reach the Icebreakers API via IPv6. A simple `curl -v http://[IPv6-address]:[port]/` can help diagnose this. Consider adding an entry to your `/etc/hosts` file to resolve the Blockfrost server address to its IPv4 address as a workaround.
 - **Network Namespace:** If IPv6 is causing issues, consider running `blockfrost-platform` within a network namespace with IPv6 disabled.
 - **Open Issues:** Check the [GitHub Issues](https://github.com/blockfrost/blockfrost-platform/issues) for known problems and potential solutions.
 
 ### What should I do if I encounter the error "failed to register to the Icebreakers API" when starting the platform?
 
-This error usually indicates an issue with your public IP address or firewall configuration.
+This error usually indicates that the node could not reach the Icebreakers API, or that its credentials are incorrect.
 To resolve it:
 
-1. Ensure your Icebreaker node has a public IPv4 address that is reachable from the Internet
-2. Open port 3000 (or the custom port if so configured) in your firewall to allow incoming connections
-3. Verify external reachability by running `curl -v http://YOUR_PUBLIC_IP:3000/` which should return a JSON response
+1. Confirm your `--secret` and `--reward-address` are correct.
+2. Ensure the node can make **outbound** connections to the Icebreakers API (check firewall/proxy rules for outgoing traffic).
+3. Verify outbound connectivity by running `curl -v https://icebreakers-api.blockfrost.io/` from the node.
 4. If using IPv6, consider temporarily disabling it or specifying an IPv4 address explicitly in your configuration.
 
 See the [configuration](/configuration) documentation for more details.
@@ -347,13 +306,10 @@ To enhance the security of your Icebreaker node:
 - Set up monitoring to detect unusual access patterns in system logs.
 
 <Callout type="info">
-  **On our roadmap**: We're developing a reverse-connection mechanism using
-  WebSockets that will enable IP address filtering directly in the Blockfrost
-  platform. This feature will simplify security in complex network environments
-  (firewalls, double NAT, CGNAT) and eliminate the need for static IP addresses.
-  Monitor updates on [GitHub issue
-  #178](https://github.com/blockfrost/blockfrost-platform/issues/178) for NAT
-  handling improvements.
+  The node connects to the Blockfrost load balancers over an outbound WebSocket
+  and does not expose any inbound port to the public Internet. This keeps it
+  usable in complex network environments (firewalls, double NAT, CGNAT) without
+  a static public IP.
 </Callout>
 
 ### How can I contribute to improving the Blockfrost platform?

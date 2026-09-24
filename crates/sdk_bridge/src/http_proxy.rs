@@ -7,7 +7,7 @@ use axum::{Extension, Router};
 use std::net::SocketAddr;
 use tracing::{error, warn};
 
-const MAX_BODY_BYTES: usize = 1024 * 1024;
+const MAX_BODY_BYTES: usize = bf_common::DEFAULT_MAX_BODY_BYTES;
 
 #[derive(Clone)]
 struct ProxyState {
