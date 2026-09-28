@@ -12,6 +12,7 @@
 - Gateway: required `database.pool_max_size` config value (overridable via `BLOCKFROST_GATEWAY_DB_POOL_MAX_SIZE`) that caps the PostgreSQL connection pool per gateway instance
 - New endpoints proxied to the data node: `/accounts/{stake_address}/utxos`, `/addresses/{address}`, and `/blocks/slot/{slot_number}`
 - `--max-response-body-bytes` to configure the maximum proxied response body size (default 10 MiB)
+- When Platform, Gateway, or SDK Bridge receives SIGINT or SIGTERM, it drains the open HTTP requests. If requests remain after 10 seconds, the process exits with status 0.
 
 ### Fixed
 

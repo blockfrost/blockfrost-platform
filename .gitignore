@@ -55,4 +55,6 @@ result-*
 # Coverage artifacts (LLVM source-based coverage)
 *.profraw
 *.profdata
+*.lcov
 coverage-html/
+/coverage-inputs/

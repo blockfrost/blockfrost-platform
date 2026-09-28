@@ -25,6 +25,7 @@ use pallas_network::miniprotocols::localtxsubmission::TxValidationError;
 /// deserializer against the Haskell one. Use it for specific cases.
 #[cfg(test)]
 pub(crate) async fn verify_one(cbor: &str) {
+    use crate::external::ExternalDecoder;
     use pallas_hardano::display::haskell_error::serialize_error;
 
     let cbor = hex::decode(cbor).unwrap();
@@ -32,26 +33,22 @@ pub(crate) async fn verify_one(cbor: &str) {
     let our_decoding = decode_error(&cbor);
     let our_json = serialize_error(our_decoding).expect("Failed to serialize error");
 
-    {
-        use crate::external::ExternalDecoder;
+    let reference_json = match ExternalDecoder::instance().decode(&cbor).await {
+        Ok(value) => value,
+        Err(shared_decoder_err) => {
+            // Recover from a poisoned shared decoder process by retrying with a fresh one.
+            let fresh_decoder = ExternalDecoder::spawn()
+                .expect("Failed to spawn a fresh ExternalDecoder for retry");
+            fresh_decoder.decode(&cbor).await.unwrap_or_else(|fresh_decoder_err| {
+                panic!(
+                    "Failed to decode reference JSON with both shared and fresh ExternalDecoder instances. shared_error={shared_decoder_err}, fresh_error={fresh_decoder_err}, cbor={}",
+                    hex::encode(&cbor)
+                )
+            })
+        },
+    };
 
-        let reference_json = match ExternalDecoder::instance().decode(&cbor).await {
-            Ok(value) => value,
-            Err(shared_decoder_err) => {
-                // Recover from a poisoned shared decoder process by retrying with a fresh one.
-                let fresh_decoder = ExternalDecoder::spawn()
-                    .expect("Failed to spawn a fresh ExternalDecoder for retry");
-                fresh_decoder.decode(&cbor).await.unwrap_or_else(|fresh_decoder_err| {
-                    panic!(
-                        "Failed to decode reference JSON with both shared and fresh ExternalDecoder instances. shared_error={shared_decoder_err}, fresh_error={fresh_decoder_err}, cbor={}",
-                        hex::encode(&cbor)
-                    )
-                })
-            },
-        };
-
-        assert_json_eq!(reference_json, our_json);
-    }
+    assert_json_eq!(reference_json, our_json);
 }
 #[cfg(test)]
 fn decode_error(bytes: &[u8]) -> TxValidationError {
