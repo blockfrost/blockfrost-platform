@@ -450,6 +450,8 @@ jobs:
       - blockfrost_integration_tests
       - hydra_tests
     env:
+      LINE_THRESHOLD_REGULAR: 52
+      LINE_THRESHOLD_HYDRA: 55
       HYDRA_ENABLED: ${{ github.event_name == 'schedule' || github.event.inputs.run_hydra == 'true' }}
       UNIT_RESULT: ${{ needs.unit_tests.result }}
       PLATFORM_RESULT: ${{ needs.platform_integration_tests.result }}
@@ -517,7 +519,7 @@ jobs:
               exit 1
             fi
             lcov_files=("${expected_paths[@]}")
-            threshold=$([ "$HYDRA_ENABLED" = true ] && echo 55 || echo 50)
+            threshold=$([ "$HYDRA_ENABLED" = true ] && echo "$LINE_THRESHOLD_HYDRA" || echo "$LINE_THRESHOLD_REGULAR")
           else
             lcov_files=("${found_files[@]}")
             if [ "${#lcov_files[@]}" -eq 0 ]; then

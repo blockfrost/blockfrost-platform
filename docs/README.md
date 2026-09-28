@@ -66,13 +66,19 @@ These converters read the profiles with the prefixes `hydra-pg` and `hydra-bg`.
 
 CI uses one workflow, `.github/workflows/ci.yaml`:
 
-- A regular run does the unit tests, the Platform integration tests, and the Blockfrost tests. The minimum line coverage is 50%.
-- A nightly run also does the Hydra tests on the same commit. The minimum line coverage is 55%.
+- A regular run does the unit tests, the Platform integration tests, and the Blockfrost tests.
+- A nightly run also does the Hydra tests on the same commit.
 - If `run_hydra` is `true`, a manual run also does the Hydra tests.
+
+The `coverage_report` job sets the minimum line coverage for each type of run.
+`LINE_THRESHOLD_REGULAR` is the minimum for a regular run.
+`LINE_THRESHOLD_HYDRA` is the minimum for a run with the Hydra tests.
 
 CI merges only the coverage artifacts from the current run.
 CI does not use coverage from a different commit.
 If a required test job does not pass, CI makes a diagnostic report without a threshold check.
 The `coverage-report` artifact contains the HTML report. If the threshold check fails, CI also uploads this artifact.
-Function coverage is only for information, because different builds can give different symbol names to one function.
+Function coverage is only for information.
+Different builds can give different symbol names to one function.
+The report counts each function one time, at its source location.
 The report does not include dependencies, build-only crates, test-only crates, or standalone test files.

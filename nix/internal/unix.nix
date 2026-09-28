@@ -367,6 +367,18 @@ in
             exit 1
           fi
           test -s coverage-html/index.html
+          # This LCOV file gives two Rust symbol names to the function `answer` at line 1.
+          # The two names are different only in the crate hash (`AAA` and `BBB`), as in two different builds.
+          # The report must count `answer` one time. As a result, the expected result is 1 of 2 functions.
+          printf 'TN:\nSF:crates/fixture/src/lib.rs\nFN:1,_RNvCsAAA_7fixture6answer\nFN:1,_RNvCsBBB_7fixture6answer\nFN:4,_RNvCsAAA_7fixture9uncovered\n' > aliases.lcov
+          printf 'FNDA:1,_RNvCsAAA_7fixture6answer\nFNDA:0,_RNvCsBBB_7fixture6answer\nFNDA:0,_RNvCsAAA_7fixture9uncovered\n' >> aliases.lcov
+          printf 'FNF:3\nFNH:1\nDA:1,1\nDA:2,1\nDA:4,0\nDA:5,0\nLF:4\nLH:2\nend_of_record\n' >> aliases.lcov
+          coverage-report aliases.lcov > aliases.log 2>&1
+          if ! grep -qF 'functions...: 50.0% (1 of 2 functions)' aliases.log; then
+            cat aliases.log >&2
+            echo "Error: coverage-report counted function aliases more than one time" >&2
+            exit 1
+          fi
           for invalid in missing.lcov empty.lcov corrupt.lcov; do
             : > empty.lcov
             printf 'TN:\nSF:crates/fixture/src/lib.rs\nDA9\nend_of_record\n' > corrupt.lcov
@@ -1481,15 +1493,19 @@ in
           echo "Error: the merged LCOV file has no executable lines from the workspace" >&2
           exit 1
         fi
+        # Rust builds can give one function many symbol names, for example one name for each crate hash or generic type.
+        # With `--filter function`, lcov counts each function one time, at its source location.
+        # The `genhtml` and `lcov --summary` commands use this filter.
         genhtml "$tmp/combined.lcov" \
           --output-directory "$tmp/html" \
           --title "blockfrost-platform coverage" \
+          --filter function \
           --legend
         cp "$tmp/combined.lcov" "$tmp/html/combined.lcov"
         rm -rf coverage-html
         mv "$tmp/html" coverage-html
         echo "HTML report written to coverage-html/"
-        lcov --summary coverage-html/combined.lcov --fail-under-lines "$threshold"
+        lcov --summary coverage-html/combined.lcov --filter function --fail-under-lines "$threshold"
       '';
     };
 
