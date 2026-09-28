@@ -40,11 +40,6 @@ async fn main() -> Result<(), AppError> {
 
     let address = std::net::SocketAddr::new(config.server_address, config.server_port);
     let listener = tokio::net::TcpListener::bind(address).await?;
-    let shutdown_signal = async {
-        let _ = tokio::signal::ctrl_c().await;
-        info!("Received shutdown signal");
-    };
-
     let notify_server_ready = Arc::new(tokio::sync::Notify::new());
 
     // Spawn the server in its own task
@@ -53,7 +48,7 @@ async fn main() -> Result<(), AppError> {
         let app = app.clone();
         async move {
             let server_future = axum::serve(listener, app.into_make_service())
-                .with_graceful_shutdown(shutdown_signal);
+                .with_graceful_shutdown(bf_common::shutdown::signal());
 
             // Notify that the server has reached the listening stage
             notify_server_ready.notify_one();

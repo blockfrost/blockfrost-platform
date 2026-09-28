@@ -80,5 +80,4 @@ LABEL org.opencontainers.image.title="Blockfrost platform" \
   org.opencontainers.image.revision=$GIT_REVISION
 
 EXPOSE 3000/tcp
-STOPSIGNAL SIGINT
 ENTRYPOINT ["/app/blockfrost-platform"]

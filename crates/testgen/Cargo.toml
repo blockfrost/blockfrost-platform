@@ -15,5 +15,4 @@ num_cpus.workspace = true
 crossbeam.workspace = true
 
 [features]
-tarpaulin = []
 test-utils = []

@@ -35,7 +35,6 @@ in {
     {package = internal.hydra-node;}
     {package = internal.dolos;}
     {package = pkgs.cargo-nextest;}
-    {package = pkgs.cargo-tarpaulin;}
     {
       name = "cargo";
       package = internal.rustPackages.cargo;
@@ -102,21 +101,10 @@ in {
 
   env =
     internal.hydraScriptsEnvVars
-    ++ [
-      {
-        name = "TESTGEN_HS_PATH";
-        value = lib.getExe internal.testgen-hs;
-      }
-      {
-        name = "HYDRA_NODE_PATH";
-        value = lib.getExe internal.hydra-node;
-      }
-    ]
+    ++ (lib.mapAttrsToList (name: value: {inherit name value;}) (
+      builtins.removeAttrs internal.cargoEnv ["RUSTFLAGS" "PKG_CONFIG_PATH" "LIBRARY_PATH"]
+    ))
     ++ lib.optionals pkgs.stdenv.isDarwin [
-      {
-        name = "LIBCLANG_PATH";
-        value = internal.commonArgs.LIBCLANG_PATH;
-      }
       # `numtide/devshell` sets `LIBRARY_PATH` with a stray `-L` prefix on
       # Darwin, so clang ends up with a bogus `-L-L…/lib` search path and
       # can't find libraries living in the devshell (e.g. `-liconv`).
@@ -126,10 +114,9 @@ in {
       }
     ]
     ++ lib.optionals pkgs.stdenv.isLinux [
-      # Embed `openssl` in `RPATH`:
       {
         name = "RUSTFLAGS";
-        eval = ''"-Clink-arg=-fuse-ld=bfd -Clink-arg=-Wl,-rpath,$(pkg-config --variable=libdir openssl libpq | tr ' ' :)"'';
+        value = internal.cargoEnv.RUSTFLAGS;
       }
       {
         name = "LD_LIBRARY_PATH";

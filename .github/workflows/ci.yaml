@@ -5,6 +5,8 @@ on:
   release:
     types:
       - published
+  schedule:
+    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       upload_artifacts:
@@ -12,9 +14,14 @@ on:
         type: boolean
         required: true
         default: true
+      run_hydra:
+        description: "Include the Hydra tests"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event_name == 'schedule' || github.event.inputs.run_hydra == 'true') && 'full' || 'regular' }}
   cancel-in-progress: true
 
 env:
@@ -84,9 +91,10 @@ jobs:
             exit 1
           fi
 
-  build_and_test:
+  build:
     name: Build and Test
     needs: [check_action_pins, static_checks]
+    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -134,7 +142,9 @@ jobs:
       - name: Build
         run: cargo build --workspace --release --verbose
 
+      # On Linux, unit tests run with coverage in the `unit_tests` job
       - name: Test
+        if: runner.os != 'Linux'
         timeout-minutes: 10
         run: cargo test --workspace --lib --verbose
 
@@ -151,26 +161,63 @@ jobs:
           name: ${{ runner.os }}-binary
           path: artifacts/
 
+  unit_tests:
+    name: Unit Tests
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: [check_flake_lock, static_checks]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Do a test of the coverage tools
+        run: nix build -L --no-link .#checks.x86_64-linux.coverage-tools
+
+      - name: Run unit tests with coverage
+        id: test
+        timeout-minutes: 10
+        run: nix run -L .#internal.x86_64-linux.coverage-unit-tests
+
+      - name: Upload coverage
+        if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-input-unit
+          path: unit.lcov
+          if-no-files-found: ${{ steps.test.outcome == 'success' && 'error' || 'warn' }}
+          overwrite: true
+
   platform_integration_tests:
     name: Platform Integration Tests
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: [check_flake_lock]
+    needs: [check_flake_lock, static_checks]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Run Integration Tests
+        id: test
         timeout-minutes: 10
         env:
           CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
           BLOCKFROST_PREVIEW_PROJECT_ID: ${{ secrets.BLOCKFROST_PREVIEW_PROJECT_ID }}
           DATA_NODE_ENDPOINT: http://127.0.0.1:3010
-        run: nix develop .# --command cargo test --verbose -p blockfrost-platform-integration-tests --no-fail-fast
+        run: nix run -L .#internal.x86_64-linux.coverage-platform-integ-tests
+
+      - name: Upload coverage
+        if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-input-platform-integ
+          path: platform-integ.lcov
+          if-no-files-found: ${{ steps.test.outcome == 'success' && 'error' || 'warn' }}
+          overwrite: true
 
   blockfrost_integration_tests:
-    name: ${{ matrix.mode == 'ignore-check' && 'Ignored' || 'Tests' }} (${{ matrix.network }})
+    name: >-
+      ${{ matrix.mode == 'ignore-check' && 'Ignored'
+       || 'Tests' }} (${{ matrix.network }})
     runs-on: [self-hosted, Linux, X64, nixos]
-    needs: [check_flake_lock]
+    needs: [check_flake_lock, static_checks]
     strategy:
       fail-fast: false
       matrix:
@@ -197,44 +244,95 @@ jobs:
         uses: actions/checkout@v5
 
       - name: ${{ matrix.mode == 'ignore-check' && 'Check ignored tests still fail' || 'Run Blockfrost Tests' }}
+        id: run_tests
         timeout-minutes: 15
         env:
           PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
           SUBMIT_MNEMONIC: ${{ secrets[matrix.submit_mnemonic_secret] }}
           DATA_NODE_ENDPOINT: ${{ matrix.data_node_endpoint }}
           CARDANO_NODE_SOCKET_PATH: ${{ matrix.cardano_node_socket_path }}
+          LLVM_PROFILE_FILE: ${{ github.workspace }}/blockfrost-${{ matrix.network }}-%p-%m.profraw
         run: |
-          target=${{ matrix.mode == 'ignore-check' && 'blockfrost-ignore-check' || 'blockfrost-tests' }}
+          target=${{ matrix.mode == 'ignore-check' && 'blockfrost-ignore-check' || 'coverage-blockfrost-tests' }}
           nix run -L .#internal.x86_64-linux."${target}-${{ matrix.network }}"
 
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    needs: [check_action_pins]
+      - name: Convert profraw to LCOV
+        id: convert
+        if: ${{ !cancelled() && matrix.mode != 'ignore-check' && (steps.run_tests.outcome == 'success' || steps.run_tests.outcome == 'failure') }}
+        run: nix run -L .#internal.x86_64-linux.coverage-convert-blockfrost-${{ matrix.network }}
+
+      - name: Upload coverage
+        if: ${{ !cancelled() && matrix.mode != 'ignore-check' && steps.convert.outcome == 'success' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-input-blockfrost-${{ matrix.network }}
+          path: blockfrost-${{ matrix.network }}.lcov
+          if-no-files-found: error
+          overwrite: true
+
+  hydra_tests:
+    name: ${{ matrix.name }}
+    runs-on: [self-hosted, Linux, X64, nixos]
+    needs: [check_flake_lock, static_checks]
+    if: ${{ github.event_name == 'schedule' || github.event.inputs.run_hydra == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: Hydra tests of their `--blockfrost` option
+            run_target: hydra-test
+            timeout_minutes: 15
+            profraw_prefix: ""
+            convert_target: ""
+            lcov_file: ""
+            artifact_name: ""
+          - name: Hydra micropayments tests between Platform↔Gateway
+            run_target: coverage-hydra-platform-gateway-test
+            timeout_minutes: 60
+            profraw_prefix: hydra-pg
+            convert_target: coverage-convert-hydra-pg
+            lcov_file: hydra-platform-gateway.lcov
+            artifact_name: coverage-input-hydra-platform-gateway
+          - name: Hydra micropayments tests between Bridge↔Gateway
+            run_target: coverage-hydra-bridge-gateway-test
+            timeout_minutes: 60
+            profraw_prefix: hydra-bg
+            convert_target: coverage-convert-hydra-bg
+            lcov_file: hydra-bridge-gateway.lcov
+            artifact_name: coverage-input-hydra-bridge-gateway
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1
+      - name: Run Hydra Tests
+        id: run_tests
+        timeout-minutes: ${{ matrix.timeout_minutes }}
+        env:
+          CARDANO_NODE_SOCKET_PATH: /run/cardano-node/node_preview.socket
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_TESTS_PROJECT_ID }}
+          SUBMIT_MNEMONIC: ${{ secrets.BLOCKFROST_TESTS_SUBMIT_MNEMONIC }}
+          LLVM_PROFILE_FILE: ${{ matrix.profraw_prefix != '' && format('{0}/{1}-%p-%m.profraw', github.workspace, matrix.profraw_prefix) || '' }}
+        run: nix run -L .#internal.x86_64-linux.${{ matrix.run_target }}
 
-      - name: Cache Cargo build
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - name: Convert profraw to LCOV
+        id: convert
+        if: ${{ !cancelled() && matrix.convert_target != '' && (steps.run_tests.outcome == 'success' || steps.run_tests.outcome == 'failure') }}
+        run: nix run -L .#internal.x86_64-linux.${{ matrix.convert_target }}
+
+      - name: Upload coverage
+        if: ${{ !cancelled() && matrix.artifact_name != '' && steps.convert.outcome == 'success' }}
+        uses: actions/upload-artifact@v5
         with:
-          shared-key: coverage
-
-      - name: Install cargo-tarpaulin
-        uses: taiki-e/install-action@c070f87102a1c75b3183910f391c1cb887fe13c8 # v2.77.6
-        with:
-          tool: cargo-tarpaulin
-
-      - name: Check coverage
-        timeout-minutes: 10
-        run: cargo tarpaulin --workspace --all --lib --features tarpaulin --fail-under 8
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.lcov_file }}
+          if-no-files-found: error
+          overwrite: true
 
   oci_build:
     name: OCI Build (${{ matrix.arch }})
     needs: [check_action_pins]
+    if: github.event_name != 'schedule'
     strategy:
       fail-fast: false
       matrix:
@@ -293,7 +391,7 @@ jobs:
     name: Create multi-arch manifests
     runs-on: ubuntu-latest
     needs: [oci_build]
-    if: ${{ github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published') }}
+    if: ${{ github.event_name != 'schedule' && (github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published')) }}
 
     steps:
       - name: Login to GHCR
@@ -334,3 +432,116 @@ jobs:
 
           set -x
           docker buildx imagetools create "${args[@]}" "${amd}" "${arm}"
+
+  coverage_report:
+    name: Coverage Report
+    runs-on: [self-hosted, Linux, X64, nixos]
+    # If some test jobs fail, this job still makes a report. If GitHub skips
+    # all regular test jobs, this job does not start. For example, this
+    # occurs when `static_checks` fails. Then there are no LCOV files to merge.
+    if: >-
+      ${{ !cancelled() &&
+          (needs.unit_tests.result != 'skipped' ||
+           needs.platform_integration_tests.result != 'skipped' ||
+           needs.blockfrost_integration_tests.result != 'skipped') }}
+    needs:
+      - unit_tests
+      - platform_integration_tests
+      - blockfrost_integration_tests
+      - hydra_tests
+    env:
+      LINE_THRESHOLD_REGULAR: 52
+      LINE_THRESHOLD_HYDRA: 55
+      HYDRA_ENABLED: ${{ github.event_name == 'schedule' || github.event.inputs.run_hydra == 'true' }}
+      UNIT_RESULT: ${{ needs.unit_tests.result }}
+      PLATFORM_RESULT: ${{ needs.platform_integration_tests.result }}
+      BLOCKFROST_RESULT: ${{ needs.blockfrost_integration_tests.result }}
+      HYDRA_RESULT: ${{ needs.hydra_tests.result }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: coverage-input-*
+          path: coverage-inputs
+
+      - name: Generate coverage report
+        id: report
+        run: |
+          expected_paths=(
+            coverage-inputs/coverage-input-unit/unit.lcov
+            coverage-inputs/coverage-input-platform-integ/platform-integ.lcov
+            coverage-inputs/coverage-input-blockfrost-preview/blockfrost-preview.lcov
+            coverage-inputs/coverage-input-blockfrost-preprod/blockfrost-preprod.lcov
+            coverage-inputs/coverage-input-blockfrost-mainnet/blockfrost-mainnet.lcov
+          )
+          if [ "$HYDRA_ENABLED" = true ]; then
+            expected_paths+=(
+              coverage-inputs/coverage-input-hydra-platform-gateway/hydra-platform-gateway.lcov
+              coverage-inputs/coverage-input-hydra-bridge-gateway/hydra-bridge-gateway.lcov
+            )
+          fi
+
+          required_ok=true
+          for r in "$UNIT_RESULT" "$PLATFORM_RESULT" "$BLOCKFROST_RESULT"; do
+            [ "$r" = success ] || required_ok=false
+          done
+          if [ "$HYDRA_ENABLED" = true ]; then
+            [ "$HYDRA_RESULT" = success ] || required_ok=false
+          fi
+
+          shopt -s nullglob
+          found_files=(coverage-inputs/*/*.lcov)
+          shopt -u nullglob
+          echo "Found ${#found_files[@]} coverage input file(s). A complete run expects ${#expected_paths[@]} file(s)."
+
+          if [ "$required_ok" = true ]; then
+            missing=()
+            for p in "${expected_paths[@]}"; do
+              [ -f "$p" ] || missing+=("$p")
+            done
+            if [ "${#missing[@]}" -gt 0 ]; then
+              echo "::error::All required jobs passed, but these coverage input file(s) are missing: ${missing[*]}" >&2
+              exit 1
+            fi
+            unexpected=()
+            for f in "${found_files[@]}"; do
+              match=false
+              for p in "${expected_paths[@]}"; do
+                [ "$f" = "$p" ] && match=true && break
+              done
+              [ "$match" = true ] || unexpected+=("$f")
+            done
+            if [ "${#unexpected[@]}" -gt 0 ]; then
+              echo "::error::Found unexpected coverage input file(s): ${unexpected[*]}" >&2
+              exit 1
+            fi
+            lcov_files=("${expected_paths[@]}")
+            threshold=$([ "$HYDRA_ENABLED" = true ] && echo "$LINE_THRESHOLD_HYDRA" || echo "$LINE_THRESHOLD_REGULAR")
+          else
+            lcov_files=("${found_files[@]}")
+            if [ "${#lcov_files[@]}" -eq 0 ]; then
+              echo "::notice::One or more required jobs did not pass. There are no coverage input files. This job will not make a report."
+              exit 0
+            fi
+            threshold=0
+            echo "One or more required jobs did not pass. This job makes a diagnostic report from ${#lcov_files[@]} coverage input file(s), with threshold 0."
+          fi
+
+          status=0
+          nix run -L .#internal.x86_64-linux.coverage-report -- --threshold "$threshold" "${lcov_files[@]}" || status=$?
+          if [ -f coverage-html/index.html ]; then
+            echo "html=true" >>"$GITHUB_OUTPUT"
+          fi
+          exit "$status"
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() && steps.report.outputs.html == 'true' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-report
+          path: coverage-html/
+          if-no-files-found: error
+          overwrite: true

@@ -239,6 +239,14 @@
     {
       "_comment": "pools/pool1zmfpd5r5vfwjmwm4cgy53exe58h7plnecny3t4948yw7zumzp4c/metadata (= pools/16d216d074625d2dbb75c20948e4d9a1efe0fe79c4c915d4b5391de1/metadata) -- off-chain metadata fetch fails with HASH_MISMATCH (the pool changed the hosted alps_meta.json without updating the on-chain hash), so ticker/name/description/homepage come back null",
       "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update_f1a8a7164c97"
+    },
+    {
+      "_comment": "pools/pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy (= pools/0f292fcaa02b8b2f9b3c8f9fd8e0bb21abedb692a6d5058df3ef2735) -- the fixture is outdated: the pool submitted a new registration certificate on mainnet (tx f1c0cd5fab3f75066fec8ff1061fdc692c17b401a3fdd5743360a33961d67518), adding an entry to `registration` and lowering `declared_pledge` from 250000000000 to 1000000000",
+      "id": "pools-pool-id-best-pool_ed86d68945e0"
+    },
+    {
+      "_comment": "pools/pool17s3mr9c4ejjfq20dz0ls9ggskc770kt267s9xmw93payzdswwgg (= pools/f423b19715cca49029ed13ff02a110b63de7d96ad7a0536dc5887a41) -- the fixture is outdated: the pool submitted a new registration certificate on mainnet (tx 086ac193e1a70d2d746b18e440247def0608dab00976ded94379e7f06ee13374), adding an entry to `registration`",
+      "id": "pools-pool-id-pool-with-unused-reward-stake-address_97ed5eda6cde"
     }
   ],
   "preprod": [

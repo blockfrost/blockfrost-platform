@@ -22,7 +22,19 @@ in
       sha256 = "sha256-OATSZm98Es5kIFuqaba+UvkQtFsVgJEBMmS+t6od5/U=";
     };
     rustPackages = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.toolchainOf rustChannel;
-    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustPackages.toolchain;
+    rustToolchain = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.combine [
+      rustPackages.toolchain
+      rustPackages.llvm-tools # needed for -Cinstrument-coverage
+    ];
+    craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
+
+    # Fenix keeps `llvm-tools` under `lib/rustlib/<target>/bin`, not on `PATH`:
+    rustLlvmTools = pkgs.runCommand "rust-llvm-tools" {} ''
+      mkdir -p $out/bin
+      for tool in llvm-profdata llvm-cov; do
+        ln -s ${rustToolchain}/lib/rustlib/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/bin/$tool $out/bin/
+      done
+    '';
 
     src = lib.cleanSourceWith {
       src = lib.cleanSource ../../.;
@@ -63,8 +75,36 @@ in
         RUSTFLAGS = "-Clink-arg=-fuse-ld=bfd";
       };
 
+    cargoEnv =
+      {
+        TESTGEN_HS_PATH = lib.getExe testgen-hs;
+        HYDRA_NODE_PATH = lib.getExe hydra-node;
+        PQ_LIB_DIR = "${lib.getLib pkgs.postgresql}/lib";
+      }
+      // lib.optionalAttrs pkgs.stdenv.isLinux {
+        PKG_CONFIG_PATH = "${lib.getDev pkgs.openssl}/lib/pkgconfig:${lib.getDev pkgs.postgresql}/lib/pkgconfig";
+        RUSTFLAGS = commonArgs.RUSTFLAGS + " -Clink-arg=-Wl,-rpath,${lib.getLib pkgs.openssl}/lib:${lib.getLib pkgs.postgresql}/lib";
+      }
+      // lib.optionalAttrs pkgs.stdenv.isDarwin {
+        PKG_CONFIG_PATH = "${lib.getDev pkgs.postgresql}/lib/pkgconfig";
+        LIBRARY_PATH = lib.makeLibraryPath commonArgs.buildInputs;
+        inherit (commonArgs) LIBCLANG_PATH;
+      };
+
     # For better caching:
     cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+    # Coverage-instrumented builds: deps must also be built with -Cinstrument-coverage
+    # because LLVM embeds counters at compile time.
+    coverageArgs =
+      commonArgs
+      // {
+        RUSTFLAGS =
+          (commonArgs.RUSTFLAGS or "")
+          + " -Cinstrument-coverage";
+      };
+
+    coverageCargoArtifacts = craneLib.buildDepsOnly coverageArgs;
 
     workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
     platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
@@ -73,38 +113,69 @@ in
 
     GIT_REVISION = inputs.self.rev or "dirty";
 
-    blockfrost-platform = craneLib.buildPackage (commonArgs
-      // {
-        inherit cargoArtifacts GIT_REVISION;
-        doCheck = false; # we run tests with `cargo-nextest` below
-        postInstall = ''
-          chmod -R +w $out
-          mv $out/bin $out/libexec
-          mkdir -p $out/bin
-          ( cd $out/bin && ln -s ../libexec/${packageName.pname} ./ ; )
-          mkdir -p $out/libexec/hydra-node/
-          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
-          $out/bin/${packageName.pname} --version
-        '';
-        meta = {
-          mainProgram = packageName.pname;
-          license =
-            if workspaceCargoToml.workspace.package.license == "Apache-2.0"
-            then lib.licenses.asl20
-            else throw "unknown license in Cargo.toml: ${workspaceCargoToml.workspace.package.license}";
-          inherit (platformCargoToml.package) description homepage;
-        };
-      });
-
-    mk-blockfrost-gateway = {mockDb ? false}:
-      craneLib.buildPackage (commonArgs
+    mk-blockfrost-platform = {coverage ? false}:
+      craneLib.buildPackage ((
+          if coverage
+          then coverageArgs
+          else commonArgs
+        )
         // {
-          inherit cargoArtifacts GIT_REVISION;
-          pname = gatewayCargoToml.package.name + lib.optionalString mockDb "-dev-mock-db";
+          cargoArtifacts =
+            if coverage
+            then coverageCargoArtifacts
+            else cargoArtifacts;
+          inherit GIT_REVISION;
+          pname = packageName.pname + lib.optionalString coverage "-coverage";
+          doCheck = false; # we run tests with `cargo-nextest` below
+          postInstall = ''
+            chmod -R +w $out
+            mv $out/bin $out/libexec
+            mkdir -p $out/bin
+            ( cd $out/bin && ln -s ../libexec/${packageName.pname} ./ ; )
+            mkdir -p $out/libexec/hydra-node/
+            ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+            $out/bin/${packageName.pname} --version
+          '';
+          meta =
+            if coverage
+            then {
+              mainProgram = packageName.pname;
+              description = "blockfrost-platform (coverage instrumented)";
+            }
+            else {
+              mainProgram = packageName.pname;
+              license =
+                if workspaceCargoToml.workspace.package.license == "Apache-2.0"
+                then lib.licenses.asl20
+                else throw "unknown license in Cargo.toml: ${workspaceCargoToml.workspace.package.license}";
+              inherit (platformCargoToml.package) description homepage;
+            };
+        });
+
+    blockfrost-platform = mk-blockfrost-platform {coverage = false;};
+
+    blockfrost-platform-coverage = mk-blockfrost-platform {coverage = true;};
+
+    mk-blockfrost-gateway = {
+      mockDb ? false,
+      coverage ? false,
+    }:
+      craneLib.buildPackage ((
+          if coverage
+          then coverageArgs
+          else commonArgs
+        )
+        // {
+          cargoArtifacts =
+            if coverage
+            then coverageCargoArtifacts
+            else cargoArtifacts;
+          inherit GIT_REVISION;
+          pname = gatewayCargoToml.package.name + lib.optionalString mockDb "-dev-mock-db" + lib.optionalString coverage "-coverage";
           doCheck = false; # we run tests with `cargo-nextest` below
           meta = {
             mainProgram = gatewayCargoToml.package.name;
-            description = "Blockfrost Gateway" + lib.optionalString mockDb " (dev mock DB build)";
+            description = "Blockfrost Gateway" + lib.optionalString coverage " (coverage instrumented)" + lib.optionalString mockDb " (dev mock DB build)";
           };
           postInstall = ''
             mv $out/bin $out/libexec
@@ -122,22 +193,40 @@ in
 
     blockfrost-gateway--dev-mock-db = mk-blockfrost-gateway {mockDb = true;};
 
-    blockfrost-sdk-bridge = craneLib.buildPackage (commonArgs
-      // {
-        inherit cargoArtifacts GIT_REVISION;
-        pname = sdkBridgeCargoToml.package.name;
-        doCheck = false; # we run tests with `cargo-nextest` below
-        meta.mainProgram = sdkBridgeCargoToml.package.name;
-        postInstall = ''
-          mv $out/bin $out/libexec
-          mkdir -p $out/bin
-          ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
-          mkdir -p $out/libexec/hydra-node/
-          ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
-          $out/bin/${sdkBridgeCargoToml.package.name} --version
-        '';
-        cargoExtraArgs = "--package blockfrost-sdk-bridge";
-      });
+    blockfrost-gateway--dev-mock-db-coverage = mk-blockfrost-gateway {
+      mockDb = true;
+      coverage = true;
+    };
+
+    mk-blockfrost-sdk-bridge = {coverage ? false}:
+      craneLib.buildPackage ((
+          if coverage
+          then coverageArgs
+          else commonArgs
+        )
+        // {
+          cargoArtifacts =
+            if coverage
+            then coverageCargoArtifacts
+            else cargoArtifacts;
+          inherit GIT_REVISION;
+          pname = sdkBridgeCargoToml.package.name + lib.optionalString coverage "-coverage";
+          doCheck = false; # we run tests with `cargo-nextest` below
+          meta.mainProgram = sdkBridgeCargoToml.package.name;
+          postInstall = ''
+            mv $out/bin $out/libexec
+            mkdir -p $out/bin
+            ( cd $out/bin && ln -s ../libexec/${sdkBridgeCargoToml.package.name} ./ ; )
+            mkdir -p $out/libexec/hydra-node/
+            ln -s ${hydra-node}/bin/hydra-node $out/libexec/hydra-node/
+            $out/bin/${sdkBridgeCargoToml.package.name} --version
+          '';
+          cargoExtraArgs = "--package blockfrost-sdk-bridge";
+        });
+
+    blockfrost-sdk-bridge = mk-blockfrost-sdk-bridge {coverage = false;};
+
+    blockfrost-sdk-bridge-coverage = mk-blockfrost-sdk-bridge {coverage = true;};
 
     cargoChecks = let
       # `cargo-udeps` and `cargo-shear --expand` require the Nightly toolchain:
@@ -235,6 +324,96 @@ in
     };
 
     nixChecks = {
+      coverage-tools =
+        pkgs.runCommand "coverage-tools" {
+          nativeBuildInputs = [coverage-unit-tests coverage-normalize-lcov coverage-report pkgs.gnugrep];
+        } ''
+          export HOME="$TMPDIR"
+          export CARGO_NET_OFFLINE=true
+          export CARGO_BUILD_JOBS=2
+          export CARGO_TARGET_DIR="$TMPDIR/target"
+          mkdir -p crates/fixture/src
+          cat > Cargo.toml <<'EOF'
+          [workspace]
+          members = ["crates/fixture"]
+          resolver = "2"
+          EOF
+          cat > crates/fixture/Cargo.toml <<'EOF'
+          [package]
+          name = "coverage-fixture"
+          version = "0.1.0"
+          edition = "2024"
+          EOF
+          cat > crates/fixture/src/lib.rs <<'EOF'
+          pub fn answer() -> u32 {
+              42
+          }
+          pub fn uncovered() -> u32 {
+              0
+          }
+          #[test]
+          fn check_answer() {
+              assert_eq!(answer(), 42);
+          }
+          EOF
+          coverage-unit
+          test -d "$CARGO_TARGET_DIR/coverage/debug"
+          grep -q '^SF:crates/fixture/src/lib.rs$' unit.lcov
+          coverage-report --threshold 0 unit.lcov
+          test -s coverage-html/index.html
+          test -s coverage-html/combined.lcov
+          if coverage-report --threshold 100 unit.lcov; then
+            echo "Error: the threshold check did not fail at 100%" >&2
+            exit 1
+          fi
+          test -s coverage-html/index.html
+          # This LCOV file gives two Rust symbol names to the function `answer` at line 1.
+          # The two names are different only in the crate hash (`AAA` and `BBB`), as in two different builds.
+          # The report must count `answer` one time. As a result, the expected result is 1 of 2 functions.
+          printf 'TN:\nSF:crates/fixture/src/lib.rs\nFN:1,_RNvCsAAA_7fixture6answer\nFN:1,_RNvCsBBB_7fixture6answer\nFN:4,_RNvCsAAA_7fixture9uncovered\n' > aliases.lcov
+          printf 'FNDA:1,_RNvCsAAA_7fixture6answer\nFNDA:0,_RNvCsBBB_7fixture6answer\nFNDA:0,_RNvCsAAA_7fixture9uncovered\n' >> aliases.lcov
+          printf 'FNF:3\nFNH:1\nDA:1,1\nDA:2,1\nDA:4,0\nDA:5,0\nLF:4\nLH:2\nend_of_record\n' >> aliases.lcov
+          coverage-report aliases.lcov > aliases.log 2>&1
+          if ! grep -qF 'functions...: 50.0% (1 of 2 functions)' aliases.log; then
+            cat aliases.log >&2
+            echo "Error: coverage-report counted function aliases more than one time" >&2
+            exit 1
+          fi
+          for invalid in missing.lcov empty.lcov corrupt.lcov; do
+            : > empty.lcov
+            printf 'TN:\nSF:crates/fixture/src/lib.rs\nDA9\nend_of_record\n' > corrupt.lcov
+            if coverage-report unit.lcov "$invalid"; then
+              echo "Error: coverage-report accepted an invalid input file: $invalid" >&2
+              exit 1
+            fi
+          done
+          if coverage-report; then
+            echo "Error: coverage-report did not fail without input files" >&2
+            exit 1
+          fi
+          printf 'SF:/root with [spaces]/crates/fixture/src/lib.rs\nSF:/vendor/crates/dependency/src/lib.rs\n' > paths.lcov
+          coverage-normalize-lcov paths.lcov '/root with [spaces]'
+          grep -q '^SF:crates/fixture/src/lib.rs$' paths.lcov
+          grep -q '^SF:/vendor/crates/dependency/src/lib.rs$' paths.lcov
+          printf 'SF:/vendor/crates/dependency/src/lib.rs\n' > mismatch.lcov
+          if coverage-normalize-lcov mismatch.lcov /wrong-root; then
+            echo "Error: coverage-normalize-lcov accepted an incorrect workspace root" >&2
+            exit 1
+          fi
+          substituteInPlace crates/fixture/src/lib.rs --replace-fail 'answer(), 42' 'answer(), 0'
+          status=0
+          coverage-unit || status=$?
+          test "$status" -eq 101
+          test -s unit.lcov
+          printf 'invalid Rust\n' > crates/fixture/src/lib.rs
+          if coverage-unit; then
+            echo "Error: coverage-unit did not fail after a compilation error" >&2
+            exit 1
+          fi
+          test ! -e unit.lcov
+          touch "$out"
+        '';
+
       nix-statix =
         pkgs.runCommand "nix-statix"
         {
@@ -646,6 +825,19 @@ in
     blockfrost-tests-preprod = make-blockfrost-tests {network = "preprod";};
     blockfrost-tests-mainnet = make-blockfrost-tests {network = "mainnet";};
 
+    coverage-blockfrost-tests-preview = make-blockfrost-tests {
+      network = "preview";
+      coverage = true;
+    };
+    coverage-blockfrost-tests-preprod = make-blockfrost-tests {
+      network = "preprod";
+      coverage = true;
+    };
+    coverage-blockfrost-tests-mainnet = make-blockfrost-tests {
+      network = "mainnet";
+      coverage = true;
+    };
+
     blockfrost-ignore-check-preview = make-blockfrost-tests {
       network = "preview";
       ignorelistOnly = true;
@@ -662,16 +854,28 @@ in
     make-blockfrost-tests = {
       network,
       ignorelistOnly ? false,
-    }:
+      coverage ? false,
+    }: let
+      platformBin =
+        if coverage
+        then blockfrost-platform-coverage
+        else blockfrost-platform;
+      gatewayBin =
+        if coverage
+        then blockfrost-gateway--dev-mock-db-coverage
+        else blockfrost-gateway--dev-mock-db;
+    in
       pkgs.writeShellApplication {
         name =
           if ignorelistOnly
           then "blockfrost-ignore-check"
+          else if coverage
+          then "coverage-blockfrost-tests"
           else "blockfrost-tests";
         meta.description =
           if ignorelistOnly
           then "Checks that ignored tests on `${network}` still fail (and should remain on the ignorelist)"
-          else "Runs `blockfrost-tests` on `${network}` against this repository";
+          else "Runs `blockfrost-tests` on `${network}` against this repository" + lib.optionalString coverage " (coverage instrumented)";
         runtimeInputs = with pkgs; [
           bash
           coreutils
@@ -760,7 +964,7 @@ in
             nft_asset = 'unused'
             EOF
 
-            ${lib.getExe blockfrost-gateway--dev-mock-db} \
+            ${lib.getExe gatewayBin} \
               --config "$tmpdir/gateway.toml" \
               &
             gateway_pid=$!
@@ -768,7 +972,7 @@ in
             sleep 1
             wait4x http "$gateway_url/stats" --expect-status-code 200 --timeout 60s --interval 1s
 
-            ${lib.getExe blockfrost-platform} \
+            ${lib.getExe platformBin} \
               --server-address 127.0.0.1 \
               --server-port "$platform_port" \
               --log-level info \
@@ -856,7 +1060,7 @@ in
     run-blockfrost-tests =
       pkgs.writeShellScriptBin "test-blockfrost-tests" ''
         set -euo pipefail
-        exec nix run -L $PRJ_ROOT#internal.${pkgs.stdenv.hostPlatform.system}.${blockfrost-tests-preview.name}
+        exec nix run -L $PRJ_ROOT#internal.${pkgs.stdenv.hostPlatform.system}.blockfrost-tests-preview
       ''
       // {
         meta.description = blockfrost-tests-preview.meta.description;
@@ -915,40 +1119,53 @@ in
       text = builtins.readFile ./hydra-blockfrost-test.sh;
     };
 
-    hydra-platform-gateway-test = pkgs.writeShellApplication {
-      name = "test-hydra-platform-gateway";
-      meta.description = "Tests the Hydra micropayments between blockfrost-platform and blockfrost-gateway";
-      runtimeInputs = with pkgs; [
-        bash
-        bc
-        coreutils
-        gnused
-        gnugrep
-        gawk
-        procps
-        jq
-        curl
-        hydra-node
-        cardano-cli
-        cardano-address
-        (python3.withPackages (ps: with ps; [portpicker]))
-        wait4x
-        blockfrost-platform
-        blockfrost-gateway--dev-mock-db
-      ];
-      runtimeEnv = rec {
-        NETWORK = "preview";
-        CARDANO_NODE_NETWORK_ID =
-          {
-            mainnet = "mainnet";
-            preprod = 1;
-            preview = 2;
-          }.${
-            NETWORK
-          };
+    mk-hydra-platform-gateway-test = {coverage ? false}:
+      pkgs.writeShellApplication {
+        name = "test-hydra-platform-gateway";
+        meta.description = "Tests the Hydra micropayments between blockfrost-platform and blockfrost-gateway";
+        runtimeInputs = with pkgs; [
+          bash
+          bc
+          coreutils
+          gnused
+          gnugrep
+          gawk
+          procps
+          jq
+          curl
+          hydra-node
+          cardano-cli
+          cardano-address
+          (python3.withPackages (ps: with ps; [portpicker]))
+          wait4x
+          (
+            if coverage
+            then blockfrost-platform-coverage
+            else blockfrost-platform
+          )
+          (
+            if coverage
+            then blockfrost-gateway--dev-mock-db-coverage
+            else blockfrost-gateway--dev-mock-db
+          )
+        ];
+        runtimeEnv = rec {
+          NETWORK = "preview";
+          CARDANO_NODE_NETWORK_ID =
+            {
+              mainnet = "mainnet";
+              preprod = 1;
+              preview = 2;
+            }.${
+              NETWORK
+            };
+        };
+        text = builtins.readFile ./hydra-platform-gateway-test.sh;
       };
-      text = builtins.readFile ./hydra-platform-gateway-test.sh;
-    };
+
+    hydra-platform-gateway-test = mk-hydra-platform-gateway-test {coverage = false;};
+
+    coverage-hydra-platform-gateway-test = mk-hydra-platform-gateway-test {coverage = true;};
 
     platform-gateway-ha-test = pkgs.writeShellApplication {
       name = "test-platform-gateway-ha";
@@ -968,39 +1185,328 @@ in
       text = builtins.readFile ./platform-gateway-ha-test.sh;
     };
 
-    hydra-bridge-gateway-test = pkgs.writeShellApplication {
-      name = "test-hydra-bridge-gateway";
-      meta.description = "Tests the Hydra micropayments between blockfrost-sdk-bridge and blockfrost-gateway";
-      runtimeInputs = with pkgs; [
-        bash
-        bc
-        coreutils
-        gnused
-        gnugrep
-        gawk
-        procps
-        jq
-        curl
-        hydra-node
-        cardano-cli
-        cardano-address
-        (python3.withPackages (ps: with ps; [portpicker]))
-        wait4x
-        blockfrost-sdk-bridge
-        blockfrost-gateway--dev-mock-db
-      ];
-      runtimeEnv = rec {
-        NETWORK = "preview";
-        CARDANO_NODE_NETWORK_ID =
-          {
-            mainnet = "mainnet";
-            preprod = 1;
-            preview = 2;
-          }.${
-            NETWORK
-          };
+    mk-hydra-bridge-gateway-test = {coverage ? false}:
+      pkgs.writeShellApplication {
+        name = "test-hydra-bridge-gateway";
+        meta.description = "Tests the Hydra micropayments between blockfrost-sdk-bridge and blockfrost-gateway";
+        runtimeInputs = with pkgs; [
+          bash
+          bc
+          coreutils
+          gnused
+          gnugrep
+          gawk
+          procps
+          jq
+          curl
+          hydra-node
+          cardano-cli
+          cardano-address
+          (python3.withPackages (ps: with ps; [portpicker]))
+          wait4x
+          (
+            if coverage
+            then blockfrost-sdk-bridge-coverage
+            else blockfrost-sdk-bridge
+          )
+          (
+            if coverage
+            then blockfrost-gateway--dev-mock-db-coverage
+            else blockfrost-gateway--dev-mock-db
+          )
+        ];
+        runtimeEnv = rec {
+          NETWORK = "preview";
+          CARDANO_NODE_NETWORK_ID =
+            {
+              mainnet = "mainnet";
+              preprod = 1;
+              preview = 2;
+            }.${
+              NETWORK
+            };
+        };
+        text = builtins.readFile ./hydra-bridge-gateway-test.sh;
       };
-      text = builtins.readFile ./hydra-bridge-gateway-test.sh;
+
+    hydra-bridge-gateway-test = mk-hydra-bridge-gateway-test {coverage = false;};
+
+    coverage-hydra-bridge-gateway-test = mk-hydra-bridge-gateway-test {coverage = true;};
+
+    # Rewrites absolute workspace paths in an LCOV file to repo-relative ones
+    # (`crates/…`). Otherwise `cargo test` in the CI checkout and binaries built
+    # in the Nix sandbox describe the same source file under different paths,
+    # `lcov` counts it twice, and `genhtml` can’t find the sandbox sources.
+    coverage-normalize-lcov = pkgs.writeShellApplication {
+      name = "coverage-normalize-lcov";
+      runtimeInputs = with pkgs; [coreutils gawk];
+      text = ''
+        if [[ $# -ne 2 || "$2" != /* || "$2" == / ]]; then
+          echo "Usage: coverage-normalize-lcov FILE ABSOLUTE_WORKSPACE_ROOT" >&2
+          exit 1
+        fi
+        lcov_file="$1"
+        export COVERAGE_SOURCE_ROOT="''${2%/}"
+        tmp=$(mktemp "$lcov_file.XXXXXX")
+        trap 'rm -f "$tmp"' EXIT
+        awk '
+          BEGIN { prefix = "SF:" ENVIRON["COVERAGE_SOURCE_ROOT"] "/" }
+          index($0, prefix) == 1 { $0 = "SF:" substr($0, length(prefix) + 1) }
+          /^SF:crates\// { found = 1 }
+          { print }
+          END { if (!found) exit 1 }
+        ' "$lcov_file" > "$tmp" || {
+          echo "Error: $lcov_file has no workspace source files under $COVERAGE_SOURCE_ROOT" >&2
+          exit 1
+        }
+        mv "$tmp" "$lcov_file"
+      '';
+    };
+
+    mkCoverageCargoTest = {
+      cargoTestArgs,
+      profrawPrefix,
+      outputName,
+    }:
+      pkgs.writeShellApplication {
+        name = "coverage-${outputName}";
+        runtimeInputs = [
+          rustToolchain
+          rustLlvmTools
+          pkgs.stdenv.cc
+          pkgs.pkg-config
+          pkgs.jq
+          pkgs.coreutils
+        ];
+        runtimeEnv =
+          cargoEnv
+          // builtins.listToAttrs hydraScriptsEnvVars
+          // {
+            inherit GIT_REVISION;
+            RUSTFLAGS = (cargoEnv.RUSTFLAGS or "") + " -Cinstrument-coverage";
+          };
+        text = ''
+          unset CARGO_ENCODED_RUSTFLAGS
+          export CARGO_TARGET_DIR="''${CARGO_TARGET_DIR:-$PWD/target}/coverage"
+          rm -f ${profrawPrefix}-*.profraw ${profrawPrefix}.profdata ${outputName}.lcov
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          export LLVM_PROFILE_FILE="$tmp/build-%p-%m.profraw"
+
+          cargo test ${cargoTestArgs} --no-run --message-format=json-render-diagnostics > "$tmp/artifacts.json"
+          jq -r 'select(.reason == "compiler-artifact" and .profile.test and .executable != null) | .executable' \
+            "$tmp/artifacts.json" > "$tmp/binaries"
+          mapfile -t bins < "$tmp/binaries"
+          if [ ''${#bins[@]} -eq 0 ]; then
+            echo "Error: cargo did not build test executables" >&2
+            exit 1
+          fi
+
+          export LLVM_PROFILE_FILE="$PWD/${profrawPrefix}-%p-%m.profraw"
+          test_ec=0
+          cargo test ${cargoTestArgs} || test_ec=$?
+
+          shopt -s nullglob
+          profraw_files=(${profrawPrefix}-*.profraw)
+          shopt -u nullglob
+          if [ ''${#profraw_files[@]} -eq 0 ]; then
+            echo "Error: no profiles have the prefix '${profrawPrefix}'. The exit status of the tests was $test_ec." >&2
+            exit 1
+          fi
+          llvm-profdata merge -sparse "''${profraw_files[@]}" -o ${profrawPrefix}.profdata
+          obj_args=()
+          for bin in "''${bins[@]}"; do
+            obj_args+=("--object=$bin")
+          done
+          llvm-cov export \
+            --instr-profile=${profrawPrefix}.profdata \
+            --format=lcov \
+            "''${obj_args[@]}" \
+            > "$tmp/output.lcov"
+          ${lib.getExe coverage-normalize-lcov} "$tmp/output.lcov" "$PWD"
+          mv "$tmp/output.lcov" ${outputName}.lcov
+          echo "Coverage written to ${outputName}.lcov"
+          exit "$test_ec"
+        '';
+      };
+
+    coverage-unit-tests = mkCoverageCargoTest {
+      cargoTestArgs = "--workspace --lib --verbose";
+      profrawPrefix = "unit";
+      outputName = "unit";
+    };
+
+    coverage-platform-integ-tests = mkCoverageCargoTest {
+      cargoTestArgs = "--verbose -p blockfrost-platform-integration-tests --no-fail-fast";
+      profrawPrefix = "integ";
+      outputName = "platform-integ";
+    };
+
+    mkCoverageConvert = {
+      profrawGlob,
+      objects,
+      outputName,
+      sourceRoot ? "/build/source",
+    }:
+      pkgs.writeShellApplication {
+        name = "coverage-convert-${outputName}";
+        runtimeInputs = [rustLlvmTools pkgs.coreutils];
+        text = let
+          objArrayItems =
+            lib.concatMapStringsSep " "
+            (o: lib.escapeShellArg "--object=${o.drv}/libexec/${o.binName}")
+            objects;
+        in ''
+          rm -f ${outputName}.lcov ${outputName}.profdata
+          shopt -s nullglob
+          profraw_files=(${profrawGlob})
+          shopt -u nullglob
+          if [ ''${#profraw_files[@]} -eq 0 ]; then
+            echo "Error: no profiles match '${profrawGlob}'" >&2
+            exit 1
+          fi
+          obj_args=(${objArrayItems})
+          if [ ''${#obj_args[@]} -eq 0 ]; then
+            echo "Error: the converter has no coverage objects" >&2
+            exit 1
+          fi
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          llvm-profdata merge -sparse "''${profraw_files[@]}" -o ${outputName}.profdata
+          llvm-cov export \
+            --instr-profile=${outputName}.profdata \
+            --format=lcov \
+            "''${obj_args[@]}" \
+            > "$tmp/output.lcov"
+          ${lib.getExe coverage-normalize-lcov} "$tmp/output.lcov" ${lib.escapeShellArg sourceRoot}
+          mv "$tmp/output.lcov" ${outputName}.lcov
+          echo "Coverage written to ${outputName}.lcov"
+        '';
+      };
+
+    mkCoverageConvertBlockfrost = network:
+      mkCoverageConvert {
+        profrawGlob = "blockfrost-${network}-*.profraw";
+        objects = [
+          {
+            drv = blockfrost-platform-coverage;
+            binName = "blockfrost-platform";
+          }
+          {
+            drv = blockfrost-gateway--dev-mock-db-coverage;
+            binName = "blockfrost-gateway";
+          }
+        ];
+        outputName = "blockfrost-${network}";
+      };
+
+    coverage-convert-blockfrost-preview = mkCoverageConvertBlockfrost "preview";
+    coverage-convert-blockfrost-preprod = mkCoverageConvertBlockfrost "preprod";
+    coverage-convert-blockfrost-mainnet = mkCoverageConvertBlockfrost "mainnet";
+
+    coverage-convert-hydra-pg = mkCoverageConvert {
+      profrawGlob = "hydra-pg-*.profraw";
+      objects = [
+        {
+          drv = blockfrost-platform-coverage;
+          binName = "blockfrost-platform";
+        }
+        {
+          drv = blockfrost-gateway--dev-mock-db-coverage;
+          binName = "blockfrost-gateway";
+        }
+      ];
+      outputName = "hydra-platform-gateway";
+    };
+
+    coverage-convert-hydra-bg = mkCoverageConvert {
+      profrawGlob = "hydra-bg-*.profraw";
+      objects = [
+        {
+          drv = blockfrost-sdk-bridge-coverage;
+          binName = "blockfrost-sdk-bridge";
+        }
+        {
+          drv = blockfrost-gateway--dev-mock-db-coverage;
+          binName = "blockfrost-gateway";
+        }
+      ];
+      outputName = "hydra-bridge-gateway";
+    };
+
+    coverage-report = pkgs.writeShellApplication {
+      name = "coverage-report";
+      runtimeInputs = with pkgs; [lcov coreutils gawk];
+      text = ''
+        threshold=0
+        lcov_files=()
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --threshold)
+              if [[ $# -lt 2 || ! "$2" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                echo "Error: the --threshold value must be a percentage from 0 to 100" >&2
+                exit 1
+              fi
+              threshold="$2"
+              shift 2 ;;
+            --)
+              shift
+              lcov_files+=("$@")
+              break ;;
+            -*)
+              echo "Unknown option: $1" >&2
+              exit 1 ;;
+            *)
+              lcov_files+=("$1")
+              shift ;;
+          esac
+        done
+        if ! awk -v threshold="$threshold" 'BEGIN { exit !(threshold >= 0 && threshold <= 100) }'; then
+          echo "Error: the --threshold value must be a percentage from 0 to 100" >&2
+          exit 1
+        fi
+        if [ ''${#lcov_files[@]} -eq 0 ]; then
+          echo "Usage: coverage-report [--threshold PERCENT] FILE.lcov..." >&2
+          exit 1
+        fi
+
+        merge_args=()
+        for f in "''${lcov_files[@]}"; do
+          if [[ ! -s "$f" ]]; then
+            echo "Error: the LCOV input file is missing or empty: $f" >&2
+            exit 1
+          fi
+          merge_args+=(-a "$f")
+        done
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        lcov "''${merge_args[@]}" \
+          --include 'crates/*/src/*' \
+          --exclude 'crates/integration_tests/*' \
+          --exclude 'crates/testgen/*' \
+          --exclude 'crates/build_utils/*' \
+          --exclude 'crates/*/src/tests.rs' \
+          --exclude 'crates/*/src/tests/*' \
+          --ignore-errors unused \
+          -o "$tmp/combined.lcov"
+        if ! awk -F: '/^LF:/ { lines += $2 } END { exit !(lines > 0) }' "$tmp/combined.lcov"; then
+          echo "Error: the merged LCOV file has no executable lines from the workspace" >&2
+          exit 1
+        fi
+        # Rust builds can give one function many symbol names, for example one name for each crate hash or generic type.
+        # With `--filter function`, lcov counts each function one time, at its source location.
+        # The `genhtml` and `lcov --summary` commands use this filter.
+        genhtml "$tmp/combined.lcov" \
+          --output-directory "$tmp/html" \
+          --title "blockfrost-platform coverage" \
+          --filter function \
+          --legend
+        cp "$tmp/combined.lcov" "$tmp/html/combined.lcov"
+        rm -rf coverage-html
+        mv "$tmp/html" coverage-html
+        echo "HTML report written to coverage-html/"
+        lcov --summary coverage-html/combined.lcov --filter function --fail-under-lines "$threshold"
+      '';
     };
 
     midnight = let

@@ -9,7 +9,7 @@ static INIT_LOGGING: LazyLock<()> = LazyLock::new(|| {
 });
 
 pub fn initialize_logging() {
-    let _ = INIT_LOGGING;
+    LazyLock::force(&INIT_LOGGING);
 }
 
 pub fn blockfrost_preview_project_id() -> String {
