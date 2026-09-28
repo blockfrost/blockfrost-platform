@@ -528,10 +528,15 @@ jobs:
             echo "One or more required jobs did not pass. This job makes a diagnostic report from ${#lcov_files[@]} coverage input file(s), with threshold 0."
           fi
 
-          nix run -L .#internal.x86_64-linux.coverage-report -- --threshold "$threshold" "${lcov_files[@]}"
+          status=0
+          nix run -L .#internal.x86_64-linux.coverage-report -- --threshold "$threshold" "${lcov_files[@]}" || status=$?
+          if [ -f coverage-html/index.html ]; then
+            echo "html=true" >>"$GITHUB_OUTPUT"
+          fi
+          exit "$status"
 
       - name: Upload HTML report
-        if: ${{ !cancelled() && (steps.report.outcome == 'success' || steps.report.outcome == 'failure') && hashFiles('coverage-html/index.html') != '' }}
+        if: ${{ !cancelled() && steps.report.outputs.html == 'true' }}
         uses: actions/upload-artifact@v5
         with:
           name: coverage-report
