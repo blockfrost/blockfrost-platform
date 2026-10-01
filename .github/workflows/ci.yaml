@@ -36,7 +36,7 @@ env:
 jobs:
   check_action_pins:
     name: Check third-party actions are SHA-pinned
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -60,7 +60,7 @@ jobs:
   static_checks:
     name: Static checks
     needs: [check_action_pins]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -98,7 +98,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-26.04, windows-latest, macos-latest]
         rust: [stable]
       fail-fast: true
 
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload artifacts
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_artifacts == 'true'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ runner.os }}-binary
           path: artifacts/
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-input-unit
           path: unit.lcov
@@ -205,7 +205,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-input-platform-integ
           path: platform-integ.lcov
@@ -263,7 +263,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ !cancelled() && matrix.mode != 'ignore-check' && steps.convert.outcome == 'success' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-input-blockfrost-${{ matrix.network }}
           path: blockfrost-${{ matrix.network }}.lcov
@@ -322,7 +322,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ !cancelled() && matrix.artifact_name != '' && steps.convert.outcome == 'success' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.lcov_file }}
@@ -339,10 +339,10 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-            runner: ubuntu-latest
+            runner: ubuntu-26.04
           - arch: arm64
             platform: linux/arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
 
     runs-on: ${{ matrix.runner }}
 
@@ -389,7 +389,7 @@ jobs:
 
   oci_merge:
     name: Create multi-arch manifests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [oci_build]
     if: ${{ github.event_name != 'schedule' && (github.ref == 'refs/heads/main' || (github.event_name == 'release' && github.event.action == 'published')) }}
 
@@ -462,7 +462,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-input-*
           path: coverage-inputs
@@ -539,7 +539,7 @@ jobs:
 
       - name: Upload HTML report
         if: ${{ !cancelled() && steps.report.outputs.html == 'true' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage-html/
