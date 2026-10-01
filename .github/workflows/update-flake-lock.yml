@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   update-flake-lock:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v3
         id: app-token
