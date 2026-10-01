@@ -22,9 +22,9 @@ jobs:
           exit 1
 
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
         with:
           determinate: false
           extra-conf: |
@@ -54,7 +54,7 @@ jobs:
           find -L result-*
 
       - name: Upload release artifacts
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             result-archive-x86_64-linux/*.tar.bz2
