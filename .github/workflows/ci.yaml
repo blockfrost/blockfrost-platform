@@ -451,7 +451,7 @@ jobs:
       - hydra_tests
     env:
       LINE_THRESHOLD_REGULAR: 52
-      LINE_THRESHOLD_HYDRA: 55
+      LINE_THRESHOLD_HYDRA: 78
       HYDRA_ENABLED: ${{ github.event_name == 'schedule' || github.event.inputs.run_hydra == 'true' }}
       UNIT_RESULT: ${{ needs.unit_tests.result }}
       PLATFORM_RESULT: ${{ needs.platform_integration_tests.result }}
