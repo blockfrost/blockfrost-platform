@@ -299,6 +299,10 @@
       "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_d0b3a9122929"
     },
     {
+      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc -- pool1l8ywwf6nfrfmrg6edj2qjh6rxpuepnzlsq9mhvjk9xr9swkht93 returns null metadata ticker/name/description/homepage instead of the expected strings",
+      "id": "pools-extended-queryparams_33c8fc92f5c2"
+    },
+    {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters-latest-epoch_a73a0c95ff80"
     },
