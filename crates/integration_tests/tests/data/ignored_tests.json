@@ -221,6 +221,10 @@
       "id": "pools-pool-id-history-problematic-pool-history-dbsync-issue-missing-some-epochs_912a978ee4cf"
     },
     {
+      "_comment": "pools/pool15wfu7td5r4k27erk5q5wt06x59skxxyqj206tdnfmfmk7pd3rp3/history?page=52&count=1, pools/a393cf2db41d6caf6476a028e5bf46a161631880929fa5b669da776f/history?page=52&count=1&order=asc -- delegators_count is 25 instead of the expected 22 in epoch 311",
+      "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_125d07ff8780"
+    },
+    {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
     },
