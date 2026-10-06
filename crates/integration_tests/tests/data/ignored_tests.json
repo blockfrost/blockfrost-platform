@@ -221,6 +221,10 @@
       "id": "pools-pool-id-history-problematic-pool-history-dbsync-issue-missing-some-epochs_912a978ee4cf"
     },
     {
+      "_comment": "pools/pool15wfu7td5r4k27erk5q5wt06x59skxxyqj206tdnfmfmk7pd3rp3/history?page=52&count=1, pools/a393cf2db41d6caf6476a028e5bf46a161631880929fa5b669da776f/history?page=52&count=1&order=asc -- delegators_count is 25 instead of the expected 22 in epoch 311",
+      "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_125d07ff8780"
+    },
+    {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
       "id": "epochs-latest-parameters_a73a0c95ff80"
     },
@@ -293,6 +297,10 @@
     {
       "_comment": "pools/pool1rccstu3l9ty3k0a5cd06fl3szsss9r34dcg5j38fqgq9kvng0tg/history?page=5&count=1 (= pools/1e3105f23f2ac91b3fb4c35fa4fe301421028e356e114944e902005b/history?page=5&count=1&order=asc) -- Dolos pool history differs from the real Blockfrost API (delegators_count / margin-cost update differences)",
       "id": "pools-pool-id-history-pool-history-with-more-margin-cost-updates_d0b3a9122929"
+    },
+    {
+      "_comment": "pools/extended?count=5&page=3, pools/extended?count=5&page=3&order=asc -- pool1l8ywwf6nfrfmrg6edj2qjh6rxpuepnzlsq9mhvjk9xr9swkht93 returns null metadata ticker/name/description/homepage instead of the expected strings",
+      "id": "pools-extended-queryparams_33c8fc92f5c2"
     },
     {
       "_comment": "epochs/latest/parameters -- Dolos returns outdated PlutusV1/V2/V3 cost models compared to the real Blockfrost API after the latest mainnet protocol update (missing new builtins like andByteString/expModInteger/scaleValue and old values for equalsByteString and divide/mod/quotientInteger)",
