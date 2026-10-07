@@ -10,12 +10,11 @@ use bf_common::errors::{AppError, BlockfrostError};
 use bf_data_node::client::DataNode;
 use bf_node::pool::NodePool;
 use metrics::{setup_metrics_recorder, spawn_process_collector};
-use routes::{hidden::get_hidden_api_routes, nest_routes, regular::get_regular_api_routes};
-use state::{ApiPrefix, AppState};
+use routes::get_api_routes;
+use state::AppState;
 use std::sync::Arc;
 use tower::{Layer, limit::ConcurrencyLimitLayer};
 use tower_http::normalize_path::NormalizePathLayer;
-use uuid::Uuid;
 
 /// Builds and configures the Axum `Router`.
 /// Returns `Ok(Router)` on success or an `AppError` if a step fails.
@@ -27,7 +26,6 @@ pub async fn build(
         NodePool,
         health_monitor::HealthMonitor,
         Option<Arc<IcebreakersAPI>>,
-        ApiPrefix,
     ),
     AppError,
 > {
@@ -64,18 +62,11 @@ pub async fn build(
     let health_monitor =
         health_monitor::HealthMonitor::spawn(node_conn_pool.clone(), data_node.clone()).await;
 
-    // Build a prefix
-    let api_prefix = ApiPrefix(config.icebreakers_config.as_ref().map(|_| Uuid::new_v4()));
-
     // Set up optional Icebreakers API (solitary option in CLI)
-    let icebreakers_api = IcebreakersAPI::new(&config, api_prefix.clone()).await?;
+    let icebreakers_api = IcebreakersAPI::new(&config).await?;
 
-    // API routes that are always under / (and also under the UUID prefix, if we use it)
-    let regular_api_routes = get_regular_api_routes(!config.no_metrics);
-    let hidden_api_routes = get_hidden_api_routes(!config.no_metrics);
-
-    // Nest under the UUID prefix
-    let api_routes = nest_routes(&api_prefix, regular_api_routes, hidden_api_routes);
+    // API routes
+    let api_routes = get_api_routes(!config.no_metrics);
 
     // Initialize the app state
     let app_state = AppState {
@@ -104,11 +95,5 @@ pub async fn build(
         .fallback_service(inner)
         .layer(ConcurrencyLimitLayer::new(config.server_concurrency_limit));
 
-    Ok((
-        app,
-        node_conn_pool,
-        health_monitor,
-        icebreakers_api,
-        api_prefix,
-    ))
+    Ok((app, node_conn_pool, health_monitor, icebreakers_api))
 }

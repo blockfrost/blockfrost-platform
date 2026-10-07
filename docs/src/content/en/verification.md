@@ -76,12 +76,13 @@ Once the service is running, verify that it is functioning correctly:
 
 When running in non-solitary mode, the Blockfrost platform generates a new UUID each time it starts.
 This UUID is used as a prefix for routing requests through the Icebreakers load balancers.
+The platform's own HTTP API is served directly at `/`, without the prefix.
 
 ### Example log entry showing UUID
 
 ```
-INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO: successfully registered with Icebreakers API (route: 3fa85f64-5717-4562-b3fc-2c963f66afa6)
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 You would need this UUID for things like your own manual transaction submission tests.
