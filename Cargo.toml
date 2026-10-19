@@ -110,7 +110,7 @@ tungstenite = "0.30.0"
 twelf = { version = "0.15.0", features = ["clap", "toml"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1.24", features = ["serde", "v4"] }
-zip = "8.6.0"
+zip = "9.0.5"
 
 [workspace.metadata.cargo-shear]
 ignored = ["jemalloc"] # musl-only conditional dependency
