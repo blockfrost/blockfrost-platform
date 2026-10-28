@@ -106,10 +106,10 @@ in
 
     coverageCargoArtifacts = craneLib.buildDepsOnly coverageArgs;
 
-    workspaceCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
-    platformCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
-    gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
-    sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
+    workspaceCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/Cargo.toml";}));
+    platformCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/crates/platform/Cargo.toml";}));
+    gatewayCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+    sdkBridgeCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
 
     GIT_REVISION = inputs.self.rev or "dirty";
 

@@ -85,8 +85,8 @@ in rec {
       '';
     });
 
-  gatewayCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
-  sdkBridgeCargoToml = builtins.fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
+  gatewayCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/crates/gateway/Cargo.toml";}));
+  sdkBridgeCargoToml = fromTOML (builtins.readFile (builtins.path {path = src + "/crates/sdk_bridge/Cargo.toml";}));
   blockfrost-gateway = craneLib.buildPackage (commonArgs
     // {
       inherit cargoArtifacts GIT_REVISION;

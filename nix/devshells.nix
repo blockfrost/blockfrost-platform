@@ -102,7 +102,7 @@ in {
   env =
     internal.hydraScriptsEnvVars
     ++ (lib.mapAttrsToList (name: value: {inherit name value;}) (
-      builtins.removeAttrs internal.cargoEnv ["RUSTFLAGS" "PKG_CONFIG_PATH" "LIBRARY_PATH"]
+      removeAttrs internal.cargoEnv ["RUSTFLAGS" "PKG_CONFIG_PATH" "LIBRARY_PATH"]
     ))
     ++ lib.optionals pkgs.stdenv.isDarwin [
       # `numtide/devshell` sets `LIBRARY_PATH` with a stray `-L` prefix on
