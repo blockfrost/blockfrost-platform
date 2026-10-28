@@ -1066,7 +1066,21 @@ in
         meta.description = blockfrost-tests-preview.meta.description;
       };
 
-    hydra-flake = (import inputs.flake-compat {src = inputs.hydra;}).defaultNix;
+    hydra-flake = let
+      unpatched = inputs.hydra;
+    in
+      (import inputs.flake-compat {
+        src = {
+          outPath = toString (pkgs.runCommand "source" {} ''
+            cp -r ${unpatched} $out
+            chmod -R +w $out
+            substituteInPlace $out/flake.lock \
+              --replace-fail 'https://gitlab.horizon-haskell.net/nix/werrorwolf' \
+              'https://nixlab.openfp.net/nix/werrorwolf.git'
+          '');
+          inherit (unpatched) rev shortRev lastModified lastModifiedDate;
+        };
+      }).defaultNix;
 
     hydraVersion = hydra-flake.legacyPackages.${targetSystem}.hydra-node.identifier.version;
 
