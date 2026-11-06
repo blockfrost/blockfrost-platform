@@ -880,14 +880,15 @@ in
           bash
           coreutils
           gnugrep
-          nodejs
-          yarn
+          nodejs_24
+          pnpm_12
           curl
           jq
           (python3.withPackages (ps: with ps; [portpicker]))
           wait4x
           perl
         ];
+        runtimeEnv.pnpm_config_pm_on_fail = "ignore";
         text =
           ''
             set -euo pipefail
@@ -1028,16 +1029,16 @@ in
 
             set -x
             node --version
-            yarn --version
+            pnpm --version
 
-            yarn install
+            pnpm install --frozen-lockfile
           ''
           + (
             if ignorelistOnly
             then ''
               set +x
 
-              IGNORELIST_ONLY=true yarn test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
+              IGNORELIST_ONLY=true pnpm test:${lib.escapeShellArg network} 2>&1 | tee tests.log || true
 
               # Fail if any ignored test now passes
               if grep -E 'Tests.*passed' tests.log; then
@@ -1050,7 +1051,7 @@ in
               echo "All ignored tests still fail. Ignorelist is up to date."
             ''
             else ''
-              yarn test:${lib.escapeShellArg network}
+              pnpm test:${lib.escapeShellArg network}
             ''
           );
       };

@@ -243,6 +243,26 @@
     {
       "_comment": "pools/pool1zmfpd5r5vfwjmwm4cgy53exe58h7plnecny3t4948yw7zumzp4c/metadata (= pools/16d216d074625d2dbb75c20948e4d9a1efe0fe79c4c915d4b5391de1/metadata) -- off-chain metadata fetch fails with HASH_MISMATCH (the pool changed the hosted alps_meta.json without updating the on-chain hash), so ticker/name/description/homepage come back null",
       "id": "pools-pool-id-metadata-pool-with-multiple-metadata-updates-in-one-update_f1a8a7164c97"
+    },
+    {
+      "_comment": "metadata/txs/labels/4204510684296672392/cbor?order=desc&count=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc_1ecf068babf8"
+    },
+    {
+      "_comment": "metadata/txs/labels/4204510684296672392/cbor?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc-second-page_f931035e2f37"
+    },
+    {
+      "_comment": "metadata/txs/labels/4204510684296672392?order=desc&count=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc_0509cfa2dd99"
+    },
+    {
+      "_comment": "metadata/txs/labels/4204510684296672392?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc-second-page_fecbf2f4d62e"
+    },
+    {
+      "_comment": "pools/extended?count=1&page=4, pools/extended?count=1&page=4&order=asc",
+      "id": "pools-extended-pool-with-unresolvable-metadata-url-host-returns-error_edd07226ebd3"
     }
   ],
   "preprod": [
@@ -309,6 +329,22 @@
     {
       "_comment": "txs/0ba048a6022a2ec3771d02e546433a29ed86a343dffa26f0994c5d6f5418f597/redeemers -- Dolos returns an empty script_hash for reward-purpose redeemers, while the real Blockfrost API resolves the actual script hash",
       "id": "txs-tx-redeemers-reward-purpose_4409b3ff775f"
+    },
+    {
+      "_comment": "metadata/txs/labels/710743606753894/cbor?order=desc&count=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc_e504e4a36b13"
+    },
+    {
+      "_comment": "metadata/txs/labels/710743606753894/cbor?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc-second-page_b1ee9e8c590f"
+    },
+    {
+      "_comment": "metadata/txs/labels/710743606753894?order=desc&count=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc_e57ba3acaeec"
+    },
+    {
+      "_comment": "metadata/txs/labels/710743606753894?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc-second-page_a1e8b2bb1498"
     }
   ],
   "preview": [
@@ -355,6 +391,34 @@
     {
       "_comment": "accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1, accounts/stake_test1ur2kmxmcnv3deau5w6smaym7w0smdapy5a263hzgkqe7mccgn28h3/rewards?count=1&page=1&order=asc -- Dolos reports the pool_deposit_refund reward in epoch 1347, while the real Blockfrost API reports it in epoch 1349",
       "id": "accounts-stake-address-queryparams-generic-stake-address-rewards-with-multiple-types_9d78f78ded98"
+    },
+    {
+      "_comment": "metadata/txs/labels/73311618728/cbor?order=desc&count=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc_ff895efaeb29"
+    },
+    {
+      "_comment": "metadata/txs/labels/73311618728/cbor?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-cbor-two-txs-of-one-block-desc-second-page_35fb6e2bd580"
+    },
+    {
+      "_comment": "metadata/txs/labels/73311618728?order=desc&count=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc_82c45d833dd6"
+    },
+    {
+      "_comment": "metadata/txs/labels/73311618728?order=desc&count=1&page=2",
+      "id": "metadata-txs-labels-label-two-txs-of-one-block-desc-second-page_e91a141e82d2"
+    },
+    {
+      "_comment": "pools/extended?count=1&page=13, pools/extended?count=1&page=13&order=asc",
+      "id": "pools-extended-pool-with-unresolvable-metadata-url-host-returns-error_8974b52d3ea9"
+    },
+    {
+      "_comment": "scripts/datum/aeef1c285332e73fc606e2fc8f2c40d8ad84b2d4401b7ab2360cde2950b71170",
+      "id": "scripts-datum-hash-negative-bignum_d24e773eb4f6"
+    },
+    {
+      "_comment": "scripts/datum/7e85cadb22634a84abc99655295b8612c39e8401e25252c953072cb10d430a73",
+      "id": "scripts-datum-hash-integer-past-int64_c30c0707e2cc"
     }
   ]
 }
