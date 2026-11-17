@@ -76,12 +76,13 @@ blockfrost-platform --node-socket-path /path/to/node.socket \
 
 非ソリタリーモードで動作する場合、Blockfrost プラットフォームは起動のたびに新しい UUID を生成します。
 この UUID は Icebreakers ロードバランサー経由のリクエストルーティングのプレフィックスとして使用されます。
+プラットフォーム自身の HTTP API は、プレフィックスなしで `/` 直下で提供されます。
 
 ### UUID を含むログエントリの例
 
 ```
-INFO: Your instance ID: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INFO: successfully registered with Icebreakers API (route: 3fa85f64-5717-4562-b3fc-2c963f66afa6)
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 手動でのトランザクション送信テストなどではこの UUID が必要になります。

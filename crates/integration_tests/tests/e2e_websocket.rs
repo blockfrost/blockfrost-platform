@@ -116,8 +116,7 @@ async fn test_ws_invalid_credentials_rejected() {
     };
     let config = test_config(Some(icebreakers_config));
 
-    let (app, _, _, icebreakers_api, api_prefix) =
-        build(config).await.expect("Failed to build app");
+    let (app, _, _, icebreakers_api) = build(config).await.expect("Failed to build app");
 
     let icebreakers_api = icebreakers_api.expect("icebreakers_api should be Some");
     let health_errors = Arc::new(Mutex::new(vec![]));
@@ -126,7 +125,6 @@ async fn test_ws_invalid_credentials_rejected() {
         icebreakers_api,
         health_errors.clone(),
         app,
-        api_prefix,
         bf_common::DEFAULT_MAX_BODY_BYTES,
     );
 
