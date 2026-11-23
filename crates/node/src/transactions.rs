@@ -1,7 +1,6 @@
 use super::connection::NodeClient;
 use crate::cbor::validation::validate_tx_cbor;
 use bf_common::errors::BlockfrostError;
-use pallas_crypto::hash::Hasher;
 use pallas_hardano::display::haskell_error::as_node_submit_error;
 use pallas_network::miniprotocols::{
     localstate,
@@ -17,7 +16,7 @@ impl NodeClient {
     /// * Swagger: <https://github.com/IntersectMBO/cardano-node/blob/6e969c6bcc0f07bd1a69f4d76b85d6fa9371a90b/cardano-submit-api/swagger.yaml#L52>
     /// * Haskell code: <https://github.com/IntersectMBO/cardano-node/blob/6e969c6bcc0f07bd1a69f4d76b85d6fa9371a90b/cardano-submit-api/src/Cardano/TxSubmit/Web.hs#L158>
     pub async fn submit_transaction(&mut self, tx: Vec<u8>) -> Result<String, BlockfrostError> {
-        validate_tx_cbor(&tx)?;
+        let txid = hex::encode(validate_tx_cbor(&tx)?);
 
         let current_era = self
             .with_statequery(|generic_client: &mut localstate::GenericClient| {
@@ -35,8 +34,6 @@ impl NodeClient {
         // Submit the transaction
         match submission_client.submit_tx(era_tx).await {
             Ok(Response::Accepted) => {
-                let txid = hex::encode(Hasher::<256>::hash_cbor(&tx));
-
                 info!(
                     connection_id = self.connection_id,
                     "Transaction accepted by the node: {}", txid
