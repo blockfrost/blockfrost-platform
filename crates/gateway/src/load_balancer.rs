@@ -150,6 +150,17 @@ impl LoadBalancerState {
         }
     }
 
+    async fn remove_relay_session(&self, api_prefix: Uuid, session: &RelayState) {
+        let mut active_relays = self.active_relays.lock().await;
+        if active_relays.get(&api_prefix).is_some_and(|current| {
+            current
+                .new_request_channel
+                .same_channel(&session.new_request_channel)
+        }) {
+            active_relays.remove(&api_prefix);
+        }
+    }
+
     async fn relay_for_prefix(
         &self,
         api_prefix: Uuid,
@@ -843,13 +854,11 @@ pub mod event_loop {
             })))
             .await;
 
-        // Stop ingress of new requests to this already broken connection by
-        // deleting its producer (`request_tx`) from the `LoadBalancerState`:
+        // Each session owns a distinct request channel. A replacement may already
+        // occupy this prefix by the time the old event loop reaches cleanup.
         load_balancer
-            .active_relays
-            .lock()
-            .await
-            .remove(&token_state.api_prefix);
+            .remove_relay_session(token_state.api_prefix, &relay_state)
+            .await;
 
         // Fail all remaining requests for this relay that possibly are still on
         // the channel after `break 'event_loop`.
@@ -1474,6 +1483,52 @@ mod tests {
         let lb = LoadBalancerState::new(None, test_key());
         // active_relays starts empty (we can't check much else now)
         assert!(lb.active_relays.blocking_lock().is_empty());
+    }
+
+    #[tokio::test]
+    async fn old_session_cleanup_preserves_replacement_routing() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let prefix = Uuid::new_v4();
+        let old = test_relay_state("relay");
+        lb.active_relays.lock().await.insert(prefix, old.clone());
+
+        // Hold old-session cleanup until its replacement has been registered.
+        let (resume_tx, resume_rx) = oneshot::channel();
+        let cleanup_lb = lb.clone();
+        let cleanup = tokio::spawn(async move {
+            resume_rx.await.unwrap();
+            cleanup_lb.remove_relay_session(prefix, &old).await;
+        });
+
+        let mut replacement = test_relay_state("relay");
+        let (request_tx, _request_rx) = mpsc::channel(1);
+        replacement.new_request_channel = request_tx.clone();
+        lb.active_relays.lock().await.insert(prefix, replacement);
+        resume_tx.send(()).unwrap();
+        cleanup.await.unwrap();
+
+        let (direct, _) = lb.relay_for_prefix(prefix, "/health").await.unwrap();
+        let (any, _) = lb.relay_for_any("/health").await.unwrap();
+        assert!(direct.same_channel(&request_tx));
+        assert!(any.same_channel(&request_tx));
+        assert!(!direct.is_closed());
+    }
+
+    #[tokio::test]
+    async fn current_session_cleanup_removes_registration() {
+        let lb = LoadBalancerState::new(None, test_key());
+        let prefix = Uuid::new_v4();
+        let session = test_relay_state("relay");
+        lb.active_relays
+            .lock()
+            .await
+            .insert(prefix, session.clone());
+
+        lb.remove_relay_session(prefix, &session).await;
+        assert!(lb.relay_for_prefix(prefix, "/health").await.is_err());
+        assert!(lb.relay_for_any("/health").await.is_err());
+        // Cleanup is also harmless if the registration was already removed.
+        lb.remove_relay_session(prefix, &session).await;
     }
 
     #[tokio::test]
