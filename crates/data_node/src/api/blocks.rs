@@ -17,8 +17,11 @@ impl DataNodeBlocks<'_> {
         self.inner.client.get("blocks/latest", None).await
     }
 
-    pub async fn latest_txs(&self) -> ApiResult<Vec<String>> {
-        self.inner.client.get("blocks/latest/txs", None).await
+    pub async fn latest_txs(&self, pagination: &Pagination) -> ApiResult<Vec<String>> {
+        self.inner
+            .client
+            .get("blocks/latest/txs", Some(pagination))
+            .await
     }
 
     pub async fn by(&self, hash_or_number: &str) -> ApiResult<BlocksSingleResponse> {
