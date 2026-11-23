@@ -130,6 +130,7 @@ async fn test_route_submit_success() {
     let (app, _, _, _, _) = build_app().await.expect("Failed to build the application");
     let blockfrost_client = get_blockfrost_client();
     let tx = build_tx(&blockfrost_client).await.unwrap();
+    let expected_txid = tx.transaction_hash().to_hex();
 
     let request = Request::builder()
         .method(Method::POST)
@@ -145,11 +146,11 @@ async fn test_route_submit_success() {
 
     let status = response.status();
 
-    assert!(
-        response
-            .headers()
-            .contains_key("blockfrost-platform-response"),
-        "Response is missing the `blockfrost-platform-response` header"
+    assert_eq!(
+        response.headers()["blockfrost-platform-response"]
+            .to_str()
+            .unwrap(),
+        expected_txid
     );
 
     let local_body_bytes = to_bytes(response.into_body(), usize::MAX)
@@ -165,5 +166,8 @@ async fn test_route_submit_success() {
         "Expected 200 OK, got {status}: {local_body_str}"
     );
 
-    assert_eq!(66, local_body_str.len());
+    assert_eq!(
+        serde_json::from_str::<String>(&local_body_str).unwrap(),
+        expected_txid
+    );
 }

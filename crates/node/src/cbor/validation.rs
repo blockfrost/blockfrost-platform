@@ -1,22 +1,24 @@
 use bf_common::errors::BlockfrostError;
+use pallas_crypto::hash::Hash;
 use pallas_hardano::display::haskell_error::as_cbor_decode_failure;
 use pallas_primitives::{alonzo::Value, babbage::GenTransactionOutput, conway::Tx};
+use pallas_traverse::OriginalHash;
 use tracing::warn;
 
 /// Checks if the given transaction is a valid CBOR-encoded transaction, by trying to decode it.
 /// This function is used to validate the transaction before submitting it to the node.
 /// If the transaction is invalid, returns the decoding error.
-/// If the transaction is valid, returns Ok(()).
-pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
+/// If the transaction is valid, returns the hash of its original body CBOR.
+pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<Hash<32>, BlockfrostError> {
     match pallas_codec::minicbor::decode::<Tx>(tx) {
         Ok(decoded) => {
-            if _check_multiasset_zero(decoded) {
+            if _check_multiasset_zero(&decoded) {
                 Err(BlockfrostError::custom_400(
                     as_cbor_decode_failure("MultiAsset cannot contain zeros".to_string(), 0)
                         .unwrap_or_else(|e| format!("Failed to format decode error: {e}")),
                 ))
             } else {
-                Ok(())
+                Ok(decoded.transaction_body.original_hash())
             }
         },
         Err(e) => {
@@ -34,7 +36,7 @@ pub(crate) fn validate_tx_cbor(tx: &[u8]) -> Result<(), BlockfrostError> {
 /// pallas decoding will not fail, but we need to fail for this case.
 /// Initially we implemented this workaround in the pallas codabase.
 /// See https://github.com/IntersectMBO/cardano-ledger/blob/49623962445143680dd725ebbf812c37e099b65c/eras/mary/impl/src/Cardano/Ledger/Mary/Value.hs#L328
-fn _check_multiasset_zero(tx: Tx) -> bool {
+fn _check_multiasset_zero(tx: &Tx) -> bool {
     for output in tx.transaction_body.outputs.iter() {
         if let GenTransactionOutput::Legacy(o) = output
             && let Value::Multiasset(_, kv) = &o.amount
@@ -81,6 +83,21 @@ mod tests {
 
         // A very basic transaction encoded as CBOR
         let valid_tx = hex::decode("84a300d90102818258205176274bef11d575edd6aa72392aaf993a07f736e70239c1fb22d4b1426b22bc01018282583900ddf1eb9ce2a1561e8f156991486b97873fb6969190cbc99ddcb3816621dcb03574152623414ed354d2d8f50e310f3f2e7d167cb20e5754271a003d09008258390099a5cb0fa8f19aba38cacf8a243d632149129f882df3a8e67f6bd512bcb0cde66a545e9fbc7ca4492f39bca1f4f265cc1503b4f7d6ff205c1b000000024f127a7c021a0002a2ada100d90102818258208b83e59abc9d7a66a77be5e0825525546a595174f8b929f164fcf5052d7aab7b5840709c64556c946abf267edd90b8027343d065193ef816529d8fa7aa2243f1fd2ec27036a677974199e2264cb582d01925134b9a20997d5a734da298df957eb002f5f6").unwrap();
-        assert!(validate_tx_cbor(&valid_tx).is_ok());
+        let expected_txid = "3ac521101f8d5bdb133dcb2d16dd736edd3fad62a97a6d831f369bf2a8aee5af";
+        assert_eq!(
+            hex::encode(validate_tx_cbor(&valid_tx).unwrap()),
+            expected_txid
+        );
+
+        // Replacing the witnesses must not change the transaction ID.
+        let decoded: Tx = pallas_codec::minicbor::decode(&valid_tx).unwrap();
+        let mut without_witnesses = vec![0x84];
+        without_witnesses.extend_from_slice(decoded.transaction_body.raw_cbor());
+        without_witnesses.extend_from_slice(&[0xa0, 0xf5, 0xf6]);
+        assert_ne!(without_witnesses, valid_tx);
+        assert_eq!(
+            hex::encode(validate_tx_cbor(&without_witnesses).unwrap()),
+            expected_txid
+        );
     }
 }
