@@ -85,6 +85,7 @@ mod tests {
             connection_id: 0,
             unrecoverable_error_happened: false,
             network_magic: 2,
+            cleanup_runtime: tokio::runtime::Handle::current(),
         };
 
         // Test invalid CBOR transaction

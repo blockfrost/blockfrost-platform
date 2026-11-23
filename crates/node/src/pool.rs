@@ -1,6 +1,12 @@
 use super::pool_manager::NodePoolManager;
 use bf_common::errors::AppError;
-use deadpool::managed::{Object, Pool};
+use deadpool::{
+    Runtime,
+    managed::{Object, Pool},
+};
+use tokio::time::{Duration, timeout};
+
+const CHECKOUT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// This represents a pool of `NodeToClient` connections to a single `cardano-node`.
 ///
@@ -24,6 +30,10 @@ impl NodePool {
         };
         let pool_manager = deadpool::managed::Pool::builder(manager)
             .max_size(max_pool_connections)
+            .runtime(Runtime::Tokio1)
+            .wait_timeout(Some(CHECKOUT_TIMEOUT))
+            .create_timeout(Some(CHECKOUT_TIMEOUT))
+            .recycle_timeout(Some(CHECKOUT_TIMEOUT))
             .build()
             .map_err(|err| AppError::Node(err.to_string()))?;
 
@@ -32,9 +42,10 @@ impl NodePool {
 
     /// Borrows a single [`super::connection::NodeClient`] connection from the pool.
     pub async fn get(&self) -> Result<Object<NodePoolManager>, AppError> {
-        self.pool_manager
-            .get()
+        // Also bound the total checkout time across discarded connections and retries.
+        timeout(CHECKOUT_TIMEOUT, self.pool_manager.get())
             .await
+            .map_err(|_| AppError::Node("NodeConnPool: checkout timed out".to_string()))?
             .map_err(|err| AppError::Node(format!("NodeConnPool: {err}")))
     }
 }

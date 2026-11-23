@@ -1,5 +1,9 @@
 use bf_common::errors::BlockfrostError;
-use pallas_network::{facades::NodeClient as NodeClientFacade, miniprotocols::localstate};
+use pallas_network::{
+    facades::NodeClient as NodeClientFacade,
+    miniprotocols::{handshake, localstate},
+    multiplexer::Bearer,
+};
 use std::{boxed::Box, pin::Pin};
 use tokio::time::{Duration, timeout};
 use tracing::error;
@@ -7,18 +11,62 @@ use tracing::error;
 /// Our wrapper around [`pallas_network::facades::NodeClient`]. If you only use
 /// this, you won’t get any deadlocks, inconsistencies, etc.
 pub struct NodeClient {
-    /// Note: this is an [`Option`] *only* to satisfy the borrow checker. It’s
-    /// *always* [`Some`]. See [`<super::pool_manager::NodePoolManager as
-    /// deadpool::managed::Manager>>::recycle`] for an explanation.
+    /// Taken when the connection is closed after an interrupted exchange.
     pub(crate) client: Option<NodeClientFacade>,
     pub(crate) connection_id: u64,
     pub(crate) unrecoverable_error_happened: bool,
     pub(crate) network_magic: u64,
+    pub(crate) cleanup_runtime: tokio::runtime::Handle,
 }
 
 impl NodeClient {
-    /// We always have to release the [`localstate::GenericClient`], even on errors,
-    /// otherwise `cardano-node` stalls. If you use this function, it’s handled for you.
+    /// Connect and handshake while retaining ownership for cancellation cleanup.
+    pub(crate) async fn connect(
+        socket_path: &str,
+        network_magic: u64,
+        connection_id: u64,
+    ) -> Result<Self, bf_common::errors::AppError> {
+        use bf_common::errors::AppError;
+
+        #[cfg(unix)]
+        let bearer = Bearer::connect_unix(socket_path)
+            .await
+            .map_err(|err| AppError::Node(err.to_string()))?;
+        #[cfg(windows)]
+        let bearer = {
+            let path = socket_path.to_owned();
+            tokio::task::spawn_blocking(move || Bearer::connect_named_pipe(path))
+                .await
+                .map_err(|err| AppError::Node(err.to_string()))?
+                .map_err(|err| AppError::Node(err.to_string()))?
+        };
+
+        let mut node = Self {
+            client: Some(NodeClientFacade::new(bearer)),
+            connection_id,
+            unrecoverable_error_happened: false,
+            network_magic,
+            cleanup_runtime: tokio::runtime::Handle::current(),
+        };
+        let confirmation = node
+            .client
+            .as_mut()
+            .unwrap()
+            .handshake()
+            .handshake(handshake::n2c::VersionTable::v10_and_above(network_magic))
+            .await
+            .map_err(|err| AppError::Node(err.to_string()))?;
+        if let handshake::Confirmation::Rejected(reason) = confirmation {
+            return Err(AppError::Node(format!(
+                "Node handshake rejected: {reason:?}"
+            )));
+        }
+        Ok(node)
+    }
+
+    /// Bound acquisition, the action and release by one deadline.
+    /// An interrupted exchange must be closed instead of sending Release while
+    /// the peer may still have agency.
     pub async fn with_statequery_timeout<A, F>(
         &mut self,
         action: F,
@@ -31,36 +79,52 @@ impl NodeClient {
             Box<dyn std::future::Future<Output = Result<A, BlockfrostError>> + 'a + Sync + Send>,
         >,
     {
-        // Acquire the client
+        if self.unrecoverable_error_happened {
+            return Err(BlockfrostError::internal_server_error(
+                "Node connection is no longer usable".to_string(),
+            ));
+        }
+
+        // Leave this set if the caller cancels the future mid-exchange.
+        self.unrecoverable_error_happened = true;
         let client = self.client.as_mut().unwrap().statequery();
+        let result = timeout(duration, async {
+            client.acquire(None).await?;
+            let result = action(client).await;
+            if *client.state() == localstate::State::Acquired {
+                client.send_release().await?;
+                Ok(result)
+            } else {
+                Err(BlockfrostError::internal_server_error(
+                    "State query ended before the node returned agency".to_string(),
+                ))
+            }
+        })
+        .await;
 
-        client.acquire(None).await.inspect_err(|err| {
-            error!(
-                connection_id = self.connection_id,
-                err = %err,
-                "failed to acquire a statequery client",
-            )
-        })?;
+        match result {
+            Ok(Ok(result)) => {
+                self.unrecoverable_error_happened = false;
+                result
+            },
+            Ok(Err(err)) => {
+                self.close().await;
+                Err(err)
+            },
+            Err(_) => {
+                let msg = format!("Timeout after {} seconds", duration.as_secs());
+                self.invalidate_connection(&msg);
+                self.close().await;
+                Err(BlockfrostError::timeout(msg))
+            },
+        }
+    }
 
-        // Run the action with a timeout
-        let result = timeout(duration, action(client)).await.map_err(|_| {
-            let msg = format!("Timeout after {} seconds", duration.as_secs());
-            error!(
-                connection_id = self.connection_id,
-                "{} in with_statequery_timeout", msg
-            );
-            BlockfrostError::timeout(msg)
-        })?;
-
-        // Always release the client, even if action fails
-        client.send_release().await.inspect_err(|e| {
-            error!(
-                connection_id = self.connection_id,
-                "failed to release a statequery client: {:?}", e
-            )
-        })?;
-
-        result
+    pub(crate) async fn close(&mut self) {
+        self.unrecoverable_error_happened = true;
+        if let Some(client) = self.client.take() {
+            client.abort().await;
+        }
     }
 
     pub async fn with_statequery<A, F>(&mut self, action: F) -> Result<A, BlockfrostError>
@@ -94,5 +158,15 @@ impl NodeClient {
             "connection marked as invalid: {}", why
         );
         self.unrecoverable_error_happened = true;
+    }
+}
+
+// Pool creation and recycling deadlines can drop an exchange before it returns.
+// Dropping Pallas itself only detaches its multiplexer tasks, so abort explicitly.
+impl Drop for NodeClient {
+    fn drop(&mut self) {
+        if let Some(client) = self.client.take() {
+            self.cleanup_runtime.spawn(client.abort());
+        }
     }
 }
